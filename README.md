@@ -1,3 +1,7 @@
+![upydevlogo](uPydevlogo.png)
+
+
+
 # uPydev
 
 ### Command line tool for wireless Micropython devices
