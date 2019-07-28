@@ -1,6 +1,4 @@
-![upydevlogo](uPydevlogo.png)
-
-
+<img align="right" src="uPydevlogo.png">
 
 # uPydev
 
