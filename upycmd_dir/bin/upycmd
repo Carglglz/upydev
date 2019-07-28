@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+# @Author: carlosgilgonzalez
+# @Date:   2019-06-23T17:19:41+01:00
+# @Last modified by:   carlosgilgonzalez
+# @Last modified time: 2019-07-07T23:42:26+01:00
+
+
+# ESP8266/32 OTA CLI ECHO COMMAND
+import argparse
+import ast
+import subprocess
+import shlex
+import sys
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-c", help='command to send', required=True)
+parser.add_argument("-p", help='password', required=False)
+parser.add_argument("-t", help='target', required=False)
+args = parser.parse_args()
+
+
+def send_recv_cmd2(cmd):
+    resp_recv = False
+    command = shlex.split(cmd)
+    while not resp_recv:
+        try:
+            process = subprocess.Popen(command, stdout=subprocess.PIPE)
+            resp_recv = True
+        except Exception as e:
+            pass
+
+    stdout = process.communicate()
+    # print(stdout)
+    # print(stdout[0].decode('utf-8').split('\n'))
+    # resp = webrepl_cmd.split('\n')[-2][4:].split("'")[1::2]
+    try:
+        resp = ast.literal_eval(stdout[0].decode('utf-8').split('\n')[6][4:-1])
+    except Exception as e:
+        try:
+            resp = stdout[0].decode('utf-8').split('\n')[6][4:-1]
+        except Exception as e:
+            resp = None
+
+        pass
+    # print(resp)
+    return resp, stdout
+
+
+def echo_upy_cmd(cmd, passwd, ip, sender=send_recv_cmd2):
+    command = 'web_repl_cmd  -c "{}" -p {} -t {}'.format(cmd, passwd, ip)
+    resp = sender(command)
+    return resp[0]
+
+
+command_to_send = args.c
+ip_target = args.t
+target_pass = args.p
+
+
+echo_upy_cmd(command_to_send, target_pass, ip_target)
+
+
+sys.exit()

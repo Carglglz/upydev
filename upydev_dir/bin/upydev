@@ -1,0 +1,3966 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+# @Author: carlosgilgonzalez
+# @Date:   2019-03-12T18:52:56+00:00
+# @Last modified by:   carlosgilgonzalez
+# @Last modified time: 2019-07-14T17:37:38+01:00
+
+# upydev CLI
+import argparse
+import subprocess
+import time
+import sys
+import json
+import os
+import shlex
+import ast
+import upydev
+import socket
+import struct
+from datetime import datetime, date
+import argcomplete
+from argcomplete.completers import ChoicesCompleter
+
+
+AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
+                    4: 'WPA/WAP2 PSK'}
+ADC_PINS_DICT = {'esp32h': [i for i in range(32, 40)]}
+
+ATTEN_DICT = {0: 'ADC.ATTN_0DB', 1: 'ADC.ATTN_2_5DB', 2: 'ADC.ATTN_6DB',
+              3: 'ADC.ATTN_11DB'}
+ATTEN_INFO = """
+0 = ADC.ATTN_0DB: 0dB attenuation, gives a maximum input voltage of 1.00v
+1 = ADC.ATTN_2_5DB: 2.5dB attenuation, gives a maximum input voltage of approximately 1.34v
+2 = ADC.ATTN_6DB: 6dB attenuation, gives a maximum input voltage of approximately 2.00v
+3 = ADC.ATTN_11DB: 11dB attenuation, gives a maximum input voltage of approximately 3.6v
+"""
+
+
+def run_command_rl(command):
+    end = False
+    lines = []
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while end is not True:
+        if process.poll() is None:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                line = output.strip().decode()
+                lines.append(line)
+                if output.strip() == b'### closed ###':
+                    end = True
+        else:
+            break
+    rc = process.poll()
+    return rc, lines
+
+
+def run_command_rt(command):
+    end = False
+    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+    while end is not True:
+        if process.poll() is None:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                line = output.strip().decode()
+                print(line)
+                if output.strip() == b'### closed ###':
+                    end = True
+        else:
+            break
+
+
+def run_live(run_cmd, targ, password):
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        run_cmd, targ, password)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
+            for i in range(10):
+                proc.stdout.readlines()
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+
+
+def get_ip():
+    scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
+    ip = scanoutput.decode('utf-8').split('\n')[0]
+    return ip
+
+
+def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
+                    r_format='fff', nb=12, log=False, variables=None):
+    if args.lh is None:
+        local_ip = get_ip()
+    if args.lh is not None:
+        local_ip = args.lh
+
+    # START A LOCAL SERVER
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((local_ip, 8005))
+    server_socket.listen(1)
+    connect_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        '{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
+                                                     local_ip)), args.t, args.p)
+    cmd_resp = run_command_rl(connect_cmd_str)
+    conn, addr = server_socket.accept()
+    conn.settimeout(1)
+    flushed = 0
+    while flushed == 0:
+        try:
+            conn.recv(1024)
+        except Exception as e:
+            flushed = 1
+    if args.tm > 500:
+        conn.settimeout((args.tm/1000)*3)  # for long periodic shots
+    run_cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+        run_cmd, targ, password)
+    run_live_cmd = shlex.split(run_cmd_str)
+    subprocess.call(run_live_cmd)
+
+    try:
+        if log:
+            while True:
+                try:
+                    data_acc = conn.recv(nb)
+                    decode = dict(zip(variables,
+                                      struct.unpack(r_format, data_acc)))
+                    print(decode)
+                    with open(filename, 'a') as logfile:
+                        logfile.write(json.dumps(decode))
+                        logfile.write('\n')
+                except Exception as e:
+                    print(e)
+                    if str(e) == 'timed out':
+                        pass
+                    else:
+                        break
+        else:
+            while True:
+                try:
+                    data_acc = conn.recv(nb)
+                    decode = dict(zip(variables,
+                                      struct.unpack(r_format, data_acc)))
+                    print(decode)
+                except Exception as e:
+                    # print(e)
+                    if str(e) == 'timed out':
+                        pass
+                    else:
+                        break
+
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            conn.close()
+            time.sleep(1)
+            # Flush error keyboardinterrupt
+            cmd = ';gc.collect()'
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            print('Done!')
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+            print('Done!')
+
+
+def test_stream(run_cmd, targ, password, sensorlib, filename=None,
+                r_format='fff', nb=12, log=False, variables=None, BUFFERSIZE=1):
+    if args.lh is None:
+        local_ip = get_ip()
+    if args.lh is not None:
+        local_ip = args.lh
+
+    # START A LOCAL SERVER
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((local_ip, 8005))
+    server_socket.listen(1)
+    connect_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        '{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
+                                                     local_ip)), args.t, args.p)
+    cmd_resp = run_command_rl(connect_cmd_str)
+    conn, addr = server_socket.accept()
+    conn.settimeout(1)
+    flushed = 0
+    while flushed == 0:
+        try:
+            conn.recv(1024)
+        except Exception as e:
+            flushed = 1
+    if args.tm > 500:
+        conn.settimeout((args.tm/1000)*3)  # for long periodic shots
+    run_cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+        run_cmd, targ, password)
+    run_live_cmd = shlex.split(run_cmd_str)
+    subprocess.call(run_live_cmd)
+    t0 = time.time()
+    test_val = []
+    try:
+        if log:
+            while True:
+                try:
+                    data_acc = conn.recv(nb)
+                    decode = dict(zip(variables,
+                                      struct.unpack(r_format, data_acc)))
+                    print(decode)
+                    with open(filename, 'a') as logfile:
+                        logfile.write(json.dumps(decode))
+                        logfile.write('\n')
+                except Exception as e:
+                    print(e)
+                    if str(e) == 'timed out':
+                        pass
+                    else:
+                        break
+        else:
+            while True:
+                try:
+                    data_acc = conn.recv(nb)
+                    decode = dict(zip(variables,
+                                      struct.unpack(r_format, data_acc)))
+                    print(decode)
+                    test_val.append(decode)
+                    if t0 == 0:
+                        t0 = time.time()
+
+                    final_time = abs(time.time()-t0)
+                except Exception as e:
+                    # print(e)
+                    if str(e) == 'timed out':
+                        pass
+                    else:
+                        break
+
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            conn.close()
+            time.sleep(1)
+            # Flush error keyboardinterrupt
+            cmd = ';gc.collect()'
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            print('Done!')
+            print('TEST RESULTS ARE:')
+            print('TEST DURATION : {} (s)'.format(final_time))
+            # # FIND SAMPLING RATE
+            # Method 1:
+            N_DATA_PACKETS = len(test_val)  # Number of batches received
+            print('DATA PACKETS : {} packets'.format(N_DATA_PACKETS))
+            # (assuming al batches = buffer_size long)
+            Fs = ((N_DATA_PACKETS+1)*BUFFERSIZE/final_time)
+            print('SAMPLES PER PACKET : {}'.format(BUFFERSIZE))
+            print('VARIABLES PER SAMPLE : {}; {}'.format(
+                len(variables), variables))
+            print('SIZE OF PACKETS: {} bytes'.format(nb))
+            #  32 is batch/buffer size ,
+            # so total samples is n_batches (len(vals)) x size_batch
+            # print('Period: {} ms ; Fs:{} Hz'.format(
+            # timestamp[:].mean()/1e3,1/((timestamp[:].mean())/1e6))
+            print('Period: {} ms ; Fs:{} Hz, Data send rate: {} packets/s of {} samples'.format(
+                round((1/Fs)*1e3), round(Fs, -1),
+                round(N_DATA_PACKETS/final_time), BUFFERSIZE))
+            print(
+                'DATA TRANSFER RATE: {} KB/s'.format(round(N_DATA_PACKETS/final_time)*nb/1024))
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+            print('Done!')
+
+
+def get_live_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
+                          r_format='h'*20, nb=40, log=False, variables=None):
+    if args.lh is None:
+        local_ip = get_ip()
+    if args.lh is not None:
+        local_ip = args.lh
+
+    # START A LOCAL SERVER
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((local_ip, 8005))
+    server_socket.listen(1)
+    connect_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        '{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
+                                                     local_ip)), args.t, args.p)
+    cmd_resp = run_command_rl(connect_cmd_str)
+    conn, addr = server_socket.accept()
+    conn.settimeout(1)
+    flushed = 0
+    while flushed == 0:
+        try:
+            conn.recv(1024)
+        except Exception as e:
+            flushed = 1
+    if args.tm > 500:
+        conn.settimeout((args.tm/1000)*3)  # for long periodic shots
+    run_cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+        run_cmd, targ, password)
+    run_live_cmd = shlex.split(run_cmd_str)
+    subprocess.call(run_live_cmd)
+    time.sleep(0.5)
+    try:
+        if log:
+            while True:
+                try:
+                    data_acc = conn.recv(nb)
+                    decode = dict(zip(variables,
+                                      [struct.unpack(r_format, data_acc)]))
+                    # print(decode)
+                    for chunk in decode.values():
+                        for value in chunk:
+                            print(dict(zip(variables, [value])))
+                    with open(filename, 'a') as logfile:
+                        logfile.write(json.dumps(decode))
+                        logfile.write('\n')
+                except Exception as e:
+                    print(e)
+                    if str(e) == 'timed out':
+                        pass
+                    else:
+                        break
+        else:
+            while True:
+                try:
+                    data_acc = conn.recv(nb)
+                    decode = dict(zip(variables,
+                                      [struct.unpack(r_format, data_acc)]))
+                    # print(decode)
+                    for chunk in decode.values():
+                        for value in chunk:
+                            print(dict(zip(variables, [value])))
+                except Exception as e:
+                    # print(e)
+                    if str(e) == 'timed out':
+                        pass
+                    else:
+                        break
+
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            conn.close()
+            time.sleep(1)
+            # Flush error keyboardinterrupt
+            cmd = ';gc.collect()'
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            print('Done!')
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+            print('Done!')
+
+
+def test_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
+                      r_format='h'*20, nb=40, log=False, variables=None, BUFFERSIZE=20):
+    if args.lh is None:
+        local_ip = get_ip()
+    if args.lh is not None:
+        local_ip = args.lh
+
+    # START A LOCAL SERVER
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((local_ip, 8005))
+    server_socket.listen(1)
+    connect_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        '{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
+                                                     local_ip)), args.t, args.p)
+    cmd_resp = run_command_rl(connect_cmd_str)
+    conn, addr = server_socket.accept()
+    conn.settimeout(1)
+    flushed = 0
+    while flushed == 0:
+        try:
+            conn.recv(1024)
+        except Exception as e:
+            flushed = 1
+    if args.tm > 500:
+        conn.settimeout((args.tm/1000)*3)  # for long periodic shots
+    run_cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+        run_cmd, targ, password)
+    run_live_cmd = shlex.split(run_cmd_str)
+    subprocess.call(run_live_cmd)
+    time.sleep(0.5)
+    t0 = time.time()
+    test_val = []
+    try:
+        if log:
+            while True:
+                try:
+                    data_acc = conn.recv(nb)
+                    decode = dict(zip(variables,
+                                      [struct.unpack(r_format, data_acc)]))
+                    # print(decode)
+                    for chunk in decode.values():
+                        for value in chunk:
+                            print(dict(zip(variables, [value])))
+                    with open(filename, 'a') as logfile:
+                        logfile.write(json.dumps(decode))
+                        logfile.write('\n')
+                except Exception as e:
+                    print(e)
+                    if str(e) == 'timed out':
+                        pass
+                    else:
+                        break
+        else:
+            while True:
+                try:
+                    data_recv = conn.recv(nb)
+                    decode = dict(zip(variables,
+                                      [struct.unpack(r_format, data_recv)]))
+                    # print(decode)
+                    for chunk in decode.values():
+                        for value in chunk:
+                            print(dict(zip(variables, [value])))
+                    test_val.append(decode)
+                    if t0 == 0:
+                        t0 = time.time()
+
+                    final_time = abs(time.time()-t0)
+                except Exception as e:
+                    # print(e)
+                    if str(e) == 'timed out':
+                        pass
+                    else:
+                        break
+
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            conn.close()
+            time.sleep(1)
+            # Flush error keyboardinterrupt
+            cmd = ';gc.collect()'
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            print('Done!')
+            print('TEST RESULTS ARE:')
+            print('TEST DURATION : {} (s)'.format(final_time))
+            # # FIND SAMPLING RATE
+            # Method 1:
+            N_DATA_PACKETS = len(test_val)  # Number of batches received
+            print('DATA PACKETS : {} packets'.format(N_DATA_PACKETS))
+            # (assuming al batches = buffer_size long)
+            Fs = ((N_DATA_PACKETS+1)*BUFFERSIZE/final_time)
+            print('SAMPLES PER PACKET : {}'.format(BUFFERSIZE))
+            print('VARIABLES PER SAMPLE : {}; {}'.format(
+                len(variables), variables))
+            print('SIZE OF PACKETS: {} bytes'.format(nb))
+            #  32 is batch/buffer size ,
+            # so total samples is n_batches (len(vals)) x size_batch
+            # print('Period: {} ms ; Fs:{} Hz'.format(
+            # timestamp[:].mean()/1e3,1/((timestamp[:].mean())/1e6))
+            print('Period: {} ms ; Fs:{} Hz, Data send rate: {} packets/s of {} samples'.format(
+                round((1/Fs)*1e3), round(Fs, -1),
+                round(N_DATA_PACKETS/final_time), BUFFERSIZE))
+            print(
+                'DATA TRANSFER RATE: {} KB/s'.format(round(N_DATA_PACKETS/final_time)*nb/1024))
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, targ, password)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+            print('Done!')
+
+
+def print_sizefile(file_name, filesize, tabs=0):
+    if filesize < 1000:
+        sizestr = str(filesize) + " by"
+    elif filesize < 1000000:
+        sizestr = "%0.1f KB" % (filesize / 1000)
+    elif filesize < 1000000000:
+        sizestr = "%0.1f MB" % (filesize / 1000000)
+    else:
+        sizestr = "%0.1f GB" % (filesize / 1000000000)
+
+    prettyprintname = ""
+    for _ in range(tabs):
+        prettyprintname += "   "
+    prettyprintname += file_name
+    print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
+
+
+def print_sizefile_all(fileslist, tabs=0):
+    for filedata in fileslist:
+        namefile = filedata[0]
+        filesize = filedata[1]
+
+        if filesize < 1000:
+            sizestr = str(filesize) + " by"
+        elif filesize < 1000000:
+            sizestr = "%0.1f KB" % (filesize / 1000)
+        else:
+            sizestr = "%0.1f MB" % (filesize / 1000000)
+
+        prettyprintname = ""
+        for _ in range(tabs):
+            prettyprintname += "   "
+        prettyprintname += namefile
+        print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
+
+
+def print_filesys_info(filesize):
+    if filesize < 1000:
+        sizestr = str(filesize) + " by"
+    elif filesize < 1000000:
+        sizestr = "%0.1f KB" % (filesize / 1000)
+    elif filesize < 1000000000:
+        sizestr = "%0.1f MB" % (filesize / 1000000)
+    else:
+        sizestr = "%0.1f GB" % (filesize / 1000000000)
+    return sizestr
+
+
+# LOGGING DATETIME NOW:
+def lognow(filename, sensor):
+    if filename == 'now':
+        return 'log_{}_{}.txt'.format(sensor,
+                                      datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
+    else:
+        return filename
+
+
+# TODO: CLARIFY WHEN ADDITIONAL SCRIPT IS NEEDED (FROM UPYUTILS)
+# TODO: JSON DICT HELP COMMAND (upydev see -c [command])
+helparg = '''Mode:
+- config : to save upy device settings (see -p, -t, -g),
+            so the target and password arguments wont be required any more
+- put : to upload a file to upy device (see -f, -s and -rst)
+- get : to download a file from upy device (see -f and -s)
+- sync : for a faster transfer of large files
+    (this needs sync_tool.py in upy device) (see -f, -s and -lh)
+- cmd : to send command to upy device ; (see -c, -r, -rl);
+        example: upydev cmd -c "led.on()" ; upydev cmd -r "print('Hello uPy')";
+                upydev cmd -rl "function_that_print_multiple_lines()";
+    * tip: simple commands can be used without quotes;
+        but for commands with parenthesis or special characters use quoutes,
+        for example: 'dummy_func()' ; use double quotes "" when the command
+        includes a string like this example: "uos.listdir('/sd')"
+- wrepl : to enter the terminal webrepl; write 'exit' or press CTRL-C to exit
+        (see: https://github.com/Hermann-SW/webrepl for more information)
+- ping : pings the target to see if it is reachable, CTRL-C to stop \n
+- run : just calls import 'script', where 'script' is indicated by -f option
+        (script must be in upydevice or in sd card indicated by -s option
+        and the sd card must be already mounted as 'sd');
+        * Supports CTRL-C to stop the execution and exits nicely.
+- install : install libs to '/lib' path with upip; indicate lib with -f option
+- mpyx : to froze a module/script indicated with -f option, and save some RAM,
+         it uses mpy-cross tool (see https://gitlab.com/alelec/mpy_cross)
+- timeit: to measure execution time of a module/script indicated with -f option.
+          This is an implementation of
+          https://github.com/peterhinch/micropython-samples/tree/master/timed_function
+
+upy Commands:
+> GENERAL
+- info : for upy device system info
+- id : for upy device unique id
+- upysh : to enable the upy shell in the upy device (then do 'upydev man' to
+        acces upysh manual info)
+- reset : to do a soft reset in upy device
+- uhelp : just calls micropython help
+- umodules: just calls micropython help('modules')
+- mem_info : for upy device RAM memory info; call it once to check actual memory,
+            call it twice and it will free some memory
+- filesize : to get the size of file in root dir (default) or sd with '-s sd' option;
+            if no file name indicated with -f option, prints all files
+- filesys_info : to get memory info of the file system, (total capacity, free, used),
+            (default root dir, -s option to change)
+- netinfo : for upy device network info if station is enabled and connected to an AP
+- netinfot : same as netinfo but in table format
+- netscan : for upy device network scan
+- netstat_on : for enable STA
+- netstat_off : for disable STA
+- netstat_conn : for connect to an AP , must provide essid and password (see -wp)
+- netstat : STA state ; returns True if enabled, False if disabled
+- ap_on : for enable AP
+- ap_off : for disable AP
+- apstat : AP state ; returns True if enabled, False if disabled
+- apconfig : AP configuration of essid and password with authmode WPA/WPA2/PSK,
+            (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
+- apscan : scan devices connected to AP; returns number of devices and mac address
+- i2c_config : to configurate the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
+- i2c_scan : to scan i2c devices (must config i2c pins first)
+- spi_config: to configurate the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
+- set_localtime: to pass host localtime and set upy device rtc
+- set_ntptime: to set rtc from server, (see -utc for time zone)
+- get_datetime: to get date and time (must be set first, see above commands)
+
+> SD
+- sd_enable: to enable/disable the LDO 3.3V regulator that powers the SD module
+             use -po option to indicate the Pin.
+- sd_init: to initialize the sd card; (spi must be configurated first)
+           create sd object and mounts as a filesystem, needs sdcard.py from []
+- sd_deinit: to unmount sd card
+- sd_auto: experimental command, needs a sd module with sd detection pin
+           and the SD_AM.py script (see more info in []). Enable an Interrupt
+           with the sd detection pin, so it mounts the sd when is detected,
+           and unmount the sd card when is extracted.
+>INPUT
+Sensors:
+    * ADC:
+        ^ON BOARD ADCS:
+        - adc_config : to config analog pin to read from (see pinout, -po and -att)
+        - aread : to read from an analog pin previously configurated
+
+        ^EXTERNAL ADC: (I2C) ADS1115 ***
+        - ads_init : to initialize and configurate ADS1115 (see -ads)
+        - ads_read : to read from an analog pin previously configurated
+                (see -tm option for stream mode, and -f for logging*)
+                * for one shot read, logging is also available with -f and
+                    -n option (for tagging)
+                * use '-f now' for automatic 'log_mode_datetime.txt' name.
+    * IMU:
+        - imu_init : initialize IMU, use -imu option to indicate the imu library.
+                    (default option is 'lsm9ds1', see sensor requirements for more info')
+        - imuacc : one shot read of the IMU lineal accelerometer (g=-9.8m/s^2),
+                (see -tm option for stream mode, and -f for logging*)
+                * for one shot read, logging is also available with -f and
+                    -n option (for tagging)
+                * use '-f now' for automatic 'log_mode_datetime.txt' name.
+                ** stream mode and logging are supported in imugy and imumag also
+        - imuacc_sd: log the imuacc data to the sd (must be mounted)
+                    with the file format 'log_mode_datetime.txt'
+                    (see -tm option for stream mode)
+        - imugy :  one shot read of the IMU gyroscope (deg/s)
+        - imumag : one shot read of the IMU magnetometer (gauss)
+    * POWER:
+    (INA219)
+
+>OUTPUT:
+    * DAC:
+        - dac_config: to config analog pin to write to (use -po option)
+        - dac_write: to write a value in volts (0-3.3V)
+        - dac_sig: to write a signal use -sig for different options:
+                  > [type] [Amp] [frequency]
+                    (type: 'sin, sq'; Amp 0-1 V ; fq:0-50 (above that fq loses quality))
+                  > start : starts signal generation
+                  > stop : stops signal
+                  > mod [Amp] [frequency]: modify the signal with the Amp and fq indicated.
+    * BUZZER:
+        - buzz_config: to config PWM pin to drive the buzzer (use -po option)
+        - buzz_set_alarm: to set an alarm at time indicated with option -at, be
+                         aware that the rtc time must be set first with set_localtime
+                         or set_ntptime
+        - buzz_interrupt: to configure an interrupt with pins indicated with -po
+        - buzz_beep: make the buzzer beep, with options set by -opt,
+                    usage: buzz_beep -opt [beep_ms] [number_of_beeps] [time_between_beeps] [fq]
+    * DC MOTOR:
+        - dcmotor_config: to config PWM pins to drive a DC motor (use -po option as -po [DIR1] [DIR2])
+        - dcmotor_move: to move the motor to one direction ['R'] or the opposite ['L']
+                        use -to option as -to ['R' or 'L'] [VELOCITY] (60-512)
+        - dcmotor_stop: to stop the DC motor
+    * SERVO:
+        - servo_config: to configurate the servo pin with -po option
+        - servo_angle: to move the servo an angle indicated by
+    * STEPPER MOTOR:
+        - stepper_config: to configurate the servo pin with -po option
+        - stepper_move: to move the stepper to right or left, at a velocity and
+                       a numbers of steps indicated with -to option: [R or L] [velocity] [# steps]
+                       R: right, L:left, velocity (1000-20000) (smaller is faster) and
+                       # steps (int), where 200 steps means a complete lap
+
+NETWORKING:
+    * MQTT:
+        - mqtt_config: to set id, broker address, user and password, use with -client option
+                       as "mqtt_config -client [ID] [BROKER ADDRESS] [USER] [PASSWORD]"
+        - mqtt_conn: to start a mqtt client and connect to broker; use mqtt_config first
+        - mqtt_sub: to subscribe to a topic, use -to option as "mqtt_sub -to [TOPIC]"
+        - mqtt_pub: to publish to a topic, use -to option as "mqtt_pub -to [TOPIC] [PAYLOAD]" or
+                    "mqtt_pub -to [PAYLOAD]" if already subscribed to a topic.
+        - mqtt_check: to check for new messages of the subscribed topics.
+    * SOCKETS:
+        - socli_init: to initiate a socket client use with -server option as
+                      "socli_init -server [IP] [PORT] [BUFFER LENGTH]"
+        - socli_conn: to connect the socket client to a server (inidcated by IP)
+        - socli_send: to send a message to the server, use -n option to indicate
+                      the message
+        - socli_recv: to receive a message from the server
+        - sosrv_init: to initiate a socket server, use with -server option as
+                      "sosrv_init -server [PORT] [BUFFER LENGTH]"
+        - sosrv_start: to start the server, waits for a connection
+        - sosrv_send: to send a message to the client, use -n option to indicate
+                      the message
+        - sosrv_recv: to receive a message from the client
+    * UREQUEST:
+        - rget_json: to make a request to API that returns a JSON response format
+                    (indicate API URL with -f option)
+        - rget_text: to make a request to API that returns a text response format
+                    (indicate API URL with -f option)
+
+Port/board specific commands:
+- battery : if running on battery, gets battery voltage (esp32 huzzah feather)
+- pinout : to see the pinout reference/info of a board, indicated by -b option,
+           to request a single or a list of pins info use -po option
+- specs : to see the board specs, indicated by -b option
+- pin_status: to see pin state, to request a specific set use -po option ***
+
+* ESP32:
+    - touch
+    - hall
+    - deepsleep
+    - temp
+'''
+
+usag = """%(prog)s [Mode] [options] or %(prog)s [upy command] [options] \n
+This means that if the first argument is not a Mode keyword or a
+upy command keyword it assumes it is a 'raw' upy command to send to the upy device \n
+Needs webrepl enabled in upy device;
+see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt"""
+
+# UPY MODE KEYWORDS AND COMMANDS
+keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
+                 'netscan', 'i2c_scan', 'id', 'reset', 'upysh', 'wrepl',
+                 'battery', 'mem_info', 'ping', 'filesize', 'filesys_info',
+                 'uhelp', 'umodules', 'netinfot', 'netstat_on', 'netstat_off',
+                 'netstat', 'ap_on', 'ap_off', 'apstat', 'apscan', 'run',
+                 'apconfig', 'netstat_conn', 'i2c_config', 'imu_init',
+                 'imuacc', 'imugy', 'imumag', 'pinout', 'specs', 'install',
+                 'pin_status', 'adc_config', 'aread', 'set_ntptime',
+                 'get_datetime', 'set_localtime', 'imuacc_sd', 'ads_init',
+                 'ads_read', 'sd_enable', 'spi_config', 'sd_init', 'sd_deinit',
+                 'sd_auto', 'dac_config', 'dac_write', 'dac_sig',
+                 'buzz_config', 'buzz_set_alarm', 'buzz_interrupt',
+                 'buzz_beep', 'servo_config', 'servo_angle', 'stepper_config',
+                 'stepper_move', 'dcmotor_config', 'dcmotor_move',
+                 'dcmotor_stop', 'mpyx', 'timeit', 'mqtt_config', 'mqtt_conn',
+                 'mqtt_pub', 'mqtt_sub', 'mqtt_check', 'socli_init',
+                 'socli_conn', 'socli_send', 'socli_recv', 'socli_close',
+                 'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
+                 'sosrv_close', 'rget_json', 'rget_text']
+
+# ARG PARSER
+parser = argparse.ArgumentParser(prog='upydev',
+                                 description='Command line tool for wireless Micropython devices',
+                                 formatter_class=argparse.RawTextHelpFormatter,
+                                 usage=usag)
+parser.version = '0.0.1'
+parser.add_argument(
+    "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
+parser.add_argument("-p", help='password', required=False)
+parser.add_argument("-f", help='script or file name', required=False)
+parser.add_argument(
+    "-lh", help='local ip for sync mode if can not be automatically detected',
+    required=False)
+parser.add_argument(
+    "-t", help='target host for example : 192.168.1.40 or for AP 192.168.4.1',
+    required=False)
+parser.add_argument(
+    "-s", help='source dir in upy device, default is root dir (flash memory); sd for sd card source dir mounted as "/sd"', required=False)
+parser.add_argument(
+    "-c", help='command to send to upy device, do not wait for a response',
+    required=False, type=str)
+parser.add_argument(
+    "-r", help='command to send to upy device, waits for a short response (one line)', required=False)
+parser.add_argument(
+    "-rl", help='command to send to upy device, waits for a longer response (multiple lines), so it can catch tracebaks messages', required=False)
+parser.add_argument(
+    "-g", help=' y : to store/read the configuration file globally, if there is no config file in working directory, \n it uses the global file',
+    required=False)
+parser.add_argument(
+    "-st", help=' t : shows target ip if using config file', required=False)
+parser.add_argument(
+    "-rst", help='reset flag after put file operation, default true, "f" to disable', required=False)
+parser.add_argument(
+    "-ap", help='[essid] [password] to set AP name and password',
+    required=False, nargs=2)
+parser.add_argument(
+    "-wp", help='[essid] [password] to connect the STA to an AP',
+    required=False, nargs=2)
+parser.add_argument(
+    "-i2c", help='[SCL] [SDA] to config scl and sda i2c pins in upy device',
+    required=False, nargs=2, default=[22, 23], type=int)
+parser.add_argument(
+    "-spi", help='[SCk] [MISO] [MOSI] [CS] to config scl and sda i2c pins in upy device',
+    required=False, nargs=4, default=[5, 19, 18, 21], type=int)
+parser.add_argument(
+    "-b", help='[BOARD NAME] to request info of specs or of the pinouts',
+    required=False)
+parser.add_argument(
+    "-att",
+    help='[attenuation] for attenuate adc input, default is 11dB attenuation, do -att info for more info',
+    required=False, default=3)
+parser.add_argument(
+    "-tm",
+    help='[timeout] enable stream mode and indicates a timeout in milliseconds',
+    required=False, type=int)
+parser.add_argument(
+    "-po",
+    help='[pin] indicates the pin to request info',
+    required=False, nargs='+', type=int)
+
+parser.add_argument(
+    "-opt",
+    help='wildcard option to be used by several commands',
+    required=False, nargs='+', type=int)
+
+parser.add_argument(
+    "-n",
+    help='tag a log shot from a sensor or adc',
+    required=False)
+parser.add_argument('-v', action='version')
+parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
+                    default=0)
+parser.add_argument('-imu', help='to select the imu library',
+                    default='lsm9ds1')
+parser.add_argument('-ads', help='to select the ads library and config options',
+                    default='ads1115')
+parser.add_argument('-sig', help='to indicate a value or type of signal to write',
+                    nargs='+')
+parser.add_argument('-at', help='[HOUR] [MINUTE] [SECONDS]',
+                    nargs='+', type=int, default=[0, 0, 0])
+parser.add_argument('-to', help='[DIRECTION] [VELOCITY] [STEPS]',
+                    nargs='+', default=['R', 2000, 100])
+
+parser.add_argument('-client', help='[ID] [BROKER ADDRESS] [USER] [PASSWORD]',
+                    nargs='+', default=[None, 'test.mosquitto.org'])
+parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGTH]; Server Socket [PORT] [BUFFER LENGTH]',
+                    nargs='+')
+argcomplete.autocomplete(parser)
+args = parser.parse_args()
+
+
+# UPYDEV MODES:
+
+# CONFIG:
+if args.m == 'config':
+    if args.t is None or args.p is None:
+        print('Password and Target ip required, see -p, -t')
+        sys.exit()
+    upydev_ip = args.t
+    upydev_pass = args.p
+    upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass}
+    file_conf = 'upydev_.config'
+    if args.g is not None:
+        file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
+    with open(file_conf, 'w') as config_file:
+        config_file.write(json.dumps(upy_conf))
+    if args.g is not None:
+        print('upy device settings saved globally!')
+    else:
+        print('upy device settings saved in working directory!')
+    sys.exit()
+
+# UPYDEV LOOKS FOR UPYDEV_.CONFIG FILE
+if args.t is None:
+    try:
+        file_conf = 'upydev_.config'
+        if file_conf not in os.listdir() or args.g is not None:
+            file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
+
+        with open(file_conf, 'r') as config_file:
+            upy_conf = json.loads(config_file.read())
+        args.t = upy_conf['ip']
+        args.p = upy_conf['passwd']
+        if args.st is not None:
+            print('Target:{}'.format(args.t))
+    except Exception as e:
+        print('upydev_.config file not found, please provide target and \
+        password or create config file with command "config" (see help)')
+        sys.exit()
+
+# UPYDEV RAW COMMAND MODE: (WHEN ARGUMENT Mode is not in keyword list)
+if args.m not in keywords_mode:
+    cmd = args.m
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# PUT:
+
+elif args.m == 'put':
+    source = ''
+    if args.s == 'sd':
+        source = args.s + '/'
+    passwd = args.p
+    file = args.f
+    file_in_upy = file.split('/')[-1]
+    host = args.t
+    print('Uploading file {}...'.format(file_in_upy))
+    copyfile_str = 'upytool {} {}:/{}{} -p {}'.format(
+        file, host, source, file_in_upy, passwd)
+    reset_str = 'upycmd -c "{}" -t {} -p {}'.format('D', host, passwd)
+    run_command_rt(copyfile_str)
+
+    print('File Uploaded!')
+    time.sleep(3)
+    if args.rst is None:
+        print('Rebooting upy device...')
+        command = shlex.split(reset_str)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        print('Done!')
+    else:
+        pass
+    sys.exit()
+
+
+# GET :
+
+elif args.m == 'get':
+    if args.s is None:
+        print('Looking for file in upy device root dir')
+        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(args.t, args.p)
+        dir = 'root'
+    if args.s == 'sd':
+        print('Looking in SD memory...')
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+            str("'/sd'"), args.t, args.p)
+        dir = '/sd'
+
+    command = shlex.split(cmd_str)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+    time.sleep(0.1)
+    stdout = process.communicate()
+    try:
+        resp = ast.literal_eval(
+            stdout[0].decode('utf-8').split('\n')[0][4:-1])
+    except Exception as e:
+        try:
+            resp = stdout[0].decode('utf-8').split('\n')[0]
+        except Exception as e:
+            resp = None
+
+        pass
+
+    try:
+        if args.f in resp:
+            print('Getting file {}...'.format(args.f))
+            file_to_get = args.f
+            if args.s == 'sd':
+                file_to_get = '/sd/{}'.format(args.f)
+            passwd = args.p
+            target = args.t
+            copyfile_str = 'upytool -p {} {}:{} .'.format(
+                passwd, target, file_to_get)
+
+            run_command_rt(copyfile_str)
+        else:
+            if dir == 'root':
+                print('File Not found in upy device {} directory'.format(dir))
+            if dir == '/sd':
+                print(
+                    'File Not found in upy device {} directory or sd unmounted'.format(dir))
+
+    except Exception as e:
+        print(e)
+        pass
+
+    sys.exit()
+
+# SYNC :
+
+elif args.m == 'sync':
+    if args.s is None:
+        print('Looking for file in upy device root dir')
+        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(args.t,
+                                                                   args.p)
+        dir = 'root'
+    if args.s == 'sd':
+        print('Looking in SD memory...')
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+            str("'/sd'"), args.t, args.p)
+        dir = '/sd'
+
+    command = shlex.split(cmd_str)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+    time.sleep(0.1)
+    stdout = process.communicate()
+    try:
+        resp = ast.literal_eval(
+            stdout[0].decode('utf-8').split('\n')[0][4:-1])
+    except Exception as e:
+        try:
+            resp = stdout[0].decode('utf-8').split('\n')[0]
+        except Exception as e:
+            resp = None
+
+        pass
+
+    try:
+        if args.f in resp:
+            passwd = args.p
+            target = args.t
+            print('Getting file {}...'.format(args.f))
+            file_to_get = args.f
+            copyfile = 'sync_server -f {} -t {} -p {}'.format(
+                file_to_get, target, passwd)
+            if args.lh is not None:
+                copyfile = 'sync_server -f {} -t {} -p {} -lh {}'.format(
+                    file_to_get, target, passwd, args.lh)
+            if args.s == 'sd':
+                copyfile = 'sync_server -f {} -t {} -p {} -s {}'.format(
+                    file_to_get, target, passwd, 'sd')
+                if args.lh is not None:
+                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {}'.format(
+                        file_to_get, target, passwd, 'sd', args.lh)
+
+            resp = run_command_rt(copyfile)
+        else:
+            if dir == 'root':
+                print('File Not found in upy device {} directory'.format(dir))
+            if dir == '/sd':
+                print(
+                    'File Not found in upy device {} directory or sd unmounted'.format(dir))
+
+    except Exception as e:
+        print(e)
+        pass
+
+    sys.exit()
+
+# CMD (FOR DEBBUGING PURPOSE) # DEBUG:
+
+elif args.m == 'cmd':
+    if args.c is not None:
+        cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+            args.c, args.t, args.p)
+        command = shlex.split(cmd_str)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        time.sleep(0.1)
+        stdout = process.communicate()
+        sys.exit()
+    if args.r is not None:
+        cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(args.r, args.t, args.p)
+        command = shlex.split(cmd_str)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        time.sleep(0.1)
+        stdout = process.communicate()
+        try:
+            resp = ast.literal_eval(
+                stdout[0].decode('utf-8').split('\n')[0][4:-1])
+        except Exception as e:
+            try:
+                resp = stdout[0].decode('utf-8').split('\n')[0]
+            except Exception as e:
+                resp = None
+
+            pass
+        print(resp)
+        sys.exit()
+    if args.rl is not None:
+        web_repl_cmd = 'web_repl_cmd_r -p {} -t {} -c "{}"'.format(
+            args.p, args.t, args.rl)
+        cmd_resp = run_command_rl(web_repl_cmd)
+        resp = cmd_resp[1]
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        print(line[4:])
+                    else:
+                        print(line)
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        sys.exit()
+
+# WEB REPL :
+
+elif args.m == 'wrepl':
+    web_repl_cmd_str = 'web_repl {} -p {}'.format(args.t, args.p)
+    web_repl_cmd = shlex.split(web_repl_cmd_str)
+    try:
+        web_repl = subprocess.call(web_repl_cmd)
+    except KeyboardInterrupt:
+        pass
+        print('')
+        sys.exit()
+
+# PING :
+
+elif args.m == 'ping':
+    ping_cmd_str = 'ping {}'.format(args.t)
+    ping_cmd = shlex.split(ping_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            ping_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        while proc.poll() is None:
+            print(proc.stdout.readline()[:-1].decode())
+    except KeyboardInterrupt:
+        time.sleep(1)
+        result = proc.stdout.readlines()
+        for message in result:
+            print(message[:-1].decode())
+
+# RUN :
+# TODO: ENABLE logging!! # DEBUG
+elif args.m == 'run':
+    dir = ''
+    script_filepy = args.f
+    script_name = script_filepy.split('.')[0]
+    reload = "del(sys.modules['{}'])".format(script_name)
+    run_cmd = "import {};".format(script_name)
+    # print(run_cmd)
+    if args.s is not None:
+        dir = args.s
+        sd_path = "import sys;sys.path.append('/{}')".format(dir)
+        run_cmd = "{};import {}".format(
+            sd_path, script_name)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        run_cmd, args.t, args.p)
+    # print(run_cmd_str)
+    run_live_cmd = shlex.split(run_cmd_str)
+    print('Running {}...'.format(args.f))
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
+            for i in range(10):
+                proc.stdout.readlines()
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, args.t, args.p)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, args.t, args.p)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+    # Reload sys.modules and sys.path
+    time.sleep(1)
+    reload_cmd = "import sys;{};gc.collect()".format(reload)
+    if args.s is not None:
+        reload_syspath = "sys.path.remove('/{}')".format(dir)
+        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        reload_cmd, args.t, args.p)
+    reload_cmd_resp = run_command_rl(cmd_str)
+    print('Done!')
+    sys.exit()
+
+# TIMEIT:
+elif args.m == 'timeit':
+    timeit_import = "from time_it import tzero, tdiff, result;"
+    dir = ''
+    script_filepy = args.f
+    script_name = script_filepy.split('.')[0]
+    reload = "del(sys.modules['{}'])".format(script_name)
+    timeit_cmd = "t_0 = tzero();import {};diff=tdiff(t_0);result('{}',diff);".format(
+        script_name, script_name)
+    timeit_final_cmd = timeit_import + timeit_cmd
+    # print(run_cmd)
+    if args.s is not None:
+        dir = args.s
+        sd_path = "import sys;sys.path.append('/{}')".format(dir)
+        timeit_final_cmd = "{};{}".format(
+            sd_path, timeit_final_cmd)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        timeit_final_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    print('Running {}...'.format(args.f))
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
+            for i in range(10):
+                proc.stdout.readlines()
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, args.t, args.p)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, args.t, args.p)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+    # Reload sys.modules and sys.path
+    time.sleep(1)
+    reload_cmd = "import sys;{};gc.collect()".format(reload)
+    if args.s is not None:
+        reload_syspath = "sys.path.remove('/{}')".format(dir)
+        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        reload_cmd, args.t, args.p)
+    reload_cmd_resp = run_command_rl(cmd_str)
+    print('Done!')
+    sys.exit()
+
+# INSTALL:
+
+elif args.m == 'install':
+    lib = args.f
+    install_cmd = "import upip;upip.install('{}')".format(lib)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        install_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    print('Looking for {} lib...'.format(args.f))
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    print('Library {} installed!'.format(args.f))
+    sys.exit()
+
+# MPYX
+
+elif args.m == 'mpyx':
+    mpy_cmd_str = 'python -m mpy_cross {}'.format(args.f)
+    mpy_cmd = shlex.split(mpy_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            mpy_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        while proc.poll() is None:
+            print(proc.stdout.readline()[:-1].decode())
+    except KeyboardInterrupt:
+        time.sleep(1)
+        result = proc.stdout.readlines()
+        for message in result:
+            print(message[:-1].decode())
+
+# INFO :
+
+elif args.m == 'info':
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        'uos.uname()', args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    upyinfo = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    if line[4:][0] != '(':
+                        print(line[4:])
+                    else:
+                        upyinfo.append(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+
+    dev_info = upyinfo[0].split("'")
+    print('SYSTEM NAME: {}'.format(dev_info[1]))
+    print('NODE NAME: {}'.format(dev_info[3]))
+    print('RELEASE: {}'.format(dev_info[5]))
+    print('VERSION: {}'.format(dev_info[7]))
+    print('MACHINE: {}'.format(dev_info[9]))
+    sys.exit()
+
+# ID:
+
+elif args.m == 'id':
+    net_cmd = "from machine import unique_id;from ubinascii import hexlify;hexlify(unique_id());gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        net_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print('ID: {}'.format(line[4:]))
+                else:
+                    print('ID: {}'.format(line))
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# UPYSH
+
+elif args.m == 'upysh':
+    net_cmd = "from upysh import *;gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        net_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# RESET
+
+elif args.m == 'reset':
+    reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
+        'D', args.t, args.p)
+    print('Rebooting upy device...')
+    command = shlex.split(reset_str)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+    time.sleep(0.1)
+    sys.exit()
+
+# UHELP
+
+elif args.m == 'uhelp':
+    help_cmd = "help();gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        help_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# UMODULES
+
+elif args.m == 'umodules':
+    help_cmd = "help('modules');gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        help_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# MEM_INFO
+
+elif args.m == 'mem_info':
+    mem_cmd = "from micropython import mem_info;mem_info();gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        mem_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# FILESIZE
+
+elif args.m == 'filesize':
+    file_name = args.f
+    if args.s is not None:
+        file_name = '/{}/{}'.format(args.s, args.f)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        "uos.stat('{}')".format(file_name), args.t, args.p)
+    if args.f is None:
+        dir = ''
+        if args.s is not None:
+            dir = '/{}/'.format(args.s)
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            "[(filename,uos.stat('{0}'+str(filename))[6]) for filename in uos.listdir('{0}')]".format(dir), args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    filesize_info = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    if line[4:][0] != '(' and line[4:][0] != '[':
+                        print(line[4:])
+                    else:
+                        filesize_info.append(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(filesize_info) > 0:
+        if args.f is not None:
+            size = ast.literal_eval(filesize_info[0])[6]
+            print_sizefile(args.f, size)
+        else:
+            print_sizefile_all(ast.literal_eval(filesize_info[0]))
+    sys.exit()
+
+# FILESYS_INFO
+
+elif args.m == 'filesys_info':
+    filesys = ''
+    if args.s is not None:
+        filesys = '/{}'.format(args.s)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        "uos.statvfs('{}')".format(filesys), args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    filesys_info = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    if line[4:][0] != '(':
+                        print(line[4:])
+                    else:
+                        filesys_info.append(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(filesys_info) > 0:
+        if filesys == '':
+            filesys = 'Flash'
+        size_info = ast.literal_eval(filesys_info[0])
+        total_mem = print_filesys_info(size_info[0] * size_info[2])
+        free_mem = print_filesys_info(size_info[0] * size_info[3])
+        used_mem = print_filesys_info(
+            (size_info[0] * size_info[2]) - (size_info[0] * size_info[3]))
+        print('{} Memory'.format(filesys))
+        print('TOTAL: {} , FREE: {} , USED: {}'.format(
+            total_mem, free_mem, used_mem))
+
+    sys.exit()
+
+# NETINFO :
+
+elif args.m == 'netinfo':
+    net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
+    net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
+    net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
+    net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        net_comp_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    net_info_list.append(line[4:])
+                else:
+                    net_info_list.append(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(net_info_list) > 0:
+        print('IF CONFIG: {}'.format(net_info_list[0]))
+        print('ESSID: {}'.format(net_info_list[1]))
+        print('RSSI: {} dB'.format(net_info_list[2]))
+    sys.exit()
+
+# NETINFOT
+
+elif args.m == 'netinfot':  # FIXME: break into simple commands
+    net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
+    net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
+    net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
+    net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        net_comp_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    net_info_list.append(line[4:])
+                else:
+                    net_info_list.append(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('IF CONFIG:')
+    print('=' * 106)
+    print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+        'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
+    try:
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+            *ast.literal_eval(net_info_list[0]), net_info_list[1],
+            net_info_list[2]))
+    except Exception as e:
+        print(e)
+        pass
+
+    sys.exit()
+
+# NETSCAN
+
+elif args.m == 'netscan':
+    net_cmd = "import network;network.WLAN(network.STA_IF).scan();gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        net_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_scan_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    if line[4:][0] != '[':
+                        print(line[4:])
+                    else:
+                        net_scan_list.append(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('=' * 110)
+    print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+        'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
+    print('=' * 110)
+    for net in net_scan_list:
+        netlist = ast.literal_eval(net)
+        for netscan in netlist:
+            auth = AUTHMODE_DICT[netscan[4]]
+            print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+                netscan[0].decode(), str(netscan[1]), netscan[2], netscan[3],
+                auth, str(netscan[5])))
+    sys.exit()
+
+# NETSTAT_ON
+
+elif args.m == 'netstat_on':
+    help_cmd = "import network;network.WLAN(network.STA_IF).active(True);gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        help_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# NETSTAT_OFF
+
+elif args.m == 'netstat_off':
+    help_cmd = "import network;network.WLAN(network.STA_IF).active(False);gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        help_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# NETSTAT_CONN
+
+elif args.m == 'netstat_conn':
+    essid, passwd = args.wp
+    connect_to = "network.WLAN(network.STA_IF).connect('{}', '{}')".format(
+        essid, passwd)
+    conn_cmd = "import network;{};gc.collect()".format(connect_to)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        conn_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# NETSTAT
+
+elif args.m == 'netstat':
+    help_cmd = "import network;network.WLAN(network.STA_IF).active();gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        help_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    netstat_info = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    netstat_info.append(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('STA ENABLED: {}'.format(netstat_info[0]))
+    sys.exit()
+
+# AP_ON
+
+elif args.m == 'ap_on':
+    help_cmd = "import network;network.WLAN(network.AP_IF).active(True);gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        help_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# AP_OFF
+
+elif args.m == 'ap_off':
+    help_cmd = "import network;network.WLAN(network.AP_IF).active(False);gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        help_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# APSTAT
+
+elif args.m == 'apstat':
+    ap_state = "network.WLAN(network.AP_IF).active()"
+    ap_essid = "network.WLAN(network.AP_IF).config('essid')"
+    ap_channel = "network.WLAN(network.AP_IF).config('channel')"
+    ap_authmode = "network.WLAN(network.AP_IF).config('authmode')"
+    ap_ifconfig = "network.WLAN(network.AP_IF).ifconfig()"
+    apstat_cmd = "import network;{};{};{};{};{};gc.collect()".format(
+        ap_state, ap_essid, ap_channel, ap_authmode, ap_ifconfig)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        apstat_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    apstat_info = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    apstat_info.append(line[4:])
+                else:
+                    apstat_info.append(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(apstat_info) > 0:
+        auth = AUTHMODE_DICT[int(apstat_info[-2])]
+        print('AP INFO:')
+        print('=' * 70)
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
+            'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
+            *apstat_info[:-2], auth))
+        print('=' * 70)
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
+            'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
+        try:
+            print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
+                *ast.literal_eval(apstat_info[-1])))
+        except Exception as e:
+            print(e)
+            pass
+    sys.exit()
+
+# APCONFIG
+
+elif args.m == 'apconfig':
+    essid, passwd = args.ap
+    ap_config = "network.WLAN(network.AP_IF).config(essid='{}',authmode=network.AUTH_WPA_WPA2_PSK, password='{}')".format(
+        essid, passwd)
+    apconfig_cmd = "import network;{};gc.collect()".format(ap_config)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        apconfig_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# APSCAN
+
+elif args.m == 'apscan':
+    help_cmd = "import network;network.WLAN(network.AP_IF).status('stations');gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        help_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    ap_scan_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    if line[4:][0] != '[':
+                        print(line[4:])
+                    else:
+                        ap_scan_list.append(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(ap_scan_list) > 0:
+        ap_devices = ast.literal_eval(ap_scan_list[0])
+        print('Found {} devices:'.format(len(ap_devices)))
+        print(ap_devices)
+    else:
+        print('No device found')
+    sys.exit()
+
+
+# I2C_CONFIG
+
+elif args.m == 'i2c_config':
+    i2c_po = {'scl': args.i2c[0], 'sda': args.i2c[1]}
+    cmd = "i2c_po = {}".format(i2c_po)
+    print('SCL = Pin({}), SDA = Pin({})'.format(args.i2c[0], args.i2c[1]))
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# I2C_SCAN
+
+elif args.m == 'i2c_scan':
+    i2c_scl = "i2c_po['scl']"
+    i2c_sda = "i2c_po['sda']"
+    i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
+        i2c_scl, i2c_sda)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        i2c_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    i2c_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    if line[4:][0] != '[':
+                        print(line[4:])
+                    else:
+                        i2c_info_list.append(line[4:])
+
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(i2c_info_list) > 0:
+        i2c_devices = ast.literal_eval(i2c_info_list[0])
+        print('Found {} devices:'.format(len(i2c_devices)))
+        print(i2c_devices)
+        print('Hex:')
+        print([hex(dev) for dev in i2c_devices])
+    else:
+        print('No device found')
+    sys.exit()
+
+# SPI CONFIG
+elif args.m == 'spi_config':
+    spi_po = {'sck': args.spi[0], 'miso': args.spi[1],
+              'mosi': args.spi[2], 'cs': args.spi[3]}
+    cmd = "spi_po = {}".format(spi_po)
+    print('SCK = Pin({}), MISO = Pin({}), MOSI = Pin({}), CS = ({}))'.format(
+        *args.spi))
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+
+#  * RTC *
+
+# SET LOCAL TIME
+
+elif args.m == 'set_localtime':
+    print('Setting local time: {}'.format(
+        datetime.now().strftime("%m-%d-%Y;%H:%M:%S")))
+    rtc_cmd = "from machine import RTC;rtc = RTC();"
+    wkoy = date.today().isocalendar()[1]
+    datetime_local = [val for val in datetime.now().timetuple()[:-3]]
+    datetime_tuple = datetime_local[:3]
+    datetime_tuple.append(wkoy)
+    datetime_final = datetime_tuple + datetime_local[3:] + [0]
+    utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}, {}));".format(
+        *datetime_final)
+    settime_cmd = rtc_cmd + utc_zone_cmd
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        settime_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Done!')
+    sys.exit()
+
+# SET NTP TIME
+elif args.m == 'set_ntptime':
+    print('Setting time UTC+{}'.format(args.utc))
+    rtc_cmd = "from machine import RTC;rtc = RTC();"
+    ntptime_cmd = "from ntptime import settime;settime();"
+    rtc_config = "(year, month, mday, week_of_year, hour, minute, second, milisecond) = rtc.datetime();"
+    utc_zone_cmd = "rtc.datetime((year, month, mday, week_of_year,hour+{}, minute, second, milisecond));".format(args.utc)
+    settime_cmd = rtc_cmd + ntptime_cmd + rtc_config + utc_zone_cmd
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        settime_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Done!')
+    sys.exit()
+
+# GET UPY DEVICE LOCALTIME
+elif args.m == 'get_datetime':
+    get_time_cmd = "tnow = time.localtime();"
+    get_time2_cmd = "print('{}-{}-{};{}:{}:{}'.format(tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]))"
+    get_datetime_cmd = get_time_cmd + get_time2_cmd
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        get_datetime_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+#############################################
+
+# SD COMMANDS
+
+# SD_ENABLE
+elif args.m == 'sd_enable':
+    sd_enable_pin_config = "sd_enable=Pin({}, Pin.OUT);".format(args.po[0])
+    sd_enable_cmd = "sd_enable.value(not sd_enable.value());print(sd_enable.value())"
+    sd_onoff_cmd = sd_enable_pin_config + sd_enable_cmd
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sd_onoff_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    sd_state = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                    sd_state.append(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(sd_state) > 0:
+        if ast.literal_eval(sd_state[0]) == 1:
+            print('SD ENABLED')
+        else:
+            print('SD DISABLED')
+    sys.exit()
+
+# SD_INIT
+elif args.m == 'sd_init':
+    spi_sck = "spi_po['sck']"
+    spi_miso = "spi_po['miso']"
+    spi_mosi = "spi_po['mosi']"
+    spi_cs = "spi_po['cs']"
+    spi_init = "spi = machine.SPI(1, baudrate=10000000, sck=Pin({}), mosi=Pin({}), miso=Pin({}));".format(
+        spi_sck, spi_mosi, spi_miso)
+    cs_init = "cs = Pin({}, Pin.OUT);".format(spi_cs)
+    # mount sd
+    sd_card_init = "import sdcard;sd = sdcard.SDCard(spi, cs);time.sleep_ms(1000);"
+    sd_mount = "uos.mount(sd, '/sd');print(uos.listdir('/'))"
+    sd_final_cmd = spi_init + cs_init + sd_card_init + sd_mount
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sd_final_cmd, args.t, args.p)
+    print('Initialzing SD card...')
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Done!')
+    sys.exit()
+
+# SD_DEINIT
+
+elif args.m == 'sd_deinit':
+    sd_deinit_and_disable_cmd = "uos.umount('/sd');sd_enable.off()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sd_deinit_and_disable_cmd, args.t, args.p)
+    print('Deinitialzing SD card...')
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Done!')
+    sys.exit()
+
+# SD_AUTO
+
+elif args.m == 'sd_auto':
+    sd_auto_cmd = "import SD_AM"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sd_auto_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(cmd_str)
+    print('Autodetect SD Card mode enabled')
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
+            for i in range(10):
+                proc.stdout.readlines()
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, args.t, args.p)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, args.t, args.p)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+    print('Done!')
+    sys.exit()
+
+
+#############################################
+# SENSOR SPECIFIC COMMANDS
+
+#  * ADC *
+
+# ADC CONFIG
+elif args.m == 'adc_config':
+    if args.att == 'info':
+        print(ATTEN_INFO)
+    else:
+        if args.b is not None:
+            print('Available ADC pins for {} board are : {}'.format(
+                args.b, ADC_PINS_DICT[args.b]))
+        else:
+            adc_pin = args.po[0]
+            analog_cmd = "from machine import ADC;analog_pin = ADC(Pin({}));".format(
+                adc_pin)
+            analog_atten = "analog_pin.atten({});gc.collect()".format(
+                ATTEN_DICT[int(args.att)])
+            adc_cmd = analog_cmd + analog_atten
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                adc_cmd, args.t, args.p)
+            cmd_resp = run_command_rl(cmd_str)
+            resp = cmd_resp[1]
+            net_info_list = []
+            for line in resp[6:]:
+                if line == '### closed ###':
+                    pass
+                else:
+                    try:
+                        if line[0] == '>':
+                            print(line[4:])
+                        else:
+                            print(line)
+
+                    except Exception as e:
+                        if len(line) == 0:
+                            pass
+                        else:
+                            print(e)
+                            pass
+            print('Pin {} configurated as Analog Input with {} attenuation'.format(
+                adc_pin, ATTEN_DICT[int(args.att)][4:]))
+        sys.exit()
+
+# ADC READ
+elif args.m == 'aread':
+    analog_read = "((analog_pin.read())/4095)*3.6;gc.collect()"
+    adc_cmd = analog_read
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        adc_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    adclev = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    adclev.append(line[4:])
+                else:
+                    adclev.append(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(adclev) > 0:
+        volts = ast.literal_eval(adclev[0])
+        print('Volts: {}'.format(volts))
+    sys.exit()
+
+# * ADS *
+# ADS_INIT
+elif args.m == 'ads_init':
+    ads_lib = args.ads
+    import_ads_cmd = "from {} import {};import init_ADS as ads;".format(
+        args.ads, args.ads.upper())
+    print('Initialazing ads...')
+    ads_init_cmd = "my_ads = ads.MY_ADS({},ads.i2c,None);".format(
+        args.ads.upper())
+    ads_final_init = "my_ads.init()"
+    ads_init_cmd_str = import_ads_cmd + ads_init_cmd + ads_final_init
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        ads_init_cmd_str, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# ADS_READ
+elif args.m == 'ads_read':
+    if args.tm is None:
+        cmd = "my_ads.read_V()"
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            cmd, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        ads_info_list = []
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        ads_info_list.append(line[4:])
+                    else:
+                        print(line)
+
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        if len(ads_info_list) > 0:
+            my_read = round(ast.literal_eval(ads_info_list[0]), 2)
+            print('{} V'.format(my_read))
+            if args.f is not None:
+                data_shot = [my_read]
+                tag_tstamp = datetime.now().strftime("%H:%M:%S")
+                time_stamp = tag_tstamp
+                if args.n is not None:
+                    tag_tstamp = args.n
+                data_shot.append(tag_tstamp)
+                header = {'VAR': ['V', 'TS'], 'UNIT': 'Volts'}
+                if args.f not in os.listdir():
+                    with open(args.f, 'w') as file_log:
+                        file_log.write(json.dumps(header))
+                        file_log.write('\n')
+                        file_log.write(json.dumps(dict(zip(header['VAR'],
+                                                           data_shot))))
+                        file_log.write('\n')
+                else:
+                    with open(args.f, 'a') as file_log:
+                        file_log.write(json.dumps(dict(zip(header['VAR'],
+                                                           data_shot))))
+                        file_log.write('\n')
+                print('Logged at {}'.format(time_stamp))
+
+    elif args.ads == 'test':
+        stream_ads = "my_ads.start_send(my_ads.chunk_send_V,timeout={})".format(
+            args.tm)
+        # run_live(stream_acc, args.t, args.p)
+        # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+        fq = 1/(args.tm/1000)
+        print('Streaming ADS: A0 (voltage),fq={}Hz'.format(fq))
+        if args.f is not None:
+            args.f = lognow(args.f, args.m)
+            print('Saving file {} ...'.format(args.f))
+            header = {'VAR': ['V'], 'UNIT': 'VOLTS',
+                      'fq(hz)': fq}
+            with open(args.f, 'w') as file_log:
+                file_log.write(json.dumps(header))
+                file_log.write('\n')
+            test_stream_chunk(stream_ads, args.t, args.p, 'my_ads',
+                              filename=args.f, log=True,
+                              r_format='f'*20, nb=80, variables=header['VAR'])
+        else:
+            header = {'VAR': ['V'], 'UNIT': 'VOLTS',
+                      'fq(hz)': fq}
+            test_stream_chunk(stream_ads, args.t, args.p, 'my_ads',
+                              variables=header['VAR'], r_format='f'*20, nb=80)
+    else:
+        # Do connect
+        stream_ads = "my_ads.start_send(my_ads.chunk_send_V,timeout={})".format(
+            args.tm)
+        # run_live(stream_acc, args.t, args.p)
+        # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+        fq = 1/(args.tm/1000)
+        print('Streaming ADS: A0 (voltage),fq={}Hz'.format(fq))
+        if args.f is not None:
+            args.f = lognow(args.f, args.m)
+            print('Saving file {} ...'.format(args.f))
+            header = {'VAR': ['V'], 'UNIT': 'VOLTS',
+                      'fq(hz)': fq}
+            with open(args.f, 'w') as file_log:
+                file_log.write(json.dumps(header))
+                file_log.write('\n')
+            get_live_stream_chunk(stream_ads, args.t, args.p, 'my_ads',
+                                  filename=args.f, log=True,
+                                  r_format='f'*20, nb=80, variables=header['VAR'])
+        else:
+            header = {'VAR': ['V'], 'UNIT': 'VOLTS',
+                      'fq(hz)': fq}
+            get_live_stream_chunk(stream_ads, args.t, args.p, 'my_ads',
+                                  variables=header['VAR'], r_format='f'*20, nb=80)
+    sys.exit()
+# * IMU *
+# IMU_INIT
+
+elif args.m == 'imu_init':
+    imu_lib = args.imu
+    import_imu_cmd = "from {} import {};import init_MY_IMU as imu;".format(
+        args.imu, args.imu.upper())
+    print('Initialazing imu...')
+    imu_init_cmd = "my_imu = imu.MY_IMU({},imu.i2c,None);".format(
+        args.imu.upper())
+    imu_final_init = "my_imu.init()"
+    imu_init_cmd_str = import_imu_cmd + imu_init_cmd + imu_final_init
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        imu_init_cmd_str, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    net_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+#  IMUACC
+
+elif args.m == 'imuacc':
+    if args.tm is None:
+        cmd = "my_imu.read_acc()"
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            cmd, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        acc_info_list = []
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        acc_info_list.append(line[4:])
+                    else:
+                        print(line)
+
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        if len(acc_info_list) > 0:
+            print('X:{},Y:{},Z:{}'.format(*ast.literal_eval(acc_info_list[0])))
+            if args.f is not None:
+                data_shot = [*ast.literal_eval(acc_info_list[0])]
+                tag_tstamp = datetime.now().strftime("%H:%M:%S")
+                time_stamp = tag_tstamp
+                if args.n is not None:
+                    tag_tstamp = args.n
+                data_shot.append(tag_tstamp)
+                header = {'VAR': ['X', 'Y', 'Z', 'TS'], 'UNIT': 'g=-9.8m/s^2'}
+                if args.f not in os.listdir():
+                    with open(args.f, 'w') as file_log:
+                        file_log.write(json.dumps(header))
+                        file_log.write('\n')
+                        file_log.write(json.dumps(dict(zip(header['VAR'],
+                                                           data_shot))))
+                        file_log.write('\n')
+                else:
+                    with open(args.f, 'a') as file_log:
+                        file_log.write(json.dumps(dict(zip(header['VAR'],
+                                                           data_shot))))
+                        file_log.write('\n')
+                print('Logged at {}'.format(time_stamp))
+    elif args.imu == 'test':
+        # Do connect
+        stream_acc = "my_imu.start_send(my_imu.sample_send_acc,timeout={})".format(
+            args.tm)
+        # run_live(stream_acc, args.t, args.p)
+        # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+        fq = 1/(args.tm/1000)
+        print('Streaming IMU ACCELEROMETER: X, Y, Z (g=-9.8m/s^2),fq={}Hz'.format(fq))
+        if args.f is not None:
+            args.f = lognow(args.f, args.m)
+            print('Saving file {} ...'.format(args.f))
+            header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'g=-9.8m/s^2',
+                      'fq(hz)': fq}
+            with open(args.f, 'w') as file_log:
+                file_log.write(json.dumps(header))
+                file_log.write('\n')
+            test_stream(stream_acc, args.t, args.p, 'my_imu',
+                        filename=args.f, log=True, variables=header['VAR'])
+        else:
+            header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'g=-9.8m/s^2',
+                      'fq(hz)': fq}
+            test_stream(stream_acc, args.t, args.p, 'my_imu',
+                        variables=header['VAR'])
+
+    else:
+        # Do connect
+        stream_acc = "my_imu.start_send(my_imu.sample_send_acc,timeout={})".format(
+            args.tm)
+        # run_live(stream_acc, args.t, args.p)
+        # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+        fq = 1/(args.tm/1000)
+        print('Streaming IMU ACCELEROMETER: X, Y, Z (g=-9.8m/s^2),fq={}Hz'.format(fq))
+        if args.f is not None:
+            args.f = lognow(args.f, args.m)
+            print('Saving file {} ...'.format(args.f))
+            header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'g=-9.8m/s^2',
+                      'fq(hz)': fq}
+            with open(args.f, 'w') as file_log:
+                file_log.write(json.dumps(header))
+                file_log.write('\n')
+            get_live_stream(stream_acc, args.t, args.p, 'my_imu',
+                            filename=args.f, log=True, variables=header['VAR'])
+        else:
+            header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'g=-9.8m/s^2',
+                      'fq(hz)': fq}
+            get_live_stream(stream_acc, args.t, args.p, 'my_imu',
+                            variables=header['VAR'])
+
+    sys.exit()
+
+# IMUACC SD
+elif args.m == 'imuacc_sd':
+    # Do connect
+    fq = 1/(args.tm/1000)
+    header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'g=-9.8m/s^2',
+              'fq(hz)': fq}
+    stream_acc = "my_imu.start_send_SD(my_imu.sample_send_acc_SD,'ACC','{}',timeout={})".format(
+        header['UNIT'], args.tm)
+    # run_live(stream_acc, args.t, args.p)
+    # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+    print('Streaming IMU ACCELEROMETER: X, Y, Z (g=-9.8m/s^2),fq={}Hz'.format(fq))
+    get_live_stream(stream_acc, args.t, args.p, 'my_imu',
+                    variables=header['VAR'])
+# IMUGY
+
+elif args.m == 'imugy':
+    if args.tm is None:
+        cmd = "my_imu.read_gy()"
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            cmd, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        acc_info_list = []
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        acc_info_list.append(line[4:])
+                    else:
+                        print(line)
+
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        if len(acc_info_list) > 0:
+            print('X:{},Y:{},Z:{}'.format(*ast.literal_eval(acc_info_list[0])))
+            if args.f is not None:
+                data_shot = [*ast.literal_eval(acc_info_list[0])]
+                tag_tstamp = datetime.now().strftime("%H:%M:%S")
+                time_stamp = tag_tstamp
+                if args.n is not None:
+                    tag_tstamp = args.n
+                data_shot.append(tag_tstamp)
+                header = {'VAR': ['X', 'Y', 'Z', 'TS'], 'UNIT': 'deg/s'}
+                if args.f not in os.listdir():
+                    with open(args.f, 'w') as file_log:
+                        file_log.write(json.dumps(header))
+                        file_log.write('\n')
+                        file_log.write(json.dumps(dict(zip(header['VAR'],
+                                                           data_shot))))
+                        file_log.write('\n')
+                else:
+                    with open(args.f, 'a') as file_log:
+                        file_log.write(json.dumps(dict(zip(header['VAR'],
+                                                           data_shot))))
+                        file_log.write('\n')
+                print('Logged at {}'.format(time_stamp))
+    else:
+        # Do connect
+        stream_ = "my_imu.start_send(my_imu.sample_send_gy,timeout={})".format(
+            args.tm)
+        fq = 1/(args.tm/1000)
+        print('Streaming IMU GYRO: X, Y, Z (deg/s),fq={}Hz'.format(fq))
+        if args.f is not None:
+            args.f = lognow(args.f, args.m)
+            print('Saving file {} ...'.format(args.f))
+            header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'deg/s',
+                      'fq(hz)': fq}
+            with open(args.f, 'w') as file_log:
+                file_log.write(json.dumps(header))
+                file_log.write('\n')
+            get_live_stream(stream_, args.t, args.p, 'my_imu',
+                            filename=args.f, log=True, variables=header['VAR'])
+        else:
+            header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'deg/s',
+                      'fq(hz)': fq}
+            get_live_stream(stream_, args.t, args.p, 'my_imu',
+                            variables=header['VAR'])
+
+    sys.exit()
+
+# IMUMAG
+
+elif args.m == 'imumag':
+    if args.tm is None:
+        cmd = "my_imu.read_mag()"
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            cmd, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        acc_info_list = []
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        acc_info_list.append(line[4:])
+                    else:
+                        print(line)
+
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        if len(acc_info_list) > 0:
+            print('X:{},Y:{},Z:{}'.format(*ast.literal_eval(acc_info_list[0])))
+            if args.f is not None:
+                data_shot = [*ast.literal_eval(acc_info_list[0])]
+                tag_tstamp = datetime.now().strftime("%H:%M:%S")
+                time_stamp = tag_tstamp
+                if args.n is not None:
+                    tag_tstamp = args.n
+                data_shot.append(tag_tstamp)
+                header = {'VAR': ['X', 'Y', 'Z', 'TS'], 'UNIT': 'gauss'}
+                if args.f not in os.listdir():
+                    with open(args.f, 'w') as file_log:
+                        file_log.write(json.dumps(header))
+                        file_log.write('\n')
+                        file_log.write(json.dumps(dict(zip(header['VAR'],
+                                                           data_shot))))
+                        file_log.write('\n')
+                else:
+                    with open(args.f, 'a') as file_log:
+                        file_log.write(json.dumps(dict(zip(header['VAR'],
+                                                           data_shot))))
+                        file_log.write('\n')
+                print('Logged at {}'.format(time_stamp))
+    else:
+        # Do connect
+        stream_ = "my_imu.start_send(my_imu.sample_send_mag,timeout={})".format(
+            args.tm)
+        # run_live(stream_acc, args.t, args.p)
+        # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+        fq = 1/(args.tm/1000)
+        print('Streaming IMU MAGNETOMETER: X, Y, Z (gauss),fq={}Hz'.format(fq))
+        if args.f is not None:
+            args.f = lognow(args.f, args.m)
+            print('Saving file {} ...'.format(args.f))
+            header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'gauss',
+                      'fq(hz)': fq}
+            with open(args.f, 'w') as file_log:
+                file_log.write(json.dumps(header))
+                file_log.write('\n')
+            get_live_stream(stream_, args.t, args.p, 'my_imu',
+                            filename=args.f, log=True, variables=header['VAR'])
+        else:
+            header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'gauss',
+                      'fq(hz)': fq}
+            get_live_stream(stream_, args.t, args.p, 'my_imu',
+                            variables=header['VAR'])
+
+    sys.exit()
+
+#############################################
+# * DAC *
+
+# DAC CONFIG
+elif args.m == 'dac_config':
+    if args.b is not None:
+        print('Available DAC pins for {} board are : {}'.format(
+            args.b, ADC_PINS_DICT[args.b]))
+    else:
+        dac_pin = args.po[0]
+        analog_cmd = "from machine import DAC;analogdac_pin = DAC(Pin({}));".format(
+            dac_pin)
+        dac_cmd = analog_cmd
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            dac_cmd, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        print(line[4:])
+                    else:
+                        print(line)
+
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        print('Pin {} configurated as Analog Output'.format(
+            dac_pin))
+    sys.exit()
+
+# DAC WRITE ## 8 BITS, 0-255
+elif args.m == 'dac_write':
+    val_from_v = int((float(args.sig[0])/3.3)*255)
+    analog_write = "analogdac_pin.write({});gc.collect()".format(val_from_v)
+    dac_cmd = analog_write
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        dac_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+
+# DAC_SIG
+
+elif args.m == 'dac_sig':
+    cmds = ['start', 'stop', 'mod']
+    if args.sig[0] not in cmds:
+        signal_class = "from dac_signal_gen import SIGNAL_GENERATOR;"
+        signal_cmd = "sig=SIGNAL_GENERATOR(analogdac_pin,'{}',{},{})".format(
+            *args.sig)
+        conf_dac_sig = signal_class + signal_cmd
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            conf_dac_sig, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        print(line[4:])
+                    else:
+                        print(line)
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        print('Signal type {} with Amplitude {} V and fq {} Hz configurated'.format(
+            *args.sig))
+    elif args.sig[0] == cmds[0]:
+        signal_cmd = "sig.start()"
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            signal_cmd, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        print(line[4:])
+                    else:
+                        print(line)
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        print('Signal started!')
+
+    elif args.sig[0] == cmds[1]:
+        signal_cmd = "sig.stop()"
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            signal_cmd, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        print(line[4:])
+                    else:
+                        print(line)
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        print('Signal stopped!')
+
+    elif args.sig[0] == cmds[2]:
+        signal_cmd = "sig.modsig({},{})".format(args.sig[1], args.sig[2])
+        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+            signal_cmd, args.t, args.p)
+        cmd_resp = run_command_rl(cmd_str)
+        resp = cmd_resp[1]
+        for line in resp[6:]:
+            if line == '### closed ###':
+                pass
+            else:
+                try:
+                    if line[0] == '>':
+                        print(line[4:])
+                    else:
+                        print(line)
+                except Exception as e:
+                    if len(line) == 0:
+                        pass
+                    else:
+                        print(e)
+                        pass
+        print('Signal modified to Amplitude: {} V, fq: {} Hz'.format(
+            args.sig[1], args.sig[2]))
+
+    sys.exit()
+
+#############################################
+# * BUZZER *
+# BUZZ CONFIG
+elif args.m == 'buzz_config':
+    BUZZ_pin = args.po[0]
+    buzz_cmd = "from buzzertools import BUZZER;my_buzz = BUZZER({});".format(
+        BUZZ_pin)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        buzz_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Pin {} configurated as PWM to drive the buzzer'.format(
+        BUZZ_pin))
+    sys.exit()
+
+# BUZZ SET_ALARM
+elif args.m == 'buzz_set_alarm':
+    if len(args.at) < 3:
+        hour, minute = args.at
+        seconds = 0
+    else:
+        hour, minute, seconds = args.at
+    buzz_cmd = "my_buzz.set_alarm_at({},{},{});".format(hour, minute, seconds)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        buzz_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Alarm set at {}:{}:{}'.format(hour, minute, seconds))
+    sys.exit()
+
+# BUZZ INTERRUPT
+elif args.m == 'buzz_interrupt':
+    buzz_cmd = "my_buzz.active_button({},{});".format(*args.po)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        buzz_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Button interrupt set at Pins; {},{}'.format(*args.po))
+    sys.exit()
+
+# BUZZ BEEP
+elif args.m == 'buzz_beep':
+    buzz_cmd = "my_buzz.buzz_beep({},{},{},{});".format(*args.opt)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        buzz_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Beep! '*args.opt[1])
+    sys.exit()
+
+
+#############################################
+#  * MOTORS *
+
+#  * SERVO *
+# SERVO_CONFIG
+elif args.m == 'servo_config':
+    servo_pin = args.po[0]
+    servo_cmd = "from servo import Servo;my_servo = Servo(Pin({}));".format(
+        servo_pin)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        servo_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Pin {} configurated as PWM to drive the Servo motor'.format(
+        servo_pin))
+    sys.exit()
+
+elif args.m == 'servo_angle':
+    servo_angle = args.opt[0]
+    servo_cmd = "my_servo.write_angle({});".format(
+        servo_angle)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        servo_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Servo moved {} degrees!'.format(
+        servo_angle))
+    sys.exit()
+
+
+# * DC MOTOR *
+
+# DCMOTOR_CONFIG
+
+elif args.m == 'dcmotor_config':
+    dir_pin, oppo_pin = args.po
+    dcmotor_cmd = "from dcmotor import DCMOTOR;my_dcmotor = DCMOTOR({},{});".format(
+        dir_pin, oppo_pin)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        dcmotor_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('DC motor configurated: Direction Pin:{}, Opposite direction Pin: {}'.format(
+        dir_pin, oppo_pin))
+    sys.exit()
+
+# DCMOTOR_MOVE
+elif args.m == 'dcmotor_move':
+    dcmotor_dir_dic = {'R': 0, 'L': 1}
+    dcmotor_direction, velocity = args.to
+    dcmotor_cmd = "my_dcmotor.move({},{});".format(
+        dcmotor_dir_dic[dcmotor_direction], velocity)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        dcmotor_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('DC motor moving to {}!'.format(dcmotor_direction))
+    sys.exit()
+
+# DCMOTOR_STOP
+elif args.m == 'dcmotor_stop':
+    dcmotor_cmd = "my_dcmotor.stop();"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        dcmotor_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('DC motor stopped')
+    sys.exit()
+# * STEPPER MOTOR *
+
+# STEPPER_CONFIG
+
+elif args.m == 'stepper_config':
+    dir_pin, step_pin = args.po
+    stepper_cmd = "from stepper import STEPPER;my_stepper = STEPPER({},{});".format(
+        dir_pin, step_pin)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        stepper_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Stepper motor configurated: Direction Pin:{}, Step Pin: {}'.format(
+        dir_pin, step_pin))
+    sys.exit()
+
+# STEPPER_MOVE
+
+elif args.m == 'stepper_move':
+    step_dir_dic = {'R': 0, 'L': 1}
+    step_direction, velocity, steps = args.to
+    stepper_cmd = "my_stepper.move_n_steps({},{},{});".format(
+        step_dir_dic[step_direction], velocity, steps)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        stepper_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('Stepper moved {} steps to {} !'.format(
+        steps, step_direction))
+    sys.exit()
+
+
+#############################################
+#  * NETWORKING *
+
+#  * MQTT *
+
+# MQTT_CONFIG
+
+elif args.m == 'mqtt_config':
+    if len(args.client) < 4:
+        id, b_addr = args.client
+        client_cmd = "from mqtt_client import mqtt_client ;my_mqtt = mqtt_client('{}','{}');".format(
+            id, b_addr)
+    else:
+        id, b_addr, user, passwd = args.client
+        client_cmd = "from mqtt_client import mqtt_client ;my_mqtt = mqtt_client('{}','{}',user = '{}', password = '{}');".format(
+            id, b_addr, user, passwd)
+
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        client_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('MQTT Client configurated: ID: {}, BROKER: {}'.format(
+        id, b_addr))
+    sys.exit()
+
+# MQTT_CONN
+elif args.m == 'mqtt_conn':
+    conn_cmd = "my_mqtt.connect();my_mqtt.set_def_callback();gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        conn_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('MQTT Client connected!')
+    sys.exit()
+
+# MQTT_SUB
+elif args.m == 'mqtt_sub':
+    sub_cmd = "my_mqtt.subs('{}');gc.collect()".format(*args.to)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sub_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    print('MQTT Client subscribed to TOPIC: {}'.format(*args.to))
+    sys.exit()
+
+# MQTT_PUB
+elif args.m == 'mqtt_pub':
+    if len(args.to) > 1:
+        pub_cmd = "my_mqtt.pub(topic='{}',paylod='{}');gc.collect()".format(
+            *args.to)
+    else:
+        pub_cmd = "my_mqtt.pub('{}');gc.collect()".format(*args.to)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        pub_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(args.to) > 1:
+        print('MQTT Client published message: {} to TOPIC: {}'.format(*args.to))
+    else:
+        print('MQTT Client published the message: {}'.format(*args.to))
+    sys.exit()
+
+# MQTT_CHECK
+
+elif args.m == 'mqtt_check':
+    check_cmd = "my_mqtt.check_msg();gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        check_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# * SOCKETS *
+
+# SOCLI_INIT
+elif args.m == 'socli_init':
+    if len(args.server) > 2:
+        host, port, buff = args.server
+        socli_init_cmd = "my_cli=socket_client('{}',{},{})".format(host, port, buff)
+    else:
+        host, port = args.server
+        socli_init_cmd = "my_cli=socket_client('{}',{})".format(host, port)
+    socli_imp_cmd = "from socket_client_server import socket_client;"
+    socli_comp_cmd = '{}{}'.format(socli_imp_cmd, socli_init_cmd)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        socli_comp_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    print('Initialized client socket to connect to server :{} on port {}'.format(host, port))
+    sys.exit()
+
+# SOCLI_CONN
+elif args.m == 'socli_conn':
+    socli_conn_cmd = "my_cli.connect_SOC();"
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        socli_conn_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    print('Client connected!')
+    sys.exit()
+
+# SOCLI_SEND
+elif args.m == 'socli_send':
+    socli_send_cmd = "my_cli.send_message('{}');".format(args.n)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        socli_send_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    print('Message sent!')
+    sys.exit()
+
+# SOCLI_RECV
+elif args.m == 'socli_recv':
+    socli_recv_cmd = "my_cli.recv_message();"
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        socli_recv_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    sys.exit()
+
+# SOCLI_CLOSE
+elif args.m == 'socli_close':
+    socli_close_cmd = "my_cli.cli_soc.close();"
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        socli_close_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    print('Client Socket closed!')
+    sys.exit()
+
+# SOSRV_INIT
+elif args.m == 'sosrv_init':
+    if len(args.server) > 1:
+        port, buff = args.server
+        sosrv_init_cmd = "my_serv=socket_server({},{})".format(port, buff)
+    else:
+        port = args.server[0]
+        sosrv_init_cmd = "my_serv=socket_server({})".format(port)
+    sosrv_imp_cmd = "from socket_client_server import socket_server;"
+    sosrv_comp_cmd = '{}{}'.format(sosrv_imp_cmd, sosrv_init_cmd)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sosrv_comp_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(run_cmd_str)
+    resp = cmd_resp[1]
+    serv_info = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    serv_info.append(line[4:])
+                else:
+                    serv_info.append(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(serv_info) > 0:
+        print('Server initialized. IP: {} PORT:{}'.format(serv_info[0], port))
+    sys.exit()
+
+# SOSRV_START
+elif args.m == 'sosrv_start':
+    sosrv_start_cmd = "my_serv.start_SOC();"
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sosrv_start_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    sys.exit()
+
+# SOSRV_SEND
+elif args.m == 'sosrv_send':
+    sosrv_send_cmd = "my_serv.send_message('{}');".format(args.n)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sosrv_send_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    print('Message sent!')
+    sys.exit()
+
+# SOSRV_RECV
+elif args.m == 'sosrv_recv':
+    sosrv_recv_cmd = "my_serv.recv_message();"
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sosrv_recv_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    sys.exit()
+
+# SOSRV_CLOSE
+elif args.m == 'sosrv_close':
+    sosrv_close_cmd = "my_serv.serv_soc.close();"
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        sosrv_close_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    print('Server Socket closed!')
+    sys.exit()
+
+# * REQUEST *
+# RGET_JSON
+elif args.m == 'rget_json':
+    rq_import_cmd = "import urequests as requests;"
+    rq_query_cmd = "resp=requests.get('{}');".format(args.f)
+    rq_json_cmd = "resp.json()"
+    rq_comp_cmd = "{}{}{}".format(rq_import_cmd, rq_query_cmd, rq_json_cmd)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        rq_comp_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    sys.exit()
+
+# RGET_TEXT
+elif args.m == 'rget_text':
+    rq_import_cmd = "import urequests as requests;"
+    rq_query_cmd = "resp=requests.get('{}');".format(args.f)
+    rq_text_cmd = "resp.text"
+    rq_comp_cmd = "{}{}{}".format(rq_import_cmd, rq_query_cmd, rq_text_cmd)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        rq_comp_cmd, args.t, args.p)
+    run_live_cmd = shlex.split(run_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    sys.exit()
+#############################################
+#  * PORT SPECIFIC COMMANDS *
+
+# BATTERY
+
+elif args.m == 'battery':
+    batt_cmd = "from machine import ADC;bat = ADC(Pin(35));bat.atten(ADC.ATTN_11DB);((bat.read()*2)/4095)*3.6;gc.collect()"
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        batt_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    batlev = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    batlev.append(line[4:])
+                else:
+                    batlev.append(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(batlev) > 0:
+        volts = ast.literal_eval(batlev[0])
+        percentage = round((volts - 3.3) / (4.23 - 3.3) * 100, 1)
+        print('Battery Voltage : {} V; Level:{} %'.format(
+            round(volts, 2), percentage))
+    sys.exit()
+
+# SPECS REF
+
+elif args.m == 'specs':
+    try:
+        board = args.b
+        file_board = '{}/{}.config'.format(upydev.__path__[0], board)
+        with open(file_board, 'r') as esp32ref:
+            ref_dict = json.loads(esp32ref.read())
+
+        print(ref_dict['SPECS'])
+
+    except Exception as e:
+        print("""reference board file not found""")
+        sys.exit()
+
+# PIN OUT REF
+
+elif args.m == 'pinout':
+    try:
+        board = args.b
+        file_board = '{}/{}.config'.format(upydev.__path__[0], board)
+        with open(file_board, 'r') as esp32ref:
+            ref_dict = json.loads(esp32ref.read())
+
+        if args.po is not None:
+            pin_query = args.po
+            for query in pin_query:
+                print('PIN: {}: {}'.format(
+                    query, ref_dict['PINOUT'][str(query)]))
+        else:
+            for key in ref_dict['PINOUT']:
+                print('PIN: {}: {}'.format(key, ref_dict['PINOUT'][key]))
+
+    except Exception as e:
+        print(str(e), ' Pin not Found or')
+        print("""reference board file not found""")
+        sys.exit()
+
+    sys.exit()
+
+elif args.m == 'pin_status':
+    pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
+    machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
+    status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
+    pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
+        pinlist, machine_pin, status)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        pin_status_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    pin_status_resp = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    pin_status_resp.append(line[4:])
+                else:
+                    pin_status_resp.append(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(pin_status_resp) > 0:
+        pin_dict = ast.literal_eval(pin_status_resp[0])
+        for key in pin_dict.keys():
+            if pin_dict[key] == 1:
+                print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+            else:
+                print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+        # volts = ast.literal_eval(batlev[0])
+        # percentage = round((volts - 3.3) / (4.23 - 3.3) * 100, 1)
+        # print('Battery Voltage : {} V; Level:{} %'.format(
+        #     round(volts, 2), percentage))
+    sys.exit()

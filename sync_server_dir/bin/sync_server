@@ -1,0 +1,118 @@
+#!/usr/bin/env python
+# @Author: carlosgilgonzalez
+# @Date:   2019-07-09T20:49:15+01:00
+# @Last modified by:   carlosgilgonzalez
+# @Last modified time: 2019-07-13T22:18:43+01:00
+
+import socket
+import time as time_mac
+import os
+import argparse
+import ast
+import subprocess
+import shlex
+import sys
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-f", help='file to sync', required=True)
+parser.add_argument("-p", help='password', required=False)
+parser.add_argument("-t", help='target', required=False)
+parser.add_argument("-lh", help='local ip', required=False)
+parser.add_argument(
+    "-s", help='source dir to look for in (default '' flash, "sd" for micro sd) ', required=False)
+args = parser.parse_args()
+
+# Start a socket listening for connections on 0.0.0.0:8000 (0.0.0.0 means
+# all interfaces)
+
+# TODO: make get_ip() platform independent
+
+
+def get_ip():
+    scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
+    ip = scanoutput.decode('utf-8').split('\n')[0]
+    return ip
+
+
+dir = ''
+if args.s is not None:
+    dir = '/sd'
+
+if args.lh is None:
+    local_ip = get_ip()
+if args.lh is not None:
+    local_ip = args.lh
+
+sync_cmd = 'upycmd -c "{}" -t {} -p {}'.format(
+    'import sync_tool as synct', args.t, args.p)
+
+sync_tool = subprocess.call(sync_cmd, shell=True)
+time_mac.sleep(1)
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.bind((local_ip, 8005))
+server_socket.listen(1)
+print('Server listening...')
+sync_connect_cmd = 'upycmd -c "{}" -t {} -p {}'.format(
+    'cli_soc = synct.connect_SOC({})'.format("'{}'".format(local_ip)), args.t, args.p)
+connect_cmd = shlex.split(sync_connect_cmd)
+sync_conn = subprocess.call(connect_cmd)
+conn, addr = server_socket.accept()
+print('Connection received...')
+conn.settimeout(1)
+
+
+def sync_file_raw(soc, filetoget, dir):
+    cmd_filesize_str = 'upycmd_r -c "synct.print_sizefile({},{})" -t {} -p {}'.format(
+        "'{}'".format(dir), "'{}'".format(filetoget), args.t, args.p)
+    # print(cmd_filesize)
+    # use shlex to avoid shell=True
+    filesize_cmd = shlex.split(cmd_filesize_str)
+    resp_filesize = subprocess.call(filesize_cmd)
+    flushed = 0
+    while flushed == 0:
+        try:
+            conn.recv(128)
+        except Exception as e:
+            flushed = 1
+    sync_tool_cmd = 'upycmd -c "synct.read_sd_file_sync_raw({},cli_soc)" -t {} -p {}'.format(
+        "'{}/{}'".format(dir, filetoget), args.t, args.p)
+    sync_cmd = shlex.split(sync_tool_cmd)
+    sync_tool = subprocess.call(sync_cmd)
+    print('Syncing file {} from upy device'.format(filetoget))
+    print('Saving {} file'.format(filetoget))
+    t0 = 0
+    with open(filetoget, 'wb') as log:
+        pass
+    while True:
+        try:
+            chunk = soc.recv(2000)  # 2 KB
+            if chunk != b'':
+                with open(filetoget, 'ab') as log:
+                    log.write(chunk)
+            else:
+                print('END OF FILE')
+                # soc.sendall
+                final_time = abs(time_mac.time()-t0)
+                print('Done in {} seconds'.format(round(final_time, 2)))
+                break
+            if t0 == 0:
+                t0 = time_mac.time()
+
+            final_time = abs(time_mac.time()-t0)
+        except Exception as e:
+            if e == KeyboardInterrupt:
+                break
+
+            else:
+                # print(e)
+                if str(e) == 'timed out':
+                    print('Done in {} seconds'.format(round(final_time, 2)))
+                    break
+
+
+sync_file_raw(conn, args.f, dir)
+
+conn.close()
+sys.exit()
