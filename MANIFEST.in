@@ -1,2 +1,3 @@
 include README.md
 include upydev/esp32h.config
+include upydev/help.config

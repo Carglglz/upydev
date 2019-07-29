@@ -664,6 +664,7 @@ helparg = '''Mode:
         to see available serial ports do: "upydev fw -md list serial_ports"
 - flash: to flash a firmware file to the upydevice, a serial port must be indicated
             to flash do: "upydev flash -port [serial port] -f [firmware file]"
+- see: to get specific command help info indicated with -c option.
 
 upy Commands:
 > GENERAL
@@ -841,7 +842,8 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'mqtt_pub', 'mqtt_sub', 'mqtt_check', 'socli_init',
                  'socli_conn', 'socli_send', 'socli_recv', 'socli_close',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
-                 'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash']
+                 'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash',
+                 'see']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -863,7 +865,7 @@ parser.add_argument(
     "-s", help='source dir in upy device, default is root dir (flash memory); sd for sd card source dir mounted as "/sd"', required=False)
 parser.add_argument(
     "-c", help='command to send to upy device, do not wait for a response',
-    required=False, type=str)
+    required=False, type=str).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument(
     "-r", help='command to send to upy device, waits for a short response (one line)', required=False)
 parser.add_argument(
@@ -1495,6 +1497,14 @@ elif args.m == 'flash':
             result = proc.stdout.readlines()
             for message in result:
                 print(message[:-1].decode())
+    sys.exit()
+
+# SEE
+elif args.m == 'see':
+    help_file = '{}/help.config'.format(upydev.__path__[0])
+    with open(help_file, 'r') as helpref:
+        help_dict = json.loads(helpref.read())
+    print(help_dict[args.c])
     sys.exit()
 # * GENERAL COMMANDS *
 # INFO :
