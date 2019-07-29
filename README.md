@@ -105,7 +105,7 @@ Example: Raw command
 
    ` $ upydev cmd -rl "function_that_print_multiple_lines()"`
 
-   
+
 
     * *tip: simple commands can be used without quotes;*
         *but for commands with parenthesis or special characters use quoutes,*
@@ -123,8 +123,8 @@ Example: Raw command
 
     ​	Supports *CTRL-C* to stop the execution and exit nicely.
 
-    
-    
+
+
 - **install** : install libs to '/lib' path with upip; indicate lib with -f option
 
 - **mpyx** : to froze a module/script indicated with -f option, and save some RAM,
@@ -133,7 +133,7 @@ Example: Raw command
 - **timeit**: to measure execution time of a module/script indicated with -f option.
 
   This is an adapted version of:
-  
+
    https://github.com/peterhinch/micropython-samples/tree/master/timed_function
 
 * **fw**: to list or get available firmware versions, use -md option to indicate operation:
@@ -159,34 +159,29 @@ uPy commands are organized as:
   * ***IMU***: commands that make of the LSM9DS1 module, although other IMU modules could be easily implemented
   * ***Power:*** commands that make use of the INA219 module
 
-* **OUTPUT:** These commands use the DAC or PWM of the board, some needs an actuator module (buzzer or motor driver and a motor) at least and the appropriate script in the upydevice. 
+* **OUTPUT:** These commands use the DAC or PWM of the board, some needs an actuator module (buzzer or motor driver and a motor) at least and the appropriate script in the upydevice.
 
   * ***DAC:*** to generate an analog signal (dc value, sine wave or square wave at the momment)
   * ***BUZZER***: to drive a buzzer with PWM
   * ***DC MOTOR***: to control a DC motor (needs a motor driver and the appropriate script)
-  * **SERVO:** to drive a servo motor
+  * ***SERVO:*** to drive a servo motor
   * ***STEPPER MOTOR***: to drive stepper motor (needs a motor driver)
 
 * **NETWORKING:**
 
   *  ***MQTT:***
-          
+  *  ***SOCKETS:***
+  *  ***UREQUEST:***
 
-  * ***SOCKETS:***
 
-    
 
-      * ***UREQUEST:***
-          
-          
+  * **PORT/BOARD SPECIFIC COMMANDS**:
 
-    * **Port/board specific commands**:
-        
-        * battery : if running on battery, gets battery voltage (esp32 huzzah feather)
-        * pinout : to see the pinout reference/info of a board, indicated by -b option,
-                 to request a single or a list of pins info use -po option
-        * specs : to see the board specs, indicated by -b option
-        * pin_status: to see pin state, to request a specific set use -po option
+      * battery : if running on battery, gets battery voltage (esp32 huzzah feather)
+      * pinout : to see the pinout reference/info of a board, indicated by -b option,
+               to request a single or a list of pins info use -po option
+      * specs : to see the board specs, indicated by -b option
+      * pin_status: to see pin state, to request a specific set use -po option
 
 ------
 
