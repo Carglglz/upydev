@@ -658,11 +658,10 @@ helparg = '''Mode:
 - timeit: to measure execution time of a module/script indicated with -f option.
           This is an implementation of
           https://github.com/peterhinch/micropython-samples/tree/master/timed_function
-- fw: to list or get available firmware versions, use -m option to indicate operation:
+- fw: to list or get available firmware versions, use -md option to indicate operation:
         to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266'
         to get do: "upydev fw -md get [firmware file]"
         to see available serial ports do: "upydev fw -md list serial_ports"
-        to flash do: "upydev fw -md flash [serial port] -f [firmware file]"
 - flash: to flash a firmware file to the upydevice, a serial port must be indicated
             to flash do: "upydev flash -port [serial port] -f [firmware file]"
 

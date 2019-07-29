@@ -52,7 +52,9 @@ In cli :
 
  *upydev will use local working directory configuration unless it does not find any or manually indicated with -g option.*
 
-##### uPydev Usage:
+------
+
+#### uPydev Usage:
 
 Usage:
 
@@ -77,7 +79,9 @@ Example: Raw command
 
 `$ upydev "import my_lib;foo();my_var=2*3"`
 
-##### uPydev Mode/Tools:
+------
+
+#### uPydev Mode/Tools:
 
 - **config** : to save upy device settings (*see -p, -t, -g)*,
             so the target and password arguments wont be required any more
@@ -132,7 +136,16 @@ Example: Raw command
   
    https://github.com/peterhinch/micropython-samples/tree/master/timed_function
 
-##### uPydev Commands:
+* **fw**: to list or get available firmware versions, use -md option to indicate operation:
+          to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266' (web scraping from www.micropython.org/downloads)
+          to get do: "upydev fw -md get [firmware file]" (uses curl)
+          to see available serial ports do: "upydev fw -md list serial_ports"
+* **flash**: to flash a firmware file to the upydevice, a serial port must be indicated
+              to flash do: "upydev flash -port [serial port] -f [firmware file]"
+
+------
+
+#### uPydev Commands:
 
 uPy commands are organized as:
 
@@ -146,13 +159,42 @@ uPy commands are organized as:
   * ***IMU***: commands that make of the LSM9DS1 module, although other IMU modules could be easily implemented
   * ***Power:*** commands that make use of the INA219 module
 
-  
+* **OUTPUT:** These commands use the DAC or PWM of the board, some needs an actuator module (buzzer or motor driver and a motor) at least and the appropriate script in the upydevice. 
 
-##### Extensive explanation under:
+  * ***DAC:*** to generate an analog signal (dc value, sine wave or square wave at the momment)
+  * ***BUZZER***: to drive a buzzer with PWM
+  * ***DC MOTOR***: to control a DC motor (needs a motor driver and the appropriate script)
+  * **SERVO:** to drive a servo motor
+  * ***STEPPER MOTOR***: to drive stepper motor (needs a motor driver)
+
+* **NETWORKING:**
+
+  *  ***MQTT:***
+          
+
+  * ***SOCKETS:***
+
+    
+
+      * ***UREQUEST:***
+          
+          
+
+    * **Port/board specific commands**:
+        
+        * battery : if running on battery, gets battery voltage (esp32 huzzah feather)
+        * pinout : to see the pinout reference/info of a board, indicated by -b option,
+                 to request a single or a list of pins info use -po option
+        * specs : to see the board specs, indicated by -b option
+        * pin_status: to see pin state, to request a specific set use -po option
+
+------
+
+#### Extensive explanation under:
 
 DOCS
 
-##### Addiontal Scripts for some commands:
+#### Addiontal Scripts for some commands:
 
 Explanation which one and where to find (also source)
 
