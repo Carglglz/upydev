@@ -94,12 +94,14 @@ Example: Raw command
 - **cmd** : for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
 
    - Examples:
+
+   `$ upydev cmd -c "led.on()"`
+
+   `$ upydev cmd -r "print('Hello uPy')"`
+
+   ` $ upydev cmd -rl "function_that_print_multiple_lines()"`
+
    
-       				$ upydev cmd -c "led.on()"
-        
-               $ upydev cmd -r "print('Hello uPy')"
-        
-               $ upydev cmd -rl "function_that_print_multiple_lines()"
 
     * *tip: simple commands can be used without quotes;*
         *but for commands with parenthesis or special characters use quoutes,*
@@ -115,8 +117,10 @@ Example: Raw command
         (script must be in upy device or in sd card indicated by -s option
         and the sd card must be already mounted as 'sd');
 
-        * Supports *CTRL-C* to stop the execution and exits nicely.
+    ​	Supports *CTRL-C* to stop the execution and exits nicely.
 
+    
+    
 - **install** : install libs to '/lib' path with upip; indicate lib with -f option
 
 - **mpyx** : to froze a module/script indicated with -f option, and save some RAM,
@@ -124,9 +128,9 @@ Example: Raw command
 
 - **timeit**: to measure execution time of a module/script indicated with -f option.
 
-      This is an adapted version of:
-        
-       https://github.com/peterhinch/micropython-samples/tree/master/timed_function
+  This is an adapted version of:
+  
+   https://github.com/peterhinch/micropython-samples/tree/master/timed_function
 
 ##### uPydev Commands:
 
