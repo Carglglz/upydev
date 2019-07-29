@@ -93,13 +93,13 @@ Example: Raw command
 
 - **cmd** : for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
 
-       * Example:
-
-               *upydev cmd -c "led.on()"*
-
-               *upydev cmd -r "print('Hello uPy')"*
-
-               *upydev cmd -rl "function_that_print_multiple_lines()"*
+   - Examples:
+   
+       				$ upydev cmd -c "led.on()"
+        
+               $ upydev cmd -r "print('Hello uPy')"
+        
+               $ upydev cmd -rl "function_that_print_multiple_lines()"
 
     * *tip: simple commands can be used without quotes;*
         *but for commands with parenthesis or special characters use quoutes,*
@@ -125,7 +125,7 @@ Example: Raw command
 - **timeit**: to measure execution time of a module/script indicated with -f option.
 
       This is an adapted version of:
-
+        
        https://github.com/peterhinch/micropython-samples/tree/master/timed_function
 
 ##### uPydev Commands:
@@ -142,7 +142,7 @@ uPy commands are organized as:
   * ***IMU***: commands that make of the LSM9DS1 module, although other IMU modules could be easily implemented
   * ***Power:*** commands that make use of the INA219 module
 
-  ​
+  
 
 ##### Extensive explanation under:
 
