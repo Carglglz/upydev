@@ -8,7 +8,7 @@ from setuptools import setup
 
 
 def readme():
-    with open('README.md', 'r') as f:
+    with open('README.md', 'r', encoding="utf-8") as f:
         return f.read()
 
 
@@ -44,4 +44,4 @@ setup(name='upydev',
                'web_repl_cmd_r_dir/bin/web_repl_cmd_r',
                'web_repl_dir/bin/web_repl'],
       include_package_data=True,
-      install_requires=['argcomplete', 'mpy-cross'])
+      install_requires=['argcomplete', 'mpy-cross', 'esptool'])

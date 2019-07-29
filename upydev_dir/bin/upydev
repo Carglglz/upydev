@@ -14,9 +14,12 @@ import json
 import os
 import shlex
 import ast
+import requests
+import re
 import upydev
 import socket
 import struct
+import glob
 from datetime import datetime, date
 import argcomplete
 from argcomplete.completers import ChoicesCompleter
@@ -34,6 +37,22 @@ ATTEN_INFO = """
 2 = ADC.ATTN_6DB: 6dB attenuation, gives a maximum input voltage of approximately 2.00v
 3 = ADC.ATTN_11DB: 11dB attenuation, gives a maximum input voltage of approximately 3.6v
 """
+
+
+def get_fw_versions(keyword):
+    fw_list = []
+    fw_links = []
+    r = requests.get('https://micropython.org/download')
+    fw_text = [line for line in r.text.split(
+        '\n') if keyword in line and any(x in line for x in ['bin','dfu','zip']) and 'firmware' in line]
+    for line in fw_text:
+        for element in re.split(r"[=<>]+", line):
+            if 'firmware' in element:
+                fw_links.append('www.micropython.org{}'.format(element[1:-1]))
+                fw_list.append(element[1:-1].split('/')[3])
+    fw_dict = dict(zip(fw_list, fw_links))
+
+    return fw_dict, fw_list
 
 
 def run_command_rl(command):
@@ -632,6 +651,11 @@ helparg = '''Mode:
 - timeit: to measure execution time of a module/script indicated with -f option.
           This is an implementation of
           https://github.com/peterhinch/micropython-samples/tree/master/timed_function
+- fw: to list, get or flash available firmware versions, use -m option to indicate operation:
+        to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266'
+        to get do: "upydev fw -md get [firmware file]"
+        to see available serial ports do: "upydev fw -md list serial_ports"
+        to flash do: "upydev fw -md flash [serial port] -f [firmware file]"
 
 upy Commands:
 > GENERAL
@@ -706,7 +730,7 @@ Sensors:
                     (see -tm option for stream mode)
         - imugy :  one shot read of the IMU gyroscope (deg/s)
         - imumag : one shot read of the IMU magnetometer (gauss)
-    * POWER:
+    * POWER SENSOR:
     (INA219)
 
 >OUTPUT:
@@ -809,7 +833,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'mqtt_pub', 'mqtt_sub', 'mqtt_check', 'socli_init',
                  'socli_conn', 'socli_send', 'socli_recv', 'socli_close',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
-                 'sosrv_close', 'rget_json', 'rget_text']
+                 'sosrv_close', 'rget_json', 'rget_text', 'fw']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -857,7 +881,7 @@ parser.add_argument(
     required=False, nargs=4, default=[5, 19, 18, 21], type=int)
 parser.add_argument(
     "-b", help='[BOARD NAME] to request info of specs or of the pinouts',
-    required=False)
+    required=False).completer = ChoicesCompleter(['esp32', 'esp8266'])
 parser.add_argument(
     "-att",
     help='[attenuation] for attenuate adc input, default is 11dB attenuation, do -att info for more info',
@@ -898,6 +922,8 @@ parser.add_argument('-client', help='[ID] [BROKER ADDRESS] [USER] [PASSWORD]',
                     nargs='+', default=[None, 'test.mosquitto.org'])
 parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGTH]; Server Socket [PORT] [BUFFER LENGTH]',
                     nargs='+')
+parser.add_argument('-md', help='for command suboptions',
+                    nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'flash', 'latest'])
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
@@ -1375,6 +1401,93 @@ elif args.m == 'mpyx':
         for message in result:
             print(message[:-1].decode())
 
+# FW
+elif args.m == 'fw':
+    if args.md[0] == 'list':
+        if len(args.md) > 1:
+            if args.md[1] == 'serial_ports':
+                ls_cmd_str = "/dev/tty.*"
+                print('Available Serial ports are:')
+                for port in glob.glob(ls_cmd_str):
+                    print(port)
+
+        else:
+            fw_v = get_fw_versions(args.b)[1]
+            print('Firmware versions found for {}:'.format(args.b))
+            for version in fw_v:
+                print(version)
+    elif args.md[0] == 'get':
+        if args.md[1] == 'latest':
+            fw_v = get_fw_versions(args.b)
+            fw_v_latest = fw_v[1][0]
+            fw_v_latest_link = fw_v[0][fw_v_latest]
+            print('Downloading {} ...'.format(fw_v_latest))
+            curl_cmd_str = "curl -O '{}'".format(fw_v_latest_link)
+            curl_cmd = shlex.split(curl_cmd_str)
+            try:
+                proc = subprocess.Popen(
+                    curl_cmd, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+                while proc.poll() is None:
+                    print(proc.stdout.readline()[:-1].decode())
+                print('Done!')
+            except KeyboardInterrupt:
+                time.sleep(1)
+                result = proc.stdout.readlines()
+                for message in result:
+                    print(message[:-1].decode())
+        else:
+            fw_v_link = get_fw_versions(args.md[1])[0][args.md[1]]
+            print('Downloading {} ...'.format(args.md[1]))
+            curl_cmd_str = "curl -O '{}'".format(fw_v_link)
+            curl_cmd = shlex.split(curl_cmd_str)
+            try:
+                proc = subprocess.Popen(
+                    curl_cmd, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+                while proc.poll() is None:
+                    print(proc.stdout.readline()[:-1].decode())
+                print('Done!')
+            except KeyboardInterrupt:
+                time.sleep(1)
+                result = proc.stdout.readlines()
+                for message in result:
+                    print(message[:-1].decode())
+
+    elif args.md[0] == 'flash':
+        if 'esp32' in args.f:
+            print('Flashing firmware {} ...'.format(args.f))
+            esptool_cmd_str = "esptool.py --chip esp32 --port {} write_flash -z 0x1000 {}".format(args.md[1], args.f)
+            esptool_cmd = shlex.split(esptool_cmd_str)
+            try:
+                proc = subprocess.Popen(
+                    esptool_cmd, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+                while proc.poll() is None:
+                    print(proc.stdout.readline()[:-1].decode())
+                print('Done!')
+            except KeyboardInterrupt:
+                time.sleep(1)
+                result = proc.stdout.readlines()
+                for message in result:
+                    print(message[:-1].decode())
+        elif 'esp8266' in args.f:
+            esptool_cmd_str = "esptool.py --port {} --baud 460800 write_flash --flash_size=detect 0 {}".format(args.md[1], args.f)
+            esptool_cmd = shlex.split(esptool_cmd_str)
+            try:
+                proc = subprocess.Popen(
+                    esptool_cmd, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+                while proc.poll() is None:
+                    print(proc.stdout.readline()[:-1].decode())
+                print('Done!')
+            except KeyboardInterrupt:
+                time.sleep(1)
+                result = proc.stdout.readlines()
+                for message in result:
+                    print(message[:-1].decode())
+    sys.exit()
+# * GENERAL COMMANDS *
 # INFO :
 
 elif args.m == 'info':
@@ -1401,13 +1514,15 @@ elif args.m == 'info':
                 else:
                     print(e)
                     pass
-
-    dev_info = upyinfo[0].split("'")
-    print('SYSTEM NAME: {}'.format(dev_info[1]))
-    print('NODE NAME: {}'.format(dev_info[3]))
-    print('RELEASE: {}'.format(dev_info[5]))
-    print('VERSION: {}'.format(dev_info[7]))
-    print('MACHINE: {}'.format(dev_info[9]))
+    try:
+        dev_info = upyinfo[0].split("'")
+        print('SYSTEM NAME: {}'.format(dev_info[1]))
+        print('NODE NAME: {}'.format(dev_info[3]))
+        print('RELEASE: {}'.format(dev_info[5]))
+        print('VERSION: {}'.format(dev_info[7]))
+        print('MACHINE: {}'.format(dev_info[9]))
+    except Exception as e:
+        pass
     sys.exit()
 
 # ID:
