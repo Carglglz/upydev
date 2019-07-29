@@ -51,8 +51,15 @@ def get_fw_versions(keyword):
                 fw_links.append('www.micropython.org{}'.format(element[1:-1]))
                 fw_list.append(element[1:-1].split('/')[3])
     fw_dict = dict(zip(fw_list, fw_links))
-
     return fw_dict, fw_list
+
+
+def serial_ports():
+    ls_cmd_str = "/dev/tty.*"
+    # print('Available Serial ports are:')
+    # for port in glob.glob(ls_cmd_str):
+    #     print(port)
+    return glob.glob(ls_cmd_str)
 
 
 def run_command_rl(command):
@@ -651,11 +658,13 @@ helparg = '''Mode:
 - timeit: to measure execution time of a module/script indicated with -f option.
           This is an implementation of
           https://github.com/peterhinch/micropython-samples/tree/master/timed_function
-- fw: to list, get or flash available firmware versions, use -m option to indicate operation:
+- fw: to list or get available firmware versions, use -m option to indicate operation:
         to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266'
         to get do: "upydev fw -md get [firmware file]"
         to see available serial ports do: "upydev fw -md list serial_ports"
         to flash do: "upydev fw -md flash [serial port] -f [firmware file]"
+- flash: to flash a firmware file to the upydevice, a serial port must be indicated
+            to flash do: "upydev flash -port [serial port] -f [firmware file]"
 
 upy Commands:
 > GENERAL
@@ -833,7 +842,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'mqtt_pub', 'mqtt_sub', 'mqtt_check', 'socli_init',
                  'socli_conn', 'socli_send', 'socli_recv', 'socli_close',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
-                 'sosrv_close', 'rget_json', 'rget_text', 'fw']
+                 'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -923,7 +932,8 @@ parser.add_argument('-client', help='[ID] [BROKER ADDRESS] [USER] [PASSWORD]',
 parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGTH]; Server Socket [PORT] [BUFFER LENGTH]',
                     nargs='+')
 parser.add_argument('-md', help='for command suboptions',
-                    nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'flash', 'latest'])
+                    nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest'])
+parser.add_argument('-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
@@ -1454,38 +1464,38 @@ elif args.m == 'fw':
                 for message in result:
                     print(message[:-1].decode())
 
-    elif args.md[0] == 'flash':
-        if 'esp32' in args.f:
-            print('Flashing firmware {} ...'.format(args.f))
-            esptool_cmd_str = "esptool.py --chip esp32 --port {} write_flash -z 0x1000 {}".format(args.md[1], args.f)
-            esptool_cmd = shlex.split(esptool_cmd_str)
-            try:
-                proc = subprocess.Popen(
-                    esptool_cmd, stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT)
-                while proc.poll() is None:
-                    print(proc.stdout.readline()[:-1].decode())
-                print('Done!')
-            except KeyboardInterrupt:
-                time.sleep(1)
-                result = proc.stdout.readlines()
-                for message in result:
-                    print(message[:-1].decode())
-        elif 'esp8266' in args.f:
-            esptool_cmd_str = "esptool.py --port {} --baud 460800 write_flash --flash_size=detect 0 {}".format(args.md[1], args.f)
-            esptool_cmd = shlex.split(esptool_cmd_str)
-            try:
-                proc = subprocess.Popen(
-                    esptool_cmd, stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT)
-                while proc.poll() is None:
-                    print(proc.stdout.readline()[:-1].decode())
-                print('Done!')
-            except KeyboardInterrupt:
-                time.sleep(1)
-                result = proc.stdout.readlines()
-                for message in result:
-                    print(message[:-1].decode())
+elif args.m == 'flash':
+    if 'esp32' in args.f:
+        print('Flashing firmware {} ...'.format(args.f))
+        esptool_cmd_str = "esptool.py --chip esp32 --port {} write_flash -z 0x1000 {}".format(args.port, args.f)
+        esptool_cmd = shlex.split(esptool_cmd_str)
+        try:
+            proc = subprocess.Popen(
+                esptool_cmd, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+            while proc.poll() is None:
+                print(proc.stdout.readline()[:-1].decode())
+            print('Done!')
+        except KeyboardInterrupt:
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
+    elif 'esp8266' in args.f:
+        esptool_cmd_str = "esptool.py --port {} --baud 460800 write_flash --flash_size=detect 0 {}".format(args.port, args.f)
+        esptool_cmd = shlex.split(esptool_cmd_str)
+        try:
+            proc = subprocess.Popen(
+                esptool_cmd, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+            while proc.poll() is None:
+                print(proc.stdout.readline()[:-1].decode())
+            print('Done!')
+        except KeyboardInterrupt:
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
     sys.exit()
 # * GENERAL COMMANDS *
 # INFO :

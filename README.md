@@ -117,7 +117,7 @@ Example: Raw command
         (script must be in upy device or in sd card indicated by -s option
         and the sd card must be already mounted as 'sd');
 
-    ​	Supports *CTRL-C* to stop the execution and exits nicely.
+    ​	Supports *CTRL-C* to stop the execution and exit nicely.
 
     
     
