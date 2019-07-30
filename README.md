@@ -4,19 +4,45 @@
 
 ### Command line tool for wireless Micropython devices
 
-Name, AIM, description, source ideas/code etc...
+**uPydev** is an acronym of '**Micropy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running Micropython.
+
+ It is a command line tool for 'wireless Micropython devices' since it make use of the [WebREPL protocol](https://github.com/micropython/webrepl)  to provide communication with and control of the device.
+
+*uPydev is built on top of other tools/scripts which are:
+
+The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl) as seen in this [WebREPL pull request](https://github.com/micropython/webrepl/pull/37)
+
+Other tools are:
+
+'webrepl_cli.py'  for the file transfer protocol
+
+'esptool.py' to flash the firmware to esp boards
+
+'mpy-cross'  to compile .py scripts into .mpy files.
 
 ### Getting Started
 
+First be sure that the WebREPL daemon is enabled and running see [webrepl-a-prompt-over-wifi](http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#webrepl-a-prompt-over-wifi) and
 
+[webrepl-web-browser-interactive-prompt](http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt)
 
 #### Requirements:
 
+WebREPL enabled
 
+Python modules (automatically installed using pip):
+
+[argcomplete](https://github.com/kislyuk/argcomplete)
+
+[mpy-cross](https://gitlab.com/alelec/micropython/tree/gitlab_build/mpy-cross)
+
+[esptool](https://github.com/espressif/esptool)
 
 #### Tested on:
 
+MacOS X (Mojave)
 
+Raspbian Stretch Lite
 
 #### Installing using pip:
 
@@ -26,7 +52,7 @@ Name, AIM, description, source ideas/code etc...
 
 ##### Help:
 
-In cli :
+In CLI do :
 
 `$ upydev -h`
 
@@ -71,7 +97,7 @@ Example: uPy command
 
 `$ upydev info`
 
-Example: Raw command
+Example: Raw commands
 
 `$ upydev "my_func()"`
 
@@ -104,16 +130,14 @@ Example: Raw command
    `$ upydev cmd -r "print('Hello uPy')"`
 
    ` $ upydev cmd -rl "function_that_print_multiple_lines()"`
-
-
-
-    * *tip: simple commands can be used without quotes;*
-        *but for commands with parenthesis or special characters use quoutes,*
-        *for example: 'dummy_func()' ; use double quotes "" when the command*
-        *includes a string like this example: "uos.listdir('/sd')"*
+   
+   *  *tip: simple commands can be used without quotes;*
+     *but for commands with parenthesis or special characters use quoutes,*
+     *for example: 'dummy_func()' ; use double quotes "" when the command*
+     *includes a string like this example: "uos.listdir('/sd')"*
 
 - **wrepl** : to enter the terminal webrepl; write *exit* or press *CTRL-C* to exit
-        (see: https://github.com/Hermann-SW/webrepl for more information)
+        (see [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl) for more information)
 
 - **ping** : pings the target to see if it is reachable, *CTRL-C* to stop
 
@@ -123,25 +147,23 @@ Example: Raw command
 
     ​	Supports *CTRL-C* to stop the execution and exit nicely.
 
-
-
 - **install** : install libs to '/lib' path with upip; indicate lib with -f option
 
 - **mpyx** : to froze a module/script indicated with -f option, and save some RAM,
-         it uses mpy-cross tool (see https://gitlab.com/alelec/mpy_cross)
+         it uses mpy-cross tool (see [mpy-cross](https://gitlab.com/alelec/micropython/tree/gitlab_build/mpy-cross) for more information)
 
 - **timeit**: to measure execution time of a module/script indicated with -f option.
 
-  This is an adapted version of:
+  This is an adapted version of [timed_function](https://github.com/peterhinch/micropython-samples/tree/master/timed_function)
 
-   https://github.com/peterhinch/micropython-samples/tree/master/timed_function
 
 * **fw**: to list or get available firmware versions, use -md option to indicate operation:
-          to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266' (web scraping from www.micropython.org/downloads)
+          to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266' (web scraping from [micropython downloads page](www.micropython.org/downloads) )
           to get do: "upydev fw -md get [firmware file]" (uses curl)
           to see available serial ports do: "upydev fw -md list serial_ports"
 * **flash**: to flash a firmware file to the upydevice, a serial port must be indicated
               to flash do: "upydev flash -port [serial port] -f [firmware file]"
+* **see**:  to get specific command help info indicated with -c option
 
 ------
 
@@ -169,28 +191,24 @@ uPy commands are organized as:
 
 * **NETWORKING:**
 
-  *  ***MQTT:***
-  *  ***SOCKETS:***
-  *  ***UREQUEST:***
-
-
+  *  ***MQTT:*** commands to connect to a broker, subscribe to topic, publish and receive messages
+  *  ***SOCKETS:*** commands to start client/server socket and send/receive messages
+  *  ***UREQUEST:*** commands to make http requests, and get json or text output
 
   * **PORT/BOARD SPECIFIC COMMANDS**:
 
       * battery : if running on battery, gets battery voltage (esp32 huzzah feather)
       * pinout : to see the pinout reference/info of a board, indicated by -b option,
-               to request a single or a list of pins info use -po option
-      * specs : to see the board specs, indicated by -b option
+               to request a single or a list of pins info use -po option (currently just esp32 huzzah feather)
+      * specs : to see the board specs, indicated by -b option (currently just esp32 huzzah feather)
       * pin_status: to see pin state, to request a specific set use -po option
 
 ------
 
-#### Extensive explanation under:
+#### Extensive explanation:
 
-DOCS
+For an extensive explanation and commands demo see Documentation.md under DOCS folder.
 
 #### Addiontal Scripts for some commands:
 
-Explanation which one and where to find (also source)
-
-uPyutils
+The commands that need additional scripts in the upy device are under the uPyutils folder.

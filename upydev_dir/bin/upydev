@@ -630,7 +630,7 @@ def lognow(filename, sensor):
 
 
 # TODO: CLARIFY WHEN ADDITIONAL SCRIPT IS NEEDED (FROM UPYUTILS)
-# TODO: JSON DICT HELP COMMAND (upydev see -c [command])
+
 helparg = '''Mode:
 - config : to save upy device settings (see -p, -t, -g),
             so the target and password arguments wont be required any more
