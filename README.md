@@ -158,7 +158,7 @@ Example: Raw commands
 
 
 * **fw**: to list or get available firmware versions, use -md option to indicate operation:
-          to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266' (web scraping from [micropython downloads page](www.micropython.org/downloads) )
+          to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266' (web scraping from [micropython downloads page](https://www.micropython.org/downloads) )
           to get do: "upydev fw -md get [firmware file]" (uses curl)
           to see available serial ports do: "upydev fw -md list serial_ports"
 * **flash**: to flash a firmware file to the upydevice, a serial port must be indicated
