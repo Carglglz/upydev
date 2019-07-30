@@ -207,10 +207,11 @@ uPy commands are organized as:
 
 #### Extensive explanation:
 
-For an extensive explanation and commands demo see Documentation.md under DOCS folder.
+For an extensive explanation and commands demo see [Documentation](DOCS/Documentation.md).
 
 #### Addiontal Scripts for some commands:
 
 The commands that need additional scripts in the upy device are under the uPyutils folder.
 
-For more info see upyutils_docs.md under DOCS folder.
+For more info see [upyutils_docs](DOCS/upyutils_docs.md).
+
