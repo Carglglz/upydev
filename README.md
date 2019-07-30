@@ -212,3 +212,5 @@ For an extensive explanation and commands demo see Documentation.md under DOCS f
 #### Addiontal Scripts for some commands:
 
 The commands that need additional scripts in the upy device are under the uPyutils folder.
+
+For more info see upyutils_docs.md under DOCS folder.

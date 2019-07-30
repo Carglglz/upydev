@@ -1511,7 +1511,7 @@ elif args.m == 'see':
 
 elif args.m == 'info':
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        'uos.uname()', args.t, args.p)
+        'import uos;uos.uname();gc.collect()', args.t, args.p)
     cmd_resp = run_command_rl(cmd_str)
     resp = cmd_resp[1]
     upyinfo = []
@@ -1689,7 +1689,7 @@ elif args.m == 'filesize':
     if args.s is not None:
         file_name = '/{}/{}'.format(args.s, args.f)
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        "uos.stat('{}')".format(file_name), args.t, args.p)
+        "import uos;uos.stat('{}');gc.collect()".format(file_name), args.t, args.p)
     if args.f is None:
         dir = ''
         if args.s is not None:
@@ -1732,7 +1732,7 @@ elif args.m == 'filesys_info':
     if args.s is not None:
         filesys = '/{}'.format(args.s)
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        "uos.statvfs('{}')".format(filesys), args.t, args.p)
+        "import uos;uos.statvfs('{}');gc.collect()".format(filesys), args.t, args.p)
     cmd_resp = run_command_rl(cmd_str)
     resp = cmd_resp[1]
     filesys_info = []
@@ -1803,7 +1803,7 @@ elif args.m == 'netinfo':
 
 # NETINFOT
 
-elif args.m == 'netinfot':  # FIXME: break into simple commands
+elif args.m == 'netinfot':
     net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
     net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
     net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
@@ -2154,7 +2154,7 @@ elif args.m == 'apscan':
 
 elif args.m == 'i2c_config':
     i2c_po = {'scl': args.i2c[0], 'sda': args.i2c[1]}
-    cmd = "i2c_po = {}".format(i2c_po)
+    cmd = "i2c_po = {};gc.collect()".format(i2c_po)
     print('SCL = Pin({}), SDA = Pin({})'.format(args.i2c[0], args.i2c[1]))
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         cmd, args.t, args.p)
@@ -2224,7 +2224,7 @@ elif args.m == 'i2c_scan':
 elif args.m == 'spi_config':
     spi_po = {'sck': args.spi[0], 'miso': args.spi[1],
               'mosi': args.spi[2], 'cs': args.spi[3]}
-    cmd = "spi_po = {}".format(spi_po)
+    cmd = "spi_po = {};gc.collect()".format(spi_po)
     print('SCK = Pin({}), MISO = Pin({}), MOSI = Pin({}), CS = ({}))'.format(
         *args.spi))
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
@@ -2263,7 +2263,7 @@ elif args.m == 'set_localtime':
     datetime_tuple = datetime_local[:3]
     datetime_tuple.append(wkoy)
     datetime_final = datetime_tuple + datetime_local[3:] + [0]
-    utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}, {}));".format(
+    utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}, {}));gc.collect()".format(
         *datetime_final)
     settime_cmd = rtc_cmd + utc_zone_cmd
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
@@ -2295,7 +2295,7 @@ elif args.m == 'set_ntptime':
     rtc_cmd = "from machine import RTC;rtc = RTC();"
     ntptime_cmd = "from ntptime import settime;settime();"
     rtc_config = "(year, month, mday, week_of_year, hour, minute, second, milisecond) = rtc.datetime();"
-    utc_zone_cmd = "rtc.datetime((year, month, mday, week_of_year,hour+{}, minute, second, milisecond));".format(args.utc)
+    utc_zone_cmd = "rtc.datetime((year, month, mday, week_of_year,hour+{}, minute, second, milisecond));gc.collect()".format(args.utc)
     settime_cmd = rtc_cmd + ntptime_cmd + rtc_config + utc_zone_cmd
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         settime_cmd, args.t, args.p)
@@ -2323,7 +2323,7 @@ elif args.m == 'set_ntptime':
 # GET UPY DEVICE LOCALTIME
 elif args.m == 'get_datetime':
     get_time_cmd = "tnow = time.localtime();"
-    get_time2_cmd = "print('{}-{}-{};{}:{}:{}'.format(tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]))"
+    get_time2_cmd = "print('{}-{}-{};{}:{}:{}'.format(tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]));gc.collect()"
     get_datetime_cmd = get_time_cmd + get_time2_cmd
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         get_datetime_cmd, args.t, args.p)
@@ -2353,7 +2353,7 @@ elif args.m == 'get_datetime':
 # SD_ENABLE
 elif args.m == 'sd_enable':
     sd_enable_pin_config = "sd_enable=Pin({}, Pin.OUT);".format(args.po[0])
-    sd_enable_cmd = "sd_enable.value(not sd_enable.value());print(sd_enable.value())"
+    sd_enable_cmd = "sd_enable.value(not sd_enable.value());print(sd_enable.value());gc.collect()"
     sd_onoff_cmd = sd_enable_pin_config + sd_enable_cmd
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         sd_onoff_cmd, args.t, args.p)
@@ -2424,7 +2424,7 @@ elif args.m == 'sd_init':
 # SD_DEINIT
 
 elif args.m == 'sd_deinit':
-    sd_deinit_and_disable_cmd = "uos.umount('/sd');sd_enable.off()"
+    sd_deinit_and_disable_cmd = "uos.umount('/sd');sd_enable.off();gc.collect()"
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         sd_deinit_and_disable_cmd, args.t, args.p)
     print('Deinitialzing SD card...')
@@ -2452,7 +2452,7 @@ elif args.m == 'sd_deinit':
 # SD_AUTO
 
 elif args.m == 'sd_auto':
-    sd_auto_cmd = "import SD_AM"
+    sd_auto_cmd = "import SD_AM;gc.collect()"
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         sd_auto_cmd, args.t, args.p)
     run_live_cmd = shlex.split(cmd_str)
@@ -2582,7 +2582,7 @@ elif args.m == 'ads_init':
     print('Initialazing ads...')
     ads_init_cmd = "my_ads = ads.MY_ADS({},ads.i2c,None);".format(
         args.ads.upper())
-    ads_final_init = "my_ads.init()"
+    ads_final_init = "my_ads.init();gc.collect()"
     ads_init_cmd_str = import_ads_cmd + ads_init_cmd + ads_final_init
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         ads_init_cmd_str, args.t, args.p)
@@ -2610,7 +2610,7 @@ elif args.m == 'ads_init':
 # ADS_READ
 elif args.m == 'ads_read':
     if args.tm is None:
-        cmd = "my_ads.read_V()"
+        cmd = "my_ads.read_V();"
         cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
             cmd, args.t, args.p)
         cmd_resp = run_command_rl(cmd_str)
