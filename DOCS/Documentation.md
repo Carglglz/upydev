@@ -345,9 +345,7 @@ to configurate the servo pin with -po option
 
 to move the stepper to right or left, at a velocity and
     a numbers of steps indicated with -to option: [R or L] [velocity] [# steps]
-    R: right, L:left, velocity (1000-20000) (smaller is faster) and
-
-# steps (int), where 200 steps means a complete lap
+    R: right, L:left, velocity (1000-20000) (smaller is faster) and steps (int), where 200 steps means a complete lap
 
 NETWORKING:
     * MQTT:
