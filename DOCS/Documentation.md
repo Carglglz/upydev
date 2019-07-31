@@ -1,4 +1,3 @@
-
 <!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [uPydev Mode/Tools:](#upydev-modetools)
@@ -116,42 +115,229 @@
 
 ## config
 
- to save upy device settings (see -p, -t, -g),
+ to save upy device settings (see -p, -t, -g), (saves a config file 'upydev_.config')
 
 so the target and password arguments wont be required any more
+
+- To save configuration in working directory:
+
+  `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD]`
+
+  example:
+
+  ```
+  $ upydev config -t 192.168.1.58 -p mypass
+  upy device settings saved in working directory!
+  ```
+
+- To save configuration globally use -g option:
+
+  `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD] -g t`
+
+  example:
+
+  ```
+  $ upydev config -t 192.168.1.58 -p mypass -g t
+  upy device settings saved globally!
+  ```
+
+  
+
+ *upydev will use local working directory configuration unless it does not find any or manually indicated with -g option.*
 
 ## put
 
 to upload a file to upy device (see -f, -s and -rst)
 
+Usage: `$ upydev put -f [filename] [options]` 
+
+Examples:
+
+```
+$ upydev put -f dummy_script.py
+Uploading file dummy_script.py...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+dummy_script.py -> /dummy_script.py
+Remote WebREPL version: (1, 11, 0)
+Sent 44 of 44 bytes
+File Uploaded!
+Rebooting upy device...
+Done!
+```
+
+*By default upydev sends a reset command after uploading a new file, to disable reset use -rst f*
+
+*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'* 
+
+Disabling reset:
+
+```
+$ upydev put -f dummy_script.py -rst f
+Uploading file dummy_script.py...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+dummy_script.py -> /dummy_script.py
+Remote WebREPL version: (1, 11, 0)
+Sent 44 of 44 bytes
+File Uploaded!
+```
+
+Uploading to sd:
+
+```
+$ upydev put -f dummy_script.py -rst f -s sd
+Uploading file dummy_script.py...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+dummy_script.py -> /sd/dummy_script.py
+Remote WebREPL version: (1, 11, 0)
+Sent 44 of 44 bytes
+File Uploaded!
+```
+
+
+
 ## get
 
 to download a file from upy device (see -f and -s)
 
+Usage: `$ upydev get -f [filename] [options]` 
+
+Examples:
+
+```
+$ upydev get -f dummy_script.py
+Looking for file in upy device root dir
+Getting file dummy_script.py...
+op:get, host:192.168.1.53, port:8266, passwd:*******.
+dummy_script.py -> ./dummy_script.py
+Remote WebREPL version: (1, 11, 0)
+Received 44 bytes
+```
+
+*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'* 
+
+To get a file from sd:
+
+```
+$ upydev get -f dummy_script.py -s sd
+Looking in SD memory...
+Getting file dummy_script.py...
+op:get, host:192.168.1.53, port:8266, passwd:*******.
+/sd/dummy_script.py -> ./dummy_script.py
+Remote WebREPL version: (1, 11, 0)
+Received 44 bytes
+```
+
+
+
 ## sync
+
+*get operation use webrepl_cli.py and when it comes to 'large' files (+100 KB) is quite slow*
+
+*this mode was created to get log files from sd*
 
 for a faster transfer of large files
 (this needs sync_tool.py in upy device) (see -f, -s and -lh)
 
+```
+$ upydev sync -f logACC_26_6_2019_0_18_42.txt -s sd
+Looking in SD memory...
+Getting file logACC_26_6_2019_0_18_42.txt...
+logACC_26_6_2019_0_18_42.txt             Size:   490.3 KB
+Server listening...
+Connection received...
+Syncing file logACC_26_6_2019_0_18_42.txt from upy device
+Saving logACC_26_6_2019_0_18_42.txt file
+Done in 5.55 seconds
+```
+
+*it creates a server and a client and transfer the file using a tcp socket*
+
+*the server is the computer and the client the upy device*
+
+*if not using MacOS use -lh to indicate the local ip*
+
+*Linux automatic local ip detection is still on the way...*
+
 ## cmd
 
-to send command to upy device ; (see -c, -r, -rl);
-example: upydev cmd -c "led.on()" ; upydev cmd -r "print('Hello uPy')";
-        upydev cmd -rl "function_that_print_multiple_lines()";
+for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
 
-- tip: simple commands can be used without quotes;
-but for commands with parenthesis or special characters use quoutes,
-for example: 'dummy_func()' ; use double quotes "" when the command
-includes a string like this example: "uos.listdir('/sd')"
+- Examples:
+
+This send the command and returns without response
+
+`$ upydev cmd -c "led.on()"` 
+
+This sends a command a waits for a response (single line)
+
+```
+$ upydev cmd -r "print('Hello uPy')"
+Hello uPy
+```
+
+This sends a command a waits for a response (multiple lines)
+
+
+```
+$ upydev cmd -rl "import dummy_script"
+Hello there!
+Hello there!
+Hello there!
+Hello there!
+Hello there!
+```
+
+
+
+- *tip: simple commands can be used without quotes;*
+  *but for commands with parenthesis or special characters use quoutes,*
+  *for example: 'dummy_func()' ; use double quotes "" when the command*
+  *includes a string like this example: "uos.listdir('/sd')"*
 
 ## wrepl
 
 to enter the terminal webrepl; write 'exit' or press CTRL-C to exit
-(see: https://github.com/Hermann-SW/webrepl for more information)
+(see: [Terminal WebREPL](https://github.com/Hermann-SW/webrepl) for more information)
+
+```
+$ upydev wrepl
+Password:
+WebREPL connected
+>>>
+>>>
+MicroPython v1.11-37-g62f004ba4 on 2019-06-09; ESP32 module with ESP32
+Type "help()" for more information.
+>>> print('Hello')
+Hello
+>>> led.on()
+>>> led.off()
+>>> ^C### closed ###
+```
+
+
 
 ## ping
 
 pings the target to see if it is reachable, CTRL-C to stop \n
+
+```
+$ upydev ping
+PING 192.168.1.53 (192.168.1.53): 56 data bytes
+64 bytes from 192.168.1.53: icmp_seq=0 ttl=255 time=26.424 ms
+64 bytes from 192.168.1.53: icmp_seq=1 ttl=255 time=49.121 ms
+64 bytes from 192.168.1.53: icmp_seq=2 ttl=255 time=72.531 ms
+64 bytes from 192.168.1.53: icmp_seq=3 ttl=255 time=93.594 ms
+64 bytes from 192.168.1.53: icmp_seq=4 ttl=255 time=115.345 ms
+64 bytes from 192.168.1.53: icmp_seq=5 ttl=255 time=33.658 ms
+64 bytes from 192.168.1.53: icmp_seq=6 ttl=255 time=55.945 ms
+64 bytes from 192.168.1.53: icmp_seq=7 ttl=255 time=179.598 ms
+^C
+--- 192.168.1.53 ping statistics ---
+8 packets transmitted, 8 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 26.424/78.277/179.598/47.350 ms
+```
+
+
 
 ## run
 
@@ -175,6 +361,26 @@ it uses mpy-cross tool (see https://gitlab.com/alelec/mpy_cross)
 to measure execution time of a module/script indicated with -f option.
 This is an implementation of
 https://github.com/peterhinch/micropython-samples/tree/master/timed_function
+
+## fw
+
+to list or get available firmware versions, use -md option to indicate operation:
+
+ to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266'
+
+ to get do: "upydev fw -md get [firmware file]"
+
+to see available serial ports do: "upydev fw -md list serial_ports"
+
+## flash
+
+to flash a firmware file to the upydevice, a serial port must be indicated 
+
+to flash do: "upydev flash -port [serial port] -f [firmware file]"
+
+## see
+
+to get specific command help info indicated with -c option.
 
 # upy Commands:
 
