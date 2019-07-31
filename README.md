@@ -16,7 +16,7 @@ Other tools are:
 
 'webrepl_cli.py'  for the file transfer protocol
 
-'esptool.py' to flash the firmware to esp boards
+'esptool.py' to flash the firmware into esp boards
 
 'mpy-cross'  to compile .py scripts into .mpy files.
 
@@ -119,7 +119,7 @@ Example: Raw commands
 - **sync** : for a faster transfer of large files
     (this needs sync_tool.py in upy device) (*see -f, -s and -lh*)
 
-    *> sync_tool.py is under upyutils directory*
+    *> sync_tool.py is under [upyutils](upyutils) directory*
 
 - **cmd** : for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
 
@@ -158,9 +158,9 @@ Example: Raw commands
 
 
 * **fw**: to list or get available firmware versions, use -md option to indicate operation:
-          to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266' (web scraping from [micropython downloads page](https://www.micropython.org/downloads) )
-          to get do: "upydev fw -md get [firmware file]" (uses curl)
-          to see available serial ports do: "upydev fw -md list serial_ports"
+      - to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266' (web scraping from [micropython downloads page](https://www.micropython.org/downloads) )
+      - to get do: "upydev fw -md get [firmware file]" (uses curl)
+      -  to see available serial ports do: "upydev fw -md list serial_ports"
 * **flash**: to flash a firmware file to the upydevice, a serial port must be indicated
               to flash do: "upydev flash -port [serial port] -f [firmware file]"
 * **see**:  to get specific command help info indicated with -c option
@@ -175,12 +175,11 @@ uPy commands are organized as:
 
 * **SD:** These commands need *sdcard.py* in the upy device, and a sd module/shield at least.
 
-* **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under upyutils directory)
-
-  * ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115)
+* **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](upyutils) directory)
+* ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115)
   * ***IMU***: commands that make of the LSM9DS1 module, although other IMU modules could be easily implemented
   * ***Power:*** commands that make use of the INA219 module
-
+  
 * **OUTPUT:** These commands use the DAC or PWM of the board, some needs an actuator module (buzzer or motor driver and a motor) at least and the appropriate script in the upydevice.
 
   * ***DAC:*** to generate an analog signal (dc value, sine wave or square wave at the momment)
@@ -214,4 +213,3 @@ For an extensive explanation and commands demo see [Documentation](DOCS/Document
 The commands that need additional scripts in the upy device are under the uPyutils folder.
 
 For more info see [upyutils_docs](DOCS/upyutils_docs.md).
-

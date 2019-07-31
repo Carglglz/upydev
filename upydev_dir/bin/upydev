@@ -2263,7 +2263,7 @@ elif args.m == 'set_localtime':
     datetime_tuple = datetime_local[:3]
     datetime_tuple.append(wkoy)
     datetime_final = datetime_tuple + datetime_local[3:] + [0]
-    utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}, {}));gc.collect()".format(
+    utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}+3, {}));gc.collect()".format(
         *datetime_final)
     settime_cmd = rtc_cmd + utc_zone_cmd
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
