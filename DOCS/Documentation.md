@@ -1,110 +1,139 @@
-* [uPydev Mode/Tools](#uPydev-Mode/Tools:)  
 
-  - [config ](#config)  
+<!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
-  - [put ](#header-n6)  
-  - [get ](#header-n8)  
-  - [sync ](#header-n168)  
-  - [cmd ](#header-n173)  
-    	[wrepl ](#header-n17)  
-    	[ping ](#header-n182)  
-    	[run ](#header-n21)  
-    	[install ](#header-n196)  
-    	[mpyx ](#header-n28)  
-    	[timeit ](#header-n204)  
+- [uPydev Mode/Tools:](#upydev-modetools)
+	- [config](#config)
+	- [put](#put)
+	- [get](#get)
+	- [sync](#sync)
+	- [cmd](#cmd)
+	- [wrepl](#wrepl)
+	- [ping](#ping)
+	- [run](#run)
+	- [install](#install)
+	- [mpyx](#mpyx)
+	- [timeit](#timeit)
+- [upy Commands:](#upy-commands)
+	- [GENERAL](#general)
+		- [info](#info)
+		- [id](#id)
+		- [upysh](#upysh)
+		- [reset](#reset)
+		- [uhelp](#uhelp)
+		- [umodules](#umodules)
+		- [mem_info](#meminfo)
+		- [filesize](#filesize)
+		- [filesys_info](#filesysinfo)
+		- [netinfo](#netinfo)
+		- [netinfot](#netinfot)
+		- [netscan](#netscan)
+		- [netstat_on](#netstaton)
+		- [netstat_off](#netstatoff)
+		- [netstat_conn](#netstatconn)
+		- [netstat](#netstat)
+		- [ap_on](#apon)
+		- [ap_off](#apoff)
+		- [apstat](#apstat)
+		- [apconfig](#apconfig)
+		- [apscan](#apscan)
+		- [i2c_config](#i2cconfig)
+		- [i2c_scan](#i2cscan)
+		- [spi_config](#spiconfig)
+		- [set_localtime](#setlocaltime)
+		- [set_ntptime](#setntptime)
+		- [get_datetime](#getdatetime)
+	- [SD](#sd)
+		- [sd_enable](#sdenable)
+		- [sd_init](#sdinit)
+		- [sd_deinit](#sddeinit)
+		- [sd_auto](#sdauto)
+	- [INPUT](#input)
+		- [ADC](#adc)
+			- [adc_config](#adcconfig)
+			- [aread](#aread)
+			- [ads_init](#adsinit)
+			- [ads_read](#adsread)
+		- [IMU](#imu)
+			- [imu_init](#imuinit)
+			- [imuacc](#imuacc)
+			- [imuacc_sd](#imuaccsd)
+			- [imugy](#imugy)
+			- [imumag](#imumag)
+		- [POWER](#power)
+	- [OUTPUT](#output)
+		- [DAC](#dac)
+			- [dac_config](#dacconfig)
+			- [dac_write](#dacwrite)
+			- [dac_sig](#dacsig)
+		- [BUZZER:](#buzzer)
+			- [buzz_config](#buzzconfig)
+			- [buzz_set_alarm](#buzzsetalarm)
+			- [buzz_interrupt](#buzzinterrupt)
+			- [buzz_beep](#buzzbeep)
+		- [DC MOTOR](#dc-motor)
+			- [dcmotor_config](#dcmotorconfig)
+			- [dcmotor_move](#dcmotormove)
+			- [dcmotor_stop](#dcmotorstop)
+		- [SERVO:](#servo)
+			- [servo_config](#servoconfig)
+			- [servo_angle](#servoangle)
+		- [STEPPER MOTOR:](#stepper-motor)
+			- [stepper_config](#stepperconfig)
+			- [stepper_move](#steppermove)
+	- [NETWORKING:](#networking)
+		- [MQTT:](#mqtt)
+			- [mqtt_config](#mqttconfig)
+			- [mqtt_conn](#mqttconn)
+			- [mqtt_sub](#mqttsub)
+			- [mqtt_pub](#mqttpub)
+			- [mqtt_check](#mqttcheck)
+		- [SOCKETS:](#sockets)
+			- [socli_init](#socliinit)
+			- [socli_conn](#socliconn)
+			- [socli_send](#soclisend)
+			- [socli_recv](#soclirecv)
+			- [sosrv_init](#sosrvinit)
+			- [sosrv_start](#sosrvstart)
+			- [sosrv_send](#sosrvsend)
+			- [sosrv_recv](#sosrvrecv)
+		- [UREQUEST:](#urequest)
+			- [rget_json](#rgetjson)
+			- [rget_text](#rgettext)
+	- [Port/board specific commands:](#portboard-specific-commands)
+		- [battery](#battery)
+		- [pinout](#pinout)
+		- [specs](#specs)
+			- [pin_status](#pinstatus)
+		- [ESP32:](#esp32)
+			- [touch](#touch)
+			- [hall](#hall)
+			- [deepsleep](#deepsleep)
+			- [temp](#temp)
 
-* [upy Commands:](#header-n31)  
-  	[GENERAL](#header-n210)  
-  		[info ](#header-n34)  
-  		[id ](#header-n213)  
-  		[upysh](#header-n217)  
-  		[reset](#header-n40)  
-  		[uhelp ](#header-n42)  
-  		[umodules](#header-n226)  
-  		[mem\_info ](#header-n46)  
-  		[filesize ](#header-n48)  
-  		[filesys\_info ](#header-n50)  
-  		[netinfo ](#header-n239)  
-  		[netinfot ](#header-n54)  
-  		[netscan ](#header-n56)  
-  		[netstat\_on ](#header-n58)  
-  		[netstat\_off ](#header-n60)  
-  		[netstat\_conn ](#header-n62)  
-  		[netstat ](#header-n256)  
-  		[ap\_on ](#header-n66)  
-  		[ap\_off ](#header-n68)  
-  		[apstat ](#header-n70)  
-  		[apconfig ](#header-n72)  
-  		[apscan ](#header-n74)  
-  		[i2c\_config ](#header-n76)  
-  		[i2c\_scan ](#header-n78)  
-  		[spi\_config](#header-n80)  
-  		[set\_localtime](#header-n277)  
-  		[set\_ntptime](#header-n84)  
-  		[get\_datetime](#header-n283)  
-  	[SD](#header-n87)  
-  		[sd\_enable](#header-n90)  
-  		[sd\_init](#header-n92)  
-  		[sd\_deinit](#header-n94)  
-  		[sd\_auto ](#header-n96)  
-  	[INPUT](#header-n295)  
-  		[ADC](#header-n99)  
-  			[adc\_config ](#header-n102)  
-  			[aread ](#header-n104)  
-  			[ads\_init ](#header-n106)  
-  			[ads\_read ](#header-n108)  
-  		[IMU](#header-n115)  
-  			[imu\_init ](#header-n118)  
-  			[imuacc ](#header-n120)  
-  			[imuacc\_sd](#header-n128)  
-  			[imugy ](#header-n130)  
-  			[imumag ](#header-n132)  
-  		[POWER](#header-n134)  
-  	[OUTPUT](#header-n135)  
-  		[ DAC](#header-n328)  
-  			[dac\_confi](#header-n331)  
-  			[dac\_write](#header-n338)  
-  			[dac\_sig](#header-n340)  
-  		[BUZZER:](#header-n345)  
-  			[buzz\_config](#header-n348)  
-  			[buzz*set*alarm](#header-n389)  
-  			[buzz\_interrupt](#header-n352)  
-  			[buzz\_beep](#header-n354)  
-  		[DC MOTOR](#header-n356)  
-  			[dcmotor\_config](#header-n359)  
-  			[dcmotor\_move](#header-n361)  
-  			[dcmotor\_stop](#header-n404)  
-  		[SERVO:](#header-n365)  
-  			[servo\_config](#header-n368)  
-  			[servo\_angle](#header-n411)  
-  			[STEPPER MOTOR:](#header-n415)  
-  			[stepper\_config](#header-n375)  
-  			[stepper\_move](
-
-
+<!-- /TOC -->
 
 # uPydev Mode/Tools:
 
-## config 
+## config
 
  to save upy device settings (see -p, -t, -g),
 
 so the target and password arguments wont be required any more
 
-## put 
+## put
 
 to upload a file to upy device (see -f, -s and -rst)
 
-## get 
+## get
 
 to download a file from upy device (see -f and -s)
 
-## sync 
+## sync
 
 for a faster transfer of large files
 (this needs sync_tool.py in upy device) (see -f, -s and -lh)
 
-## cmd 
+## cmd
 
 to send command to upy device ; (see -c, -r, -rl);
 example: upydev cmd -c "led.on()" ; upydev cmd -r "print('Hello uPy')";
@@ -115,16 +144,16 @@ but for commands with parenthesis or special characters use quoutes,
 for example: 'dummy_func()' ; use double quotes "" when the command
 includes a string like this example: "uos.listdir('/sd')"
 
-## wrepl 
+## wrepl
 
 to enter the terminal webrepl; write 'exit' or press CTRL-C to exit
 (see: https://github.com/Hermann-SW/webrepl for more information)
 
-## ping 
+## ping
 
 pings the target to see if it is reachable, CTRL-C to stop \n
 
-## run 
+## run
 
 just calls import 'script', where 'script' is indicated by -f option
 (script must be in upydevice or in sd card indicated by -s option
@@ -132,16 +161,16 @@ and the sd card must be already mounted as 'sd');
 
 Supports CTRL-C to stop the execution and exits nicely.
 
-## install 
+## install
 
 install libs to '/lib' path with upip; indicate lib with -f option
 
-## mpyx 
+## mpyx
 
 to froze a module/script indicated with -f option, and save some RAM,
 it uses mpy-cross tool (see https://gitlab.com/alelec/mpy_cross)
 
-## timeit 
+## timeit
 
 to measure execution time of a module/script indicated with -f option.
 This is an implementation of
@@ -151,11 +180,11 @@ https://github.com/peterhinch/micropython-samples/tree/master/timed_function
 
 ## GENERAL
 
-### info 
+### info
 
  for upy device system info
 
-### id 
+### id
 
 for upy device unique id
 
@@ -168,7 +197,7 @@ acces upysh manual info)
 
 to do a soft reset in upy device
 
-### uhelp 
+### uhelp
 
 just calls micropython help
 
@@ -176,75 +205,75 @@ just calls micropython help
 
 just calls micropython help('modules')
 
-### mem_info 
+### mem_info
 
 for upy device RAM memory info; call it once to check actual memory,
 call it twice and it will free some memory
 
-### filesize 
+### filesize
 
  to get the size of file in root dir (default) or sd with '-s sd' option;
 if no file name indicated with -f option, prints all files
 
-### filesys_info 
+### filesys_info
 
 to get memory info of the file system, (total capacity, free, used),
 (default root dir, -s option to change)
 
-### netinfo 
+### netinfo
 
 for upy device network info if station is enabled and connected to an AP
 
-### netinfot 
+### netinfot
 
 same as netinfo but in table format
 
-### netscan 
+### netscan
 
 for upy device network scan
 
-### netstat_on 
+### netstat_on
 
 for enable STA
 
-### netstat_off 
+### netstat_off
 
 for disable STA
 
-### netstat_conn 
+### netstat_conn
 
 for connect to an AP , must provide essid and password (see -wp)
 
-### netstat 
+### netstat
 
 STA state ; returns True if enabled, False if disabled
 
-### ap_on 
+### ap_on
 
 for enable AP
 
-### ap_off 
+### ap_off
 
 for disable AP
 
-### apstat 
+### apstat
 
  AP state ; returns True if enabled, False if disabled
 
-### apconfig 
+### apconfig
 
 AP configuration of essid and password with authmode WPA/WPA2/PSK,
 (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
 
-### apscan 
+### apscan
 
 scan devices connected to AP; returns number of devices and mac address
 
-### i2c_config 
+### i2c_config
 
 to configurate the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
 
-### i2c_scan 
+### i2c_scan
 
 to scan i2c devices (must config i2c pins first)
 
@@ -280,7 +309,7 @@ create sd object and mounts as a filesystem, needs sdcard.py from []
 
 to unmount sd card
 
-### sd_auto 
+### sd_auto
 
 experimental command, needs a sd module with sd detection pin
 and the SD_AM.py script (see more info in []). Enable an Interrupt
@@ -302,11 +331,11 @@ to config analog pin to read from (see pinout, -po and -att)
 to read from an analog pin previously configurated
 ^EXTERNAL ADC: (I2C) ADS1115 ***
 
-#### ads_init 
+#### ads_init
 
 to initialize and configurate ADS1115 (see -ads)
 
-#### ads_read 
+#### ads_read
 
 to read from an analog pin previously configurated
 (see -tm option for stream mode, and -f for logging*)
@@ -318,7 +347,7 @@ use '-f now' for automatic 'log_mode_datetime.txt' name.
 
 ### IMU
 
-#### imu_init 
+#### imu_init
 
 initialize IMU, use -imu option to indicate the imu library.
 (default option is 'lsm9ds1', see sensor requirements for more info')
@@ -342,7 +371,7 @@ with the file format 'log_mode_datetime.txt'
 
 one shot read of the IMU gyroscope (deg/s)
 
-#### imumag 
+#### imumag
 
 one shot read of the IMU magnetometer (gauss)
 
@@ -354,7 +383,7 @@ one shot read of the IMU magnetometer (gauss)
 
 ###     DAC
 
-#### dac_confi
+#### dac_config
 
 to config analog pin to write to (use -po option)
 
@@ -418,7 +447,7 @@ to configurate the servo pin with -po option
 
 to move the servo an angle indicated by
 
-#### STEPPER MOTOR:
+### STEPPER MOTOR:
 
 #### stepper_config
 
@@ -430,44 +459,107 @@ to move the stepper to right or left, at a velocity and
     a numbers of steps indicated with -to option: [R or L] [velocity] [# steps]
     R: right, L:left, velocity (1000-20000) (smaller is faster) and steps (int), where 200 steps means a complete lap
 
-NETWORKING:
-    * MQTT:
-        - mqtt_config: to set id, broker address, user and password, use with -client option
-                       as "mqtt_config -client [ID] [BROKER ADDRESS] [USER] [PASSWORD]"
-        - mqtt_conn: to start a mqtt client and connect to broker; use mqtt_config first
-        - mqtt_sub: to subscribe to a topic, use -to option as "mqtt_sub -to [TOPIC]"
-        - mqtt_pub: to publish to a topic, use -to option as "mqtt_pub -to [TOPIC] [PAYLOAD]" or
-                    "mqtt_pub -to [PAYLOAD]" if already subscribed to a topic.
-        - mqtt_check: to check for new messages of the subscribed topics.
-    * SOCKETS:
-        - socli_init: to initiate a socket client use with -server option as
-                      "socli_init -server [IP] [PORT] [BUFFER LENGTH]"
-        - socli_conn: to connect the socket client to a server (inidcated by IP)
-        - socli_send: to send a message to the server, use -n option to indicate
-                      the message
-        - socli_recv: to receive a message from the server
-        - sosrv_init: to initiate a socket server, use with -server option as
-                      "sosrv_init -server [PORT] [BUFFER LENGTH]"
-        - sosrv_start: to start the server, waits for a connection
-        - sosrv_send: to send a message to the client, use -n option to indicate
-                      the message
-        - sosrv_recv: to receive a message from the client
-    * UREQUEST:
-        - rget_json: to make a request to API that returns a JSON response format
-                    (indicate API URL with -f option)
-        - rget_text: to make a request to API that returns a text response format
-                    (indicate API URL with -f option)
+## NETWORKING:
 
-Port/board specific commands:
+### MQTT:
 
-- battery : if running on battery, gets battery voltage (esp32 huzzah feather)
-- pinout : to see the pinout reference/info of a board, indicated by -b option,
-    to request a single or a list of pins info use -po option
-- specs : to see the board specs, indicated by -b option
-- pin_status: to see pin state, to request a specific set use -po option ***
+#### mqtt_config
 
-- ESP32:
-  - touch
-  - hall
-  - deepsleep
-  - temp
+to set id, broker address, user and password, use with -client option
+    as "mqtt_config -client [ID] [BROKER ADDRESS] [USER] [PASSWORD]"
+
+#### mqtt_conn
+
+to start a mqtt client and connect to broker; use mqtt_config first
+
+#### mqtt_sub
+
+to subscribe to a topic, use -to option as "mqtt_sub -to [TOPIC]"
+
+#### mqtt_pub
+
+to publish to a topic, use -to option as "mqtt_pub -to [TOPIC] [PAYLOAD]" or
+    "mqtt_pub -to [PAYLOAD]" if already subscribed to a topic.
+
+#### mqtt_check
+
+to check for new messages of the subscribed topics.
+
+### SOCKETS:
+
+#### socli_init
+
+to initiate a socket client use with -server option as
+    "socli_init -server [IP] [PORT] [BUFFER LENGTH]"
+
+#### socli_conn
+
+to connect the socket client to a server (inidcated by IP)
+
+#### socli_send
+
+to send a message to the server, use -n option to indicate
+    the message
+
+#### socli_recv
+
+to receive a message from the server
+
+#### sosrv_init
+
+to initiate a socket server, use with -server option as
+    "sosrv_init -server [PORT] [BUFFER LENGTH]"
+
+#### sosrv_start
+
+to start the server, waits for a connection
+
+#### sosrv_send
+
+to send a message to the client, use -n option to indicate
+    the message
+
+#### sosrv_recv
+
+to receive a message from the client
+
+### UREQUEST:
+
+#### rget_json
+
+to make a request to API that returns a JSON response format
+    (indicate API URL with -f option)
+
+#### rget_text
+
+to make a request to API that returns a text response format
+    (indicate API URL with -f option)
+
+## Port/board specific commands:
+
+### battery
+
+if running on battery, gets battery voltage (esp32 huzzah feather)
+
+### pinout
+
+to see the pinout reference/info of a board, indicated by -b option,
+to request a single or a list of pins info use -po option
+
+### specs
+
+to see the board specs, indicated by -b option
+
+#### pin_status
+
+to see pin state, to request a specific set use -po option ***
+
+### ESP32:
+
+#### touch
+
+#### hall
+
+#### deepsleep
+
+#### temp
