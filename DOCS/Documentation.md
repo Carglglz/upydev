@@ -347,30 +347,147 @@ and the sd card must be already mounted as 'sd');
 
 Supports CTRL-C to stop the execution and exits nicely.
 
+Example: (dummy script with ZeroDivisionError to show traceback output.)
+
+```
+$ upydev run -f udummy.py
+Running udummy.py...
+hello dummy!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "udummy.py", line 16, in <module>
+ZeroDivisionError: divide by zero
+
+Done!
+```
+
+Infinite loop dummy script to show CTRL-C stop.
+
+```
+$ upydev run -f dummy_inf_loop.py
+Running dummy_inf_loop.py...
+hello dummy!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+^C...closing...
+### closed ###
+Done!
+```
+
+
+
 ## install
 
 install libs to '/lib' path with upip; indicate lib with -f option
 
+```
+$ upydev install -f logging
+Looking for logging lib...
+Installing to: /lib/
+Warning: micropython.org SSL certificate is not validated
+Installing logging 0.3 from https://micropython.org/pi/logging/logging-0.3.tar.gz
+
+Library logging installed!
+```
+
+
+
 ## mpyx
 
 to froze a module/script indicated with -f option, and save some RAM,
-it uses mpy-cross tool (see https://gitlab.com/alelec/mpy_cross)
+it uses mpy-cross tool (see [mpy-cross](https://gitlab.com/alelec/mpy_cross) )
+
+```
+$ upydev mpyx -f dummy_script.py
+$ ls
+dummy_script.mpy		dummy_script.py			logACC_26_6_2019_0_18_42.txt	upydev_.config
+```
 
 ## timeit
 
 to measure execution time of a module/script indicated with -f option.
-This is an implementation of
-https://github.com/peterhinch/micropython-samples/tree/master/timed_function
+This is an implementation of [timed_function](https://github.com/peterhinch/micropython-samples/tree/master/timed_function)
+
+```
+$ upydev timeit -f dummy_time.py
+Running dummy_time.py...
+hello dummy!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+Script dummy_time Time = 165.696ms
+
+Done!
+```
+
+
 
 ## fw
 
-to list or get available firmware versions, use -md option to indicate operation:
+to list or get available firmware versions, (webscraping from [micropython downloads page](https://www.micropython.org/downloads) ) use -md option to indicate operation:
 
  to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266'
 
+```
+$ upydev fw -md list -b esp32
+Firmware versions found for esp32:
+esp32-20190731-v1.11-183-ga8e3201b3.bin
+esp32-20190529-v1.11.bin
+esp32-20190125-v1.10.bin
+esp32-20180511-v1.9.4.bin
+esp32--bluetooth.bin
+esp32spiram-20190731-v1.11-183-ga8e3201b3.bin
+esp32spiram-20190529-v1.11.bin
+esp32spiram-20190125-v1.10.bin
+```
+
  to get do: "upydev fw -md get [firmware file]"
 
+```
+upydev fw -md get esp32-20190731-v1.11-183-ga8e3201b3.bin
+Downloading esp32-20190731-v1.11-183-ga8e3201b3.bin ...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 1149k  100 1149k    0     0  1375k      0 --:--:-- --:--:-- --:--:-- 1376k
+
+Done!
+```
+
 to see available serial ports do: "upydev fw -md list serial_ports"
+
+```
+$ upydev fw -md list serial_ports
+Available Serial ports are:
+/dev/tty.SOC
+/dev/tty.MALS
+/dev/tty.Bluetooth-Incoming-Port
+/dev/tty.VHP-TW20BK-SerialPort
+```
 
 ## flash
 
@@ -378,9 +495,44 @@ to flash a firmware file to the upydevice, a serial port must be indicated
 
 to flash do: "upydev flash -port [serial port] -f [firmware file]"
 
+```
+$ upydev flash -port /dev/tty.SLAB_USBtoUART -f esp32-20190731-v1.11-183-ga8e3201b3.bin
+Flashing firmware esp32-20190731-v1.11-183-ga8e3201b3.bin ...
+esptool.py v2.6
+Serial port /dev/tty.SLAB_USBtoUART
+Connecting........_
+Chip is ESP32D0WDQ6 (revision 1)
+Features: WiFi, BT, Dual Core, Coding Scheme None
+MAC: 30:ae:a4:1e:73:f8
+Uploading stub...
+Running stub...
+Stub running...
+Configuring flash size...
+Auto-detected Flash size: 4MB
+Compressed 1177312 bytes to 735861...
+Wrote 1177312 bytes (735861 compressed) at 0x00001000 in 64.9 seconds (effective 145.2 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+
+Done!
+```
+
+
+
 ## see
 
 to get specific command help info indicated with -c option.
+
+```
+$ upydev see -c get
+ to download a file from upy device (see -f and -s)
+$ upydev see -c config
+ to save upy device settings (see -p, -t, -g), so the target and password arguments wont be required any more
+```
+
+
 
 # upy Commands:
 
