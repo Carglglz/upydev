@@ -469,7 +469,7 @@ esp32spiram-20190125-v1.10.bin
  to get do: "upydev fw -md get [firmware file]"
 
 ```
-upydev fw -md get esp32-20190731-v1.11-183-ga8e3201b3.bin
+$ upydev fw -md get esp32-20190731-v1.11-183-ga8e3201b3.bin
 Downloading esp32-20190731-v1.11-183-ga8e3201b3.bin ...
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
