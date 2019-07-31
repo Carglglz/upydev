@@ -194,13 +194,13 @@ uPy commands are organized as:
   *  ***SOCKETS:*** commands to start client/server socket and send/receive messages
   *  ***UREQUEST:*** commands to make http requests, and get json or text output
 
-  * **PORT/BOARD SPECIFIC COMMANDS**:
+* **PORT/BOARD SPECIFIC COMMANDS**:
 
-      * battery : if running on battery, gets battery voltage (esp32 huzzah feather)
-      * pinout : to see the pinout reference/info of a board, indicated by -b option,
-               to request a single or a list of pins info use -po option (currently just esp32 huzzah feather)
-      * specs : to see the board specs, indicated by -b option (currently just esp32 huzzah feather)
-      * pin_status: to see pin state, to request a specific set use -po option
+    * battery : if running on battery, gets battery voltage (esp32 huzzah feather)
+    * pinout : to see the pinout reference/info of a board, indicated by -b option,
+             to request a single or a list of pins info use -po option (currently just esp32 huzzah feather)
+    * specs : to see the board specs, indicated by -b option (currently just esp32 huzzah feather)
+    * pin_status: to see pin state, to request a specific set use -po option
 
 ------
 
