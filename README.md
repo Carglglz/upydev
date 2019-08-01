@@ -176,10 +176,11 @@ uPy commands are organized as:
 * **SD:** These commands need *sdcard.py* in the upy device, and a sd module/shield at least.
 
 * **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](upyutils) directory)
-* ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115)
-  * ***IMU***: commands that make of the LSM9DS1 module, although other IMU modules could be easily implemented
-  * ***Power:*** commands that make use of the INA219 module
-  
+    * ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115)
+    * ***IMU***: commands that make use of the LSM9DS1 module, although other IMU modules could be easily implemented
+    * ***WEATHER***: commands that make use of the BME280 module, although other weather sensor modules could be easily implemented
+    * ***POWER:*** commands that make use of the INA219 module.
+
 * **OUTPUT:** These commands use the DAC or PWM of the board, some needs an actuator module (buzzer or motor driver and a motor) at least and the appropriate script in the upydevice.
 
   * ***DAC:*** to generate an analog signal (dc value, sine wave or square wave at the momment)
