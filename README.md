@@ -176,25 +176,24 @@ uPy commands are organized as:
 * **SD:** These commands need *sdcard.py* in the upy device, and a sd module/shield at least.
 
 * **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](upyutils) directory)
-    * ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115)
-    * ***IMU***: commands that make use of the LSM9DS1 module, although other IMU modules could be easily implemented
-    * ***WEATHER***: commands that make use of the BME280 module, although other weather sensor modules could be easily implemented
+    * ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115) (for external module needs 'ads1115.py' and 'init_ADS.py')
+    * ***IMU***: commands that make use of the LSM9DS1 module, although other IMU modules could be easily implemented (needs 'lsm9ds1.py' and 'init_MY_IMU.py')
+    * ***WEATHER***: commands that make use of the BME280 module, although other weather sensor modules could be easily implemented (needs 'bme280.py' and 'init_BME280.py')
     * ***POWER:*** commands that make use of the INA219 module.
 
 * **OUTPUT:** These commands use the DAC or PWM of the board, some needs an actuator module (buzzer or motor driver and a motor) at least and the appropriate script in the upydevice.
 
-  * ***DAC:*** to generate an analog signal (dc value, sine wave or square wave at the momment)
-  * ***BUZZER***: to drive a buzzer with PWM
-  * ***DC MOTOR***: to control a DC motor (needs a motor driver and the appropriate script)
-  * ***SERVO:*** to drive a servo motor
-  * ***STEPPER MOTOR***: to drive stepper motor (needs a motor driver)
+  * ***DAC:*** to generate an analog signal (dc value, sine wave or square wave at the momment) (needs 'dac_signal_gen.py')
+  * ***BUZZER***: to drive a buzzer with PWM (needs 'buzzertools.py')
+  * ***DC MOTOR***: to control a DC motor (needs a motor driver and the appropriate script) (needs 'dcmotor.py')
+  * ***SERVO:*** to drive a servo motor (needs 'servo.py')
+  * ***STEPPER MOTOR***: to drive stepper motor (needs a motor driver and 'stepper.py')
 
 * **NETWORKING:**
-
-  *  ***MQTT:*** commands to connect to a broker, subscribe to topic, publish and receive messages
-  *  ***SOCKETS:*** commands to start client/server socket and send/receive messages
+*  ***MQTT:*** commands to connect to a broker, subscribe to topic, publish and receive messages (needs 'mqtt_client.py')
+  *  ***SOCKETS:*** commands to start client/server socket and send/receive messages (needs 'socket_client_server.py')
   *  ***UREQUEST:*** commands to make http requests, and get json or text output
-
+  
 * **PORT/BOARD SPECIFIC COMMANDS**:
 
     * battery : if running on battery, gets battery voltage (esp32 huzzah feather)
