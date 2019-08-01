@@ -540,116 +540,365 @@ $ upydev see -c config
 
 ### info
 
- for upy device system info
+ for upy device system info.
+
+```
+$ upydev info
+SYSTEM NAME: esp32
+NODE NAME: esp32
+RELEASE: 1.11.0
+VERSION: v1.11-37-g62f004ba4 on 2019-06-09
+MACHINE: ESP32 module with ESP32
+```
 
 ### id
 
 for upy device unique id
+
+```
+$ upydev id
+ID: b'30aea4233564'
+```
 
 ### upysh
 
 to enable the upy shell in the upy device (then do 'upydev man' to
 acces upysh manual info)
 
+```
+$ upydev upysh
+
+upysh is intended to be imported using:
+from upysh import *
+To see this help text again, type "man".
+upysh commands:
+pwd, cd("new_dir"), ls, ls(...), head(...), cat(...)
+newfile(...), mv("old", "new"), rm(...), mkdir(...), rmdir(...),
+clear
+```
+
 ### reset
 
 to do a soft reset in upy device
+
+```
+$ upydev reset
+Rebooting upy device...
+```
 
 ### uhelp
 
 just calls micropython help
 
+```
+$ upydev uhelp
+Welcome to MicroPython on the ESP32!
+For generic online docs please visit http://docs.micropython.org/
+For access to the hardware use the 'machine' module:
+import machine
+pin12 = machine.Pin(12, machine.Pin.OUT)
+pin12.value(1)
+pin13 = machine.Pin(13, machine.Pin.IN, machine.Pin.PULL_UP)
+print(pin13.value())
+i2c = machine.I2C(scl=machine.Pin(21), sda=machine.Pin(22))
+i2c.scan()
+i2c.writeto(addr, b'1234')
+i2c.readfrom(addr, 4)
+Basic WiFi configuration:
+import network
+sta_if = network.WLAN(network.STA_IF); sta_if.active(True)
+sta_if.scan()                             # Scan for available access points
+sta_if.connect("<AP_name>", "<password>") # Connect to an AP
+sta_if.isconnected()                      # Check for successful connection
+Control commands:
+CTRL-A        -- on a blank line, enter raw REPL mode
+CTRL-B        -- on a blank line, enter normal REPL mode
+CTRL-C        -- interrupt a running program
+CTRL-D        -- on a blank line, do a soft reset of the board
+CTRL-E        -- on a blank line, enter paste mode
+For further help on a specific object, type help(obj)
+For a list of available modules, type help('modules')
+```
+
 ### umodules
 
 just calls micropython help('modules')
+
+```
+$ upydev umodules
+__main__          framebuf          socket            upip
+_boot             gc                ssl               upip_utarfile
+_onewire          hashlib           struct            upysh
+_thread           heapq             sys               urandom
+_webrepl          inisetup          time              ure
+apa106            io                ubinascii         urequests
+array             json              ucollections      uselect
+binascii          machine           ucryptolib        usocket
+btree             math              uctypes           ussl
+builtins          micropython       uerrno            ustruct
+cmath             neopixel          uhashlib          utime
+collections       network           uhashlib          utimeq
+dht               ntptime           uheapq            uwebsocket
+ds18x20           onewire           uio               uzlib
+errno             os                ujson             webrepl
+esp               random            umqtt/robust      webrepl_setup
+esp32             re                umqtt/simple      websocket_helper
+flashbdev         select            uos               zlib
+Plus any modules on the filesystem
+```
 
 ### mem_info
 
 for upy device RAM memory info; call it once to check actual memory,
 call it twice and it will free some memory
 
+```
+$ upydev mem_info
+stack: 704 out of 15360
+GC: total: 119616, used: 9776, free: 109840
+No. of 1-blocks: 133, 2-blocks: 29, max blk sz: 264, max free sz: 6842
+```
+
 ### filesize
 
  to get the size of file in root dir (default) or sd with '-s sd' option;
 if no file name indicated with -f option, prints all files
+
+```
+$ upydev filesize
+boot.py                                  Size:     137 by
+webrepl_cfg.py                           Size:      17 by
+main.py                                  Size:     2.9 KB
+sdcard.py                                Size:     8.5 KB
+lsm9ds1.py                               Size:     7.1 KB
+init_IMU.py                              Size:     2.4 KB
+SD_AM.py                                 Size:     3.3 KB
+ssd1306.py                               Size:     5.7 KB
+sync_tool.py                             Size:     2.4 KB
+udummy.py                                Size:     315 by
+lib                                      Size:       0 by
+init_MY_IMU.py                           Size:     7.1 KB
+servo.py                                 Size:     1.4 KB
+init_ADS.py                              Size:     6.9 KB
+ads1115.py                               Size:     9.8 KB
+dac_signal_gen.py                        Size:     2.3 KB
+buzzertools.py                           Size:     3.0 KB
+stepper.py                               Size:     1.2 KB
+dcmotor.py                               Size:     967 by
+mqtt_client.py                           Size:     1.3 KB
+dummy_time.py                            Size:     279 by
+time_it.py                               Size:     334 by
+socket_client_server.py                  Size:     3.3 KB
+dummy_inf_loop.py                        Size:     267 by
+dummy_script.py                          Size:      44 by
+bme280.py                                Size:     8.8 KB
+init_BME280.py                           Size:     3.2 KB
+```
 
 ### filesys_info
 
 to get memory info of the file system, (total capacity, free, used),
 (default root dir, -s option to change)
 
+```
+$ upydev filesys_info
+Flash Memory
+TOTAL: 2.1 MB , FREE: 1.8 MB , USED: 274.4 KB
+```
+
+```
+$ upydev filesys_info -s sd
+/sd Memory
+TOTAL: 8.0 GB , FREE: 7.5 GB , USED: 568.8 MB
+```
+
 ### netinfo
 
 for upy device network info if station is enabled and connected to an AP
+
+```
+$ upydev netinfo
+IF CONFIG: ('192.168.1.53', '255.255.255.0', '192.168.1.1', '82.28.41.220')
+ESSID: 'TP-Link_80CC'
+RSSI: -43 dB
+```
 
 ### netinfot
 
 same as netinfo but in table format
 
+```
+$ upydev netinfot
+IF CONFIG:
+```
+
+| IP           | SUBNET        | GATEAWAY    | DNS          | ESSID          | RSSI (dB) |
+| ------------ | ------------- | ----------- | ------------ | -------------- | --------- |
+| 192.168.1.53 | 255.255.255.0 | 192.168.1.1 | 82.28.41.220 | 'TP-Link_80CC' | -42       |
+
 ### netscan
 
 for upy device network scan
+
+```
+$ upydev netscan
+```
+
+| ESSID        | BSSID              | CHANNEL | RSSI (dB) | AUTHMODE     | HIDDEN |
+| ------------ | ------------------ | ------- | --------- | ------------ | ------ |
+| TP-Link_80CC | b'pOW\xb5\x80\xcc' | 1       | -43       | WPA/WAP2 PSK | False  |
 
 ### netstat_on
 
 for enable STA
 
+```
+$ upydev netstat_on
+True
+```
+
 ### netstat_off
 
 for disable STA
+
+```
+$ upydev netstat_off
+False
+```
 
 ### netstat_conn
 
 for connect to an AP , must provide essid and password (see -wp)
 
+Usage: upydev netstat_conn -wp [SSID] [PASSWORD]
+
+```
+$ upydev netstat_conn -wp TP-Link_80CC f1a4k3e9p1a2s4s
+```
+
 ### netstat
 
 STA state ; returns True if enabled, False if disabled
+
+```
+$ upydev netstat
+STA ENABLED: True
+```
 
 ### ap_on
 
 for enable AP
 
+```
+$ upydev ap_on
+True
+```
+
 ### ap_off
 
 for disable AP
 
+```
+$ upydev ap_off
+False
+```
+
 ### apstat
 
- AP state ; returns True if enabled, False if disabled
+ AP state and configuration 
+
+```
+$ upydev apstat
+AP INFO:
+```
+
+| AP ENABLED  | ESSID         | CHANNEL      | AUTHMODE     |
+| ----------- | ------------- | ------------ | ------------ |
+| True        | 'ESP-32'      | 1            | WPA/WAP2 PSK |
+| **IP**      | **SUBNET**    | **GATEAWAY** | **DNS**      |
+| 192.168.4.1 | 255.255.255.0 | 192.168.4.1  | 0.0.0.0      |
 
 ### apconfig
 
 AP configuration of essid and password with authmode WPA/WPA2/PSK,
 (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
 
+Usage: upydev apconfig -ap [SSID] [PASSWORD]
+
+```
+$ upydev apconfig -ap ESP-32 f1a4k3e9p1a2s4s
+```
+
 ### apscan
 
 scan devices connected to AP; returns number of devices and mac address
+
+```
+$ upydev apscan
+Found 1 devices:
+[(b'\xdc\x0b4\xbd\xe8\x0b',)]
+```
 
 ### i2c_config
 
 to configurate the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
 
+```
+$ upydev i2c_config
+SCL = Pin(22), SDA = Pin(23)
+```
+
 ### i2c_scan
 
 to scan i2c devices (must config i2c pins first)
+
+```
+$ upydev i2c_scan
+Found 2 devices:
+[30, 107]
+Hex:
+['0x1e', '0x6b']
+```
 
 ### spi_config
 
 to configurate the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
 
+```
+$ upydev spi_config
+SCK = Pin(5), MISO = Pin(19), MOSI = Pin(18), CS = (21))
+```
+
 ### set_localtime
 
 to pass host localtime and set upy device rtc
+
+```
+$ upydev set_localtime
+Setting local time: 08-01-2019;19:19:18
+
+Done!
+```
 
 ### set_ntptime
 
 to set rtc from server, (see -utc for time zone)
 
+```
+$ upydev set_ntptime -utc 1
+Setting time UTC+1
+
+Done!
+```
+
 ### get_datetime
 
 to get date and time (must be set first, see above commands)
+
+```
+$ upydev get_datetime
+8-1-2019;19:20:29
+```
 
 ## SD
 
