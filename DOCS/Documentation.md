@@ -750,7 +750,7 @@ $ upydev netscan
 
 ### netstat_on
 
-for enable STA
+To enable STA
 
 ```
 $ upydev netstat_on
@@ -759,7 +759,7 @@ True
 
 ### netstat_off
 
-for disable STA
+to disable STA
 
 ```
 $ upydev netstat_off
@@ -768,7 +768,7 @@ False
 
 ### netstat_conn
 
-for connect to an AP , must provide essid and password (see -wp)
+To connect to an AP , must provide essid and password (see -wp)
 
 Usage: upydev netstat_conn -wp [SSID] [PASSWORD]
 
@@ -787,7 +787,7 @@ STA ENABLED: True
 
 ### ap_on
 
-for enable AP
+To enable AP
 
 ```
 $ upydev ap_on
@@ -796,7 +796,7 @@ True
 
 ### ap_off
 
-for disable AP
+To disable AP
 
 ```
 $ upydev ap_off
