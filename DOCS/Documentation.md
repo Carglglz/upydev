@@ -1024,7 +1024,7 @@ one shot read of the IMU lineal accelerometer (g=-9.8m/s^2),
 
 
 
-![](/Users/carlosgilgonzalez/Desktop/IBM_PROJECTS/MICROPYTHON/TOOLS/upydev_tool/DOCS/cmd_gifs/imuacc_cmd.gif)
+![](./DOCS/cmd_gifs/imuacc_cmd.gif)
 
 #### imuacc_sd
 
