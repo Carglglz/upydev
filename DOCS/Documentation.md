@@ -23,38 +23,39 @@
 		- [reset](#reset)
 		- [uhelp](#uhelp)
 		- [umodules](#umodules)
-		- [mem_info](#meminfo)
+		- [mem_info](#mem_info)
 		- [filesize](#filesize)
-		- [filesys_info](#filesysinfo)
+		- [filesys_info](#file_sysinfo)
 		- [netinfo](#netinfo)
 		- [netinfot](#netinfot)
 		- [netscan](#netscan)
-		- [netstat_on](#netstaton)
-		- [netstat_off](#netstatoff)
-		- [netstat_conn](#netstatconn)
+		- [netstat_on](#netstat_on)
+		- [netstat_off](#netstat_off)
+		- [netstat_conn](#netstat_conn)
 		- [netstat](#netstat)
-		- [ap_on](#apon)
-		- [ap_off](#apoff)
+		- [ap_on](#ap_on)
+		- [ap_off](#a_poff)
 		- [apstat](#apstat)
 		- [apconfig](#apconfig)
 		- [apscan](#apscan)
-		- [i2c_config](#i2cconfig)
-		- [i2c_scan](#i2cscan)
-		- [spi_config](#spiconfig)
-		- [set_localtime](#setlocaltime)
-		- [set_ntptime](#setntptime)
-		- [get_datetime](#getdatetime)
+		- [i2c_config](#i2c_config)
+		- [i2c_scan](#i2c_scan)
+		- [spi_config](#spi_config)
+		- [set_localtime](#set_localtime)
+		- [set_ntptime](#set_ntptime)
+		- [get_datetime](#get_datetime)
 	- [SD](#sd)
 		- [sd_enable](#sdenable)
-		- [sd_init](#sdinit)
-		- [sd_deinit](#sddeinit)
-		- [sd_auto](#sdauto)
+		- [sd_init](#sd_init)
+		- [sd_deinit](#sd_deinit)
+		- [sd_auto](#sd_auto)
 	- [INPUT](#input)
 		- [ADC](#adc)
-			- [adc_config](#adcconfig)
+			- [adc_config](#adc_config)
 			- [aread](#aread)
-			- [ads_init](#adsinit)
-			- [ads_read](#adsread)
+		- [EXTERNAL ADC](#external-adc)
+			- [ads_init](#ads_init)
+			- [ads_read](#ads_read)
 		- [IMU](#imu)
 			- [imu_init](#imuinit)
 			- [imuacc](#imuacc)
@@ -851,6 +852,8 @@ Found 1 devices:
 
 to configurate the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
 
+Usage: upydev i2c_config -i2c [SCL] [SDA]
+
 ```
 $ upydev i2c_config
 SCL = Pin(22), SDA = Pin(23)
@@ -871,6 +874,8 @@ Hex:
 ### spi_config
 
 to configurate the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
+
+Usage: upydev spi_config -spi [SCK] [MISO] [MOSI] [CS]
 
 ```
 $ upydev spi_config
@@ -980,16 +985,34 @@ logACC.txt                               Size:   568.3 KB
 
 ### ADC
 
-^ON BOARD ADCS:
+**ON BOARD ADCS*:
 
 #### adc_config  
 
 to config analog pin to read from (see pinout, -po and -att)
 
+```
+$ upydev adc_config -po 39 -att 3
+
+Pin 39 configurated as Analog Input with ATTN_11DB attenuation
+```
+
 #### aread  
 
 to read from an analog pin previously configurated
-^EXTERNAL ADC: (I2C) ADS1115 ***
+
+```
+$ upydev aread
+Volts: 0.0
+$ upydev aread
+Volts: 3.6
+```
+
+
+
+### EXTERNAL ADC 
+
+*Module ADS1115*
 
 #### ads_init
 

@@ -615,6 +615,32 @@ def test_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
             print('Done!')
 
 
+def simple_cmd_r(cmd):
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    resp_info_list = []
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    resp_info_list.append(line[4:])
+                else:
+                    print(line)
+
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    if len(resp_info_list) > 0:
+        return resp_info_list[0]
+
+
 def print_sizefile(file_name, filesize, tabs=0):
     if filesize < 1000:
         sizestr = str(filesize) + " by"
@@ -982,6 +1008,8 @@ parser.add_argument('-imu', help='to select the imu library',
                     default='lsm9ds1')
 parser.add_argument('-ads', help='to select the ads library and config options',
                     default='ads1115')
+parser.add_argument('-ch', help='to select the ads analog channel to read from',
+                    type=int, default=0)
 parser.add_argument('-bme', help='to select the bme library and config options',
                     default='bme280')
 parser.add_argument('-ina', help='to select the ina library and config options',
@@ -2645,8 +2673,8 @@ elif args.m == 'ads_init':
     import_ads_cmd = "from {} import {};import init_ADS as ads;".format(
         args.ads, args.ads.upper())
     print('Initialazing ads...')
-    ads_init_cmd = "my_ads = ads.MY_ADS({},ads.i2c,None);".format(
-        args.ads.upper())
+    ads_init_cmd = "my_ads = ads.MY_ADS({},ads.i2c,None,channel={});".format(
+        args.ads.upper(), args.ch)
     ads_final_init = "my_ads.init();gc.collect()"
     ads_init_cmd_str = import_ads_cmd + ads_init_cmd + ads_final_init
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
@@ -2728,7 +2756,8 @@ elif args.m == 'ads_read':
         # run_live(stream_acc, args.t, args.p)
         # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
         fq = 1/(args.tm/1000)
-        print('Streaming ADS: A0 (voltage),fq={}Hz'.format(fq))
+        ch = simple_cmd_r('my_ads.channel')
+        print('Streaming ADS: A{} (voltage),fq={}Hz'.format(ch, fq))
         if args.f is not None:
             args.f = lognow(args.f, args.m)
             print('Saving file {} ...'.format(args.f))
@@ -2752,7 +2781,8 @@ elif args.m == 'ads_read':
         # run_live(stream_acc, args.t, args.p)
         # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
         fq = 1/(args.tm/1000)
-        print('Streaming ADS: A0 (voltage),fq={}Hz'.format(fq))
+        ch = simple_cmd_r('my_ads.channel')
+        print('Streaming ADS: A{} (voltage),fq={}Hz'.format(ch, fq))
         if args.f is not None:
             args.f = lognow(args.f, args.m)
             print('Saving file {} ...'.format(args.f))

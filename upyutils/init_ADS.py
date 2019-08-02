@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # @Author: carlosgilgonzalez
 # @Date:   2019-03-13T22:31:44+00:00
 # @Last modified by:   carlosgilgonzalez
@@ -15,10 +14,14 @@ i2c = I2C(scl=Pin(22), sda=Pin(23))
 
 
 class MY_ADS:
-    def __init__(self, my_ads_class, i2c, cli_soc=None):
+    def __init__(self, my_ads_class, i2c, cli_soc=None, channel=0):
         self.cli_soc = None
         self.i2c = i2c
         self.addr = 72
+        self.range_dict = {0: 6.144, 1: 4.096, 2: 2.048, 3: 1.024, 4: 0.512,
+                           5: 0.256}
+        self.gain_dict = {0: 'x2/3', 1: 'x1', 2: 'x2', 3: 'x4', 4: 'x8',
+                          5: 'x16'}
         self.gain = 1
         self.BUFFERSIZE = const(20)
         self.buff = bytearray(1)
@@ -30,6 +33,7 @@ class MY_ADS:
         self.variables = None
         self.data = array("f", (0 for _ in range(self.BUFFERSIZE)))
         self.index_put = 0
+        self.channel = channel
 
     def init(self):
         ready = 0
@@ -38,8 +42,11 @@ class MY_ADS:
                 self.ads = self.ads_lib(self.i2c, self.addr, self.gain)
                 ready = 1
                 time.sleep(1)
-                self.ads.set_conv(7, 0)
+                self.ads.set_conv(7, channel1=self.channel)
                 print('ads ready!')
+                print('ADS configuration:')
+                print('Channel: A{} | Voltage Range: +/- {} V | Gain: {} V/V'.format(
+                    self.channel, self.range_dict[self.gain], self.gain_dict[self.gain]))
             except Exception as e:
                 pass
             time.sleep(1)
@@ -82,7 +89,7 @@ class MY_ADS:
 
     def start_send(self, sampling_sensor, timeout=100):
         self.irq_busy = False
-        self.ads.conversion_start(7, 0)
+        self.ads.conversion_start(7, channel1=self.channel)
         self.tim.init(period=timeout, mode=Timer.PERIODIC,
                       callback=sampling_sensor)
 
