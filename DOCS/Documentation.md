@@ -12,6 +12,9 @@
 	- [install](#install)
 	- [mpyx](#mpyx)
 	- [timeit](#timeit)
+	- [fw](#fw)
+	- [flash](#flash)
+	- [see](#see)
 - [upy Commands:](#upy-commands)
 	- [GENERAL](#general)
 		- [info](#info)
@@ -58,7 +61,12 @@
 			- [imuacc_sd](#imuaccsd)
 			- [imugy](#imugy)
 			- [imumag](#imumag)
-		- [POWER](#power)
+		- [WEATHER SENSOR: (BME280)](#weather-sensor-bme280)
+			- [bme_init](#bmeinit)
+			- [bme_read](#bmeread)
+		- [POWER SENSOR: (INA219)](#power-sensor-ina219)
+			- [ina_init](#inainit)
+			- [ina_read](#inaread)
 	- [OUTPUT](#output)
 		- [DAC](#dac)
 			- [dac_config](#dacconfig)
@@ -141,7 +149,7 @@ so the target and password arguments wont be required any more
   upy device settings saved globally!
   ```
 
-  
+
 
  *upydev will use local working directory configuration unless it does not find any or manually indicated with -g option.*
 
@@ -149,7 +157,7 @@ so the target and password arguments wont be required any more
 
 to upload a file to upy device (see -f, -s and -rst)
 
-Usage: `$ upydev put -f [filename] [options]` 
+Usage: `$ upydev put -f [filename] [options]`
 
 Examples:
 
@@ -167,7 +175,7 @@ Done!
 
 *By default upydev sends a reset command after uploading a new file, to disable reset use -rst f*
 
-*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'* 
+*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'*
 
 Disabling reset:
 
@@ -199,7 +207,7 @@ File Uploaded!
 
 to download a file from upy device (see -f and -s)
 
-Usage: `$ upydev get -f [filename] [options]` 
+Usage: `$ upydev get -f [filename] [options]`
 
 Examples:
 
@@ -213,7 +221,7 @@ Remote WebREPL version: (1, 11, 0)
 Received 44 bytes
 ```
 
-*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'* 
+*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'*
 
 To get a file from sd:
 
@@ -266,7 +274,7 @@ for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
 
 This send the command and returns without response
 
-`$ upydev cmd -c "led.on()"` 
+`$ upydev cmd -c "led.on()"`
 
 This sends a command a waits for a response (single line)
 
@@ -388,7 +396,7 @@ bye bye!
 bye bye!
 bye bye!
 ^C...closing...
-### closed ###
+.### closed ###
 Done!
 ```
 
@@ -491,7 +499,7 @@ Available Serial ports are:
 
 ## flash
 
-to flash a firmware file to the upydevice, a serial port must be indicated 
+to flash a firmware file to the upydevice, a serial port must be indicated
 
 to flash do: "upydev flash -port [serial port] -f [firmware file]"
 
@@ -805,7 +813,7 @@ False
 
 ### apstat
 
- AP state and configuration 
+ AP state and configuration
 
 ```
 $ upydev apstat
@@ -902,26 +910,71 @@ $ upydev get_datetime
 
 ## SD
 
+*This set of commands requires a sd module/breakout board*
+
 ### sd_enable
+
+*If the module has a dedicated regulator that can be enabled by digital logic*
 
 to enable/disable the LDO 3.3V regulator that powers the SD module
 use -po option to indicate the Pin.
 
+```
+$ upydev sd_enable -po 15
+1
+SD ENABLED
+```
+
 ### sd_init
 
 to initialize the sd card; (spi must be configurated first)
-create sd object and mounts as a filesystem, needs sdcard.py from []
+create sd object and mounts as a filesystem, needs sdcard.py from upytuils directory
+
+*Prints os.listdir('/') to see sd succesfully mounted*
+
+```
+upydev sd_init
+Initialzing SD card...
+['sd', 'boot.py', 'webrepl_cfg.py', 'main.py', 'sdcard.py']
+Done!
+```
 
 ### sd_deinit
 
 to unmount sd card
 
+```
+$ upydev sd_deinit
+Deinitialzing SD card...
+
+Done!
+```
+
 ### sd_auto
 
-experimental command, needs a sd module with sd detection pin
-and the SD_AM.py script (see more info in []). Enable an Interrupt
+*if the module has sd detection pins, it uses pin 15 for detection and pin 4 for signal*
+
+*It also use pin 13 (led in esp32 huzzah) as an indicator that blinks when sd is detected or extracted*
+
+Experimental command, needs a sd module with sd detection pin
+and the SD_AM.py script . Enable an Interrupt
 with the sd detection pin, so it mounts the sd when is detected,
 and unmount the sd card when is extracted.
+
+*Prints os.listdir('/') and then txt files and file size*
+
+```
+$ upydev sd_auto
+Autodetect SD Card mode enabled
+SD card detected
+['sd', 'boot.py', 'webrepl_cfg.py', 'main.py', 'sdcard.py']
+txt Files on filesystem:
+====================
+logtest.txt                              Size:     160 by
+logACC.txt                               Size:   568.3 KB
+```
+
+
 
 ## INPUT
 
@@ -982,9 +1035,40 @@ one shot read of the IMU gyroscope (deg/s)
 
 one shot read of the IMU magnetometer (gauss)
 
-### POWER
+### WEATHER SENSOR: (BME280)
+#### bme_init
 
-(INA219)
+ initialize bme, use -bme option to indicate the weather sensor library.
+(default option is 'bme280', see sensor requirements for more info')
+
+#### bme_read
+
+to read values from bme (Temp(C), Pressure(Pa), Rel.Hummidity (%))
+(see -tm option for stream mode, and -f for logging*)
+
+for one shot read, logging is also available with -f and -n option (for tagging)
+
+use '-f now' for automatic 'log_mode_datetime.txt' name.
+
+for stream mode profiling use -tm [ms] -bme test
+
+### POWER SENSOR: (INA219)
+#### ina_init
+
+initialize ina, use -ina option to indicate the power sensor library.
+(default option is 'ina219', see sensor requirements for more info')
+
+#### ina_read
+
+to read values from ina (Pot.Diff (Volts), Current(mA), Power(mW))
+(see -tm option for stream mode, and -f for logging*)
+
+for one shot read, logging is also available with -f and
+-n option (for tagging)
+
+use '-f now' for automatic 'log_mode_datetime.txt' name.
+
+for stream mode profiling use -tm [ms] -ina test
 
 ## OUTPUT
 
