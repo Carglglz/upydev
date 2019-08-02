@@ -1021,6 +1021,11 @@ one shot read of the IMU lineal accelerometer (g=-9.8m/s^2),
     -n option (for tagging)
 * use '-f now' for automatic 'log_mode_datetime.txt' name.
 ** stream mode and logging are supported in imugy and imumag also
+
+
+
+![](/Users/carlosgilgonzalez/Desktop/IBM_PROJECTS/MICROPYTHON/TOOLS/upydev_tool/DOCS/cmd_gifs/imuacc_cmd.gif)
+
 #### imuacc_sd
 
 log the imuacc data to the sd (must be mounted)

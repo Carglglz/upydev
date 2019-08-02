@@ -10,7 +10,7 @@
 
 *uPydev is built on top of other tools/scripts which are:
 
-The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl) as seen in this [WebREPL pull request](https://github.com/micropython/webrepl/pull/37)
+The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl) as seen in this [WebREPL pull request](https://github.com/micropython/webrepl/pull/37) by [@Hermann-SW](https://github.com/Hermann-SW)
 
 Other tools are:
 

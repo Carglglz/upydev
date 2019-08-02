@@ -3614,7 +3614,6 @@ elif args.m == 'buzz_beep':
     print('Beep! '*args.opt[1])
     sys.exit()
 
-
 #############################################
 #  * MOTORS *
 
@@ -4427,8 +4426,7 @@ elif args.m == 'pin_status':
                 print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
             else:
                 print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-        # volts = ast.literal_eval(batlev[0])
-        # percentage = round((volts - 3.3) / (4.23 - 3.3) * 100, 1)
-        # print('Battery Voltage : {} V; Level:{} %'.format(
-        #     round(volts, 2), percentage))
+
     sys.exit()
+
+############################################
