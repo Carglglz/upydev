@@ -1024,7 +1024,7 @@ one shot read of the IMU lineal accelerometer (g=-9.8m/s^2),
 
 
 
-![](./DOCS/cmd_gifs/imuacc_cmd.gif)
+![](./cmd_gifs/imuacc_cmd.gif)
 
 #### imuacc_sd
 
