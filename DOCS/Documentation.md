@@ -487,6 +487,18 @@ Downloading esp32-20190731-v1.11-183-ga8e3201b3.bin ...
 Done!
 ```
 
+to get the latest firmware available for a specific board do: "upydev fw -md get latest -b [board]"
+
+```
+$ upydev fw -md get latest -b esp32
+Downloading esp32-20190802-v1.11-187-g00e7fe8ab.bin ...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 1149k  100 1149k    0     0  1232k      0 --:--:-- --:--:-- --:--:-- 1232k
+
+Done!
+```
+
 to see available serial ports do: "upydev fw -md list serial_ports"
 
 ```
@@ -1016,7 +1028,15 @@ Volts: 3.6
 
 #### ads_init
 
-to initialize and configurate ADS1115 (see -ads)
+to initialize and configurate ADS1115 and the channel to read from (see -ads, -ch) default channel is A0
+
+```
+$ upydev ads_init
+Initialazing ads...
+ads ready!
+ADS configuration:
+Channel: A0 | Voltage Range: +/- 4.096 V | Gain: x1 V/V
+```
 
 #### ads_read
 
@@ -1028,6 +1048,81 @@ for one shot read, logging is also available with -f and
 
 use '-f now' for automatic 'log_mode_datetime.txt' name.
 
+for stream mode profiling use -tm [ms] -ads test 
+
+***One shot read:***
+
+```
+$ upydev ads_read
+3.31 V
+```
+
+*One shot read and log to file (if the file name exist already the mesurment will be added to this file)*
+
+*Default tag is time stamp, to change it use -n [TAG]*
+
+```
+$ upydev ads_read -f my_ads_log.txt
+0.58 V
+Logged at 13:27:09
+$ upydev ads_read -f my_ads_log.txt
+3.31 V
+Logged at 13:27:43
+$ cat my_ads_log.txt
+{"VAR": ["V", "TS"], "UNIT": "Volts"}
+{"V": 0.58, "TS": "13:27:09"}
+{"V": 3.31, "TS": "13:27:43"}
+$ upydev ads_read -f my_ads_log.txt -n my_test_point
+3.58 V
+Logged at 13:29:32
+$ cat my_ads_log.txt
+{"VAR": ["V", "TS"], "UNIT": "Volts"}
+{"V": 0.58, "TS": "13:27:09"}
+{"V": 3.31, "TS": "13:27:43"}
+{"V": 3.58, "TS": "my_test_point"}
+```
+
+***Stream mode*** 
+
+```
+$ upydev ads_read -tm [TIMEOUT IN MILLISECONDS]
+```
+
+![](cmd_gifs/ads_read.gif)
+
+*with log enabled:*
+
+```
+$ upydev ads_read -tm 10 -f my_ads_test_log.txt
+Streaming ADS: A0 (voltage),fq=100.0Hz
+Saving file my_ads_test_log.txt ...
+       V
+^C  0.5950
+
+...closing...
+Done!
+$ head my_ads_test_log.txt
+{"VAR": ["V"], "UNIT": "VOLTS", "fq(hz)": 100.0}
+{"V": [0.5943931341171265, 0.5936431288719177, 0.5926430821418762, 0.595518171787262, 0.5936431288719177, 0.595393180847168, 0.5920180678367615, 0.5926430821418762, 0.5911430716514587, 0.5938931703567505, 0.5936431288719177, 0.5937681198120117, 0.5937681198120117, 0.5936431288719177, 0.5912680625915527, 0.593268096446991, 0.5942681431770325, 0.5920180678367615, 0.592893123626709, 0.592893123626709]}
+```
+
+*with automatic log naming mode*:
+
+```
+$ upydev ads_read -tm 10 -f now
+Streaming ADS: A0 (voltage),fq=100.0Hz
+Saving file log_ads_read_08_02_2019_13_56_07.txt ...
+       V
+^C  0.5935
+
+...closing...
+Done!
+```
+
+*Stream mode profiling*:
+
+
+
 ### IMU
 
 #### imu_init
@@ -1035,39 +1130,129 @@ use '-f now' for automatic 'log_mode_datetime.txt' name.
 initialize IMU, use -imu option to indicate the imu library.
 (default option is 'lsm9ds1', see sensor requirements for more info')
 
+```
+$ upydev imu_init
+Initialazing imu...
+imu ready!
+```
+
 #### imuacc  
+
+The different modes are already explained in [ads_read](#ads_read)
 
 one shot read of the IMU lineal accelerometer (g=-9.8m/s^2),
 (see -tm option for stream mode, and -f for logging*)
 
-* for one shot read, logging is also available with -f and
-    -n option (for tagging)
-* use '-f now' for automatic 'log_mode_datetime.txt' name.
+for one shot read, logging is also available with -f and
+-n option (for tagging)
+
+use '-f now' for automatic 'log_mode_datetime.txt' name.
 ** stream mode and logging are supported in imugy and imumag also
 
+*** stream mode profiling is also available, use -imu test
 
+***Stream mode***
 
 ![](./cmd_gifs/imuacc_cmd.gif)
 
+
+
+***Strem Test mode***
+
+```
+$ upydev imuacc -tm 2 -imu test
+Streaming IMU ACCELEROMETER: X, Y, Z (g=-9.8m/s^2),fq=500.0Hz
+       X              Y              Z
+^C  -0.0124        -0.9922        0.2144
+
+...closing...
+Done!
+TEST RESULTS ARE:
+TEST DURATION : 30.72261619567871 (s)
+DATA PACKETS : 13419 packets
+SAMPLES PER PACKET : 1
+VARIABLES PER SAMPLE : 3; ['X', 'Y', 'Z']
+SIZE OF PACKETS: 12 bytes
+Period: 2 ms ; Fs:440.0 Hz, Data send rate: 437 packets/s of 1 samples
+DATA TRANSFER RATE: 5.12109375 KB/s
+```
+
+
+
 #### imuacc_sd
 
-log the imuacc data to the sd (must be mounted)
-with the file format 'log_mode_datetime.txt'
-(see -tm option for stream mode)
+log the imuacc data to the sd (must be mounted)  (***just for stream mode***)
+
+with the file format 'log_mode_datetime.txt', (***rtc must be configurated first, see [set_localtime](#set_localtime) or [set_ntptime](#set_ntptime)***)
+
+Needs -tm option
+
+```
+$ upydev imuacc_sd -tm 100
+Streaming IMU ACCELEROMETER: X, Y, Z (g=-9.8m/s^2),fq=10.0Hz
+       X              Y              Z
+^C  -0.2888        -0.1665        0.9189
+
+...closing...
+Done!
+$ upydev filesize -s sd
+[.....]
+logACC_8_2_2019_14_31_43.txt              Size:     3.4 KB
+$ upydev get -f logACC_8_3_2019_0_31_43.txt -s sd
+Looking in SD memory...
+Getting file logACC_8_3_2019_0_31_43.txt...
+op:get, host:192.168.1.53, port:8266, passwd:*******.
+/sd/logACC_8_3_2019_0_31_43.txt -> ./logACC_8_3_2019_0_31_43.txt
+Remote WebREPL version: (1, 11, 0)
+Received 3424 bytes
+$ head logACC_8_3_2019_0_31_43.txt
+{"VAR": ["X", "Y", "Z"], "fq(hz)": 10.0, "UNIT": "g=-9.8m/s^2"}
+{"Y": [-0.9865112, -0.9983521, -1.042725, -0.9854736, -0.6098633, 0.1123657, 0.0802002, -0.4005127, -0.02130127, 0.2875366, -0.5221558, -0.9838257, -0.9262085, -0.9251709, -0.9276123, -0.9273071, -0.9268188, -0.9296875, -0.9299927, -0.9303589, -0.6602783, -1.007507, -1.016479, -0.9804688, -1.06488, -0.8670654, -0.5565186, -0.4708862, -0.480957, -0.3748169, -0.2822876, -0.3527832], "X": [-0.03399658, -0.03405762, 0.09771729, 0.3887939, 0.5192871, 0.515686, 0.260437, -0.3334351, 0.2373657, 0.6671143, 0.5465088, -0.08966064, -0.0335083, -0.03271484, -0.02880859, -0.03271484, -0.03381348, -0.03240967, -0.0333252, -0.02996826, -0.1708374, -0.0602417, 0.00769043, -0.0279541, 0.05926514, 0.1168213, 0.2869873, 0.211853, 0.194519, 0.2576904, 0.4003296, 0.5204468], "Z": [0.2146606, 0.2175293, 0.3491821, 0.1884155, 0.6019287, 0.7805176, 0.8659668, 0.8796997, 0.9907227, 0.7520142, 0.6097412, 0.3485107, 0.3742065, 0.3709717, 0.3676147, 0.3781128, 0.380249, 0.3786011, 0.3788452, 0.3794556, 0.2492676, 0.3815308, 0.3549805, 0.3977051, 0.328186, 0.4660034, 0.6162109, 0.5861816, 0.6641846, 0.8041992, 0.9108887, 0.8721313]}
+```
+
+
 
 #### imugy  
 
-one shot read of the IMU gyroscope (deg/s)
+one shot read of the IMU gyroscope (deg/s) * (*supports the same methods of imuacc*)
+
+```
+$ upydev imugy -tm 100
+Streaming IMU GYRO: X, Y, Z (deg/s),fq=10.0Hz
+       X              Y              Z
+^C  2.9160         1.0991         -1.0393
+
+...closing...
+Done!
+```
 
 #### imumag
 
-one shot read of the IMU magnetometer (gauss)
+one shot read of the IMU magnetometer (gauss)* (*supports the same methods of imuacc*)
+
+```
+$ upydev imumag -tm 100
+Streaming IMU MAGNETOMETER: X, Y, Z (gauss),fq=10.0Hz
+       X              Y              Z
+^C  3.3448         -1.7166        2.6017
+
+...closing...
+Done!
+```
+
+
 
 ### WEATHER SENSOR: (BME280)
 #### bme_init
 
  initialize bme, use -bme option to indicate the weather sensor library.
 (default option is 'bme280', see sensor requirements for more info')
+
+```
+$ upydev bme_init
+Initialazing bme280...
+BME280 ready!
+```
 
 #### bme_read
 
@@ -1080,11 +1265,58 @@ use '-f now' for automatic 'log_mode_datetime.txt' name.
 
 for stream mode profiling use -tm [ms] -bme test
 
+*One shot mode*
+
+```
+$ upydev bme_read
+28.15096 C, 97787.57 Pa , 58.72483 % RH
+```
+
+*Stream mode*
+
+```
+$ upydev bme_read -tm 100
+Streaming BME280: Temp (C), Pressure (Pa), Rel. Hummidity (%) ,fq=10.0Hz
+    Temp(C)     Pressure(Pa)       RH(%)
+^C  27.7119      97778.0000       58.9865
+
+...closing...
+Done!
+```
+
+*One shot log mode*:
+
+```
+$ upydev bme_read -f my_weather_sens.txt
+27.71571 C, 97775.96 Pa , 61.19904 % RH
+Logged at 14:07:46
+$ upydev bme_read -f my_weather_sens.txt
+27.52501 C, 97783.64 Pa , 60.72118 % RH
+Logged at 14:07:52
+$ upydev bme_read -f my_weather_sens.txt -n heat_point
+31.21555 C, 97783.18 Pa , 127.3794 % RH
+Logged at 14:15:29
+$ head my_weather_sens.txt
+{"VAR": ["Temp(C)", "Pressure(Pa)", "RH(%)", "TS"], "UNIT": "T: C; P: Pa; RH: %"}
+{"Temp(C)": 27.71571, "Pressure(Pa)": 97775.96, "RH(%)": 61.19904, "TS": "14:07:46"}
+{"Temp(C)": 27.52501, "Pressure(Pa)": 97783.64, "RH(%)": 60.72118, "TS": "14:07:52"}
+{"Temp(C)": 31.21555, "Pressure(Pa)": 97783.18, "RH(%)": 127.3794, "TS": "heat_point"}
+
+```
+
+
+
 ### POWER SENSOR: (INA219)
 #### ina_init
 
 initialize ina, use -ina option to indicate the power sensor library.
 (default option is 'ina219', see sensor requirements for more info')
+
+```
+$ upydev ina_init
+Initialazing ina219...
+INA219 ready!
+```
 
 #### ina_read
 
@@ -1097,6 +1329,39 @@ for one shot read, logging is also available with -f and
 use '-f now' for automatic 'log_mode_datetime.txt' name.
 
 for stream mode profiling use -tm [ms] -ina test
+
+*Stream mode*
+
+```
+$ upydev ina_read -tm 500
+Streaming ina219: Volts (V), Current (mA), Power (mW) ,fq=2.0Hz
+  Voltage(V)     Current(mA)     Power(mW)
+^C  3.5760         77.2927       276.8293
+
+...closing...
+Done!
+```
+
+*One shot log mode*:
+
+```
+$ upydev ina_read -f my_power_test.txt
+3.592 V, 25.09756 mA , 90.2439 mW
+Logged at 14:38:14
+$ upydev ina_read -f my_power_test.txt
+3.584 V, 45.90244 mA , 164.6342 mW
+Logged at 14:38:22
+$ upydev ina_read -f my_power_test.txt -n power_point
+3.584 V, 45.69512 mA , 163.9024 mW
+Logged at 14:38:37
+$ head my_power_test.txt
+{"VAR": ["Voltage(V)", "Current(mA)", "Power(mW)", "TS"], "UNIT": "V: v; C: mA; P: mW"}
+{"Voltage(V)": 3.592, "Current(mA)": 25.09756, "Power(mW)": 90.2439, "TS": "14:38:14"}
+{"Voltage(V)": 3.584, "Current(mA)": 45.90244, "Power(mW)": 164.6342, "TS": "14:38:22"}
+{"Voltage(V)": 3.584, "Current(mA)": 45.69512, "Power(mW)": 163.9024, "TS": "power_point"}
+```
+
+
 
 ## OUTPUT
 

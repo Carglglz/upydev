@@ -324,6 +324,7 @@ def test_stream(run_cmd, targ, password, sensorlib, filename=None,
 
     except KeyboardInterrupt:
         try:
+            print('\n')
             print('...closing...')
             conn.close()
             time.sleep(1)
@@ -788,8 +789,9 @@ Sensors:
         - aread : to read from an analog pin previously configurated
 
         ^EXTERNAL ADC: (I2C) ADS1115 ***
-        - ads_init : to initialize and configurate ADS1115 (see -ads)
-        - ads_read : to read from analog A0
+        - ads_init : to initialize and configurate ADS1115 and the channel to
+                    read from (see -ads, -ch)
+        - ads_read : to read from analog pin previously configurated
                 (see -tm option for stream mode, and -f for logging*)
                 * for one shot read, logging is also available with -f and
                     -n option (for tagging)
@@ -813,7 +815,7 @@ Sensors:
     * WEATHER SENSOR: (BME280)
         - bme_init: initialize bme, use -bme option to indicate the weather sensor library.
                     (default option is 'bme280', see sensor requirements for more info')
-        - bme_read : to read values from bme (Temp(C), Pressure(Pa), Rel.Hummidity (%))
+        - bme_read : to read values from bme (Temp(C), Pressure(Pa), Rel.Hummidity (percentage))
                 (see -tm option for stream mode, and -f for logging*)
                 * for one shot read, logging is also available with -f and
                     -n option (for tagging)
@@ -3293,7 +3295,7 @@ elif args.m == 'ina_read':
         if len(ina_info_list) > 0:
             print('{} V, {} mA , {} mW '.format(*ast.literal_eval(ina_info_list[0])))
             if args.f is not None:
-                data_shot = [*ast.literal_eval(bme_info_list[0])]
+                data_shot = [*ast.literal_eval(ina_info_list[0])]
                 tag_tstamp = datetime.now().strftime("%H:%M:%S")
                 time_stamp = tag_tstamp
                 if args.n is not None:
