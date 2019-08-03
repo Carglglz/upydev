@@ -2326,7 +2326,7 @@ elif args.m == 'spi_config':
     spi_po = {'sck': args.spi[0], 'miso': args.spi[1],
               'mosi': args.spi[2], 'cs': args.spi[3]}
     cmd = "spi_po = {};gc.collect()".format(spi_po)
-    print('SCK = Pin({}), MISO = Pin({}), MOSI = Pin({}), CS = ({}))'.format(
+    print('SCK = Pin({}), MISO = Pin({}), MOSI = Pin({}), CS = Pin({}))'.format(
         *args.spi))
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         cmd, args.t, args.p)
