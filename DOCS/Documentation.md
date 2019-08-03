@@ -1472,20 +1472,50 @@ Signal modified to Amplitude: 0.5 V, fq: 40 Hz
 
 to config PWM pin to drive the buzzer (use -po option)
 
+```
+$ upydev buzz_config -po 25
+
+Pin 25 configurated as PWM to drive the buzzer
+```
+
 #### buzz_set_alarm
 
-to set an alarm at time indicated with option -at, be
-    aware that the rtc time must be set first with set_localtime
-    or set_ntptime
+to set an alarm at time indicated with option -at, be aware that the rtc time must be set first with [set_localtime](#set_localtime) or [set_ntptime](#set_ntptime)
+
+Usage : `upydev buzz_setalarm -at [hour] [minute] [seconds]`
+
+```
+$ upydev buzz_set_alarm -at 16 21 0
+
+Alarm set at 16:21:0
+```
+
+
 
 #### buzz_interrupt
 
 to configure an interrupt with pins indicated with -po
 
+```
+$ upydev buzz_interrupt -po 12 32
+
+Button interrupt set at Pins; 12,32
+```
+
+
+
 #### buzz_beep
 
 make the buzzer beep, with options set by -opt,
-    usage: buzz_beep -opt [beep_ms] [number_of_beeps] [time_between_beeps] [fq]
+ Usage: `upydev buzz_beep -opt [beep_ms] [number_of_beeps] [time_between_beeps] [fq]`
+
+```
+$ upydev buzz_beep -opt 150 3 100 4000
+
+Beep! Beep! Beep!
+```
+
+
 
 ### DC MOTOR
 
@@ -1533,22 +1563,56 @@ to move the stepper to right or left, at a velocity and
 to set id, broker address, user and password, use with -client option
     as "mqtt_config -client [ID] [BROKER ADDRESS] [USER] [PASSWORD]"
 
+```
+$ upydev mqtt_config -client myesp32id test.mosquitto.org
+
+MQTT Client configurated: ID: myesp32id, BROKER: test.mosquitto.org
+```
+
+
+
 #### mqtt_conn
 
 to start a mqtt client and connect to broker; use mqtt_config first
 
+```
+$ upydev mqtt_conn
+0
+MQTT Client connected!
+```
+
 #### mqtt_sub
 
 to subscribe to a topic, use -to option as "mqtt_sub -to [TOPIC]"
+
+```
+$ upydev mqtt_sub -to "home/esp32_30aea4233564/testing"
+
+MQTT Client subscribed to TOPIC: home/esp32_30aea4233564/testing
+```
 
 #### mqtt_pub
 
 to publish to a topic, use -to option as "mqtt_pub -to [TOPIC] [PAYLOAD]" or
     "mqtt_pub -to [PAYLOAD]" if already subscribed to a topic.
 
+```
+$ upydev mqtt_pub -to "MY_TEST_MESSAGE"
+
+MQTT Client published the message: MY_TEST_MESSAGE
+```
+
 #### mqtt_check
 
 to check for new messages of the subscribed topics.
+
+```
+$ upydev mqtt_check
+Received in topic:  b'home/esp32_30aea4233564/testing'
+MY_TEST_MESSAGE
+```
+
+
 
 ### SOCKETS:
 
@@ -1595,10 +1659,25 @@ to receive a message from the client
 to make a request to API that returns a JSON response format
     (indicate API URL with -f option)
 
+```
+$ upydev rget_json -f "http://api.open-notify.org/astros.json"
+{'number': 6, 'message': 'success', 'people': [{'name': 'Alexey Ovchinin', 'craft': 'ISS'}, {'name': 'Nick Hague', 'craft': 'ISS'}, {'name': 'Christina Koch', 'craft': 'ISS'}, {'name': 'Alexander Skvortsov', 'craft': 'ISS'}, {'name': 'Luca Parmitano', 'craft': 'ISS'}, {'name': 'Andrew Morgan', 'craft': 'ISS'}]}
+
+```
+
+
+
 #### rget_text
 
 to make a request to API that returns a text response format
     (indicate API URL with -f option)
+
+```
+$ upydev rget_text -f "http://worldtimeapi.org/api/timezone/Europe/London.txt"
+'abbreviation: BST\nclient_ip: 80.39.237.130\ndatetime: 2019-08-03T16:58:52.689758+01:00\nday_of_week: 6\nday_of_year: 215\ndst: true\ndst_from: 2019-03-31T01:00:00+00:00\ndst_offset: 3600\ndst_until: 2019-10-27T01:00:00+00:00\nraw_offset: 0\ntimezone: Europe/London\nunixtime: 1564847932\nutc_datetime: 2019-08-03T15:58:52.689758+00:00\nutc_offset: +01:00\nweek_number: 31'
+```
+
+
 
 ## Port/board specific commands:
 
@@ -1606,18 +1685,112 @@ to make a request to API that returns a text response format
 
 if running on battery, gets battery voltage (esp32 huzzah feather)
 
+```
+$ upydev battery
+Battery Voltage : 3.97 V; Level:72.2 %
+```
+
 ### pinout
 
 to see the pinout reference/info of a board, indicated by -b option,
 to request a single or a list of pins info use -po option
 
+```
+$ upydev pinout -b esp32h
+PIN: GND:  this is the common ground for all power and logic
+PIN: BAT:  this is the positive voltage to/from the JST jack for the optional Lipoly battery
+PIN: USB:  this is the positive voltage to/from the micro USB jack if connected
+PIN: EN:  this is the 3.3V regulator's enable pin. It's pulled up, so connect to ground to disable the 3.3V regulator
+PIN: 3V:  this is the output from the 3.3V regulator. The regulator can supply 500mA
+PIN: 16:  RX,are the additional Serial1 pins, and are not connected to the USB/Serial converter. That means you can use them to connect to UART
+PIN: 17:  TX,are the additional Serial1 pins, and are not connected to the USB/Serial converter. That means you can use them to connect to UART
+PIN: 26:  this is an analog input A0 and also an analog output DAC2. It can also be used as a GPIO #26. It uses ADC #2
+PIN: 25:  this is an analog input A1 and also an analog output DAC1. It can also be used as a GPIO #25. It uses ADC #2
+PIN: 34:  this is an analog input A2 and also GPI #34. Note it is not an output
+PIN: 39:  this is an analog input A3 and also GPI #39. Note it is not an output
+PIN: 36:  this is an analog input A4 and also GPI #36. Note it is not an output
+PIN: 4:  this is an analog input A5 and also GPIO #4. It uses ADC #2
+PIN: 21:  General purpose IO pin #21
+PIN: 13:  This is GPIO #13 and also an analog input A12 on ADC #1. It's also connected to the red LED next to the USB port
+PIN: 12:  This is GPIO #12 and also an analog input A11 on ADC #2. This pin has a pull
+PIN: 27:  This is GPIO #27 and also an analog input A10 on ADC #2
+PIN: 33:  This is GPIO #33 and also an analog input A9 on ADC #1. It can also be used to connect a 32 KHz crystal.
+PIN: 15:  This is GPIO #15 and also an analog input A8 on ADC #2
+PIN: 32:  This is GPIO #32 and also an analog input A7 on ADC #1. It can also be used to connect a 32 KHz crystal.
+PIN: 14:  This is GPIO #14 and also an analog input A6 on ADC #2
+PIN: 22:  This is GPIO #22, SCL of I2C
+PIN: 23:  This is GPIO #23, SDA of I2C
+PIN: 5:  This is GPIO #5, SCK of SPI
+PIN: 18:  This is GPIO #18, MOSI of SPI
+PIN: 19:  This is GPIO #19, MISO of SPI
+```
+
 ### specs
 
 to see the board specs, indicated by -b option
 
+```
+$ upydev specs -b esp32h
+- 240 MHz dual core Tensilica LX6 microcontroller with 600 DMIPS Integrated 520 KB SRAM
+- Integrated 802.11b/g/n HT40 Wi-Fi transceiver, baseband, stack and LWIP Integrated dual mode Bluetooth (classic and BLE)
+- 4 MByte flash
+- On-board PCB antenna
+- Ultra-low noise analog amplifier
+- Hall sensor
+- 10x capacitive touch interface
+- 32 kHz crystal oscillator
+- 3 x UARTs (only two are configured by default in the Feather Arduino IDE support, one UART is used for bootloading/debug)
+- 3 x SPI (only one is configured by default in the Feather Arduino IDE support)
+- 2 x I2C (only one is configured by default in the Feather Arduino IDE support)
+- 12 x ADC input channels
+- 2 x I2S Audio
+- 2 x DAC
+- PWM/timer input/output available on every GPIO pin
+- OpenOCD debug interface with 32 kB TRAX buffer
+- SDIO master/slave 50 MHz
+- SD-card interface support
+```
+
+
+
 #### pin_status
 
 to see pin state, to request a specific set use -po option ***
+
+```
+$ upydev pin_status
+ Pin(27)   |   1   | HIGH
+  Pin(5)   |   1   | HIGH
+ Pin(14)   |   1   | HIGH
+ Pin(22)   |   0   |
+ Pin(25)   |   0   |
+ Pin(16)   |   0   |
+ Pin(36)   |   0   |
+ Pin(39)   |   0   |
+ Pin(21)   |   1   | HIGH
+ Pin(34)   |   0   |
+ Pin(23)   |   0   |
+  Pin(4)   |   0   |
+ Pin(15)   |   0   |
+ Pin(12)   |   0   |
+ Pin(32)   |   0   |
+ Pin(17)   |   0   |
+ Pin(18)   |   0   |
+ Pin(19)   |   0   |
+ Pin(26)   |   0   |
+ Pin(13)   |   0   |
+ Pin(33)   |   0   |
+```
+
+```
+$ upydev pin_status -po 27 5 22 21
+ Pin(27)   |   1   | HIGH
+  Pin(5)   |   1   | HIGH
+ Pin(22)   |   0   |
+ Pin(21)   |   1   | HIGH
+```
+
+
 
 ### ESP32:
 

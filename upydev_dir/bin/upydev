@@ -4539,11 +4539,21 @@ elif args.m == 'pin_status':
                     pass
     if len(pin_status_resp) > 0:
         pin_dict = ast.literal_eval(pin_status_resp[0])
-        for key in pin_dict.keys():
-            if pin_dict[key] == 1:
-                print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-            else:
-                print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+        if args.po is not None:
+            pin_rqst = ['Pin({})'.format(po) for po in args.po]
+            for key in pin_dict.keys():
+                if key in pin_rqst:
+                    if pin_dict[key] == 1:
+                        print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+                    else:
+                        print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+
+        else:
+            for key in pin_dict.keys():
+                if pin_dict[key] == 1:
+                    print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+                else:
+                    print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
 
     sys.exit()
 
