@@ -57,17 +57,18 @@
 			- [ads_init](#ads_init)
 			- [ads_read](#ads_read)
 		- [IMU](#imu)
-			- [imu_init](#imuinit)
+			- [imu_init](#imu_init)
 			- [imuacc](#imuacc)
-			- [imuacc_sd](#imuaccsd)
+			- [imuacc_sd](#imuacc_sd)
 			- [imugy](#imugy)
 			- [imumag](#imumag)
 		- [WEATHER SENSOR: (BME280)](#weather-sensor-bme280)
-			- [bme_init](#bmeinit)
-			- [bme_read](#bmeread)
+			- [bme_init](#bme_init)
+			- [bme_read](#bme_read)
 		- [POWER SENSOR: (INA219)](#power-sensor-ina219)
-			- [ina_init](#inainit)
-			- [ina_read](#inaread)
+			- [ina_init](#ina_init)
+			- [ina_read](#ina_read)
+			- [ina_batt](#ina_batt)
 	- [OUTPUT](#output)
 		- [DAC](#dac)
 			- [dac_config](#dacconfig)
@@ -1119,7 +1120,7 @@ Saving file log_ads_read_08_02_2019_13_56_07.txt ...
 Done!
 ```
 
-*Stream mode profiling*:
+*Stream test mode (profiling)*: see [imuacc](#imuacc)
 
 
 
@@ -1157,7 +1158,7 @@ use '-f now' for automatic 'log_mode_datetime.txt' name.
 
 
 
-***Strem Test mode***
+***Stream Test mode***
 
 ```
 $ upydev imuacc -tm 2 -imu test
@@ -1360,6 +1361,38 @@ $ head my_power_test.txt
 {"Voltage(V)": 3.584, "Current(mA)": 45.90244, "Power(mW)": 164.6342, "TS": "14:38:22"}
 {"Voltage(V)": 3.584, "Current(mA)": 45.69512, "Power(mW)": 163.9024, "TS": "power_point"}
 ```
+
+#### ina_batt
+
+Use the sensor to profile battery usage and estimate battery life left.
+
+It will made 100 measurements during 5 seconds.
+
+Usage: `upydev ina_batt -batt [BATTERY CAPACITY IN mAh]`
+
+```
+$ upydev ina_batt -batt 1100
+
+
+ Battery Life expectancy profiling...
+
+
+                VOLTAGE          CURRENT            POWER
+  ============================================================
+  | Average |   3.51 V           31.44 mA           110.16 mW
+  -----------
+  |   MAX   |   3.52 V           78.00 mA           272.44 mW
+  -----------
+  |   MIN   |   3.49 V           -1.00 mA             3.17 mW
+  -----------
+
+																	BATTERY INFO
+========================================================================================
+```
+
+| CAPACITY (mAh) | VOLTAGE (V) | LEVEL (%) | STATE       | TIME LEFT (Hours) |
+| -------------- | ----------- | --------- | ----------- | ----------------- |
+| 1100           | 3.51        | 25.1      | Discharging | 6.15              |
 
 
 
