@@ -892,7 +892,7 @@ Usage: upydev spi_config -spi [SCK] [MISO] [MOSI] [CS]
 
 ```
 $ upydev spi_config
-SCK = Pin(5), MISO = Pin(19), MOSI = Pin(18), CS = (21))
+SCK = Pin(5), MISO = Pin(19), MOSI = Pin(18), CS = Pin(21))
 ```
 
 ### set_localtime
@@ -1403,6 +1403,12 @@ $ upydev ina_batt -batt 1100
 #### dac_config
 
 to config analog pin to write to (use -po option)
+
+```
+dummy
+```
+
+
 
 #### dac_write
 
