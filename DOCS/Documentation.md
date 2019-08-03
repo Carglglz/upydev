@@ -1366,7 +1366,7 @@ $ head my_power_test.txt
 
 Use the sensor to profile battery usage and estimate battery life left.
 
-It will made 100 measurements during 5 seconds.
+It will take 100 measurements during 5 seconds.
 
 Usage: `upydev ina_batt -batt [BATTERY CAPACITY IN mAh]`
 
@@ -1405,25 +1405,66 @@ $ upydev ina_batt -batt 1100
 to config analog pin to write to (use -po option)
 
 ```
-dummy
-more
+$ upydev dac_config -po 26
+
+Pin 26 configurated as Analog Output
 ```
-
-
 
 #### dac_write
 
-to write a value in volts (0-3.3V)
+to write a value in volts (0-3.3V) (use -sig option)
+
+```
+$ upydev dac_write -sig 0.5
+```
+
+![](dac_write.png)
 
 #### dac_sig
 
 to write a signal use -sig for different options:
-ype] [Amp] [frequency]
+
+To configurate signal do: 
+
+`upydev dac_sig -sig [type] [Amp] [frequency]`
+
 (type: 'sin, sq'; Amp 0-1 V ; fq:0-50 (above that fq loses quality))
 
-> start : starts signal generation
-> stop : stops signal
-> mod [Amp] [frequency]: modify the signal with the Amp and fq indicated.
+```
+$ upydev dac_sig -sig sin 1 20
+
+Signal type sin with Amplitude 1 V and fq 20 Hz configurated
+```
+
+To start signal generation
+
+```
+$ upydev dac_sig -sig start
+
+Signal started!
+```
+
+![](dac_sig_sin.png)
+
+
+
+To stop signal 
+
+```
+$ upydev dac_sig -sig stop
+
+Signal stopped!
+```
+
+To  modify frequency and amplitude
+
+```
+$ upydev dac_sig -sig mod 0.5 40
+
+Signal modified to Amplitude: 0.5 V, fq: 40 Hz
+```
+
+![](dac_sig_sin_mod.png)
 
 ### BUZZER:
 
