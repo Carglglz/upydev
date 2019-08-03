@@ -2813,7 +2813,7 @@ elif args.m == 'ads_read':
 
 elif args.m == 'imu_init':
     imu_lib = args.imu
-    import_imu_cmd = "from {} import {};import init_MY_IMU as imu;".format(
+    import_imu_cmd = "from {} import {};import init_IMU as imu;".format(
         args.imu, args.imu.upper())
     print('Initialazing imu...')
     imu_init_cmd = "my_imu = imu.MY_IMU({},imu.i2c,None);".format(

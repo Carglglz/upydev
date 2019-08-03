@@ -1025,7 +1025,7 @@ Volts: 3.6
 
 ### EXTERNAL ADC 
 
-*Module ADS1115*
+*This needs  the Module/sensor ADS1115, the library sensor 'ads1115.py' and the 'init_ADS.py' script in upyutils directory to be uploaded to the upy device*
 
 #### ads_init
 
@@ -1125,6 +1125,8 @@ Done!
 
 
 ### IMU
+
+*This needs  the Module/sensor LSM9DS1, the library sensor 'lsm9ds1.py' and the 'init_IMU.py' script in upyutils directory to be uploaded to the upy device*
 
 #### imu_init
 
@@ -1428,7 +1430,7 @@ To configurate signal do:
 
 `upydev dac_sig -sig [type] [Amp] [frequency]`
 
-(type: 'sin, sq'; Amp 0-1 V ; fq:0-50 (above that fq loses quality))
+(type: 'sin, sq'; Amp 0-1 V ; fq:0-50 (above that fq loses quality)) ** DC is fixed at 1.5 V
 
 ```
 $ upydev dac_sig -sig sin 1 20
