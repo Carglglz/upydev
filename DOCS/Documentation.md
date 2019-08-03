@@ -1199,9 +1199,9 @@ Done!
 $ upydev filesize -s sd
 [.....]
 logACC_8_2_2019_14_31_43.txt              Size:     3.4 KB
-$ upydev get -f logACC_8_3_2019_0_31_43.txt -s sd
+$ upydev get -f logACC_8_3_2019_14_31_43.txt -s sd
 Looking in SD memory...
-Getting file logACC_8_3_2019_0_31_43.txt...
+Getting file logACC_8_3_2019_14_31_43.txt...
 op:get, host:192.168.1.53, port:8266, passwd:*******.
 /sd/logACC_8_3_2019_0_31_43.txt -> ./logACC_8_3_2019_0_31_43.txt
 Remote WebREPL version: (1, 11, 0)
