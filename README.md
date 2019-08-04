@@ -14,11 +14,15 @@ The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.
 
 Other tools are:
 
-'webrepl_cli.py'  for the file transfer protocol
+'webrepl_cli.py'  for the file transfer protocol (from the WebREPL repo of micropython)
 
 'esptool.py' to flash the firmware into esp boards
 
 'mpy-cross'  to compile .py scripts into .mpy files.
+
+***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything***
+
+
 
 ### Getting Started
 
@@ -32,7 +36,7 @@ WebREPL enabled
 
 Python modules (automatically installed using pip):
 
-[argcomplete](https://github.com/kislyuk/argcomplete)
+[argcomplete](https://github.com/kislyuk/argcomplete) (for command line autocompletion)
 
 [mpy-cross](https://gitlab.com/alelec/micropython/tree/gitlab_build/mpy-cross)
 
@@ -169,7 +173,7 @@ Example: Raw commands
 
 #### uPydev Commands:
 
-uPy commands are organized as:
+uPy commands are organized in:
 
 * **General**: These commands should work 'out of the box' in any Micropython running board with WebREPL daemon enabled.
 
@@ -190,10 +194,10 @@ uPy commands are organized as:
   * ***STEPPER MOTOR***: to drive stepper motor (needs a motor driver and 'stepper.py')
 
 * **NETWORKING:**
-*  ***MQTT:*** commands to connect to a broker, subscribe to topic, publish and receive messages (needs 'mqtt_client.py')
-  *  ***SOCKETS:*** commands to start client/server socket and send/receive messages (needs 'socket_client_server.py')
-  *  ***UREQUEST:*** commands to make http requests, and get json or text output
-  
+    * ***MQTT:*** commands to connect to a broker, subscribe to topic, publish and receive messages (needs 'mqtt_client.py')
+    * ***SOCKETS:*** commands to start client/server socket and send/receive messages (needs 'socket_client_server.py')
+    * ***UREQUEST:*** commands to make http requests, and get json or text output
+
 * **PORT/BOARD SPECIFIC COMMANDS**:
 
     * battery : if running on battery, gets battery voltage (esp32 huzzah feather)

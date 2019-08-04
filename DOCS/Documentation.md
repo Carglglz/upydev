@@ -1,3 +1,5 @@
+# uPydev docs
+
 <!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [uPydev Mode/Tools:](#upydev-modetools)
@@ -1539,14 +1541,46 @@ Beep! Beep! Beep!
 
 to config PWM pins to drive a DC motor (use -po option as -po [DIR1] [DIR2])
 
+```
+$ upydev dcmotor_config -po 5 18
+
+DC motor configurated: Direction Pin:5, Opposite direction Pin: 18
+```
+
+
+
 #### dcmotor_move
 
 to move the motor to one direction ['R'] or the opposite ['L']
     use -to option as -to ['R' or 'L'] [VELOCITY] (60-512)
 
+```
+$ upydev dcmotor_move -to R 60
+
+DC motor moving to R!
+
+$ upydev dcmotor_stop
+
+DC motor stopped
+
+$ upydev dcmotor_move -to L 60
+
+DC motor moving to L!
+```
+
+
+
 #### dcmotor_stop
 
 to stop the DC motor
+
+```
+$ upydev dcmotor_stop
+
+DC motor stopped
+```
+
+
 
 ### SERVO:
 
@@ -1556,9 +1590,25 @@ to stop the DC motor
 
 to configurate the servo pin with -po option
 
+```
+$ upydev servo_config -po 5
+
+Pin 5 configurated as PWM to drive the Servo motor
+```
+
+
+
 #### servo_angle
 
 to move the servo an angle indicated by -opt option
+
+```
+$ upydev servo_angle -opt 25
+
+Servo moved to 25 degrees!
+```
+
+
 
 ### STEPPER MOTOR:
 
@@ -1568,11 +1618,35 @@ to move the servo an angle indicated by -opt option
 
 to configurate the stepper direction and step pin with -po option *( -po [DIR_PIN] [STEP_PIN])
 
+```
+$ upydev stepper_config -po 18 5
+
+Stepper motor configurated: Direction Pin:18, Step Pin: 5
+```
+
 #### stepper_move
 
-to move the stepper to right or left, at a velocity and
-    a numbers of steps indicated with -to option: [R or L] [velocity] [# steps]
-    R: right, L:left, velocity (1000-20000) (smaller is faster) and steps (int), where 200 steps means a complete lap
+to move the stepper to right or left, at a velocity and a numbers of steps indicated with -to option:
+
+usage: `upydev stepper_move -to  [DIR]  [velocity] [# steps]` 
+
+DIR: R: right, L:left, 
+
+velocity (1000-20000) (smaller is faster) 
+
+  \# steps (int): where 200 steps means a complete lap
+
+```
+$ upydev stepper_move -to R 4000 100
+
+Stepper moved 100 steps to R !
+
+$ upydev stepper_move -to L 4000 50
+
+Stepper moved 50 steps to L !
+```
+
+
 
 ## NETWORKING:
 
@@ -1991,6 +2065,8 @@ $ upydev pin_status -po 27 5 22 21
 ```
 
 
+
+*** NOT IMPLEMENTED YET.
 
 ### ESP32:
 
