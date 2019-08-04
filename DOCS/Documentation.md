@@ -513,6 +513,7 @@ Available Serial ports are:
 /dev/tty.MALS
 /dev/tty.Bluetooth-Incoming-Port
 /dev/tty.VHP-TW20BK-SerialPort
+/dev/tty.SLAB_USBtoUART
 ```
 
 ## flash
