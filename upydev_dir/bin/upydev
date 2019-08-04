@@ -859,9 +859,10 @@ Sensors:
         - dcmotor_stop: to stop the DC motor
     * SERVO:
         - servo_config: to configurate the servo pin with -po option
-        - servo_angle: to move the servo an angle indicated by
+        - servo_angle: to move the servo an angle indicated by -opt option
     * STEPPER MOTOR:
-        - stepper_config: to configurate the servo pin with -po option
+        - stepper_config: to configurate the step and direction pin with -po option
+                            *( -po [DIR_PIN] [STEP_PIN])
         - stepper_move: to move the stepper to right or left, at a velocity and
                        a numbers of steps indicated with -to option: [R or L] [velocity] [# steps]
                        R: right, L:left, velocity (1000-20000) (smaller is faster) and
@@ -883,12 +884,14 @@ NETWORKING:
         - socli_send: to send a message to the server, use -n option to indicate
                       the message
         - socli_recv: to receive a message from the server
+        - socli_close: to close the client socket
         - sosrv_init: to initiate a socket server, use with -server option as
                       "sosrv_init -server [PORT] [BUFFER LENGTH]"
         - sosrv_start: to start the server, waits for a connection
         - sosrv_send: to send a message to the client, use -n option to indicate
                       the message
         - sosrv_recv: to receive a message from the client
+        - sosrv_close: to close the server socket
     * UREQUEST:
         - rget_json: to make a request to API that returns a JSON response format
                     (indicate API URL with -f option)
@@ -3789,7 +3792,7 @@ elif args.m == 'servo_angle':
                 else:
                     print(e)
                     pass
-    print('Servo moved {} degrees!'.format(
+    print('Servo moved to {} degrees!'.format(
         servo_angle))
     sys.exit()
 

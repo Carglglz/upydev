@@ -101,10 +101,12 @@
 			- [socli_conn](#socliconn)
 			- [socli_send](#soclisend)
 			- [socli_recv](#soclirecv)
+			- [socli_close](#socli_close)
 			- [sosrv_init](#sosrvinit)
 			- [sosrv_start](#sosrvstart)
 			- [sosrv_send](#sosrvsend)
 			- [sosrv_recv](#sosrvrecv)
+			- [sosrv_close](#sosrv_close)
 		- [UREQUEST:](#urequest)
 			- [rget_json](#rgetjson)
 			- [rget_text](#rgettext)
@@ -1246,6 +1248,9 @@ Done!
 
 
 ### WEATHER SENSOR: (BME280)
+
+This needs  the Module/sensor BME280, the library sensor 'bme280.py' and the 'init_BME280.py' script in upyutils directory to be uploaded to the upy device
+
 #### bme_init
 
  initialize bme, use -bme option to indicate the weather sensor library.
@@ -1310,6 +1315,9 @@ $ head my_weather_sens.txt
 
 
 ### POWER SENSOR: (INA219)
+
+This needs  the Module/sensor INA219, the library sensor 'ina219.py' and the 'init_INA219.py' script in upyutils directory to be uploaded to the upy device
+
 #### ina_init
 
 initialize ina, use -ina option to indicate the power sensor library.
@@ -1402,6 +1410,8 @@ $ upydev ina_batt -batt 1100
 
 ###     DAC
 
+*This needs  the 'dac_signal_gen.py' script in upyutils directory to be uploaded to the upy device*
+
 #### dac_config
 
 to config analog pin to write to (use -po option)
@@ -1470,6 +1480,8 @@ Signal modified to Amplitude: 0.5 V, fq: 40 Hz
 
 ### BUZZER:
 
+This needs  the 'buzzertools.py' script in upyutils directory to be uploaded to the upy device, and a buzzer/piezo.
+
 #### buzz_config
 
 to config PWM pin to drive the buzzer (use -po option)
@@ -1521,6 +1533,8 @@ Beep! Beep! Beep!
 
 ### DC MOTOR
 
+*This needs  the 'dcmotor.py' script in upyutils directory to be uploaded to the upy device, a dc motor and the appropriate  dc motor driver (PWM)* 
+
 #### dcmotor_config
 
 to config PWM pins to drive a DC motor (use -po option as -po [DIR1] [DIR2])
@@ -1536,19 +1550,23 @@ to stop the DC motor
 
 ### SERVO:
 
+*This needs  the 'servo.py' script in upyutils directory to be uploaded to the upy device and a servo motor*
+
 #### servo_config
 
 to configurate the servo pin with -po option
 
 #### servo_angle
 
-to move the servo an angle indicated by
+to move the servo an angle indicated by -opt option
 
 ### STEPPER MOTOR:
 
+*This needs  the 'stepper.py' script in upyutils directory to be uploaded to the upy device, the appropriate stepper motor driver (A4988  for example) and a stepper motor*
+
 #### stepper_config
 
-to configurate the servo pin with -po option
+to configurate the stepper direction and step pin with -po option *( -po [DIR_PIN] [STEP_PIN])
 
 #### stepper_move
 
@@ -1559,6 +1577,8 @@ to move the stepper to right or left, at a velocity and
 ## NETWORKING:
 
 ### MQTT:
+
+*This needs  the 'mqtt_client.py' script in upyutils directory to be uploaded to the upy device*
 
 #### mqtt_config
 
@@ -1618,41 +1638,219 @@ MY_TEST_MESSAGE
 
 ### SOCKETS:
 
+*This needs  the 'socket_client_server.py' script in upyutils directory to be uploaded to the upy device*
+
 #### socli_init
 
 to initiate a socket client use with -server option as
     "socli_init -server [IP] [PORT] [BUFFER LENGTH]"
 
+```
+$ upydev socli_init -server 192.168.1.33 8005
+
+Initialized client socket to connect to server :192.168.1.33 on port 8005
+```
+
+
+
+*In server side*: (the same socket_client_server.py script is used)
+
+```
+$ python3
+Python 3.6.4 (v3.6.4:d48ecebad5, Dec 18 2017, 21:07:28)
+[GCC 4.2.1 (Apple Inc. build 5666) (dot 3)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import socket_client_server as scv
+Python 3 version
+>>> server = scv.socket_server(8005)
+192.168.1.33
+>>>
+```
+
+
+
 #### socli_conn
 
 to connect the socket client to a server (inidcated by IP)
 
+*In server side; start the server:*
+
+```
+>>> server.start_SOC()
+Server listening...
+```
+
+*Client side:*
+
+```
+$ upydev socli_conn
+
+Client connected!
+```
+
+*Server side:*
+
+```
+Server listening...
+Connection received...
+('192.168.1.53', 60609)
+>>>
+```
+
+
+
 #### socli_send
 
-to send a message to the server, use -n option to indicate
-    the message
+to send a message to the server, use -n option to indicate the message
+
+*Client side:*
+
+```
+$ upydev socli_send -n 'Hello there!'
+
+Message sent!
+```
+
+*Server side:*
+
+```
+>>> server.recv_message()
+Hello there!
+```
 
 #### socli_recv
 
 to receive a message from the server
+
+*Server side*:
+
+```
+>>> server.send_message('Hello device!')
+>>>
+```
+
+*Client side:*
+
+```
+$ upydev socli_recv
+Hello device!
+```
+
+#### socli_close
+
+To close the client socket.
+
+```
+$ upydev socli_close
+
+Client Socket closed!
+```
+
+
 
 #### sosrv_init
 
 to initiate a socket server, use with -server option as
     "sosrv_init -server [PORT] [BUFFER LENGTH]"
 
+*Server side*:
+
+```
+$ upydev sosrv_init -server 8005
+Server initialized. IP: 192.168.1.53 PORT:8005
+```
+
+*Clietn side:*
+
+```
+>>> import socket_client_server as scv
+Python 3 version
+>>> client = scv.socket_client('192.168.1.53', 8005)
+```
+
+
+
 #### sosrv_start
 
 to start the server, waits for a connection
+
+*Server side:*
+
+```
+$ upydev sosrv_start
+Server listening...
+```
+
+*Client side:*
+
+```
+>>> client.connect_SOC()
+>>>
+```
+
+*Server side:*
+
+```
+Server listening...
+Connection received...
+('192.168.1.33', 61853)
+```
+
+
 
 #### sosrv_send
 
 to send a message to the client, use -n option to indicate
     the message
 
+*Server side:*
+
+```
+$ upydev sosrv_send -n 'Hello there!'
+
+Message sent!
+```
+
+*Client side:*
+
+```
+>>> client.recv_message()
+Hello there!
+```
+
+
+
 #### sosrv_recv
 
 to receive a message from the client
+
+*Client side:*
+
+```
+>>> client.send_message('Hello device!')
+>>>
+```
+
+*Server side:*
+
+```
+$ upydev sosrv_recv
+Hello device!
+```
+
+
+
+#### sosrv_close
+
+To close the server socket
+
+```
+$ upydev sosrv_close
+
+Server Socket closed!
+```
+
+
 
 ### UREQUEST:
 
