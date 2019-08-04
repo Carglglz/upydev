@@ -143,7 +143,7 @@ Example: Raw commands
 - **sync** : for a faster transfer of large files
     (this needs sync_tool.py in upy device) (*see -f, -s and -lh*)
 
-    *> sync_tool.py is under [upyutils](upyutils) directory*
+    *> sync_tool.py is under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory*
 
 - **cmd** : for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
 
@@ -199,7 +199,7 @@ uPy commands are organized in:
 
 * **SD:** These commands need *sdcard.py* in the upy device, and a sd module/shield at least.
 
-* **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](upyutils) directory)
+* **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)
     * ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115) (for external module needs 'ads1115.py' and 'init_ADS.py')
     * ***IMU***: commands that make use of the LSM9DS1 module, although other IMU modules could be easily implemented (needs 'lsm9ds1.py' and 'init_MY_IMU.py')
     * ***WEATHER***: commands that make use of the BME280 module, although other weather sensor modules could be easily implemented (needs 'bme280.py' and 'init_BME280.py')
@@ -230,11 +230,11 @@ uPy commands are organized in:
 
 #### Extensive explanation:
 
-For an extensive explanation and commands demo see [Documentation](DOCS/Documentation.md).
+For an extensive explanation and commands demo see [Documentation](https://github.com/Carglglz/upydev/blob/master/DOCS/Documentation.md).
 
 #### Addiontal Scripts for some commands:
 
-The commands that need additional scripts in the upy device are under the [uPyutils](upyutils) folder.
+The commands that need additional scripts in the upy device are under the [uPyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) folder.
 
-For more info see [upyutils_docs](DOCS/upyutils_docs.md).
+For more info see [upyutils_docs](https://github.com/Carglglz/upydev/blob/master/DOCS/upyutils_docs.md).
 
