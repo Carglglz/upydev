@@ -62,7 +62,11 @@ $ cd upydev
 $ sudo pip3 install . -r rpy_rqmnts.txt
 ```
 
+upy Boards:
 
+Esp32 Huzzah feather
+
+Esp8266 Huzzah feather
 
 #### Installing using pip:
 
