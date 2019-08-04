@@ -22,7 +22,12 @@ Other tools are:
 
 ***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything***
 
+### Features:
 
+* Command line wireless communication/control of micropython devices.
+* Terminal WebREPL protocol
+* Custom commands to automate communication/control
+* Command line autocompletion
 
 ### Getting Started
 
@@ -44,9 +49,20 @@ Python modules (automatically installed using pip):
 
 #### Tested on:
 
-MacOS X (Mojave)
+MacOS X (Mojave 10.14.5)
 
-Raspbian Stretch Lite
+Raspbian GNU/Linux 9 (stretch)
+
+*For Raspbian `pip install mpy-cross` seems to fail, so to install upydev without mpy-cross do:*
+
+```
+$ git clone https://github.com/Carglglz/upydev.git
+[...]
+$ cd upydev
+$ sudo pip3 install . -r rpy_rqmnts.txt
+```
+
+
 
 #### Installing using pip:
 
