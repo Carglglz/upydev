@@ -775,12 +775,14 @@ upy Commands:
 - sd_enable: to enable/disable the LDO 3.3V regulator that powers the SD module
              use -po option to indicate the Pin.
 - sd_init: to initialize the sd card; (spi must be configurated first)
-           create sd object and mounts as a filesystem, needs sdcard.py from []
+           create sd object and mounts as a filesystem, needs sdcard.py see
+           https://github.com/Carglglz/upydev/blob/master/DOCS/Documentation.md#sd_init
 - sd_deinit: to unmount sd card
 - sd_auto: experimental command, needs a sd module with sd detection pin
-           and the SD_AM.py script (see more info in []). Enable an Interrupt
+           and the SD_AM.py script. Enable an Interrupt
            with the sd detection pin, so it mounts the sd when is detected,
-           and unmount the sd card when is extracted.
+           and unmount the sd card when is extracted. See more info in:
+           https://github.com/Carglglz/upydev/blob/master/DOCS/Documentation.md#sd_auto
 >INPUT
 Sensors:
     * ADC:
