@@ -14,7 +14,7 @@ The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.
 
 Other tools are:
 
-'webrepl_cli.py'  for the file transfer protocol (from the WebREPL repo of micropython)
+'webrepl_cli.py'  for the file transfer protocol (from the WebREPL repo of micropython) (modified and named 'upytool')
 
 'esptool.py' to flash the firmware into esp boards
 
@@ -51,7 +51,7 @@ Python modules (automatically installed using pip):
 
 MacOS X (Mojave 10.14.5)
 
-Raspbian GNU/Linux 9 (stretch)
+Raspbian GNU/Linux 9 (stretch) *(through ssh session)*
 
 *For Raspbian `pip install mpy-cross` seems to fail, so to install upydev without mpy-cross do:*
 
