@@ -17,6 +17,8 @@
 	- [fw](#fw)
 	- [flash](#flash)
 	- [see](#see)
+	- [make_group](#make_group)
+- [GROUP COMMAND MODE](#group-command-mode)
 - [upy Commands:](#upy-commands)
 	- [GENERAL](#general)
 		- [info](#info)
@@ -578,7 +580,9 @@ DEVICE NAME: esp_room1, IP: 192.168.1.53
 
 
 
-## ** GROUP COMMAND MODE: (-G option)
+## GROUP COMMAND MODE 
+
+### (-G option)
 
 To send a command to multiple devices in a group (made with make_group  command) use -G option 
 
