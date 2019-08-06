@@ -185,9 +185,18 @@ Example: Raw commands
       - to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266' (web scraping from [micropython downloads page](https://www.micropython.org/downloads) )
       - to get do: "upydev fw -md get [firmware file]" (uses curl)
       -  to see available serial ports do: "upydev fw -md list serial_ports"
+  
 * **flash**: to flash a firmware file to the upydevice, a serial port must be indicated
               to flash do: "upydev flash -port [serial port] -f [firmware file]"
+          
 * **see**:  to get specific command help info indicated with -c option
+
+* **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
+
+     ​	and - devs option to indicate a name, ip and the password of each board.
+
+     ** **GROUP COMMAND OPTION (-G)**: To send a command to multiple devices in a group (made with 		make_group command) use -G option as -G [GROUP NAME]; to target specific devices
+             within a group use -devs option as -devs [DEV NAME] [DEV NAME]
 
 ------
 

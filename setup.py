@@ -13,11 +13,11 @@ def readme():
 
 
 setup(name='upydev',
-      version='0.0.1',
+      version='0.0.3',
       description='Command line tool for wireless Micropython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',
-      url='http://github.com/cgglz/upydev',
+      url='http://github.com/Carglglz/upydev',
       author='Carlos Gil Gonzalez',
       author_email='carlosgilglez@gmail.com',
       classifiers=[

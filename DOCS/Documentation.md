@@ -561,6 +561,73 @@ $ upydev see -c config
 
 
 
+## make_group
+
+to make a group of boards to send commands to. Use -f for the name of the group and -devs option to indicate a name, ip and the password of each board.
+
+Usage: `upydev make_group -f [GROUP NAME] -devs [DEV_1 NAME] [DEV_1 IP] [DEV_1 PASSWORD] [DEV2_NAME] ...`
+
+```
+$ upydev make_group -f UPY_ROOM -devs esp_room2 '192.168.1.49' 'mypass' esp_room1 '192.168.1.53' 'mypass'
+Upy devices group created!
+GROUP NAME: UPY_ROOM
+# DEVICES: 2
+DEVICE NAME: esp_room2, IP: 192.168.1.49
+DEVICE NAME: esp_room1, IP: 192.168.1.53
+```
+
+
+
+## ** GROUP COMMAND MODE: (-G option)
+
+To send a command to multiple devices in a group (made with make_group  command) use -G option 
+
+Usage:  `upydev [command] -G [GROUP NAME]`
+
+To target specific devices within a group use -devs option 
+
+Usage: `upydev [command] -G [GROUP NAME] -devs [DEV1 NAME] [DEV2 NAME] ... `
+
+```
+$ upydev 'info' -G UPY_ROOM
+Sending command to group: UPY_ROOM
+Device Name: esp_room2
+Device IP: 192.168.1.49
+Sending command info ...
+SYSTEM NAME: esp32
+NODE NAME: esp32
+RELEASE: 1.11.0
+VERSION: v1.11-183-ga8e3201b3 on 2019-07-31
+MACHINE: ESP32 module with ESP32
+
+Device Name: esp_room1
+Device IP: 192.168.1.53
+Sending command info ...
+SYSTEM NAME: esp32
+NODE NAME: esp32
+RELEASE: 1.11.0
+VERSION: v1.11-37-g62f004ba4 on 2019-06-09
+MACHINE: ESP32 module with ESP32
+```
+
+
+
+```
+$ upydev 'led.on()' -G UPY_ROOM -devs esp_room1
+Sending command to group: UPY_ROOM
+Device Name: esp_room1
+Device IP: 192.168.1.53
+Sending command led.on() ...
+
+$ upydev 'led.on()' -G UPY_ROOM -devs esp_room2
+Sending command to group: UPY_ROOM
+Device Name: esp_room2
+Device IP: 192.168.1.49
+Sending command led.on() ...
+```
+
+
+
 # upy Commands:
 
 ## GENERAL

@@ -734,7 +734,16 @@ helparg = '''Mode:
         to see available serial ports do: "upydev fw -md list serial_ports"
 - flash: to flash a firmware file to the upydevice, a serial port must be indicated
             to flash do: "upydev flash -port [serial port] -f [firmware file]"
-- see: to get specific command help info indicated with -c option.
+- see: to get specific command help info indicated with -c option. To get specific
+        info about a devices group use -G option as "see -G [GROUP NAME]"
+
+- make_group: to make a group of boards to send commands to. Use -f for the name
+              of the group and -devs option to indicate a name, ip and the
+              password of each board.
+* GROUP COMMAND:
+        To send a command to multiple devices in a group (made with make_group
+        command) use -G option as -G [GROUP NAME]; to target specific devices
+        within a group use -devs option as -devs [DEV NAME] [DEV NAME] ...
 
 upy Commands:
 > GENERAL
@@ -941,7 +950,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
                  'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-                 'ina_batt']
+                 'ina_batt', 'make_group']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -1041,9 +1050,290 @@ parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGT
 parser.add_argument('-md', help='for command suboptions',
                     nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest'])
 parser.add_argument('-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
+parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
+                        nargs='+')
+parser.add_argument('-G', help='to indicate the group of devices that the command is directed to')
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
+# MODE FUNCTIONS
+
+
+def put_f(ip, passwd):
+    source = ''
+    if args.s == 'sd':
+        source = args.s + '/'
+    passwd = passwd
+    file = args.f
+    file_in_upy = file.split('/')[-1]
+    host = ip
+    print('Uploading file {}...'.format(file_in_upy))
+    copyfile_str = 'upytool {} {}:/{}{} -p {}'.format(
+        file, host, source, file_in_upy, passwd)
+    reset_str = 'upycmd -c "{}" -t {} -p {}'.format('D', host, passwd)
+    run_command_rt(copyfile_str)
+
+    print('File Uploaded!')
+    time.sleep(3)
+    if args.rst is None:
+        print('Rebooting upy device...')
+        command = shlex.split(reset_str)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        print('Done!')
+    else:
+        pass
+
+
+def get_f(ip, passwd, id_file=''):
+    if args.s is None:
+        print('Looking for file in upy device root dir')
+        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip, passwd)
+        dir = 'root'
+    if args.s == 'sd':
+        print('Looking in SD memory...')
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+            str("'/sd'"), ip, passwd)
+        dir = '/sd'
+
+    command = shlex.split(cmd_str)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+    time.sleep(0.1)
+    stdout = process.communicate()
+    try:
+        resp = ast.literal_eval(
+            stdout[0].decode('utf-8').split('\n')[0][4:-1])
+    except Exception as e:
+        try:
+            resp = stdout[0].decode('utf-8').split('\n')[0]
+        except Exception as e:
+            resp = None
+
+        pass
+
+    try:
+        if args.f in resp:
+            print('Getting file {}...'.format(args.f))
+            file_to_get = args.f
+            if args.s == 'sd':
+                file_to_get = '/sd/{}'.format(args.f)
+            passwd = passwd
+            target = ip
+            copyfile_str = 'upytool -p {} {}:{} .{}'.format(
+                passwd, target, file_to_get, id_file)
+
+            run_command_rt(copyfile_str)
+        else:
+            if dir == 'root':
+                print('File Not found in upy device {} directory'.format(dir))
+            if dir == '/sd':
+                print(
+                    'File Not found in upy device {} directory or sd unmounted'.format(dir))
+
+    except Exception as e:
+        print(e)
+        pass
+
+
+def ping(ip):
+    ping_cmd_str = 'ping {}'.format(ip)
+    ping_cmd = shlex.split(ping_cmd_str)
+    try:
+        proc = subprocess.Popen(
+            ping_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        while proc.poll() is None:
+            print(proc.stdout.readline()[:-1].decode())
+    except KeyboardInterrupt:
+        time.sleep(1)
+        result = proc.stdout.readlines()
+        for message in result:
+            print(message[:-1].decode())
+
+
+def run_script(ip, passwd):
+    dir = ''
+    script_filepy = args.f
+    script_name = script_filepy.split('.')[0]
+    reload = "del(sys.modules['{}'])".format(script_name)
+    run_cmd = "import {};".format(script_name)
+    # print(run_cmd)
+    if args.s is not None:
+        dir = args.s
+        sd_path = "import sys;sys.path.append('/{}')".format(dir)
+        run_cmd = "{};import {}".format(
+            sd_path, script_name)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        run_cmd, ip, passwd)
+    # print(run_cmd_str)
+    run_live_cmd = shlex.split(run_cmd_str)
+    print('Running {}...'.format(args.f))
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
+            for i in range(10):
+                proc.stdout.readlines()
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, ip, passwd)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, ip, passwd)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+    # Reload sys.modules and sys.path
+    time.sleep(1)
+    reload_cmd = "import sys;{};gc.collect()".format(reload)
+    if args.s is not None:
+        reload_syspath = "sys.path.remove('/{}')".format(dir)
+        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        reload_cmd, ip, passwd)
+    reload_cmd_resp = run_command_rl(cmd_str)
+    print('Done!')
+    # sys.exit()
+
+
+def timeit_script(ip, passwd):
+    timeit_import = "from time_it import tzero, tdiff, result;"
+    dir = ''
+    script_filepy = args.f
+    script_name = script_filepy.split('.')[0]
+    reload = "del(sys.modules['{}'])".format(script_name)
+    timeit_cmd = "t_0 = tzero();import {};diff=tdiff(t_0);result('{}',diff);".format(
+        script_name, script_name)
+    timeit_final_cmd = timeit_import + timeit_cmd
+    # print(run_cmd)
+    if args.s is not None:
+        dir = args.s
+        sd_path = "import sys;sys.path.append('/{}')".format(dir)
+        timeit_final_cmd = "{};{}".format(
+            sd_path, timeit_final_cmd)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        timeit_final_cmd, ip, passwd)
+    run_live_cmd = shlex.split(run_cmd_str)
+    print('Running {}...'.format(args.f))
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except KeyboardInterrupt:
+        try:
+            print('...closing...')
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
+            for i in range(10):
+                proc.stdout.readlines()
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, ip, passwd)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, ip, passwd)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+    # Reload sys.modules and sys.path
+    time.sleep(1)
+    reload_cmd = "import sys;{};gc.collect()".format(reload)
+    if args.s is not None:
+        reload_syspath = "sys.path.remove('/{}')".format(dir)
+        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        reload_cmd, ip, passwd)
+    reload_cmd_resp = run_command_rl(cmd_str)
+    print('Done!')
+
+
+def install_f(ip, passwd):
+    lib = args.f
+    install_cmd = "import upip;upip.install('{}')".format(lib)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        install_cmd, ip, passwd)
+    run_live_cmd = shlex.split(run_cmd_str)
+    print('Looking for {} lib...'.format(args.f))
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    print(resp[4:])
+                else:
+                    print(resp)
+            else:
+                print(resp)
+    except Exception as e:
+        print(e)
+
+    print('Library {} installed!'.format(args.f))
+
+
+def see():
+    if args.G is None:
+        help_file = '{}/help.config'.format(upydev.__path__[0])
+        with open(help_file, 'r') as helpref:
+            help_dict = json.loads(helpref.read())
+        print(help_dict[args.c])
+    else:
+        with open('{}.config'.format(args.G), 'r') as group:
+            group_devs = (json.loads(group.read()))
+        print('GROUP NAME: {}'.format(args.G))
+        print('# DEVICES: {}'.format(len(group_devs.keys())))
+        for key in group_devs.keys():
+            print('DEVICE NAME: {}, IP: {}'.format(key, group_devs[key][0]))
+
+
+# keyword live output commands:
+kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see']
+
+#############################################
 
 # UPYDEV MODES:
 
@@ -1084,6 +1374,72 @@ if args.t is None:
         password or create config file with command "config" (see help)')
         sys.exit()
 
+# UPYDEV GROUP COMMAND
+if args.G is not None:
+    try:
+        group_file = args.G
+        # print(group_file)
+        if args.m == 'see':
+            see()
+            sys.exit()
+        print('Sending command to group: {}'.format(group_file))
+        with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+            devices = json.loads(group.read())
+            # print(devices)
+        devs = devices.keys()
+        if args.devs is not None:
+            devs = args.devs
+        for dev in devs:
+            single_command = []
+            print('Device Name: {}'.format(dev))
+            dev_ip = devices[dev][0]
+            dev_pass = devices[dev][1]
+            print('Device IP: {}'.format(devices[dev][0]))
+            print('Sending command {} ...'.format(args.m))
+            # print(sys.argv[1:])
+            for i in range(len(sys.argv[1:])):
+                if sys.argv[1:][i] != '-G':
+                    if i == 0 or sys.argv[1:][i-1] != '-G':
+                        single_command.append(sys.argv[1:][i])
+            gcommand = ' '.join(single_command)
+            # print(gcommand.split())
+            group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
+            if group_cmd_str.split()[1] not in keywords_mode:
+                group_cmd_str = 'upydev "{}" -t {} -p {}'.format(group_cmd_str.split()[1], dev_ip, dev_pass)
+            # print(group_cmd_str)
+            group_cmd = shlex.split(group_cmd_str)
+            if group_cmd_str.split()[1] not in kw_loc:
+                try:
+                    proc = subprocess.Popen(
+                        group_cmd, stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT)
+                    while proc.poll() is None:
+                        print(proc.stdout.readline()[:-1].decode())
+                except KeyboardInterrupt:
+                    time.sleep(1)
+                    result = proc.stdout.readlines()
+                    for message in result:
+                        print(message[:-1].decode())
+            else:
+                if group_cmd_str.split()[1] == 'ping':
+                    ping(dev_ip)
+                elif group_cmd_str.split()[1] == 'run':
+                    run_script(dev_ip, dev_pass)
+                elif group_cmd_str.split()[1] == 'timeit':
+                    timeit_script(dev_ip, dev_pass)
+                elif group_cmd_str.split()[1] == 'put':
+                    put_f(dev_ip, dev_pass)
+                elif group_cmd_str.split()[1] == 'get':
+                    get_f(dev_ip, dev_pass, id_file='/{}_{}'.format(dev, args.f))
+                elif group_cmd_str.split()[1] == 'install':
+                    install_f(dev_ip, dev_pass)
+
+        sys.exit()
+    except Exception as e:
+        print(e)
+        print('file not found, please create a group first')
+        sys.exit()
+
 # UPYDEV RAW COMMAND MODE: (WHEN ARGUMENT Mode is not in keyword list)
 if args.m not in keywords_mode:
     cmd = args.m
@@ -1113,82 +1469,13 @@ if args.m not in keywords_mode:
 # PUT:
 
 elif args.m == 'put':
-    source = ''
-    if args.s == 'sd':
-        source = args.s + '/'
-    passwd = args.p
-    file = args.f
-    file_in_upy = file.split('/')[-1]
-    host = args.t
-    print('Uploading file {}...'.format(file_in_upy))
-    copyfile_str = 'upytool {} {}:/{}{} -p {}'.format(
-        file, host, source, file_in_upy, passwd)
-    reset_str = 'upycmd -c "{}" -t {} -p {}'.format('D', host, passwd)
-    run_command_rt(copyfile_str)
-
-    print('File Uploaded!')
-    time.sleep(3)
-    if args.rst is None:
-        print('Rebooting upy device...')
-        command = shlex.split(reset_str)
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-        print('Done!')
-    else:
-        pass
+    put_f(args.t, args.p)
     sys.exit()
-
 
 # GET :
 
 elif args.m == 'get':
-    if args.s is None:
-        print('Looking for file in upy device root dir')
-        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(args.t, args.p)
-        dir = 'root'
-    if args.s == 'sd':
-        print('Looking in SD memory...')
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
-            str("'/sd'"), args.t, args.p)
-        dir = '/sd'
-
-    command = shlex.split(cmd_str)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    time.sleep(0.1)
-    stdout = process.communicate()
-    try:
-        resp = ast.literal_eval(
-            stdout[0].decode('utf-8').split('\n')[0][4:-1])
-    except Exception as e:
-        try:
-            resp = stdout[0].decode('utf-8').split('\n')[0]
-        except Exception as e:
-            resp = None
-
-        pass
-
-    try:
-        if args.f in resp:
-            print('Getting file {}...'.format(args.f))
-            file_to_get = args.f
-            if args.s == 'sd':
-                file_to_get = '/sd/{}'.format(args.f)
-            passwd = args.p
-            target = args.t
-            copyfile_str = 'upytool -p {} {}:{} .'.format(
-                passwd, target, file_to_get)
-
-            run_command_rt(copyfile_str)
-        else:
-            if dir == 'root':
-                print('File Not found in upy device {} directory'.format(dir))
-            if dir == '/sd':
-                print(
-                    'File Not found in upy device {} directory or sd unmounted'.format(dir))
-
-    except Exception as e:
-        print(e)
-        pass
-
+    get_f(args.t, args.p)
     sys.exit()
 
 # SYNC :
@@ -1318,187 +1605,25 @@ elif args.m == 'wrepl':
 # PING :
 
 elif args.m == 'ping':
-    ping_cmd_str = 'ping {}'.format(args.t)
-    ping_cmd = shlex.split(ping_cmd_str)
-    try:
-        proc = subprocess.Popen(
-            ping_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        while proc.poll() is None:
-            print(proc.stdout.readline()[:-1].decode())
-    except KeyboardInterrupt:
-        time.sleep(1)
-        result = proc.stdout.readlines()
-        for message in result:
-            print(message[:-1].decode())
+    ping(args.t)
 
 # RUN :
+
 # TODO: ENABLE logging!! # DEBUG
 elif args.m == 'run':
-    dir = ''
-    script_filepy = args.f
-    script_name = script_filepy.split('.')[0]
-    reload = "del(sys.modules['{}'])".format(script_name)
-    run_cmd = "import {};".format(script_name)
-    # print(run_cmd)
-    if args.s is not None:
-        dir = args.s
-        sd_path = "import sys;sys.path.append('/{}')".format(dir)
-        run_cmd = "{};import {}".format(
-            sd_path, script_name)
-    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        run_cmd, args.t, args.p)
-    # print(run_cmd_str)
-    run_live_cmd = shlex.split(run_cmd_str)
-    print('Running {}...'.format(args.f))
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print(resp[4:])
-                else:
-                    print(resp)
-            else:
-                print(resp)
-    except KeyboardInterrupt:
-        try:
-            print('...closing...')
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
-            for i in range(10):
-                proc.stdout.readlines()
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-        except KeyboardInterrupt:
-            print('...wait for closing...')
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-    # Reload sys.modules and sys.path
-    time.sleep(1)
-    reload_cmd = "import sys;{};gc.collect()".format(reload)
-    if args.s is not None:
-        reload_syspath = "sys.path.remove('/{}')".format(dir)
-        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        reload_cmd, args.t, args.p)
-    reload_cmd_resp = run_command_rl(cmd_str)
-    print('Done!')
+    run_script(args.t, args.p)
     sys.exit()
 
 # TIMEIT:
+
 elif args.m == 'timeit':
-    timeit_import = "from time_it import tzero, tdiff, result;"
-    dir = ''
-    script_filepy = args.f
-    script_name = script_filepy.split('.')[0]
-    reload = "del(sys.modules['{}'])".format(script_name)
-    timeit_cmd = "t_0 = tzero();import {};diff=tdiff(t_0);result('{}',diff);".format(
-        script_name, script_name)
-    timeit_final_cmd = timeit_import + timeit_cmd
-    # print(run_cmd)
-    if args.s is not None:
-        dir = args.s
-        sd_path = "import sys;sys.path.append('/{}')".format(dir)
-        timeit_final_cmd = "{};{}".format(
-            sd_path, timeit_final_cmd)
-    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        timeit_final_cmd, args.t, args.p)
-    run_live_cmd = shlex.split(run_cmd_str)
-    print('Running {}...'.format(args.f))
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print(resp[4:])
-                else:
-                    print(resp)
-            else:
-                print(resp)
-    except KeyboardInterrupt:
-        try:
-            print('...closing...')
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
-            for i in range(10):
-                proc.stdout.readlines()
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-        except KeyboardInterrupt:
-            print('...wait for closing...')
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-    # Reload sys.modules and sys.path
-    time.sleep(1)
-    reload_cmd = "import sys;{};gc.collect()".format(reload)
-    if args.s is not None:
-        reload_syspath = "sys.path.remove('/{}')".format(dir)
-        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        reload_cmd, args.t, args.p)
-    reload_cmd_resp = run_command_rl(cmd_str)
-    print('Done!')
+    timeit_script(args.t, args.p)
     sys.exit()
 
 # INSTALL:
 
 elif args.m == 'install':
-    lib = args.f
-    install_cmd = "import upip;upip.install('{}')".format(lib)
-    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        install_cmd, args.t, args.p)
-    run_live_cmd = shlex.split(run_cmd_str)
-    print('Looking for {} lib...'.format(args.f))
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print(resp[4:])
-                else:
-                    print(resp)
-            else:
-                print(resp)
-    except Exception as e:
-        print(e)
-
-    print('Library {} installed!'.format(args.f))
+    install_f(args.t, args.p)
     sys.exit()
 
 # MPYX
@@ -1607,11 +1732,23 @@ elif args.m == 'flash':
 
 # SEE
 elif args.m == 'see':
-    help_file = '{}/help.config'.format(upydev.__path__[0])
-    with open(help_file, 'r') as helpref:
-        help_dict = json.loads(helpref.read())
-    print(help_dict[args.c])
+    see()
     sys.exit()
+
+# MAKE_GROUP
+elif args.m == 'make_group':
+    group_file = '{}.config'.format(args.f)
+    group_dict = dict(zip(args.devs[::3],[[args.devs[i],args.devs[i+1]] for i in range(1,len(args.devs)-1,3)]))
+    with open(group_file, 'w') as group:
+        group.write(json.dumps(group_dict))
+
+    print('Upy devices group created!')
+    print('GROUP NAME: {}'.format(args.f))
+    print('# DEVICES: {}'.format(len(group_dict.keys())))
+    for key in group_dict.keys():
+        print('DEVICE NAME: {}, IP: {}'.format(key, group_dict[key][0]))
+    sys.exit()
+
 # * GENERAL COMMANDS *
 # INFO :
 
