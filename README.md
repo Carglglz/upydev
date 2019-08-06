@@ -193,7 +193,7 @@ Example: Raw commands
 
 * **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
 
-     ​	and - devs option to indicate a name, ip and the password of each board.
+     ​	and -devs option to indicate a name, ip and the password of each board.
 
 **GROUP COMMAND MODE (-G option)**: 
 
