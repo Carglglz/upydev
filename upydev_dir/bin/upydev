@@ -740,10 +740,10 @@ helparg = '''Mode:
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
               password of each board.
-* GROUP COMMAND:
+* GROUP COMMAND MODE:
         To send a command to multiple devices in a group (made with make_group
         command) use -G option as -G [GROUP NAME]; to target specific devices
-        within a group use -devs option as -devs [DEV NAME] [DEV NAME] ...
+        within a group add -devs option as -devs [DEV NAME] [DEV NAME] ...
 
 upy Commands:
 > GENERAL

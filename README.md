@@ -195,8 +195,13 @@ Example: Raw commands
 
      ​	and - devs option to indicate a name, ip and the password of each board.
 
-     ** **GROUP COMMAND OPTION (-G)**: To send a command to multiple devices in a group (made with 		make_group command) use -G option as -G [GROUP NAME]; to target specific devices
-             within a group use -devs option as -devs [DEV NAME] [DEV NAME]
+**GROUP COMMAND MODE (-G option)**: 
+
+To send a command to multiple devices in a group (made with make_group command) use -G option
+
+ Usage: `upydev [command] -G [GROUP NAME]`
+
+To target specific devices within a group add -devs option as `-devs [DEV_1 NAME] [DEV_2 NAME]`
 
 ------
 
