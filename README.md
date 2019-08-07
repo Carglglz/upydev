@@ -193,7 +193,7 @@ Example: Raw commands
 
 * **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
 
-     ​	and -devs option to indicate a name, ip and the password of each board.
+     ​	and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)
 
 **GROUP COMMAND MODE (-G option)**: 
 
@@ -202,6 +202,8 @@ To send a command to multiple devices in a group (made with make_group command) 
  Usage: `upydev [command] -G [GROUP NAME]`
 
 To target specific devices within a group add -devs option as `-devs [DEV_1 NAME] [DEV_2 NAME]`
+
+*upydev will use local working directory configuration unless it does not find any or manually indicated with -g option*
 
 ------
 
