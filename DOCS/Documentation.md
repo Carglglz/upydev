@@ -163,7 +163,7 @@ so the target and password arguments wont be required any more
 
 ## put
 
-to upload a file to upy device (see -f, -s and -rst)
+to upload a file to upy device (see -f, -s and -rst, for multiple files see -fre option)
 
 Usage: `$ upydev put -f [filename] [options]`
 
@@ -329,7 +329,7 @@ Done!
 
 ## get
 
-to download a file from upy device (see -f and -s)
+to download a file from upy device (see -f and -s, for multiple files see -fre option)
 
 Usage: `$ upydev get -f [filename] [options]`
 
@@ -368,7 +368,7 @@ Received 44 bytes
 *this mode was created to get log files from sd*
 
 for a faster transfer of large files
-(this needs sync_tool.py in upy device) (see -f, -s and -lh)
+(this needs sync_tool.py in upy device) (see -f, -s and -lh, for multiple files see -fre option)
 
 ```
 $ upydev sync -f logACC_26_6_2019_0_18_42.txt -s sd
