@@ -19,6 +19,7 @@ parser.add_argument("-f", help='file to sync', required=True)
 parser.add_argument("-p", help='password', required=False)
 parser.add_argument("-t", help='target', required=False)
 parser.add_argument("-lh", help='local ip', required=False)
+parser.add_argument("-o", help='output file name', required=False)
 parser.add_argument(
     "-s", help='source dir to look for in (default '' flash, "sd" for micro sd) ', required=False)
 args = parser.parse_args()
@@ -83,6 +84,8 @@ def sync_file_raw(soc, filetoget, dir):
     print('Syncing file {} from upy device'.format(filetoget))
     print('Saving {} file'.format(filetoget))
     t0 = 0
+    if args.o is not None:
+        filetoget = args.o
     with open(filetoget, 'wb') as log:
         pass
     while True:

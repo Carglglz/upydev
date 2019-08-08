@@ -1055,13 +1055,14 @@ parser.add_argument('-port', help='serial port of the device to flash to').compl
 parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
                         nargs='+')
 parser.add_argument('-G', help='to indicate the group of devices that the command is directed to')
+parser.add_argument('-fre', help='special option to put or get files from upy device', nargs='+')
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
 # MODE FUNCTIONS
 
 
-def put_f(ip, passwd):
+def put_f(ip, passwd, rst=None):
     source = ''
     if args.s == 'sd':
         source = args.s + '/'
@@ -1077,13 +1078,54 @@ def put_f(ip, passwd):
 
     print('File Uploaded!')
     time.sleep(3)
-    if args.rst is None:
+    if rst is None:
         print('Rebooting upy device...')
         command = shlex.split(reset_str)
         process = subprocess.Popen(command, stdout=subprocess.PIPE)
         print('Done!')
     else:
         pass
+
+
+def put_multiple_f(ip, passwd):
+    # case 1: -fre is current working directory (cwd)
+    rst = args.rst
+    if args.fre[0] == 'cwd':
+        print('Files in cwd to upload:')
+        for file in os.listdir('./'):
+            print(file)
+        for file in os.listdir('./'):
+            args.f = file
+            put_f(ip, passwd, rst=False)
+            print('\n')
+        if rst is None:
+            time.sleep(3)
+            reset(ip, passwd)
+    else:
+        # case 2: -fre is an expression to match
+        if len(args.fre) == 1:
+            print("Files in that match expression '{}' to upload:".format(args.fre[0]))
+            for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
+                print(file)
+            for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
+                args.f = file
+                put_f(ip, passwd, rst=False)
+                print('\n')
+            if rst is None:
+                time.sleep(3)
+                reset(ip, passwd)
+        else:
+            # case 3: -fre is a list of files
+            print('Files to upload:')
+            for file in args.fre:
+                print(file)
+            for file in args.fre:
+                args.f = file
+                put_f(ip, passwd, rst=False)
+                print('\n')
+            if rst is None:
+                time.sleep(3)
+                reset(ip, passwd)
 
 
 def get_f(ip, passwd, id_file=''):
@@ -1134,6 +1176,183 @@ def get_f(ip, passwd, id_file=''):
     except Exception as e:
         print(e)
         pass
+
+
+def get_files_list(ip, passwd):
+    if args.s is None:
+        print('Looking for file in upy device root dir')
+        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip, passwd)
+        dir = 'root'
+    if args.s == 'sd':
+        print('Looking in SD memory...')
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+            str("'/sd'"), ip, passwd)
+        dir = '/sd'
+
+    command = shlex.split(cmd_str)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+    time.sleep(0.1)
+    stdout = process.communicate()
+    try:
+        resp = ast.literal_eval(
+            stdout[0].decode('utf-8').split('\n')[0][4:-1])
+        return resp
+    except Exception as e:
+        try:
+            resp = stdout[0].decode('utf-8').split('\n')[0]
+            return resp
+        except Exception as e:
+            resp = None
+            return resp
+
+        pass
+
+
+def get_multiple_f(ip, passwd, id_file_dev='', device=None):
+    # case 1: -fre is current working directory (cwd)
+    file_list = ast.literal_eval(get_files_list(ip, passwd))
+    if args.fre[0] == 'cwd':
+        print('Files in upy device cwd to get:')
+        for file in file_list:
+            print(file)
+        for file in file_list:
+            args.f = file
+            if id_file_dev != '':
+                id_file_dev = '/{}_{}'.format(device, args.f)
+            get_f(ip, passwd, id_file=id_file_dev)
+            print('\n')
+    else:
+        # case 2: -fre is an expression to match
+        if len(args.fre) == 1:
+            print("Files in that match expression '{}' to get:".format(
+                args.fre[0]))
+            for file in [fl for fl in file_list if args.fre[0] in fl]:
+                print(file)
+            for file in [fl for fl in file_list if args.fre[0] in fl]:
+                args.f = file
+                if id_file_dev != '':
+                    id_file_dev = '/{}_{}'.format(device, args.f)
+                get_f(ip, passwd, id_file=id_file_dev)
+                print('\n')
+        else:
+            # case 3: -fre is a list of files
+            print('Files to get:')
+            for file in args.fre:
+                print(file)
+            for file in args.fre:
+                args.f = file
+                if id_file_dev != '':
+                    id_file_dev = '/{}_{}'.format(device, args.f)
+                get_f(ip, passwd, id_file=id_file_dev)
+                print('\n')
+
+
+def sync(ip, passwd, id_file=None):
+    if args.s is None:
+        print('Looking for file in upy device root dir')
+        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip,
+                                                                   passwd)
+        dir = 'root'
+    if args.s == 'sd':
+        print('Looking in SD memory...')
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+            str("'/sd'"), ip, passwd)
+        dir = '/sd'
+
+    command = shlex.split(cmd_str)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+    time.sleep(0.1)
+    stdout = process.communicate()
+    try:
+        resp = ast.literal_eval(
+            stdout[0].decode('utf-8').split('\n')[0][4:-1])
+    except Exception as e:
+        try:
+            resp = stdout[0].decode('utf-8').split('\n')[0]
+        except Exception as e:
+            resp = None
+
+        pass
+
+    try:
+        if args.f in resp:
+            target = ip
+            print('Getting file {}...'.format(args.f))
+            file_to_get = args.f
+            copyfile = 'sync_server -f {} -t {} -p {}'.format(
+                file_to_get, target, passwd)
+            if id_file is not None:
+                copyfile = 'sync_server -f {} -t {} -p {} -o {}'.format(
+                    file_to_get, target, passwd, id_file)
+            if args.lh is not None:
+                copyfile = 'sync_server -f {} -t {} -p {} -lh {}'.format(
+                    file_to_get, target, passwd, args.lh)
+                if id_file is not None:
+                    copyfile = 'sync_server -f {} -t {} -p {} -lh {} -o {}'.format(
+                        file_to_get, target, passwd, args.lh, id_file)
+            if args.s == 'sd':
+                copyfile = 'sync_server -f {} -t {} -p {} -s {}'.format(
+                    file_to_get, target, passwd, 'sd')
+                if id_file is not None:
+                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -o {}'.format(
+                        file_to_get, target, passwd, 'sd', id_file)
+                if args.lh is not None:
+                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {}'.format(
+                        file_to_get, target, passwd, 'sd', args.lh)
+                    if id_file is not None:
+                        copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {} -o {}'.format(
+                            file_to_get, target, passwd, 'sd', args.lh, id_file)
+
+            resp = run_command_rt(copyfile)
+        else:
+            if dir == 'root':
+                print('File Not found in upy device {} directory'.format(dir))
+            if dir == '/sd':
+                print(
+                    'File Not found in upy device {} directory or sd unmounted'.format(dir))
+
+    except Exception as e:
+        print(e)
+        pass
+
+
+def sync_multiple_f(ip, passwd, id_file_dev=None, device=None):
+    # case 1: -fre is current working directory (cwd)
+    file_list = ast.literal_eval(get_files_list(ip, passwd))
+    if args.fre[0] == 'cwd':
+        print('Files in upy device cwd to get:')
+        for file in file_list:
+            print(file)
+        for file in file_list:
+            args.f = file
+            if id_file_dev is not None:
+                id_file_dev = '{}_{}'.format(device, args.f)
+            sync(ip, passwd, id_file=id_file_dev)
+            print('\n')
+    else:
+        # case 2: -fre is an expression to match
+        if len(args.fre) == 1:
+            print("Files in that match expression '{}' to get:".format(
+                args.fre[0]))
+            for file in [fl for fl in file_list if args.fre[0] in fl]:
+                print(file)
+            for file in [fl for fl in file_list if args.fre[0] in fl]:
+                args.f = file
+                if id_file_dev is not None:
+                    id_file_dev = '{}_{}'.format(device, args.f)
+                sync(ip, passwd, id_file=id_file_dev)
+                print('\n')
+        else:
+            # case 3: -fre is a list of files
+            print('Files to get:')
+            for file in args.fre:
+                print(file)
+            for file in args.fre:
+                args.f = file
+                if id_file_dev is not None:
+                    id_file_dev = '{}_{}'.format(device, args.f)
+                sync(ip, passwd, id_file=id_file_dev)
+                print('\n')
 
 
 def ping(ip):
@@ -1335,8 +1554,18 @@ def see():
             print('DEVICE NAME: {}, IP: {}'.format(key, group_devs[key][0]))
 
 
+def reset(ip, passwd):
+    reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
+        'D', ip, passwd)
+    print('Rebooting upy device...')
+    command = shlex.split(reset_str)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE)
+    time.sleep(0.1)
+    print('Done!')
+
+
 # keyword live output commands:
-kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see']
+kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync']
 
 #############################################
 
@@ -1435,9 +1664,20 @@ if args.G is not None:
                 elif group_cmd_str.split()[1] == 'timeit':
                     timeit_script(dev_ip, dev_pass)
                 elif group_cmd_str.split()[1] == 'put':
-                    put_f(dev_ip, dev_pass)
+                    if args.fre is None:
+                        put_f(dev_ip, dev_pass, rst=args.rst)
+                    else:
+                        put_multiple_f(dev_ip, dev_pass)
                 elif group_cmd_str.split()[1] == 'get':
-                    get_f(dev_ip, dev_pass, id_file='/{}_{}'.format(dev, args.f))
+                    if args.fre is None:
+                        get_f(dev_ip, dev_pass, id_file='/{}_{}'.format(dev, args.f))
+                    else:
+                        get_multiple_f(dev_ip, dev_pass, id_file_dev='device_id', device=dev)
+                elif group_cmd_str.split()[1] == 'sync':
+                    if args.fre is None:
+                        sync(dev_ip, dev_pass, id_file='{}_{}'.format(dev, args.f))
+                    else:
+                        sync_multiple_f(dev_ip, dev_pass, id_file_dev='device_id', device=dev)
                 elif group_cmd_str.split()[1] == 'install':
                     install_f(dev_ip, dev_pass)
 
@@ -1476,74 +1716,28 @@ if args.m not in keywords_mode:
 # PUT:
 
 elif args.m == 'put':
-    put_f(args.t, args.p)
+    if args.fre is None:
+        put_f(args.t, args.p, rst=args.rst)
+    else:
+        put_multiple_f(args.t, args.p)
     sys.exit()
 
 # GET :
 
 elif args.m == 'get':
-    get_f(args.t, args.p)
+    if args.fre is None:
+        get_f(args.t, args.p)
+    else:
+        get_multiple_f(args.t, args.p)
     sys.exit()
 
 # SYNC :
 
 elif args.m == 'sync':
-    if args.s is None:
-        print('Looking for file in upy device root dir')
-        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(args.t,
-                                                                   args.p)
-        dir = 'root'
-    if args.s == 'sd':
-        print('Looking in SD memory...')
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
-            str("'/sd'"), args.t, args.p)
-        dir = '/sd'
-
-    command = shlex.split(cmd_str)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    time.sleep(0.1)
-    stdout = process.communicate()
-    try:
-        resp = ast.literal_eval(
-            stdout[0].decode('utf-8').split('\n')[0][4:-1])
-    except Exception as e:
-        try:
-            resp = stdout[0].decode('utf-8').split('\n')[0]
-        except Exception as e:
-            resp = None
-
-        pass
-
-    try:
-        if args.f in resp:
-            passwd = args.p
-            target = args.t
-            print('Getting file {}...'.format(args.f))
-            file_to_get = args.f
-            copyfile = 'sync_server -f {} -t {} -p {}'.format(
-                file_to_get, target, passwd)
-            if args.lh is not None:
-                copyfile = 'sync_server -f {} -t {} -p {} -lh {}'.format(
-                    file_to_get, target, passwd, args.lh)
-            if args.s == 'sd':
-                copyfile = 'sync_server -f {} -t {} -p {} -s {}'.format(
-                    file_to_get, target, passwd, 'sd')
-                if args.lh is not None:
-                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {}'.format(
-                        file_to_get, target, passwd, 'sd', args.lh)
-
-            resp = run_command_rt(copyfile)
-        else:
-            if dir == 'root':
-                print('File Not found in upy device {} directory'.format(dir))
-            if dir == '/sd':
-                print(
-                    'File Not found in upy device {} directory or sd unmounted'.format(dir))
-
-    except Exception as e:
-        print(e)
-        pass
-
+    if args.fre is None:
+        sync(args.t, args.p)
+    else:
+        sync_multiple_f(args.t, args.p)
     sys.exit()
 
 # CMD (FOR DEBBUGING PURPOSE) # DEBUG:
@@ -1855,12 +2049,7 @@ elif args.m == 'upysh':
 # RESET
 
 elif args.m == 'reset':
-    reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
-        'D', args.t, args.p)
-    print('Rebooting upy device...')
-    command = shlex.split(reset_str)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    time.sleep(0.1)
+    reset(args.t, args.p)
     sys.exit()
 
 # UHELP

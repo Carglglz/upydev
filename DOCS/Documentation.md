@@ -209,6 +209,122 @@ Sent 44 of 44 bytes
 File Uploaded!
 ```
 
+For multiple files use -fre option instead of -f: (This is valid for **put**, **get** and **sync** modes)
+
+##### Case 1:  'cwd' --> usage:`upydev  put -fre cwd`
+
+This will upload all the files in current working directory
+
+ *USE WITH CAUTION!! (YOU MAY RUN OUT OF MEMMORY)*
+
+```
+$ upydev put -fre cwd
+Files in cwd to upload:
+servo.py
+dummy_script.py
+upydev_.config
+dcmotor.py
+Uploading file servo.py...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+servo.py -> /servo.py
+Remote WebREPL version: (1, 11, 0)
+Sent 1432 of 1432 bytes
+File Uploaded!
+
+
+Uploading file dummy_script.py...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+dummy_script.py -> /dummy_script.py
+Remote WebREPL version: (1, 11, 0)
+Sent 44 of 44 bytes
+File Uploaded!
+
+
+Uploading file upydev_.config...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+upydev_.config -> /upydev_.config
+Remote WebREPL version: (1, 11, 0)
+Sent 43 of 43 bytes
+File Uploaded!
+
+
+Uploading file dcmotor.py...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+dcmotor.py -> /dcmotor.py
+Remote WebREPL version: (1, 11, 0)
+Sent 1147 of 1147 bytes
+File Uploaded!
+
+
+Rebooting upy device...
+```
+
+##### Case 2:  '[expression to match]' --> usage:`upydev  put -fre [EXP]`
+
+This will upload all the files in current working directory that match EXP
+
+```
+$ upydev put -fre .py
+Files in that match expression '.py' to upload:
+servo.py
+dummy_script.py
+dcmotor.py
+Uploading file servo.py...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+servo.py -> /servo.py
+Remote WebREPL version: (1, 11, 0)
+Sent 1432 of 1432 bytes
+File Uploaded!
+
+
+Uploading file dummy_script.py...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+dummy_script.py -> /dummy_script.py
+Remote WebREPL version: (1, 11, 0)
+Sent 44 of 44 bytes
+File Uploaded!
+
+
+Uploading file dcmotor.py...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+dcmotor.py -> /dcmotor.py
+Remote WebREPL version: (1, 11, 0)
+Sent 1147 of 1147 bytes
+File Uploaded!
+
+
+Rebooting upy device...
+```
+
+##### Case 3:  '[file_1] [file_2]' --> usage:`upydev  put -fre [file_1] [file_2] ... [file_n]`
+
+This will upload  the files in current working directory that are indicated
+
+```
+$ upydev put -fre dummy_script.py servo.py
+Files to upload:
+dummy_script.py
+servo.py
+Uploading file dummy_script.py...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+dummy_script.py -> /dummy_script.py
+Remote WebREPL version: (1, 11, 0)
+Sent 44 of 44 bytes
+File Uploaded!
+
+
+Uploading file servo.py...
+op:put, host:192.168.1.49, port:8266, passwd:*******.
+servo.py -> /servo.py
+Remote WebREPL version: (1, 11, 0)
+Sent 1432 of 1432 bytes
+File Uploaded!
+
+
+Rebooting upy device...
+Done!
+```
+
 
 
 ## get
