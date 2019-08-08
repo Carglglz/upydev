@@ -1055,7 +1055,8 @@ parser.add_argument('-port', help='serial port of the device to flash to').compl
 parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
                         nargs='+')
 parser.add_argument('-G', help='to indicate the group of devices that the command is directed to')
-parser.add_argument('-fre', help='special option to put or get files from upy device', nargs='+')
+parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
+                        nargs='+')
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
