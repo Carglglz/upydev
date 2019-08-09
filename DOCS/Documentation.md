@@ -2217,7 +2217,7 @@ $ upydev specs -b esp32h
 
 #### pin_status
 
-to see pin state, to request a specific set use -po option ***
+to see pin state, to request a specific set use -po option 
 
 ```
 $ upydev pin_status
@@ -2254,7 +2254,7 @@ $ upydev pin_status -po 27 5 22 21
 
 
 
-*** NOT IMPLEMENTED YET.
+*Commands to be implemented yet:*
 
 ### ESP32:
 
