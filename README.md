@@ -156,7 +156,7 @@ Example: Raw commands
    ` $ upydev cmd -rl "function_that_print_multiple_lines()"`
    
    *  *tip: simple commands can be used without quotes;*
-     *but for commands with parenthesis or special characters use quoutes,*
+     *but for commands with parenthesis or special characters use quotes,*
      *for example: 'dummy_func()' ; use double quotes "" when the command*
      *includes a string like this example: "uos.listdir('/sd')"*
 
