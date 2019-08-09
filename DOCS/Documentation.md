@@ -422,7 +422,7 @@ Hello there!
 
 
 - *tip: simple commands can be used without quotes;*
-  *but for commands with parenthesis or special characters use quoutes,*
+  *but for commands with parenthesis or special characters use quotes,*
   *for example: 'dummy_func()' ; use double quotes "" when the command*
   *includes a string like this example: "uos.listdir('/sd')"*
 
