@@ -205,6 +205,18 @@ To target specific devices within a group add -devs option as `-devs [DEV_1 NAME
 
 *upydev will use local working directory configuration unless it does not find any or manually indicated with -g option*
 
+**GROUP COMMAND PARALLEL MODE (-GP option)**: 
+
+To send a command **at the same time** to multiple devices in a group (made with make_group command) use -GP option. 
+
+***Be aware that not all the commands are suitable for parallel execution (wrepl for example)*
+
+ Usage: `upydev [command] -GP [GROUP NAME]`
+
+To target specific devices within a group add -devs option as `-devs [DEV_1 NAME] [DEV_2 NAME]`
+
+*upydev will use local working directory configuration unless it does not find any or manually indicated with -g option*
+
 ------
 
 #### uPydev Commands:

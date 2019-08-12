@@ -20,6 +20,8 @@ import upydev
 import socket
 import struct
 import glob
+import threading
+import multiprocessing
 from datetime import datetime, date
 import argcomplete
 from argcomplete.completers import ChoicesCompleter
@@ -699,7 +701,7 @@ def lognow(filename, sensor):
         return filename
 
 
-# TODO: CLARIFY WHEN ADDITIONAL SCRIPT IS NEEDED (FROM UPYUTILS)
+# TODO: threaded command group --> parallel comand mode --> device class
 
 helparg = '''Mode:
 - config : to save upy device settings (see -p, -t, -g),
@@ -1057,6 +1059,7 @@ parser.add_argument('-devs', help='to indicate the devices that will be part of 
 parser.add_argument('-G', help='to indicate the group of devices that the command is directed to')
 parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
                         nargs='+')
+parser.add_argument('-GP', help='to indicate the group of devices that the command is directed to, for threaded command execution')
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
@@ -1222,6 +1225,7 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
                 id_file_dev = '/{}_{}'.format(device, args.f)
             get_f(ip, passwd, id_file=id_file_dev)
             print('\n')
+            time.sleep(0.5)
     else:
         # case 2: -fre is an expression to match
         if len(args.fre) == 1:
@@ -1235,6 +1239,7 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
                     id_file_dev = '/{}_{}'.format(device, args.f)
                 get_f(ip, passwd, id_file=id_file_dev)
                 print('\n')
+                time.sleep(0.5)
         else:
             # case 3: -fre is a list of files
             print('Files to get:')
@@ -1246,9 +1251,10 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
                     id_file_dev = '/{}_{}'.format(device, args.f)
                 get_f(ip, passwd, id_file=id_file_dev)
                 print('\n')
+                time.sleep(0.5)
 
 
-def sync(ip, passwd, id_file=None):
+def sync(ip, passwd, id_file=None, PORT=8005):
     if args.s is None:
         print('Looking for file in upy device root dir')
         cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip,
@@ -1280,29 +1286,29 @@ def sync(ip, passwd, id_file=None):
             target = ip
             print('Getting file {}...'.format(args.f))
             file_to_get = args.f
-            copyfile = 'sync_server -f {} -t {} -p {}'.format(
-                file_to_get, target, passwd)
+            copyfile = 'sync_server -f {} -t {} -p {} -port {}'.format(
+                file_to_get, target, passwd, PORT)
             if id_file is not None:
-                copyfile = 'sync_server -f {} -t {} -p {} -o {}'.format(
-                    file_to_get, target, passwd, id_file)
+                copyfile = 'sync_server -f {} -t {} -p {} -o {} -port {}'.format(
+                    file_to_get, target, passwd, id_file, PORT)
             if args.lh is not None:
-                copyfile = 'sync_server -f {} -t {} -p {} -lh {}'.format(
-                    file_to_get, target, passwd, args.lh)
+                copyfile = 'sync_server -f {} -t {} -p {} -lh {} -port {}'.format(
+                    file_to_get, target, passwd, args.lh, PORT)
                 if id_file is not None:
-                    copyfile = 'sync_server -f {} -t {} -p {} -lh {} -o {}'.format(
-                        file_to_get, target, passwd, args.lh, id_file)
+                    copyfile = 'sync_server -f {} -t {} -p {} -lh {} -o {} -port {}'.format(
+                        file_to_get, target, passwd, args.lh, id_file, PORT)
             if args.s == 'sd':
-                copyfile = 'sync_server -f {} -t {} -p {} -s {}'.format(
-                    file_to_get, target, passwd, 'sd')
+                copyfile = 'sync_server -f {} -t {} -p {} -s {} -port {}'.format(
+                    file_to_get, target, passwd, 'sd', PORT)
                 if id_file is not None:
-                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -o {}'.format(
-                        file_to_get, target, passwd, 'sd', id_file)
+                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -o {} -port {}'.format(
+                        file_to_get, target, passwd, 'sd', id_file, PORT)
                 if args.lh is not None:
-                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {}'.format(
-                        file_to_get, target, passwd, 'sd', args.lh)
+                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {} -port {}'.format(
+                        file_to_get, target, passwd, 'sd', args.lh, PORT)
                     if id_file is not None:
-                        copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {} -o {}'.format(
-                            file_to_get, target, passwd, 'sd', args.lh, id_file)
+                        copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {} -o {} -port {}'.format(
+                            file_to_get, target, passwd, 'sd', args.lh, id_file, PORT)
 
             resp = run_command_rt(copyfile)
         else:
@@ -1317,7 +1323,7 @@ def sync(ip, passwd, id_file=None):
         pass
 
 
-def sync_multiple_f(ip, passwd, id_file_dev=None, device=None):
+def sync_multiple_f(ip, passwd, id_file_dev=None, device=None, PORT_M=8005):
     # case 1: -fre is current working directory (cwd)
     file_list = ast.literal_eval(get_files_list(ip, passwd))
     if args.fre[0] == 'cwd':
@@ -1328,7 +1334,7 @@ def sync_multiple_f(ip, passwd, id_file_dev=None, device=None):
             args.f = file
             if id_file_dev is not None:
                 id_file_dev = '{}_{}'.format(device, args.f)
-            sync(ip, passwd, id_file=id_file_dev)
+            sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M)
             print('\n')
     else:
         # case 2: -fre is an expression to match
@@ -1341,7 +1347,7 @@ def sync_multiple_f(ip, passwd, id_file_dev=None, device=None):
                 args.f = file
                 if id_file_dev is not None:
                     id_file_dev = '{}_{}'.format(device, args.f)
-                sync(ip, passwd, id_file=id_file_dev)
+                sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M)
                 print('\n')
         else:
             # case 3: -fre is a list of files
@@ -1352,7 +1358,7 @@ def sync_multiple_f(ip, passwd, id_file_dev=None, device=None):
                 args.f = file
                 if id_file_dev is not None:
                     id_file_dev = '{}_{}'.format(device, args.f)
-                sync(ip, passwd, id_file=id_file_dev)
+                sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M)
                 print('\n')
 
 
@@ -1372,7 +1378,7 @@ def ping(ip):
             print(message[:-1].decode())
 
 
-def run_script(ip, passwd):
+def run_script(ip, passwd, dev=''):
     dir = ''
     script_filepy = args.f
     script_name = script_filepy.split('.')[0]
@@ -1399,9 +1405,9 @@ def run_script(ip, passwd):
             resp = proc.stdout.readline()[:-1].decode()
             if len(resp) > 0:
                 if resp[0] == '>':
-                    print(resp[4:])
+                    print('{}{}'.format(dev, resp[4:]))
                 else:
-                    print(resp)
+                    print('{}{}'.format(dev, resp))
             else:
                 print(resp)
     except KeyboardInterrupt:
@@ -1440,7 +1446,7 @@ def run_script(ip, passwd):
     # sys.exit()
 
 
-def timeit_script(ip, passwd):
+def timeit_script(ip, passwd, dev=''):
     timeit_import = "from time_it import tzero, tdiff, result;"
     dir = ''
     script_filepy = args.f
@@ -1469,9 +1475,9 @@ def timeit_script(ip, passwd):
             resp = proc.stdout.readline()[:-1].decode()
             if len(resp) > 0:
                 if resp[0] == '>':
-                    print(resp[4:])
+                    print('{}{}'.format(dev, resp[4:]))
                 else:
-                    print(resp)
+                    print('{}{}'.format(dev, resp))
             else:
                 print(resp)
     except KeyboardInterrupt:
@@ -1509,13 +1515,13 @@ def timeit_script(ip, passwd):
     print('Done!')
 
 
-def install_f(ip, passwd):
+def install_f(ip, passwd, dev=''):
     lib = args.f
     install_cmd = "import upip;upip.install('{}')".format(lib)
     run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         install_cmd, ip, passwd)
     run_live_cmd = shlex.split(run_cmd_str)
-    print('Looking for {} lib...'.format(args.f))
+    print('{} Looking for {} lib...'.format(dev, args.f))
     try:
         proc = subprocess.Popen(
             run_live_cmd, stdout=subprocess.PIPE,
@@ -1526,15 +1532,15 @@ def install_f(ip, passwd):
             resp = proc.stdout.readline()[:-1].decode()
             if len(resp) > 0:
                 if resp[0] == '>':
-                    print(resp[4:])
+                    print('{}{}'.format(dev, resp[4:]))
                 else:
-                    print(resp)
+                    print('{}{}'.format(dev, resp))
             else:
                 print(resp)
     except Exception as e:
         print(e)
 
-    print('Library {} installed!'.format(args.f))
+    print('{}Library {} installed!'.format(dev, args.f))
 
 
 def see():
@@ -1567,6 +1573,93 @@ def reset(ip, passwd):
 
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync']
+
+# UPYDEVICE CLASS
+
+
+class UPYDEVICE:
+    def __init__(self, devname, ip, passwd, command, port=8005):
+        self.name = devname
+        self.ip = ip
+        self.password = passwd
+        self.command = command
+        self.port = port
+        self.dev_process = multiprocessing.Process(target=self.run_command_callback)
+        self.dev_ping = multiprocessing.Process(target=self.ping_callback)
+        self.dev_run_script = multiprocessing.Process(target=run_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
+        self.dev_timeit_script = multiprocessing.Process(target=timeit_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
+        self.dev_put = multiprocessing.Process(target=put_f, args=(self.ip, self.password, args.rst))
+        self.dev_put_multiple = multiprocessing.Process(target=put_multiple_f, args=(self.ip, self.password))
+        self.dev_install = multiprocessing.Process(target=install_f, args=(self.ip, self.password, '{}: '.format(self.name), ))
+        self.dev_get = multiprocessing.Process(target=get_f, args=(self.ip, self.password, '/{}_{}'.format(self.name, args.f)))
+        self.dev_get_multiple = multiprocessing.Process(target=get_multiple_f, args=(self.ip, self.password, 'device_id', self.name))
+        self.dev_sync = multiprocessing.Process(target=sync, args=(self.ip, self.password, '{}_{}'.format(self.name, args.f), self.port))
+        self.dev_sync_multiple = multiprocessing.Process(target=sync_multiple_f, args=(self.ip, self.password, 'device_id', self.name, self.port))
+
+    def run_command_callback(self):
+        group_cmd_str = 'upydev {} -t {} -p {}'.format(self.command, self.ip, self.password)
+        # print(group_cmd_str)
+        group_cmd = shlex.split(group_cmd_str)
+        try:
+            proc = subprocess.Popen(
+                group_cmd, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+            while proc.poll() is None:
+                print('{}:{}'.format(self.name, proc.stdout.readline()[:-1].decode()))
+        except KeyboardInterrupt:
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print('{}:{}'.format(self.name, message[:-1].decode()))
+
+    def ping_callback(self):
+        ping_cmd_str = 'ping {}'.format(self.ip)
+        ping_cmd = shlex.split(ping_cmd_str)
+        try:
+            proc = subprocess.Popen(
+                ping_cmd, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+            while proc.poll() is None:
+                print('{}:{}'.format(self.name, proc.stdout.readline()[:-1].decode()))
+        except KeyboardInterrupt:
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print('{}:{}'.format(self.name, message[:-1].decode()))
+
+    def run_command(self):
+        self.dev_process.start()
+
+    def ping(self):
+        self.dev_ping.start()
+
+    def run_scrpt(self):
+        self.dev_run_script.start()
+
+    def timeit_scrpt(self):
+        self.dev_timeit_script.start()
+
+    def put_df(self):
+        self.dev_put.start()
+
+    def put_multiple_df(self):
+        self.dev_put_multiple.start()
+
+    def install_df(self):
+        self.dev_install.start()
+
+    def get_df(self):
+        self.dev_get.start()
+
+    def get_multiple_df(self):
+        self.dev_get_multiple.start()
+
+    def sync_df(self):
+        self.dev_sync.start()
+
+    def sync_multiple_df(self):
+        self.dev_sync_multiple.start()
+
 
 #############################################
 
@@ -1681,6 +1774,116 @@ if args.G is not None:
                         sync_multiple_f(dev_ip, dev_pass, id_file_dev='device_id', device=dev)
                 elif group_cmd_str.split()[1] == 'install':
                     install_f(dev_ip, dev_pass)
+
+        sys.exit()
+    except Exception as e:
+        print(e)
+        print('file not found, please create a group first')
+        sys.exit()
+
+
+# UPYDEV GROUP COMMAND THREADED MODE:
+if args.GP is not None:
+    try:
+        group_file = args.GP
+        # print(group_file)
+        if '{}.config'.format(group_file) not in os.listdir() or args.g is not None:
+            group_file = '{}/{}'.format(upydev.__path__[0], args.GP)
+        print('Sending command to group: {}'.format(group_file.split('/')[-1]))
+        with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+            devices = json.loads(group.read())
+            # print(devices)
+        devs = devices.keys()
+        PORTS = [8005+i for i in range(len(devs))]
+        PORTS_DICT = dict(zip(devs, PORTS))
+        if args.devs is not None:
+            devs = args.devs
+            PORTS = [8005+i for i in range(len(devs))]
+            PORTS_DICT = dict(zip(devs, PORTS))
+        for dev in devs:
+            print('Device Name: {} ; IP: {}'.format(dev, devices[dev][0]))
+        print('Sending command {} ...'.format(args.m))
+        # print(sys.argv[1:])
+        single_command = []
+        for i in range(len(sys.argv[1:])):
+            if sys.argv[1:][i] != '-GP':
+                if i == 0 or sys.argv[1:][i-1] != '-GP':
+                    single_command.append(sys.argv[1:][i])
+        gcommand = ' '.join(single_command)
+        #print(gcommand.split())
+        # group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
+        devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
+        if gcommand.split()[0] not in keywords_mode:
+            devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], '"{}"'.format(gcommand)) for dev in devs}
+
+        if gcommand.split()[0] not in kw_loc:
+            for dev in devs_dict.keys():
+                devs_dict[dev].run_command()
+        else:
+            # print('Mode not implemented yet')
+            if gcommand.split()[0] == 'ping':
+                for dev in devs_dict.keys():
+                    devs_dict[dev].ping()
+
+                try:
+                    while True:
+                        time.sleep(0.1)
+                except KeyboardInterrupt:
+                    time.sleep(1)
+                    for dev in devs_dict.keys():
+                        devs_dict[dev].dev_ping.terminate()
+
+            elif gcommand.split()[0] == 'put':
+                if args.fre is None:
+                    for dev in devs_dict.keys():
+                        devs_dict[dev].put_df()
+                else:
+                    for dev in devs_dict.keys():
+                        devs_dict[dev].put_multiple_df()
+
+            elif gcommand.split()[0] == 'get':
+                    if args.fre is None:
+                        for dev in devs_dict.keys():
+                            devs_dict[dev].get_df()
+                    else:
+                        for dev in devs_dict.keys():
+                            devs_dict[dev].get_multiple_df()
+
+            elif gcommand.split()[0] == 'sync':
+                if args.fre is None:
+                    for dev in devs_dict.keys():
+                        devs_dict[dev].sync_df()
+                else:
+                    for dev in devs_dict.keys():
+                        devs_dict[dev].sync_multiple_df()
+
+            elif gcommand.split()[0] == 'install':
+                for dev in devs_dict.keys():
+                    devs_dict[dev].install_df()
+
+            elif gcommand.split()[0] == 'timeit':
+                for dev in devs_dict.keys():
+                    devs_dict[dev].timeit_scrpt()
+
+            elif gcommand.split()[0] == 'run':
+                for dev in devs_dict.keys():
+                    devs_dict[dev].run_scrpt()
+
+                try:
+                    while True:
+                        dev_proc_state = [devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
+                        if all(state is False for state in dev_proc_state):
+                            time.sleep(0.1)
+                            break
+                except KeyboardInterrupt:
+                    time.sleep(2)
+                    while True:
+                        dev_proc_state = [devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
+                        if all(state is False for state in dev_proc_state):
+                            time.sleep(1)
+                            for dev in devs_dict.keys():
+                                devs_dict[dev].dev_run_script.terminate()
+                            break
 
         sys.exit()
     except Exception as e:

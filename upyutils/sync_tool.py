@@ -10,10 +10,10 @@ import os
 buffer_chunk = bytearray(2000)
 
 
-def connect_SOC(host):
+def connect_SOC(host, port):
     cli_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    soc_addr = socket.getaddrinfo(host, 8005)[0][-1]
+    soc_addr = socket.getaddrinfo(host, port)[0][-1]
     cli_soc.connect(soc_addr)
     return cli_soc
 

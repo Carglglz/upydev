@@ -19,6 +19,7 @@
 	- [see](#see)
 	- [make_group](#make_group)
 - [GROUP COMMAND MODE](#group-command-mode)
+- [GROUP COMMAND PARALLEL MODE](#group-command-parallel-mode)
 - [upy Commands:](#upy-commands)
 	- [GENERAL](#general)
 		- [info](#info)
@@ -744,6 +745,132 @@ Sending command to group: UPY_ROOM
 Device Name: esp_room2
 Device IP: 192.168.1.49
 Sending command led.on() ...
+```
+
+## GROUP COMMAND PARALLEL MODE 
+
+### (-GP option)
+
+To send a command **at the same time** to multiple devices in a group (made with make_group  command) use -GP option 
+
+***Be aware that not all the commands are suitable for parallel execution (wrepl for example)*
+
+Usage:  `upydev [command] -GP [GROUP NAME]`
+
+To target specific devices within a group use -devs option 
+
+Usage: `upydev [command] -GP [GROUP NAME] -devs [DEV1 NAME] [DEV2 NAME] ... `
+
+```
+$ upydev info -GP UPY_G
+Sending command to group: UPY_G
+Device Name: esp_room1 ; IP: 192.168.1.53
+Device Name: esp_room2 ; IP: 192.168.1.49
+Sending command info ...
+esp_room2:SYSTEM NAME: esp32
+esp_room2:NODE NAME: esp32
+esp_room2:RELEASE: 1.11.0
+esp_room2:VERSION: v1.11-183-ga8e3201b3 on 2019-07-31
+esp_room2:MACHINE: ESP32 module with ESP32
+esp_room2:
+esp_room1:SYSTEM NAME: esp32
+esp_room1:NODE NAME: esp32
+esp_room1:RELEASE: 1.11.0
+esp_room1:VERSION: v1.11-37-g62f004ba4 on 2019-06-09
+esp_room1:MACHINE: ESP32 module with ESP32
+esp_room1:
+```
+
+
+
+```
+$ upydev 'led.on()' -GP UPY_G
+Sending command to group: UPY_G
+Device Name: esp_room1 ; IP: 192.168.1.53
+Device Name: esp_room2 ; IP: 192.168.1.49
+Sending command led.on() ...
+esp_room2:
+esp_room1:
+esp_room2:
+esp_room1:
+```
+
+```
+$ upydev ping -GP UPY_G
+Sending command to group: UPY_G
+Device Name: esp_room1 ; IP: 192.168.1.53
+Device Name: esp_room2 ; IP: 192.168.1.49
+Sending command ping ...
+esp_room1:PING 192.168.1.53 (192.168.1.53): 56 data bytes
+esp_room1:64 bytes from 192.168.1.53: icmp_seq=0 ttl=255 time=46.547 ms
+esp_room2:PING 192.168.1.49 (192.168.1.49): 56 data bytes
+esp_room2:64 bytes from 192.168.1.49: icmp_seq=0 ttl=255 time=48.028 ms
+esp_room1:64 bytes from 192.168.1.53: icmp_seq=1 ttl=255 time=68.414 ms
+esp_room2:64 bytes from 192.168.1.49: icmp_seq=1 ttl=255 time=69.187 ms
+esp_room1:64 bytes from 192.168.1.53: icmp_seq=2 ttl=255 time=89.349 ms
+esp_room2:64 bytes from 192.168.1.49: icmp_seq=2 ttl=255 time=90.347 ms
+esp_room1:64 bytes from 192.168.1.53: icmp_seq=3 ttl=255 time=110.042 ms
+esp_room2:64 bytes from 192.168.1.49: icmp_seq=3 ttl=255 time=110.352 ms
+esp_room2:64 bytes from 192.168.1.49: icmp_seq=4 ttl=255 time=27.850 ms
+esp_room1:64 bytes from 192.168.1.53: icmp_seq=4 ttl=255 time=27.958 ms
+esp_room1:64 bytes from 192.168.1.53: icmp_seq=5 ttl=255 time=45.429 ms
+esp_room2:64 bytes from 192.168.1.49: icmp_seq=5 ttl=255 time=45.658 ms
+esp_room1:64 bytes from 192.168.1.53: icmp_seq=6 ttl=255 time=67.401 ms
+esp_room2:64 bytes from 192.168.1.49: icmp_seq=6 ttl=255 time=67.590 ms
+^Cesp_room2:
+esp_room1:
+esp_room2:--- 192.168.1.49 ping statistics ---
+esp_room1:--- 192.168.1.53 ping statistics ---
+esp_room2:7 packets transmitted, 7 packets received, 0.0% packet loss
+esp_room2:round-trip min/avg/max/stddev = 27.850/65.573/110.352/26.086 ms
+esp_room1:7 packets transmitted, 7 packets received, 0.0% packet loss
+esp_room1:round-trip min/avg/max/stddev = 27.958/65.020/110.042/26.007 ms
+```
+
+
+
+```
+$ upydev run -f dummy_inf_loop.py -GP UPY_G
+Sending command to group: UPY_G
+Device Name: esp_room1 ; IP: 192.168.1.53
+Device Name: esp_room2 ; IP: 192.168.1.49
+Sending command run ...
+Running dummy_inf_loop.py...
+Running dummy_inf_loop.py...
+esp_room2: hello dummy!
+esp_room2: bye bye!
+esp_room2: bye bye!
+esp_room1: hello dummy!
+esp_room1: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+esp_room1: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+esp_room2: bye bye!
+esp_room1: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+esp_room2: bye bye!
+esp_room1: bye bye!
+esp_room1: bye bye!
+esp_room2: bye bye!
+^C...closing...
+...closing...
+### closed ###
+### closed ###
+Done!
+Done!
 ```
 
 
