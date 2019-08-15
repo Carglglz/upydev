@@ -42,6 +42,7 @@ def help(rc=0):
     print('  just "exit" - end shell')
     sys.exit(rc)
 
+
 inp = ""
 raw_mode = False
 normal_mode = True
@@ -53,16 +54,20 @@ debug = False
 redirect = False
 response_snd = False
 parser = argparse.ArgumentParser()
-parser.add_argument("-c",help='command to send',required=True)
-parser.add_argument("-p",help='host password',required=True)
-parser.add_argument("-dbg",help='debug mode',required=False)
-parser.add_argument("-t",help='host direction',required=True)
-parser.add_argument("-r",help='redirect',required=False)
+parser.add_argument("-c", help='command to send', required=True)
+parser.add_argument("-p", help='host password', required=True)
+parser.add_argument("-dbg", help='debug mode', required=False)
+parser.add_argument("-t", help='host direction', required=True)
+parser.add_argument("-r", help='redirect', required=False)
+parser.add_argument(
+    "-wt", help='timeout in seconds to wait for an answer', type=float,
+    required=False, default=0.4)
 args = parser.parse_args()
 passwd = args.p
 debug = args.dbg
 redirect = args.r
 s_command = args.c
+time_out = args.wt
 
 # for i in range(len(sys.argv)):
 #     if sys.argv[i] == '-p':
@@ -83,7 +88,7 @@ s_command = args.c
 #         break
 
 #if len(sys.argv) > 4:
-    #help(1)
+#help(1)
 
 
 def on_message(ws, message):
@@ -176,6 +181,7 @@ def on_open(ws):
         global running
         global command_snd
         global response_snd
+        global time_out
         running = True
         command_snd = False
         injected = False
@@ -198,11 +204,9 @@ def on_open(ws):
                     #inp = do_input(prompt)
                     #inp = 'led.value(not led.value())'
                     if not command_snd:
-                        time.sleep(0.4)
+                        time.sleep(time_out)
                         inp = s_command
                         command_snd = True
-
-
 
                     if redirect:
                         sys.stdout.write(inp+"\n")
@@ -251,7 +255,6 @@ def on_open(ws):
                             #running = False
                             # sys.exit()
                             break
-
 
                     else:
                         running = False

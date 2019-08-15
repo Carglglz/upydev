@@ -1620,6 +1620,7 @@ class UPYDEVICE:
         self.command = command
         self.port = port
         self.dev_process = multiprocessing.Process(target=self.run_command_callback)
+        self.dev_process_raw = multiprocessing.Process(target=self.run_command_raw_callback)
         self.dev_ping = multiprocessing.Process(target=self.ping_callback)
         self.dev_run_script = multiprocessing.Process(target=run_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
         self.dev_timeit_script = multiprocessing.Process(target=timeit_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
@@ -1647,6 +1648,31 @@ class UPYDEVICE:
             for message in result:
                 print('{}:{}'.format(self.name, message[:-1].decode()))
 
+    def run_command_raw_callback(self):
+        group_cmd_str = 'web_repl_cmd_r -c {} -t {} -p {} -wt 0.8'.format(self.command, self.ip, self.password)
+        # print(group_cmd_str)
+        group_cmd = shlex.split(group_cmd_str)
+        try:
+            proc = subprocess.Popen(
+                group_cmd, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+            for i in range(6):
+                proc.stdout.readline()
+            while proc.poll() is None:
+                resp = proc.stdout.readline()[:-1].decode()
+                if len(resp) > 0:
+                    if resp[0] == '>':
+                        print('{}:{}'.format(self.name, resp[4:]))
+                    else:
+                        print('{}:{}'.format(self.name, resp))
+                else:
+                    print(resp)
+        except KeyboardInterrupt:
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print('{}:{}'.format(self.name, message[:-1].decode()))
+
     def ping_callback(self):
         ping_cmd_str = 'ping {}'.format(self.ip)
         ping_cmd = shlex.split(ping_cmd_str)
@@ -1664,6 +1690,9 @@ class UPYDEVICE:
 
     def run_command(self):
         self.dev_process.start()
+
+    def run_command_raw(self):
+        self.dev_process_raw.start()
 
     def ping(self):
         self.dev_ping.start()
@@ -1853,8 +1882,26 @@ if args.GP is not None:
         devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
         if gcommand.split()[0] not in keywords_mode:
             devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], '"{};gc.collect()"'.format(gcommand)) for dev in devs}
+            for dev in devs_dict.keys():
+                devs_dict[dev].run_command_raw()
+            try:
+                while True:
+                    dev_proc_state = [devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
+                    if all(state is False for state in dev_proc_state):
+                        time.sleep(1)
+                        print('Done!')
+                        break
+            except KeyboardInterrupt:
+                time.sleep(2)
+                while True:
+                    dev_proc_state = [devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
+                    if all(state is False for state in dev_proc_state):
+                        time.sleep(1)
+                        for dev in devs_dict.keys():
+                            devs_dict[dev].dev_process_raw.terminate()
+                        break
 
-        if gcommand.split()[0] not in kw_loc:
+        elif gcommand.split()[0] not in kw_loc:
             for dev in devs_dict.keys():
                 devs_dict[dev].run_command()
             try:
