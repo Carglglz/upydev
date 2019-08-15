@@ -176,10 +176,10 @@ def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
             flushed = 1
     if args.tm > 500:
         conn.settimeout((args.tm/1000)*3)  # for long periodic shots
-    run_cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+    run_cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(
         run_cmd, targ, password)
     run_live_cmd = shlex.split(run_cmd_str)
-    subprocess.call(run_live_cmd)
+    comm = subprocess.call(run_live_cmd)
     print(('{:^15}'*len(variables)).format(*variables))
     try:
         if log:
@@ -222,10 +222,10 @@ def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
         try:
             print('\n')
             print('...closing...')
-            conn.close()
+            conn.shutdown(socket.SHUT_RDWR)
             time.sleep(1)
             # Flush error keyboardinterrupt
-            cmd = ';gc.collect()'
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
             cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
@@ -235,14 +235,17 @@ def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
             print('Done!')
+            conn.close()
         except KeyboardInterrupt:
             print('...wait for closing...')
+            conn.shutdown(socket.SHUT_RDWR)
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
             cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
             time.sleep(1)
+            conn.close()
             print('Done!')
 
 
@@ -272,7 +275,7 @@ def test_stream(run_cmd, targ, password, sensorlib, filename=None,
             flushed = 1
     if args.tm > 500:
         conn.settimeout((args.tm/1000)*3)  # for long periodic shots
-    run_cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+    run_cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(
         run_cmd, targ, password)
     run_live_cmd = shlex.split(run_cmd_str)
     subprocess.call(run_live_cmd)
@@ -327,10 +330,10 @@ def test_stream(run_cmd, targ, password, sensorlib, filename=None,
         try:
             print('\n')
             print('...closing...')
-            conn.close()
+            conn.shutdown(socket.SHUT_RDWR)
             time.sleep(1)
             # Flush error keyboardinterrupt
-            cmd = ';gc.collect()'
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
             cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
@@ -356,12 +359,14 @@ def test_stream(run_cmd, targ, password, sensorlib, filename=None,
             # so total samples is n_batches (len(vals)) x size_batch
             # print('Period: {} ms ; Fs:{} Hz'.format(
             # timestamp[:].mean()/1e3,1/((timestamp[:].mean())/1e6))
+            conn.close()
             print('Period: {} ms ; Fs:{} Hz, Data send rate: {} packets/s of {} samples'.format(
                 round((1/Fs)*1e3), round(Fs, -1),
                 round(N_DATA_PACKETS/final_time), BUFFERSIZE))
             print(
                 'DATA TRANSFER RATE: {} KB/s'.format(round(N_DATA_PACKETS/final_time)*nb/1024))
         except KeyboardInterrupt:
+            conn.shutdown(socket.SHUT_RDWR)
             print('...wait for closing...')
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
@@ -369,6 +374,7 @@ def test_stream(run_cmd, targ, password, sensorlib, filename=None,
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
             time.sleep(1)
+            conn.close()
             print('Done!')
 
 
@@ -398,7 +404,7 @@ def get_live_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
             flushed = 1
     if args.tm > 500:
         conn.settimeout((args.tm/1000)*3)  # for long periodic shots
-    run_cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+    run_cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(
         run_cmd, targ, password)
     run_live_cmd = shlex.split(run_cmd_str)
     subprocess.call(run_live_cmd)
@@ -458,10 +464,10 @@ def get_live_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
         try:
             print('\n')
             print('...closing...')
-            conn.close()
+            conn.shutdown(socket.SHUT_RDWR)
             time.sleep(1)
             # Flush error keyboardinterrupt
-            cmd = ';gc.collect()'
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
             cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
@@ -471,7 +477,9 @@ def get_live_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
             print('Done!')
+            conn.close()
         except KeyboardInterrupt:
+            conn.shutdown(socket.SHUT_RDWR)
             print('...wait for closing...')
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
@@ -479,6 +487,7 @@ def get_live_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
             time.sleep(1)
+            conn.close()
             print('Done!')
 
 
@@ -508,7 +517,7 @@ def test_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
             flushed = 1
     if args.tm > 500:
         conn.settimeout((args.tm/1000)*3)  # for long periodic shots
-    run_cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
+    run_cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(
         run_cmd, targ, password)
     run_live_cmd = shlex.split(run_cmd_str)
     subprocess.call(run_live_cmd)
@@ -572,10 +581,10 @@ def test_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
         try:
             print('\n')
             print('...closing...')
-            conn.close()
+            conn.shutdown(socket.SHUT_RDWR)
             time.sleep(1)
             # Flush error keyboardinterrupt
-            cmd = ';gc.collect()'
+            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
             cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
@@ -601,12 +610,14 @@ def test_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
             # so total samples is n_batches (len(vals)) x size_batch
             # print('Period: {} ms ; Fs:{} Hz'.format(
             # timestamp[:].mean()/1e3,1/((timestamp[:].mean())/1e6))
+            conn.close()
             print('Period: {} ms ; Fs:{} Hz, Data send rate: {} packets/s of {} samples'.format(
                 round((1/Fs)*1e3), round(Fs, -1),
                 round(N_DATA_PACKETS/final_time), BUFFERSIZE))
             print(
                 'DATA TRANSFER RATE: {} KB/s'.format(round(N_DATA_PACKETS/final_time)*nb/1024))
         except KeyboardInterrupt:
+            conn.shutdown(socket.SHUT_RDWR)
             print('...wait for closing...')
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
@@ -614,6 +625,7 @@ def test_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
                 cmd, targ, password)
             cmd_resp = run_command_rl(cmd_str)
             time.sleep(1)
+            conn.close()
             print('Done!')
 
 
@@ -3203,7 +3215,7 @@ elif args.m == 'adc_config':
                 args.b, ADC_PINS_DICT[args.b]))
         else:
             adc_pin = args.po[0]
-            analog_cmd = "from machine import ADC;analog_pin = ADC(Pin({}));".format(
+            analog_cmd = "from machine import ADC,Pin;analog_pin = ADC(Pin({}));".format(
                 adc_pin)
             analog_atten = "analog_pin.atten({});gc.collect()".format(
                 ATTEN_DICT[int(args.att)])

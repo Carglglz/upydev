@@ -45,10 +45,12 @@ class MY_BME280:
         return [val for val in self.bme.read_compensated_data()]
 
     def connect_SOC(self, host):
+        self.irq_busy = True
         self.cli_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         soc_addr = socket.getaddrinfo(host, 8005)[0][-1]
         self.cli_soc.connect(soc_addr)
+        self.irq_busy = False
 
     def time_print(self):
         return ('{}_{}_{}_{}_{}_{}'.format(time.localtime()[1],
