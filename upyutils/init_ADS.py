@@ -10,7 +10,12 @@ import usocket as socket
 from ustruct import pack
 from array import array
 from micropython import const
-i2c = I2C(scl=Pin(22), sda=Pin(23))
+
+try:
+    i2c = I2C(scl=Pin(22), sda=Pin(23))
+except ValueError:
+    print('Non defualt I2C PINS')
+    pass
 
 
 class MY_ADS:

@@ -3330,6 +3330,9 @@ elif args.m == 'ads_init':
     print('Initialazing ads...')
     ads_init_cmd = "my_ads = ads.MY_ADS({},ads.i2c,None,channel={});".format(
         args.ads.upper(), args.ch)
+    if args.i2c != [22, 23]:
+        ads_init_cmd = "{};my_ads = ads.MY_ADS({},{},None,channel={});".format(
+            'from machine import I2C', args.ads.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c), args.ch)
     ads_final_init = "my_ads.init();gc.collect()"
     ads_init_cmd_str = import_ads_cmd + ads_init_cmd + ads_final_init
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
@@ -3465,6 +3468,9 @@ elif args.m == 'imu_init':
     print('Initialazing imu...')
     imu_init_cmd = "my_imu = imu.MY_IMU({},imu.i2c,None);".format(
         args.imu.upper())
+    if args.i2c != [22, 23]:
+        imu_init_cmd  = "{};my_imu = imu.MY_IMU({},{},None);".format(
+            'from machine import I2C', args.imu.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c))
     imu_final_init = "my_imu.init()"
     imu_init_cmd_str = import_imu_cmd + imu_init_cmd + imu_final_init
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
@@ -3760,6 +3766,9 @@ elif args.m == 'bme_init':
     print('Initialazing bme280...')
     bme_init_cmd = "my_bme = bme280.MY_BME280({},bme280.i2c);".format(
         args.bme.upper())
+    if args.i2c != [22, 23]:
+        bme_init_cmd  = "{};my_bme = bme280.MY_BME280({},{});".format(
+            'from machine import I2C', args.bme.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c))
     bme_final_init = "my_bme.init()"
     bme_init_cmd_str = import_bme_cmd + bme_init_cmd + bme_final_init
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
@@ -3894,6 +3903,9 @@ elif args.m == 'ina_init':
     print('Initialazing ina219...')
     ina_init_cmd = "my_ina = ina219.MY_INA219({},ina219.i2c);".format(
         args.ina.upper())
+    if args.i2c != [22, 23]:
+        ina_init_cmd = "{};my_ina = ina219.MY_INA219({},{});".format(
+            'from machine import I2C', args.ina.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c))
     ina_final_init = "my_ina.init()"
     ina_init_cmd_str = import_ina_cmd + ina_init_cmd + ina_final_init
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
