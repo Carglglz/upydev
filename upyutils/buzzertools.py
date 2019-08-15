@@ -97,3 +97,22 @@ class BUZZER:
         self.buzz_detect = Pin(PIN2, Pin.IN)
         self.buzz_button.on()
         self.buzz_detect.irq(trigger=Pin.IRQ_RISING, handler=self.buzzer_callback)
+
+    def buzzer_callback_rev(self, x):
+        if self.irq_busy_buzz:
+            return
+        else:
+            if self.buzz_detect.value() == 0:  # reverse op == 0
+                self.buzz_beep(150, 3, 100, self.fq)
+                self.buzz_detect.init(Pin.OUT)
+                time.sleep_ms(1000)
+                self.buzz_detect.value(1)  # reverse op == 1
+                self.buzz_detect.init(Pin.IN)
+            # butpress.init(Pin.IN, Pin.PULL_UP)
+            self.irq_busy_buzz = False
+
+    def active_button_rev(self, PIN1, PIN2):
+        self.buzz_button = Pin(PIN1, Pin.OUT)
+        self.buzz_detect = Pin(PIN2, Pin.IN)
+        self.buzz_button.on()
+        self.buzz_detect.irq(trigger=Pin.IRQ_FALLING, handler=self.buzzer_callback_rev)

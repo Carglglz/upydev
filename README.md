@@ -163,6 +163,9 @@ Example: Raw commands
 - **wrepl** : to enter the terminal webrepl; write *exit* or press *CTRL-C* to exit
         (see [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl) for more information)
 
+- **srepl** : to enter the terminal serial repl using picocom, indicate port by -port option
+            (to exit do CTRL-a, CTRL-x) (see: [Picocom](https://github.com/npat-efault/picocom) for more information)
+
 - **ping** : pings the target to see if it is reachable, *CTRL-C* to stop
 
 - **run** : just calls import 'script', where 'script' is indicated by -f option

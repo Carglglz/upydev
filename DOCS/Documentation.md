@@ -449,6 +449,52 @@ Hello
 
 
 
+## srepl
+
+to enter the terminal serial repl using picocom, indicate serial port by -port option 
+
+(to exit do CTRL-a, CTRL-x)
+(see: [Picocom](https://github.com/npat-efault/picocom) for more information)
+
+```
+$ upydev srepl -port /dev/tty.SLAB_USBtoUART
+picocom v3.1
+
+port is        : /dev/tty.SLAB_USBtoUART
+flowcontrol    : none
+baudrate is    : 115200
+parity is      : none
+databits are   : 8
+stopbits are   : 1
+escape is      : C-a
+local echo is  : no
+noinit is      : no
+noreset is     : no
+hangup is      : no
+nolock is      : no
+send_cmd is    : sz -vv
+receive_cmd is : rz -vv -E
+imap is        :
+omap is        :
+emap is        : crcrlf,delbs,
+logfile is     : none
+initstring     : none
+exit_after is  : not set
+exit is        : no
+
+Type [C-a] [C-h] to see available commands
+Terminal ready
+
+>>>
+>>> led.on()
+>>> dir()
+['led', 'toggle_AP_usb', 'i', 'gc', 'Pin', 'sig', 'button', 'bdev', 'time', 'ap', '__name__', 'webrepl', 'machine', 'network', 'irq_busy', 'AP_flag', 'uos']
+Terminating...
+Thanks for using picocom
+```
+
+
+
 ## ping
 
 pings the target to see if it is reachable, CTRL-C to stop \n
@@ -1829,6 +1875,14 @@ to configure an interrupt with pins indicated with -po
 
 ```
 $ upydev buzz_interrupt -po 12 32
+
+Button interrupt set at Pins; 12,32
+```
+
+use -md 'rev' for interrupt reverse operation
+
+```
+$ upydev buzz_interrupt -po 12 32 -md rev
 
 Button interrupt set at Pins; 12,32
 ```

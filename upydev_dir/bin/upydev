@@ -20,7 +20,6 @@ import upydev
 import socket
 import struct
 import glob
-import threading
 import multiprocessing
 from datetime import datetime, date
 import argcomplete
@@ -719,6 +718,8 @@ helparg = '''Mode:
         includes a string like this example: "uos.listdir('/sd')"
 - wrepl : to enter the terminal webrepl; write 'exit' or press CTRL-C to exit
         (see: https://github.com/Hermann-SW/webrepl for more information)
+- srepl : to enter the terminal serial repl using picocom, indicate port by -port option
+        (to exit do CTRL-a, CTRL-x)
 - ping : pings the target to see if it is reachable, CTRL-C to stop \n
 - run : just calls import 'script', where 'script' is indicated by -f option
         (script must be in upydevice or in sd card indicated by -s option
@@ -732,7 +733,7 @@ helparg = '''Mode:
           https://github.com/peterhinch/micropython-samples/tree/master/timed_function
 - fw: to list or get available firmware versions, use -md option to indicate operation:
         to list do: "upydev fw -md list -b [BOARD]" board should be 'esp32' or 'esp8266'
-        to get do: "upydev fw -md get [firmware file]"
+        to get do: "upydev fw -md get [firmware file]" or "upydev fw -md get latest -b[BOARD]"
         to see available serial ports do: "upydev fw -md list serial_ports"
 - flash: to flash a firmware file to the upydevice, a serial port must be indicated
             to flash do: "upydev flash -port [serial port] -f [firmware file]"
@@ -864,7 +865,8 @@ Sensors:
         - buzz_set_alarm: to set an alarm at time indicated with option -at, be
                          aware that the rtc time must be set first with set_localtime
                          or set_ntptime
-        - buzz_interrupt: to configure an interrupt with pins indicated with -po
+        - buzz_interrupt: to configure an interrupt with pins indicated with -po,
+                        use -md 'rev' for interrupt reverse operation
         - buzz_beep: make the buzzer beep, with options set by -opt,
                     usage: buzz_beep -opt [beep_ms] [number_of_beeps] [time_between_beeps] [fq]
     * DC MOTOR:
@@ -954,14 +956,14 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
                  'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-                 'ina_batt', 'make_group']
+                 'ina_batt', 'make_group', 'srepl']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag)
-parser.version = '0.0.1'
+parser.version = '0.0.5'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-p", help='password', required=False)
@@ -1571,8 +1573,27 @@ def reset(ip, passwd):
     print('Done!')
 
 
+def wrepl(ip, passwd):
+    web_repl_cmd_str = 'web_repl {} -p {}'.format(ip, passwd)
+    web_repl_cmd = shlex.split(web_repl_cmd_str)
+    try:
+        web_repl = subprocess.call(web_repl_cmd)
+    except KeyboardInterrupt:
+        pass
+        print('')
+
+
+def srepl(serial_port):
+    serial_repl_cmd_str = 'picocom {} -b115200'.format(serial_port)
+    serial_repl_cmd = shlex.split(serial_repl_cmd_str)
+    try:
+        serial_repl = subprocess.call(serial_repl_cmd)
+    except KeyboardInterrupt:
+        pass
+        print('')
+
 # keyword live output commands:
-kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync']
+kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl']
 
 # UPYDEVICE CLASS
 
@@ -1775,6 +1796,9 @@ if args.G is not None:
                 elif group_cmd_str.split()[1] == 'install':
                     install_f(dev_ip, dev_pass)
 
+                elif group_cmd_str.split()[1] == 'wrepl':
+                    wrepl(dev_ip, dev_pass)
+
         sys.exit()
     except Exception as e:
         print(e)
@@ -1814,11 +1838,27 @@ if args.GP is not None:
         # group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
         devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
         if gcommand.split()[0] not in keywords_mode:
-            devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], '"{}"'.format(gcommand)) for dev in devs}
+            devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], '"{};gc.collect()"'.format(gcommand)) for dev in devs}
 
         if gcommand.split()[0] not in kw_loc:
             for dev in devs_dict.keys():
                 devs_dict[dev].run_command()
+            try:
+                while True:
+                    dev_proc_state = [devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
+                    if all(state is False for state in dev_proc_state):
+                        time.sleep(1)
+                        print('Done!')
+                        break
+            except KeyboardInterrupt:
+                time.sleep(2)
+                while True:
+                    dev_proc_state = [devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
+                    if all(state is False for state in dev_proc_state):
+                        time.sleep(1)
+                        for dev in devs_dict.keys():
+                            devs_dict[dev].dev_process.terminate()
+                        break
         else:
             # print('Mode not implemented yet')
             if gcommand.split()[0] == 'ping':
@@ -1998,14 +2038,12 @@ elif args.m == 'cmd':
 # WEB REPL :
 
 elif args.m == 'wrepl':
-    web_repl_cmd_str = 'web_repl {} -p {}'.format(args.t, args.p)
-    web_repl_cmd = shlex.split(web_repl_cmd_str)
-    try:
-        web_repl = subprocess.call(web_repl_cmd)
-    except KeyboardInterrupt:
-        pass
-        print('')
-        sys.exit()
+    wrepl(args.t, args.p)
+
+# SERIAL REPL:
+
+elif args.m == 'srepl':
+    srepl(args.port)
 
 # PING :
 
@@ -4231,6 +4269,8 @@ elif args.m == 'buzz_set_alarm':
 # BUZZ INTERRUPT
 elif args.m == 'buzz_interrupt':
     buzz_cmd = "my_buzz.active_button({},{});".format(*args.po)
+    if args.md[0] == 'rev':
+        buzz_cmd = "my_buzz.active_button_rev({},{});".format(*args.po)
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         buzz_cmd, args.t, args.p)
     cmd_resp = run_command_rl(cmd_str)
