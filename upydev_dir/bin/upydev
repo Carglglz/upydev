@@ -749,6 +749,8 @@ helparg = '''Mode:
         within a group add -devs option as -devs [DEV NAME] [DEV NAME] ...
         (upydev will use local working directory configuration unless it does
         not find any or manually indicated with -g option)
+        * This sends the command to one device at a time;
+        ** For parallel command execution use -GP option (instead of -G)
 
 upy Commands:
 > GENERAL
