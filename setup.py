@@ -2,7 +2,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-07-11T23:29:40+01:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-07-12T01:44:46+01:00
+# @Last modified time: 2019-08-16T00:58:49+01:00
 
 from setuptools import setup
 
@@ -13,7 +13,7 @@ def readme():
 
 
 setup(name='upydev',
-      version='0.0.5',
+      version='0.0.6',
       description='Command line tool for wireless Micropython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',

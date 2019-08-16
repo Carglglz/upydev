@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Buzz interrupt reverse operation mode (falling)
 - Serial repl using picocom
-- Make the Group command parallel mode more reliable
+- Group command parallel mode more reliable
+- Sensors i2c pin configuration with -i2c option
 
 ## [0.0.5] - 2019-08-12
 
