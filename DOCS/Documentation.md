@@ -266,7 +266,7 @@ This will upload all the files in current working directory that match EXP
 
 ```
 $ upydev put -fre .py
-Files in that match expression '.py' to upload:
+Files that match expression '.py' to upload:
 servo.py
 dummy_script.py
 dcmotor.py

@@ -3,7 +3,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-03-12T18:52:56+00:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-08-16T00:59:09+01:00
+# @Last modified time: 2019-08-16T12:27:24+01:00
 
 # upydev CLI
 import argparse
@@ -1124,7 +1124,7 @@ def put_multiple_f(ip, passwd):
     else:
         # case 2: -fre is an expression to match
         if len(args.fre) == 1:
-            print("Files in that match expression '{}' to upload:".format(args.fre[0]))
+            print("Files that match expression '{}' to upload:".format(args.fre[0]))
             for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
                 print(file)
             for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
