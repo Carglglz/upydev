@@ -1818,9 +1818,11 @@ if args.G is not None:
                         single_command.append(sys.argv[1:][i])
             gcommand = ' '.join(single_command)
             # print(gcommand.split())
+            # print(gcommand)
             group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
             if group_cmd_str.split()[1] not in keywords_mode:
-                group_cmd_str = 'upydev "{}" -t {} -p {}'.format(group_cmd_str.split()[1], dev_ip, dev_pass)
+                # print(group_cmd_str.split()[1])
+                group_cmd_str = 'upydev "{}" -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
             # print(group_cmd_str)
             group_cmd = shlex.split(group_cmd_str)
             if group_cmd_str.split()[1] not in kw_loc:
