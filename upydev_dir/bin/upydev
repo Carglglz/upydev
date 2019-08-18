@@ -63,6 +63,13 @@ def serial_ports():
     return glob.glob(ls_cmd_str)
 
 
+def see_groups():
+    avoid_files = ['upydev_.config', 'help.config', 'esp32h.config']
+    local_cwd = [group_file.split('.')[0] for group_file in os.listdir() if '.config' in group_file and group_file not in 'upydev_.config']
+    globl_wd = [group_file.split('.')[0] for group_file in os.listdir(upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
+    return local_cwd + globl_wd
+
+
 def run_command_rl(command):
     end = False
     lines = []
@@ -1093,10 +1100,10 @@ parser.add_argument('-md', help='for command suboptions',
 parser.add_argument('-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
 parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
                         nargs='+')
-parser.add_argument('-G', help='to indicate the group of devices that the command is directed to')
+parser.add_argument('-G', help='to indicate the group of devices that the command is directed to').completer = ChoicesCompleter(see_groups())
 parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
                         nargs='+')
-parser.add_argument('-GP', help='to indicate the group of devices that the command is directed to, for threaded command execution')
+parser.add_argument('-GP', help='to indicate the group of devices that the command is directed to, for threaded command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.8] - 2019-08-18
 - Fix long output indentation (with head or cat upysh command for example)
+- Autocompletion groups for -G and -GP options
 ## [0.0.7] - 2019-08-16
 - Fix help info file.
 ## [0.0.6] - 2019-08-16
