@@ -998,7 +998,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag)
-parser.version = '0.0.7'
+parser.version = '0.0.8'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-p", help='password', required=False)
