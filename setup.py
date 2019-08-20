@@ -13,7 +13,7 @@ def readme():
 
 
 setup(name='upydev',
-      version='0.0.8',
+      version='0.0.9',
       description='Command line tool for wireless Micropython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',
@@ -43,6 +43,6 @@ setup(name='upydev',
                'upycmd_r_dir/bin/upycmd_r',
                'web_repl_cmd_dir/bin/web_repl_cmd',
                'web_repl_cmd_r_dir/bin/web_repl_cmd_r',
-               'web_repl_dir/bin/web_repl'],
+               'web_repl_dir/bin/web_repl', 'web_repl_2_dir/bin/web_repl2'],
       include_package_data=True,
-      install_requires=['argcomplete', 'mpy-cross', 'esptool'])
+      install_requires=['argcomplete', 'mpy-cross', 'esptool', 'prompt_toolkit'])

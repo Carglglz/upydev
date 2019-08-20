@@ -998,7 +998,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
                  'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-                 'ina_batt', 'make_group', 'srepl']
+                 'ina_batt', 'make_group', 'srepl', 'wrepl2']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -1625,6 +1625,16 @@ def wrepl(ip, passwd):
         print('')
 
 
+def wrepl2(ip, passwd):
+    web_repl_cmd_str = 'web_repl2 {} -p {}'.format(ip, passwd)
+    web_repl_cmd = shlex.split(web_repl_cmd_str)
+    try:
+        web_repl = subprocess.call(web_repl_cmd)
+    except KeyboardInterrupt:
+        pass
+        # print('')
+
+
 def srepl(serial_port):
     serial_repl_cmd_str = 'picocom {} -b115200'.format(serial_port)
     serial_repl_cmd = shlex.split(serial_repl_cmd_str)
@@ -1635,7 +1645,7 @@ def srepl(serial_port):
         print('')
 
 # keyword live output commands:
-kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl']
+kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl', 'wrepl2']
 
 # UPYDEVICE CLASS
 
@@ -1871,6 +1881,9 @@ if args.G is not None:
 
                 elif group_cmd_str.split()[1] == 'wrepl':
                     wrepl(dev_ip, dev_pass)
+
+                elif group_cmd_str.split()[1] == 'wrepl2':
+                    wrepl2(dev_ip, dev_pass)
 
         sys.exit()
     except Exception as e:
@@ -2133,6 +2146,11 @@ elif args.m == 'cmd':
 
 elif args.m == 'wrepl':
     wrepl(args.t, args.p)
+
+# WEB REPL2 :
+
+elif args.m == 'wrepl2':
+    wrepl2(args.t, args.p)
 
 # SERIAL REPL:
 
