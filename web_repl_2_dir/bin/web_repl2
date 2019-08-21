@@ -18,7 +18,6 @@ import websocket
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.completion import Completer, Completion
 
 
 # KEYPRESS EVENTS
@@ -28,91 +27,156 @@ kb = KeyBindings()
 
 @kb.add('tab')
 def tabpress(event):
-    global tabbed, HISTORY_TAB
-    tabbed = True
+    global mode_paste
     "Sends line buffer to WebREPL and hits tab, then refresh buffer for message receiving"
-    ws.send(event.app.current_buffer.document.text)
-    HISTORY_TAB.append(event.app.current_buffer.document.text)
-    ws.send('\x09')
-    event.app.current_buffer.delete_before_cursor(len(event.app.current_buffer.document.text))
+    if not mode_paste:
+        ws.send('\x09')
+    else:
+        event.app.current_buffer.insert_text('       ')  # insert_text('\x09')
 
 
 @kb.add('up')
 def uppress(event):
-    global tabbed
+    global mode_paste
     "Sends UP to navigate history commands"
-    event.app.current_buffer.reset()
-    ws.send('\033[A')
+    if not mode_paste:
+        ws.send('\033[A')
+    else:
+        event.app.current_buffer.cursor_up()
+
+
+@kb.add('<any>')
+def aress(event):
+    global mode_paste
+    "Sends character keypress"
+    if not mode_paste:
+        event.app.current_buffer.insert_text(event.key_sequence[0].data)
+        ws.send(event.key_sequence[0].data)
+        event.app.current_buffer.delete_before_cursor(1)
+    else:
+        event.app.current_buffer.insert_text(event.key_sequence[0].data)
 
 
 @kb.add('down')
 def downpress(event):
-    global tabbed
+    global mode_paste
     "Sends DOWN to navigate history commands"
-    event.app.current_buffer.reset()
-    ws.send('\033[B')
+    if not mode_paste:
+        ws.send('\033[B')
+    else:
+        event.app.current_buffer.cursor_down()
+
+
+@kb.add('left')
+def leftpress(event):
+    global mode_paste
+    "LEFT command"
+    if not mode_paste:
+        ws.send('\033[D')
+    else:
+        pass
+
+
+@kb.add('right')
+def rightpress(event):
+    global mode_paste
+    " right command"
+    if not mode_paste:
+        ws.send('\033[C')
+    else:
+        pass
 
 
 @kb.add('enter')
 def enterpress(event):
-    global tabbed, HISTORY_TAB
+    global mode_paste
     "Sends line buffer to WebREPL and hits enter, then refresh buffer for message receiving"
-    ws.send(event.app.current_buffer.document.text)
-    if tabbed:
-        last_tab_c = ''.join(HISTORY_TAB[1:])
-        if '>>> ' in HISTORY_TAB:
-            last_tab_c = HISTORY_TAB[-1]
-        if '>' in last_tab_c:
-            last_tab_c = last_tab_c[4:]
-        event.app.current_buffer.history.append_string(''.join([last_tab_c, event.app.current_buffer.document.text]))
+    if not mode_paste:
+        ws.send('\x0d')
     else:
-        if event.app.current_buffer.document.text != '':
-            event.app.current_buffer.history.append_string(event.app.current_buffer.document.text)
-    ws.send('\x0d')
-    event.app.current_buffer.delete_before_cursor(len(event.app.current_buffer.document.text))
-    tabbed = False
-    HISTORY_TAB = []
+        event.app.current_buffer.newline()  # insert_text('\n')
 
 
 @kb.add('c-y')
-def keylogpress(event):
-    global HISTORY_TAB
-    "Debuggin command"
-    print(dir(event.app.current_buffer.history))
-    print(event.app.current_buffer.history.get_strings())
-    print(HISTORY_TAB)
+def gc_collect_press(event):
+    "Send gc collect command to free some memmory"
+    ws.send('import gc;gc.collect()')
+    event.app.current_buffer.reset()
+    ws.send('\x0d')
+    # global HISTORY_TAB, HISTORY_BUFFER, cursor_pos
+    # # "Debuggin command"
+    # print(dir(event.app))
+    # print(dir(event.app.current_buffer))
+    # #print(len(event.app.current_buffer.document.text))
+    # # event.app.current_buffer.document.insert_after('yeeeey')
+    # # event.app.current_buffer.insert_text('yeeey')
+    # print(event.app.current_buffer.history.get_strings())
+    # print(HISTORY_TAB)
+    # print(HISTORY_BUFFER)
+    # print(cursor_pos)
+    # print(dir(event.key_sequence))
+    # print(event.key_sequence)
+
+
+@kb.add('c-f')
+def ls_press(event):
+    "Sends ls command to print files in cwd"
+    ws.send('from upysh import *;ls')
+    ws.send('\x0d')
+
+
+@kb.add('c-b')
+def mpy_info_press(event):
+    "Sends CTRL-B"
+    ws.send('\x02')
 
 
 @kb.add('c-k')
+def see_dir_press(event):
+    "Sends dir/() command to see global space"
+    # event.app.current_buffer.insert_text('import')
+    ws.send('dir()')
+    ws.send('\x0d')
+
+
+@kb.add('c-n')
+def see_mem_press(event):
+    "Sends mem info command to see mem info"
+    # event.app.current_buffer.insert_text('import')
+    ws.send('from micropython import mem_info;mem_info()')
+    ws.send('\x0d')
+
+
+@kb.add('c-u')
 def hystorylogpress(event):
-    print('Command History buffer:')
-    for command in event.app.current_buffer.history.get_strings():
-        if command != '':
-            print(command)
+    "import shortcut"
+    event.app.current_buffer.insert_text('import')
+    ws.send(event.app.current_buffer.document.text)
+    event.app.current_buffer.reset()
 
 
 @kb.add('c-r')
 def refreshpress(event):
-    "Cleans current buffer line"
-    buff_len = len(event.app.current_buffer.document.text)
-    event.app.current_buffer.delete_before_cursor(buff_len)
-    for i in range(buff_len):
+    "Backsapce x20 command"
+    for i in range(20):
         ws.send('\x08')
 
 
 @kb.add('c-space')
 def autocomppress(event):
     "Send last command"
-    last = event.app.current_buffer.history.get_strings()[-1]
-    ws.send(last)
+    ws.send('\033[A')
     ws.send('\x0d')
 
 
 @kb.add('backspace')
 def backpress(event):
-    " Initialize autocompletion, or select the next completion. "
-    event.app.current_buffer.delete_before_cursor(1)
-    ws.send('\x08')
+    global mode_paste
+    "Send backspace command"
+    if not mode_paste:
+        ws.send('\x08')
+    else:
+        event.app.current_buffer.delete_before_cursor(1)
 
 
 @kb.add('c-d')
@@ -122,9 +186,11 @@ def resetpress(event):
     if mode_paste:
         mode_paste = False
         ws.send(event.app.current_buffer.document.text)
-        event.app.current_buffer.history.append_string(event.app.current_buffer.document.text)
+        event.app.current_buffer.history.append_string(
+            event.app.current_buffer.document.text)
         ws.send('\x0d')
-        event.app.current_buffer.delete_before_cursor(len(event.app.current_buffer.document.text))
+        event.app.current_buffer.delete_before_cursor(
+            len(event.app.current_buffer.document.text))
         ws.send('\x04')
 
     else:
@@ -136,7 +202,7 @@ def resetpress(event):
 @kb.add('c-c')
 def keyintpress(event):
     global mode_paste
-    " Key interrupt MPY"
+    " Key interrupt MPY, cancel in paste mode"
     ws.send('\x03')
     event.app.current_buffer.reset()
     mode_paste = False
@@ -154,9 +220,10 @@ def paste_modepress(event):
 def exitpress(event):
     global exit_flag
     " Exit webREPL terminal "
-    print('closing...')
+    print('\n>>> closing...')
     exit_flag = True
     event.app.exit()
+
 
 # PROMPT SESSION
 session_p = PromptSession()
@@ -204,6 +271,8 @@ message_to_print = None
 buff = None
 mode_paste = False
 HISTORY_TAB = []
+HISTORY_BUFFER = []
+cursor_pos = -1
 
 for i in range(len(sys.argv)):
     if sys.argv[i] == '-p':
@@ -238,6 +307,7 @@ def on_message(ws, message):
     global tab_inp
     global message_to_print
     global HISTORY_TAB
+    global ws_received
 
     if len(inp) == 1 and ord(inp[0]) <= 5:
         inp = "\r\n" if inp != '\x04' else "\x04"
@@ -257,29 +327,31 @@ def on_message(ws, message):
                 prompt = ">>> "
                 prompt_seen = True
     message_to_print = message
+    ws_received = True
     if prompt_seen:
-        if tabbed is True:
-            sys.stdout.write(message[:-len(prompt)])
-            HISTORY_TAB.append(message[:-len(prompt)])
-            # with open('logws.txt', 'a') as wslog:
-            #     wslog.write(message)
-        else:
-            sys.stdout.write(message[:-len(prompt)])
-            # with open('logws.txt', 'a') as wslog:
-            #     wslog.write(message)
+        # if tabbed is True:
+        #     sys.stdout.write(message[:-len(prompt)])
+        #     HISTORY_TAB.append(message[:-len(prompt)])
+        #     # with open('logws.txt', 'a') as wslog:
+        #     #     wslog.write(message)
+        # else:
+        sys.stdout.write(message[:-len(prompt)])
+        #    # with open('logws.txt', 'a') as wslog:
+        #    #     wslog.write(message)
 
     else:
 
-        if tabbed is True:
-            sys.stdout.write(message)
-            HISTORY_TAB.append(message)
-            # with open('logws.txt', 'a') as wslog:
-            #     wslog.write(message)
-        else:
-            sys.stdout.write(message)
-            # with open('logws.txt', 'a') as wslog:
-            #     wslog.write(message)
+        # if tabbed is True:
+        #     sys.stdout.write(message)
+        #     HISTORY_TAB.append(message)
+        #     # with open('logws.txt', 'a') as wslog:
+        #     #     wslog.write(message)
+        # else:
+        sys.stdout.write(message)
+        #    # with open('logws.txt', 'a') as wslog:
+        #    #     wslog.write(message)
     sys.stdout.flush()
+    ws_received = False
     if paste_mode and message == "=== ":
         inp = "\n"
 
@@ -328,9 +400,9 @@ def on_open(ws):
                     sys.stdout.flush()
                 else:
 
-                    ## PROGRAMS BLOCK HERE, WORKS WITH KEYBINDGS HANDELING THE
-                    ## LINE BUFFER,
-                    ## WS ON_MESSAGE CALLBACK DOES THE PRINTING WORK
+                    # PROGRAMS BLOCK HERE, WORKS WITH KEYBINDGS HANDELING THE
+                    # LINE BUFFER,
+                    # WS ON_MESSAGE CALLBACK DOES THE PRINTING WORK
                     inp = session_p.prompt(
                         prompt, auto_suggest=AutoSuggestFromHistory(), key_bindings=kb)
                     if tabbed is True:
@@ -347,12 +419,10 @@ def on_open(ws):
                         break
                     pass
 
-
                 if prompt == "Password: ":  # initial "CTRL-C CTRL-B" injection
                     prompt = ""
                 else:
                     prompt = "=== " if paste_mode else ">>> "[4*int(raw_mode):]
-
 
                 if inp == "exit\r\n":
                     running = False
@@ -361,7 +431,8 @@ def on_open(ws):
                 else:
                     if ws.sock and ws.sock.connected:
                         try:
-                                inp += '\x02'  # START TEXT (Micropython header info)
+                                # START TEXT (Micropython header info)
+                                inp += '\x02'
                                 ws.send(inp)
                                 if prompt == "" and not(raw_mode) and not(injected):
                                     # inp += '\x02'
