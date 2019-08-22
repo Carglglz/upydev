@@ -429,8 +429,26 @@ Hello there!
 
 ## wrepl
 
-to enter the terminal webrepl; write 'exit' or press CTRL-C to exit
-(see: [Terminal WebREPL](https://github.com/Hermann-SW/webrepl) for more information)
+to enter the terminal WebREPL; CTRL-x to exit, CTRL-d to do soft reset
+To see more keybinding info do CTRL-k
+ (Added custom keybindings and autocompletion on tab to the previous work
+ see: [Terminal WebREPL](https://github.com/Hermann-SW/webrepl) for the original work)
+
+Custom keybindings:	
+
+- CTRL-x: to exit WebREPL
+
+- CTRL-e : Enters paste mode
+- CTRL-d: In normal mode does a soft reset, in paste mode : executes pasted script
+- CTRL-c : Keyboard interrupt in normal mode, in paste mode : cancel
+- CTRL-r: Backsapce x 20 (to erase current line in chunks)
+- CTRL-u: import shortcut command (writes import)
+- CTRL-f: to list files in cwd (ls upysh shorcut command)
+- CTRL-n: shows mem info
+- CTRL-y: gc.collect() shortcut command
+- CTRL-space: repeats last command
+- CTRL-t: runs test_code.py if present
+- CTRL-k: prints the custom keybindings (this list)
 
 ```
 $ upydev wrepl
@@ -444,7 +462,9 @@ Type "help()" for more information.
 Hello
 >>> led.on()
 >>> led.off()
->>> ^C### closed ###
+>>> closing... [^x]
+### closed ###
+$
 ```
 
 

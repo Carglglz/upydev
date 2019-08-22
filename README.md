@@ -160,9 +160,11 @@ Example: Raw commands
      *for example: 'dummy_func()' ; use double quotes "" when the command*
      *includes a string like this example: "uos.listdir('/sd')"*
 
-- **wrepl** : to enter the terminal webrepl; write *exit* or press *CTRL-C* to exit
-        (see [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl) for more information)
-
+- **wrepl** :to enter the terminal WebREPL; CTRL-x to exit, CTRL-d to do soft reset
+    To see more keybinding info do CTRL-k
+ (Added custom keybindings and autocompletion on tab to the previous work
+     see: [Terminal WebREPL](https://github.com/Hermann-SW/webrepl) for the original work)
+    
 - **srepl** : to enter the terminal serial repl using picocom, indicate port by -port option
             (to exit do CTRL-a, CTRL-x) (see: [Picocom](https://github.com/npat-efault/picocom) for more information)
 

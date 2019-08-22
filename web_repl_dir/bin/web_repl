@@ -8,10 +8,237 @@
 # complete rewrite of console webrepl client from aivarannamaa:
 # https://forum.micropython.org/viewtopic.php?f=2&t=3124&p=29865#p29865
 #
+
+# partial rewrite of console webrepl client from : Hermann-SW
+# https://github.com/Hermann-SW/webrepl
+#
+
 import sys
-import readline
-import getpass
 import websocket
+from prompt_toolkit import PromptSession
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.key_binding import KeyBindings
+
+
+# KEYPRESS EVENTS
+
+kb_info = """
+Custom keybindings:
+- CTRL-x : to exit WebREPL Terminal
+- CTRL-e : Enters paste mode
+- CTRL-d: In normal mode does a soft reset, in paste mode : executes pasted script
+- CTRL-c : Keyboard interrupt in normal mode, in paste mode : cancel
+- CTRL-r: Backsapce x 20 (to erase current line in chunks)
+- CTRL-u: import shortcut command (writes import)
+- CTRL-f: to list files in cwd (ls shorcut command)
+- CTRL-n: shows mem info
+- CTRL-y: gc.collect() shortcut command
+- CTRL-space: repeats last command
+- CTRL-t: runs test_code.py if present
+- CTRL-k: prints the custom keybindings (this list)
+>>> """
+
+kb = KeyBindings()
+
+
+@kb.add('tab')
+def tabpress(event):
+    global mode_paste
+    "Sends line buffer to WebREPL and hits tab, then refresh buffer for message receiving"
+    if not mode_paste:
+        ws.send('\x09')
+    else:
+        event.app.current_buffer.insert_text('       ')  # insert_text('\x09')
+
+
+@kb.add('up')
+def uppress(event):
+    global mode_paste
+    "Sends UP to navigate history commands"
+    if not mode_paste:
+        ws.send('\033[A')
+    else:
+        event.app.current_buffer.cursor_up()
+
+
+@kb.add('<any>')
+def aress(event):
+    global mode_paste
+    "Sends character keypress"
+    if not mode_paste:
+        ws.send(event.key_sequence[0].data)
+        event.app.current_buffer.insert_text(event.key_sequence[0].data)
+        # ws.send(event.key_sequence[0].data)
+        event.app.current_buffer.delete_before_cursor(1)
+    else:
+        event.app.current_buffer.insert_text(event.key_sequence[0].data)
+
+
+@kb.add('down')
+def downpress(event):
+    global mode_paste
+    "Sends DOWN to navigate history commands"
+    if not mode_paste:
+        ws.send('\033[B')
+    else:
+        event.app.current_buffer.cursor_down()
+
+
+@kb.add('left')
+def leftpress(event):
+    global mode_paste
+    "LEFT command"
+    if not mode_paste:
+        ws.send('\033[D')
+    else:
+        pass
+
+
+@kb.add('right')
+def rightpress(event):
+    global mode_paste
+    " right command"
+    if not mode_paste:
+        ws.send('\033[C')
+    else:
+        pass
+
+
+@kb.add('enter')
+def enterpress(event):
+    global mode_paste
+    "Sends line buffer to WebREPL and hits enter, then refresh buffer for message receiving"
+    if not mode_paste:
+        ws.send('\x0d')
+    else:
+        event.app.current_buffer.newline()  # insert_text('\n')
+
+
+@kb.add('c-y')
+def gc_collect_press(event):
+    "Send gc collect command to free some memmory"
+    ws.send('import gc;gc.collect()')
+    event.app.current_buffer.reset()
+    ws.send('\x0d')
+
+
+@kb.add('c-f')
+def ls_press(event):
+    "Sends ls command to print files in cwd"
+    ws.send('from upysh import *;ls')
+    ws.send('\x0d')
+
+
+@kb.add('c-b')
+def mpy_info_press(event):
+    "Sends CTRL-B"
+    ws.send('\x02')
+
+
+@kb.add('c-k')
+def see_dir_press(event):
+    "Sends dir/() command to see global space"
+    # event.app.current_buffer.insert_text('import')
+    print(kb_info)
+    # ws.send('dir()')
+    # ws.send('\x0d')
+
+
+@kb.add('c-n')
+def see_mem_press(event):
+    "Sends mem info command to see mem info"
+    # event.app.current_buffer.insert_text('import')
+    ws.send('from micropython import mem_info;mem_info()')
+    ws.send('\x0d')
+
+
+@kb.add('c-u')
+def hystorylogpress(event):
+    "import shortcut"
+    event.app.current_buffer.insert_text('import')
+    ws.send(event.app.current_buffer.document.text)
+    event.app.current_buffer.reset()
+
+
+@kb.add('c-r')
+def refreshpress(event):
+    "Backsapce x20 command"
+    for i in range(20):
+        ws.send('\x08')
+
+
+@kb.add('c-t')
+def testpress(event):
+    "Test code command"
+    ws.send('import test_code')
+    ws.send('\x0d')
+
+
+@kb.add('c-space')
+def autocomppress(event):
+    "Send last command"
+    ws.send('\033[A')
+    ws.send('\x0d')
+
+
+@kb.add('backspace')
+def backpress(event):
+    global mode_paste
+    "Send backspace command"
+    if not mode_paste:
+        ws.send('\x08')
+    else:
+        event.app.current_buffer.delete_before_cursor(1)
+
+
+@kb.add('c-d')
+def resetpress(event):
+    global mode_paste
+    " MPY soft Reset in Normal mode, execute in paste mode"
+    if mode_paste:
+        mode_paste = False
+        ws.send(event.app.current_buffer.document.text)
+        event.app.current_buffer.history.append_string(
+            event.app.current_buffer.document.text)
+        ws.send('\x0d')
+        event.app.current_buffer.delete_before_cursor(
+            len(event.app.current_buffer.document.text))
+        ws.send('\x04')
+
+    else:
+        ws.send('\x04')
+        print('MPY: soft reboot')
+        event.app.exit()
+
+
+@kb.add('c-c')
+def keyintpress(event):
+    global mode_paste
+    " Key interrupt MPY, cancel in paste mode"
+    ws.send('\x03')
+    event.app.current_buffer.reset()
+    mode_paste = False
+
+
+@kb.add('c-e')
+def paste_modepress(event):
+    global mode_paste
+    " Paste mode "
+    ws.send('\x05')
+    mode_paste = True
+
+
+@kb.add('c-x')
+def exitpress(event):
+    global exit_flag
+    " Exit webREPL terminal "
+    print('\n>>> closing...')
+    exit_flag = True
+    event.app.exit()
+
+
+# PROMPT SESSION
+session_p = PromptSession()
 
 try:
     import thread
@@ -40,6 +267,7 @@ def help(rc=0):
     print('  just "exit" - end shell')
     sys.exit(rc)
 
+
 inp = ""
 raw_mode = False
 normal_mode = True
@@ -49,6 +277,14 @@ prompt_seen = False
 passwd = None
 debug = False
 redirect = False
+tabbed = False
+exit_flag = None
+message_to_print = None
+buff = None
+mode_paste = False
+HISTORY_TAB = []
+HISTORY_BUFFER = []
+cursor_pos = -1
 
 for i in range(len(sys.argv)):
     if sys.argv[i] == '-p':
@@ -79,6 +315,12 @@ def on_message(ws, message):
     global paste_mode
     global prompt
     global prompt_seen
+    global tabbed
+    global tab_inp
+    global message_to_print
+    global HISTORY_TAB
+    global ws_received
+
     if len(inp) == 1 and ord(inp[0]) <= 5:
         inp = "\r\n" if inp != '\x04' else "\x04"
     while inp != "" and message != "" and inp[0] == message[0]:
@@ -87,20 +329,6 @@ def on_message(ws, message):
     if message != "":
         if not(raw_mode) or inp != "\x04":
             inp = ""
-    if raw_mode:
-        if message == "OK":
-            inp = "\x04\x04"
-        elif message == "OK\x04":
-            message = "OK"
-            inp = "\x04"
-        elif message == "OK\x04\x04":
-            message = "OK"
-            inp = ""
-        elif message == "OK\x04\x04>":
-            message = "OK>"
-            inp = ""
-    if debug:
-        print("[%s,%d,%s]" % (message, ord(message[0]), inp))
     if inp == '' and prompt != '':
         if message.endswith(prompt):
             prompt_seen = True
@@ -110,11 +338,32 @@ def on_message(ws, message):
             elif message.endswith(">>> "):
                 prompt = ">>> "
                 prompt_seen = True
+    message_to_print = message
+    ws_received = True
     if prompt_seen:
+        # if tabbed is True:
+        #     sys.stdout.write(message[:-len(prompt)])
+        #     HISTORY_TAB.append(message[:-len(prompt)])
+        #     # with open('logws.txt', 'a') as wslog:
+        #     #     wslog.write(message)
+        # else:
         sys.stdout.write(message[:-len(prompt)])
+        #    # with open('logws.txt', 'a') as wslog:
+        #    #     wslog.write(message)
+
     else:
+
+        # if tabbed is True:
+        #     sys.stdout.write(message)
+        #     HISTORY_TAB.append(message)
+        #     # with open('logws.txt', 'a') as wslog:
+        #     #     wslog.write(message)
+        # else:
         sys.stdout.write(message)
+        #    # with open('logws.txt', 'a') as wslog:
+        #    #     wslog.write(message)
     sys.stdout.flush()
+    ws_received = False
     if paste_mode and message == "=== ":
         inp = "\n"
 
@@ -140,9 +389,13 @@ def on_open(ws):
         global paste_mode
         global prompt
         global prompt_seen
+        global tabbed
+        global tab_inp
+        global session_p
+        global exit_flag
+        global message_to_print
         running = True
         injected = False
-        do_input = getpass.getpass
 
         while running:
             while ws.sock and ws.sock.connected:
@@ -158,32 +411,25 @@ def on_open(ws):
                     sys.stdout.write("Password: ")
                     sys.stdout.flush()
                 else:
-                    inp = do_input(prompt)
-                    if redirect:
-                        sys.stdout.write(inp+"\n")
-                        sys.stdout.flush()
 
-                if len(inp) != 1 or inp[0] < 'A' or inp[0] > 'E':
-                    inp += "\r\n"
-                else:
-                    inp = chr(ord(inp[0])-64)
-                    if raw_mode:
-                        if inp[0] == '\x02':
-                            normal_mode = True
-                            raw_mode = False
-                    elif normal_mode:
-                        if inp[0] == '\x01':
-                            raw_mode = True
-                            normal_mode = False
-                        elif inp[0] == '\x05':
-                            paste_mode = True
-                            normal_mode = False
-                    else:
-                        if inp[0] == '\x03' or inp[0] == '\x04':
-                            normal_mode = True
-                            paste_mode = False
+                    # PROGRAMS BLOCK HERE, WORKS WITH KEYBINDGS HANDELING THE
+                    # LINE BUFFER,
+                    # WS ON_MESSAGE CALLBACK DOES THE PRINTING WORK
+                    inp = session_p.prompt(
+                        prompt, auto_suggest=AutoSuggestFromHistory(), key_bindings=kb)
+                    if tabbed is True:
+                        sys.stdout.write('\x08'*10)
+                        tabbed = False
 
-                do_input = getpass.getpass if raw_mode else input
+                try:
+                    if len(inp) != 1 or inp[0] < 'A' or inp[0] > 'E':
+                        inp += "\r\n"
+
+                except Exception as e:
+                    if exit_flag is True:
+                        running = False
+                        break
+                    pass
 
                 if prompt == "Password: ":  # initial "CTRL-C CTRL-B" injection
                     prompt = ""
@@ -193,18 +439,26 @@ def on_open(ws):
                 if inp == "exit\r\n":
                     running = False
                     break
+
                 else:
                     if ws.sock and ws.sock.connected:
-                        ws.send(inp)
-                        if prompt == "" and not(raw_mode) and not(injected):
-                            inp += '\x03\x02'
-                            injected = True
-                            ws.send('\x03\x02')
+                        try:
+                                # START TEXT (Micropython header info)
+                                inp += '\x02'
+                                ws.send(inp)
+                                if prompt == "" and not(raw_mode) and not(injected):
+                                    # inp += '\x02'
+                                    injected = True
+                                    ws.send('\x0d')  # ENTER
+                                    tabbed = False
+                        except TypeError as e:
+                            pass
                     else:
                         running = False
             running = False
         ws.sock.close()
         sys.exit(1)
+
     thread.start_new_thread(run, ())
 
 

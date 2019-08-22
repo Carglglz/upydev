@@ -43,6 +43,6 @@ setup(name='upydev',
                'upycmd_r_dir/bin/upycmd_r',
                'web_repl_cmd_dir/bin/web_repl_cmd',
                'web_repl_cmd_r_dir/bin/web_repl_cmd_r',
-               'web_repl_dir/bin/web_repl', 'web_repl_2_dir/bin/web_repl2'],
+               'web_repl_dir/bin/web_repl'],
       include_package_data=True,
       install_requires=['argcomplete', 'mpy-cross', 'esptool', 'prompt_toolkit'])

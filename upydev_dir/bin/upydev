@@ -756,8 +756,10 @@ helparg = '''Mode:
         but for commands with parenthesis or special characters use quotes,
         for example: 'dummy_func()' ; use double quotes "" when the command
         includes a string like this example: "uos.listdir('/sd')"
-- wrepl : to enter the terminal webrepl; write 'exit' or press CTRL-C to exit
-        (see: https://github.com/Hermann-SW/webrepl for more information)
+- wrepl : to enter the terminal WebREPL; CTRL-x to exit, CTRL-d to do soft reset
+        To see more keybinding info do CTRL-k
+        (Added custom keybindings and autocompletion on tab to the previous work
+        see: https://github.com/Hermann-SW/webrepl for the original work)
 - srepl : to enter the terminal serial repl using picocom, indicate port by -port option
         (to exit do CTRL-a, CTRL-x)
 - ping : pings the target to see if it is reachable, CTRL-C to stop \n
@@ -998,7 +1000,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
                  'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-                 'ina_batt', 'make_group', 'srepl', 'wrepl2']
+                 'ina_batt', 'make_group', 'srepl']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -1463,6 +1465,7 @@ def run_script(ip, passwd, dev=''):
                 print(message[:-1].decode())
             for i in range(10):
                 proc.stdout.readlines()
+
             # Flush error keyboardinterrupt
             cmd = ''
             cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
@@ -1625,16 +1628,6 @@ def wrepl(ip, passwd):
         print('')
 
 
-def wrepl2(ip, passwd):
-    web_repl_cmd_str = 'web_repl2 {} -p {}'.format(ip, passwd)
-    web_repl_cmd = shlex.split(web_repl_cmd_str)
-    try:
-        web_repl = subprocess.call(web_repl_cmd)
-    except KeyboardInterrupt:
-        pass
-        # print('')
-
-
 def srepl(serial_port):
     serial_repl_cmd_str = 'picocom {} -b115200'.format(serial_port)
     serial_repl_cmd = shlex.split(serial_repl_cmd_str)
@@ -1645,7 +1638,7 @@ def srepl(serial_port):
         print('')
 
 # keyword live output commands:
-kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl', 'wrepl2']
+kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl']
 
 # UPYDEVICE CLASS
 
@@ -1881,9 +1874,6 @@ if args.G is not None:
 
                 elif group_cmd_str.split()[1] == 'wrepl':
                     wrepl(dev_ip, dev_pass)
-
-                elif group_cmd_str.split()[1] == 'wrepl2':
-                    wrepl2(dev_ip, dev_pass)
 
         sys.exit()
     except Exception as e:
@@ -2146,11 +2136,6 @@ elif args.m == 'cmd':
 
 elif args.m == 'wrepl':
     wrepl(args.t, args.p)
-
-# WEB REPL2 :
-
-elif args.m == 'wrepl2':
-    wrepl2(args.t, args.p)
 
 # SERIAL REPL:
 
