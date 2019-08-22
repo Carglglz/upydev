@@ -197,12 +197,17 @@ def resetpress(event):
     " MPY soft Reset in Normal mode, execute in paste mode"
     if mode_paste:
         mode_paste = False
-        ws.send(event.app.current_buffer.document.text)
-        event.app.current_buffer.history.append_string(
-            event.app.current_buffer.document.text)
-        ws.send('\x0d')
+        # print(len(event.app.current_buffer.document.text))
+        buffering = event.app.current_buffer.document.text
+        # event.app.current_buffer.reset()
         event.app.current_buffer.delete_before_cursor(
             len(event.app.current_buffer.document.text))
+        for i in range(0, len(buffering), 80):
+            ws.send(buffering[i:i+80])
+            sleep(0.1)
+        sleep(0.5)
+        ws.send('\x0d')
+        sleep(0.001*len(buffering))
         ws.send('\x04')
 
     else:
