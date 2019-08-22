@@ -37,6 +37,7 @@ Custom keybindings:
 - CTRL-space: repeats last command
 - CTRL-t: runs test_code.py if present
 - CTRL-w: flush test_code from sys modules, so it can be run again
+- CTRL-a: force synchronized mode (better if using wrepl through ssh session)
 - CTRL-k: prints the custom keybindings (this list)
 >>> """
 
@@ -47,19 +48,23 @@ kb = KeyBindings()
 
 @Condition
 def sync_is_active():
-    global async_mode
+    global sync_mode
     " Only activate key binding on sync mode"
     return sync_mode
 
 
 # Debug sync_mode
-# @kb.add('c-a')
-# def sync_press(event):
-#     global sync_mode
-#     if sync_mode is False:
-#         sync_mode = True
-#     else:
-#         sync_mode = False
+@kb.add('c-a')
+def sync_press(event):
+    global sync_mode, override_async
+    if sync_mode is False:
+        sync_mode = True
+    else:
+        sync_mode = False
+    if override_async is False:
+        override_async = True
+    else:
+        override_async = False
 
 
 @kb.add('tab')
@@ -145,11 +150,12 @@ def rightpress(event):
 
 @kb.add('enter')
 def enterpress(event):
-    global mode_paste, sync_mode, received
+    global mode_paste, sync_mode, received, override_async
     "Sends line buffer to WebREPL and hits enter, then refresh buffer for message receiving"
     if not mode_paste:
         received = False
-        sync_mode = False
+        if not override_async:
+            sync_mode = False
         if not sync_mode:
             ws.send(event.app.current_buffer.document.text)
             event.app.current_buffer.reset()
@@ -346,6 +352,7 @@ redirect = False
 exit_flag = None
 mode_paste = False
 sync_mode = False
+override_async = False
 received = False
 
 for i in range(len(sys.argv)):

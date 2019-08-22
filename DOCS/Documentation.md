@@ -448,6 +448,7 @@ Custom keybindings:
 - CTRL-space: repeats last command
 - CTRL-t: runs test_code.py if present
 - CTRL-w: flush test_code from sys modules, so it can be run again
+- CTRL-a: force toggle synchronized mode (better if using wrepl through ssh session)
 - CTRL-k: prints the custom keybindings (this list)
 
 ```
