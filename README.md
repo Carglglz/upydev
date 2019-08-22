@@ -43,6 +43,8 @@ Python modules (automatically installed using pip):
 
 [argcomplete](https://github.com/kislyuk/argcomplete) (for command line autocompletion)
 
+[prompt_toolkit](https://github.com/prompt-toolkit/python-prompt-toolkit) (for new WebREPL Terminal implementation)
+
 [mpy-cross](https://gitlab.com/alelec/micropython/tree/gitlab_build/mpy-cross)
 
 [esptool](https://github.com/espressif/esptool)
