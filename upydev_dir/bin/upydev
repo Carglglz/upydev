@@ -966,7 +966,7 @@ Port/board specific commands:
 - specs : to see the board specs, indicated by -b option
 - pin_status: to see pin state, to request a specific set use -po option ***
 
-* ESP32:
+* ESP32: (Not implemented yet)
     - touch
     - hall
     - deepsleep

@@ -437,17 +437,17 @@ To see more keybinding info do CTRL-k
 Custom keybindings:	
 
 - CTRL-x: to exit WebREPL
-
 - CTRL-e : Enters paste mode
-- CTRL-d: In normal mode does a soft reset, in paste mode : executes pasted script
+- CTRL-d: In normal mode does a soft reset (an exit), in paste mode : executes pasted script
 - CTRL-c : Keyboard interrupt in normal mode, in paste mode : cancel
-- CTRL-r: Backsapce x 20 (to erase current line in chunks)
+- CTRL-r: Backsapce x 20 (to erase current line in chunks) or flush line buffer
 - CTRL-u: import shortcut command (writes import)
 - CTRL-f: to list files in cwd (ls upysh shorcut command)
 - CTRL-n: shows mem info
 - CTRL-y: gc.collect() shortcut command
 - CTRL-space: repeats last command
 - CTRL-t: runs test_code.py if present
+- CTRL-w: flush test_code from sys modules, so it can be run again
 - CTRL-k: prints the custom keybindings (this list)
 
 ```
@@ -467,7 +467,7 @@ Hello
 $
 ```
 
-
+** An example of each custom keybinding will be added soon...
 
 ## srepl
 

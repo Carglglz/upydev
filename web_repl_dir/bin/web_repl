@@ -18,6 +18,7 @@ import websocket
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.filters import Condition
 
 
 # KEYPRESS EVENTS
@@ -26,49 +27,84 @@ kb_info = """
 Custom keybindings:
 - CTRL-x : to exit WebREPL Terminal
 - CTRL-e : Enters paste mode
-- CTRL-d: In normal mode does a soft reset, in paste mode : executes pasted script
+- CTRL-d: In normal mode does a soft reset (an exit), in paste mode : executes pasted script
 - CTRL-c : Keyboard interrupt in normal mode, in paste mode : cancel
-- CTRL-r: Backsapce x 20 (to erase current line in chunks)
+- CTRL-r: Backsapce x 20 (to erase current line in chunks) or flush line buffer
 - CTRL-u: import shortcut command (writes import)
 - CTRL-f: to list files in cwd (ls shorcut command)
 - CTRL-n: shows mem info
 - CTRL-y: gc.collect() shortcut command
 - CTRL-space: repeats last command
 - CTRL-t: runs test_code.py if present
+- CTRL-w: flush test_code from sys modules, so it can be run again
 - CTRL-k: prints the custom keybindings (this list)
 >>> """
 
 kb = KeyBindings()
 
+# CONDITIONAL ASYNC MODE
+
+
+@Condition
+def sync_is_active():
+    global async_mode
+    " Only activate key binding on sync mode"
+    return sync_mode
+
+
+# Debug sync_mode
+# @kb.add('c-a')
+# def sync_press(event):
+#     global sync_mode
+#     if sync_mode is False:
+#         sync_mode = True
+#     else:
+#         sync_mode = False
+
 
 @kb.add('tab')
 def tabpress(event):
-    global mode_paste
+    global mode_paste, sync_mode
     "Sends line buffer to WebREPL and hits tab, then refresh buffer for message receiving"
     if not mode_paste:
-        ws.send('\x09')
+        if not sync_mode:
+            sync_mode = True
+            ws.send(event.app.current_buffer.document.text)
+            ws.send('\x09')
+            event.app.current_buffer.reset()
+        else:
+            ws.send('\x09')
     else:
         event.app.current_buffer.insert_text('       ')  # insert_text('\x09')
 
 
 @kb.add('up')
 def uppress(event):
-    global mode_paste
+    global mode_paste, sync_mode
     "Sends UP to navigate history commands"
     if not mode_paste:
+        if not sync_mode:
+            sync_mode = True
+            event.app.current_buffer.reset()
         ws.send('\033[A')
     else:
         event.app.current_buffer.cursor_up()
 
 
-@kb.add('<any>')
+@kb.add('<any>', filter=sync_is_active)
 def aress(event):
-    global mode_paste
+    global mode_paste, received
     "Sends character keypress"
     if not mode_paste:
-        ws.send(event.key_sequence[0].data)
         event.app.current_buffer.insert_text(event.key_sequence[0].data)
+        ws.send(event.key_sequence[0].data)
         # ws.send(event.key_sequence[0].data)
+        # event.app.current_buffer.delete_before_cursor(1)
+        while not received:
+            try:
+                pass
+            except KeyboardInterrupt:
+                sys.exit()
         event.app.current_buffer.delete_before_cursor(1)
     else:
         event.app.current_buffer.insert_text(event.key_sequence[0].data)
@@ -76,15 +112,18 @@ def aress(event):
 
 @kb.add('down')
 def downpress(event):
-    global mode_paste
+    global mode_paste, sync_mode
     "Sends DOWN to navigate history commands"
     if not mode_paste:
+        if not sync_mode:
+            sync_mode = True
+            event.app.current_buffer.reset()
         ws.send('\033[B')
     else:
         event.app.current_buffer.cursor_down()
 
 
-@kb.add('left')
+@kb.add('left', filter=sync_is_active)
 def leftpress(event):
     global mode_paste
     "LEFT command"
@@ -94,7 +133,7 @@ def leftpress(event):
         pass
 
 
-@kb.add('right')
+@kb.add('right', filter=sync_is_active)
 def rightpress(event):
     global mode_paste
     " right command"
@@ -106,10 +145,24 @@ def rightpress(event):
 
 @kb.add('enter')
 def enterpress(event):
-    global mode_paste
+    global mode_paste, sync_mode, received
     "Sends line buffer to WebREPL and hits enter, then refresh buffer for message receiving"
     if not mode_paste:
+        received = False
+        sync_mode = False
+        if not sync_mode:
+            ws.send(event.app.current_buffer.document.text)
+            event.app.current_buffer.reset()
+            if event.app.current_buffer.document.text != '':
+                event.app.current_buffer.history.append_string(event.app.current_buffer.document.text)
         ws.send('\x0d')
+        # sleep(0.1)
+        while not received:
+            try:
+                pass
+            except KeyboardInterrupt:
+                sys.exit()
+        event.app.current_buffer.reset()
     else:
         event.app.current_buffer.newline()  # insert_text('\n')
 
@@ -162,7 +215,8 @@ def hystorylogpress(event):
 
 @kb.add('c-r')
 def refreshpress(event):
-    "Backsapce x20 command"
+    "Backsapce x20 command, and flush buffer"
+    event.app.current_buffer.reset()
     for i in range(20):
         ws.send('\x08')
 
@@ -174,6 +228,13 @@ def testpress(event):
     ws.send('\x0d')
 
 
+@kb.add('c-w')
+def reloadpress(event):
+    "Reload test_code command"
+    ws.send("import sys;del(sys.modules['test_code']);gc.collect()")
+    ws.send('\x0d')
+
+
 @kb.add('c-space')
 def autocomppress(event):
     "Send last command"
@@ -181,9 +242,9 @@ def autocomppress(event):
     ws.send('\x0d')
 
 
-@kb.add('backspace')
+@kb.add('backspace', filter=sync_is_active)
 def backpress(event):
-    global mode_paste
+    global mode_paste, sync_mode
     "Send backspace command"
     if not mode_paste:
         ws.send('\x08')
@@ -282,14 +343,10 @@ prompt_seen = False
 passwd = None
 debug = False
 redirect = False
-tabbed = False
 exit_flag = None
-message_to_print = None
-buff = None
 mode_paste = False
-HISTORY_TAB = []
-HISTORY_BUFFER = []
-cursor_pos = -1
+sync_mode = False
+received = False
 
 for i in range(len(sys.argv)):
     if sys.argv[i] == '-p':
@@ -320,12 +377,8 @@ def on_message(ws, message):
     global paste_mode
     global prompt
     global prompt_seen
-    global tabbed
-    global tab_inp
-    global message_to_print
-    global HISTORY_TAB
-    global ws_received
-
+    global received
+    received = True
     if len(inp) == 1 and ord(inp[0]) <= 5:
         inp = "\r\n" if inp != '\x04' else "\x04"
     while inp != "" and message != "" and inp[0] == message[0]:
@@ -343,8 +396,7 @@ def on_message(ws, message):
             elif message.endswith(">>> "):
                 prompt = ">>> "
                 prompt_seen = True
-    message_to_print = message
-    ws_received = True
+
     if prompt_seen:
         # if tabbed is True:
         #     sys.stdout.write(message[:-len(prompt)])
@@ -368,7 +420,6 @@ def on_message(ws, message):
         #    # with open('logws.txt', 'a') as wslog:
         #    #     wslog.write(message)
     sys.stdout.flush()
-    ws_received = False
     if paste_mode and message == "=== ":
         inp = "\n"
 
@@ -394,11 +445,9 @@ def on_open(ws):
         global paste_mode
         global prompt
         global prompt_seen
-        global tabbed
-        global tab_inp
         global session_p
         global exit_flag
-        global message_to_print
+        global received
         running = True
         injected = False
 
@@ -422,10 +471,6 @@ def on_open(ws):
                     # WS ON_MESSAGE CALLBACK DOES THE PRINTING WORK
                     inp = session_p.prompt(
                         prompt, auto_suggest=AutoSuggestFromHistory(), key_bindings=kb)
-                    if tabbed is True:
-                        sys.stdout.write('\x08'*10)
-                        tabbed = False
-
                 try:
                     if len(inp) != 1 or inp[0] < 'A' or inp[0] > 'E':
                         inp += "\r\n"
@@ -455,7 +500,6 @@ def on_open(ws):
                                     # inp += '\x02'
                                     injected = True
                                     ws.send('\x0d')  # ENTER
-                                    tabbed = False
                         except TypeError as e:
                             pass
                     else:
