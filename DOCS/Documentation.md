@@ -449,6 +449,7 @@ Custom keybindings:
 - CTRL-t: runs test_code.py if present
 - CTRL-w: flush test_code from sys modules, so it can be run again
 - CTRL-a: force toggle synchronized mode (better if using wrepl through ssh session)
+- CTRL-p: toggle autosuggest mode (Fish shell like) (if not in synchronized mode)
 - CTRL-k: prints the custom keybindings (this list)
 
 ```

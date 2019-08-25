@@ -61,7 +61,7 @@ Raspbian GNU/Linux 9 (stretch) *(through ssh session)*
 $ git clone https://github.com/Carglglz/upydev.git
 [...]
 $ cd upydev
-$ sudo pip3 install . -r rpy_rqmnts.txt
+$ sudo pip3 install . --no-deps -r rpy_rqmnts.txt
 ```
 
 upy Boards:
