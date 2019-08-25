@@ -17,6 +17,7 @@ import sys
 import websocket
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.filters import Condition
 
@@ -38,6 +39,7 @@ Custom keybindings:
 - CTRL-t: runs test_code.py if present
 - CTRL-w: flush test_code from sys modules, so it can be run again
 - CTRL-a: force synchronized mode (better if using wrepl through ssh session)
+- CTRL-p: toggle autosuggest mode (Fish shell like) (if not in synchronized mode)
 - CTRL-k: prints the custom keybindings (this list)
 >>> """
 
@@ -51,6 +53,14 @@ def sync_is_active():
     global sync_mode
     " Only activate key binding on sync mode"
     return sync_mode
+
+# CONDITIONAL AUTOSUGGEST
+
+
+@Condition
+def autosuggest_is_on():
+    global autosuggest_mode
+    return autosuggest_mode
 
 
 # Debug sync_mode
@@ -157,10 +167,12 @@ def enterpress(event):
         if not override_async:
             sync_mode = False
         if not sync_mode:
-            ws.send(event.app.current_buffer.document.text)
-            event.app.current_buffer.reset()
+            # ws.send(event.app.current_buffer.document.text)
+            # event.app.current_buffer.reset()
             if event.app.current_buffer.document.text != '':
                 event.app.current_buffer.history.append_string(event.app.current_buffer.document.text)
+            ws.send(event.app.current_buffer.document.text)
+            event.app.current_buffer.reset()
         ws.send('\x0d')
         # sleep(0.1)
         while not received:
@@ -215,8 +227,8 @@ def see_mem_press(event):
 def hystorylogpress(event):
     "import shortcut"
     event.app.current_buffer.insert_text('import')
-    ws.send(event.app.current_buffer.document.text)
-    event.app.current_buffer.reset()
+    # ws.send(event.app.current_buffer.document.text)
+    # event.app.current_buffer.reset()
 
 
 @kb.add('c-r')
@@ -309,6 +321,15 @@ def exitpress(event):
     event.app.exit()
 
 
+@kb.add('c-p')
+def toggle_autosgst(event):
+    global autosuggest_mode
+    if autosuggest_mode:
+        autosuggest_mode = False
+    else:
+        autosuggest_mode = True
+
+
 # PROMPT SESSION
 session_p = PromptSession()
 
@@ -354,6 +375,7 @@ mode_paste = False
 sync_mode = False
 override_async = False
 received = False
+autosuggest_mode = False
 
 for i in range(len(sys.argv)):
     if sys.argv[i] == '-p':
@@ -476,8 +498,12 @@ def on_open(ws):
                     # PROGRAMS BLOCK HERE, WORKS WITH KEYBINDGS HANDELING THE
                     # LINE BUFFER,
                     # WS ON_MESSAGE CALLBACK DOES THE PRINTING WORK
+                    # ConditionalAutoSuggest(AutoSuggestFromHistory(), autosuggest_is_on)
+                    # AutoSuggestFromHistory()
                     inp = session_p.prompt(
-                        prompt, auto_suggest=AutoSuggestFromHistory(), key_bindings=kb)
+                        prompt,
+                        auto_suggest=ConditionalAutoSuggest(AutoSuggestFromHistory(),
+                                                            autosuggest_is_on), key_bindings=kb)
                 try:
                     if len(inp) != 1 or inp[0] < 'A' or inp[0] > 'E':
                         inp += "\r\n"
