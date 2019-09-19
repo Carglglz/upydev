@@ -18,6 +18,7 @@
 	- [flash](#flash)
 	- [see](#see)
 	- [make_group](#make_group)
+	- [mg_group](#mg_group)
 - [GROUP COMMAND MODE](#group-command-mode)
 - [GROUP COMMAND PARALLEL MODE](#group-command-parallel-mode)
 - [upy Commands:](#upy-commands)
@@ -761,6 +762,36 @@ GROUP NAME: UPY_ROOM
 # DEVICES: 2
 DEVICE NAME: esp_room2, IP: 192.168.1.49
 DEVICE NAME: esp_room1, IP: 192.168.1.53
+```
+
+
+
+## mg_group
+
+to manage a group of boards to send commands to. Use -G for the name of the group and -add option to add devices (indicate a name, ip and the password of each board) or -rm to remove devices (indicated by name)
+
+***To add devices***:
+
+Usage: `upydev mg_group -G [GROUP NAME] -add [DEV_1 NAME] [DEV_1 IP] [DEV_1 PASSWORD] [DEV2_NAME] ...`
+
+```
+$ upydev mg_group -G UPY_G -add esp_room3 192.168.1.51 mypass
+Upy devices group updated!
+GROUP NAME: UPY_G
+# DEVICES ADDED: 1
+DEVICE NAME: esp_room3, IP: 192.168.1.51
+```
+
+***To remove devices***:
+
+Usage: `upydev mg_group -G [GROUP NAME] -rm [DEV_1 NAME] [DEV2_NAME] ...`
+
+```
+$ upydev mg_group -G UPY_G -rm esp_room3
+Upy devices group updated!
+GROUP NAME: UPY_G
+# DEVICES REMOVED: 1
+DEVICE NAME: esp_room3, IP: 192.168.1.51
 ```
 
 

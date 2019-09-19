@@ -201,6 +201,8 @@ Example: Raw commands
 * **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
 
      ​	and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)
+     
+* **mg_group**: to manage a group of boards to send commands to. Use -G for the name of the group and -add option to add devices (indicate a name, ip and the password of each board) or -rm to remove devices (indicated by name)
 
 **GROUP COMMAND MODE (-G option)**: 
 
