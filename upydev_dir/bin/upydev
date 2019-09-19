@@ -785,6 +785,10 @@ helparg = '''Mode:
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
               password of each board. (To store the group settings globally use -g option)
+
+- mg_group: to manage a group of boards to send commands to. Use -G for the name
+              of the group and -add option to add devices (indicate a name, ip and the
+              password of each board) or -rm to remove devices (indicated by name)
 * GROUP COMMAND MODE:
         To send a command to multiple devices in a group (made with make_group
         command) use -G option as -G [GROUP NAME]; to target specific devices
@@ -1000,7 +1004,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
                  'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-                 'ina_batt', 'make_group', 'srepl']
+                 'ina_batt', 'make_group', 'srepl', 'mg_group']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -1101,6 +1105,10 @@ parser.add_argument('-md', help='for command suboptions',
                     nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest'])
 parser.add_argument('-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
 parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
+                        nargs='+')
+parser.add_argument('-add', help='to indicate the devices that will be added to a group, use as -add [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
+                        nargs='+')
+parser.add_argument('-rm', help='to indicate the devices that will be removed from a group, use as -rm [DEV_1] [DEV_2]...',
                         nargs='+')
 parser.add_argument('-G', help='to indicate the group of devices that the command is directed to').completer = ChoicesCompleter(see_groups())
 parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
@@ -1807,6 +1815,37 @@ if args.G is not None:
         if args.m == 'see':
             see()
             sys.exit()
+        if args.m == 'mg_group':
+            if args.add is not None:
+                group_dict = dict(zip(args.add[::3], [[args.add[i], args.add[i+1]] for i in range(1, len(args.add)-1,3)]))
+                with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+                    devices = json.loads(group.read())
+                    devices.update(group_dict)
+                with open('{}.config'.format(group_file), 'w', encoding='utf-8') as group:
+                    group.write(json.dumps(devices))
+                print('Upy devices group updated!')
+                print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
+                print('# DEVICES ADDED: {}'.format(len(group_dict.keys())))
+                for key in group_dict.keys():
+                    print('DEVICE NAME: {}, IP: {}'.format(key, group_dict[key][0]))
+            elif args.rm is not None:
+                group_dict_rm = args.rm
+                removed_devs = {}
+                with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+                    devices = json.loads(group.read())
+                    for dev in group_dict_rm:
+                        # del devices[dev]
+                        removed_devs.update({dev: devices.pop(dev)})
+
+                with open('{}.config'.format(group_file), 'w', encoding='utf-8') as group:
+                    group.write(json.dumps(devices))
+                print('Upy devices group updated!')
+                print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
+                print('# DEVICES REMOVED: {}'.format(len(removed_devs.keys())))
+                for key in removed_devs.keys():
+                    print('DEVICE NAME: {}, IP: {}'.format(key, removed_devs[key][0]))
+
+            sys.exit()
         print('Sending command to group: {}'.format(group_file.split('/')[-1]))
         with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
             devices = json.loads(group.read())
@@ -1825,7 +1864,8 @@ if args.G is not None:
             for i in range(len(sys.argv[1:])):
                 if sys.argv[1:][i] != '-G':
                     if i == 0 or sys.argv[1:][i-1] != '-G':
-                        single_command.append(sys.argv[1:][i])
+                        if sys.argv[1:][i] not in devs and sys.argv[1:][i] != '-devs':
+                            single_command.append(sys.argv[1:][i])
             gcommand = ' '.join(single_command)
             # print(gcommand.split())
             # print(gcommand)
@@ -1908,9 +1948,10 @@ if args.GP is not None:
         for i in range(len(sys.argv[1:])):
             if sys.argv[1:][i] != '-GP':
                 if i == 0 or sys.argv[1:][i-1] != '-GP':
-                    single_command.append(sys.argv[1:][i])
+                    if sys.argv[1:][i] not in devs and sys.argv[1:][i] != '-devs':
+                        single_command.append(sys.argv[1:][i])
         gcommand = ' '.join(single_command)
-        #print(gcommand.split())
+        # print(gcommand.split())
         # group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
         devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
         if gcommand.split()[0] not in keywords_mode:

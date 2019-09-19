@@ -119,7 +119,7 @@
 		- [battery](#battery)
 		- [pinout](#pinout)
 		- [specs](#specs)
-			- [pin_status](#pin_status)
+		- [pin_status](#pin_status)
 		- [ESP32:](#esp32)
 			- [touch](#touch)
 			- [hall](#hall)

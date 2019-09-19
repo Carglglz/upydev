@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] [Unreleased] [Github Repo]
 ### Fix
 - toggle wrepl in synchronized mode for ssh session
+- Group command mode -devs option fix
 ### Added
-- toggle autosuggest mode (fish shell like) 
+- toggle autosuggest mode (fish shell like)
+- mg_group command to manage groups to add or remove devices
+
 ## [0.0.9] - 2019-08-22
 ### Added
 - NEW WebREPL Terminal mode (Custom keybindings and autocompletion on tab)
