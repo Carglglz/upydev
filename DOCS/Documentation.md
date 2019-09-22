@@ -185,7 +185,7 @@ Done!
 
 *By default upydev sends a reset command after uploading a new file, to disable reset use -rst f*
 
-*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'*
+*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'*)
 
 Disabling reset:
 
@@ -520,7 +520,7 @@ Thanks for using picocom
 
 ## ping
 
-pings the target to see if it is reachable, CTRL-C to stop \n
+pings the target to see if it is reachable, CTRL-C to stop 
 
 ```
 $ upydev ping

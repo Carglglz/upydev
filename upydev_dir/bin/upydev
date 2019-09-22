@@ -45,7 +45,7 @@ def get_fw_versions(keyword):
     fw_links = []
     r = requests.get('https://micropython.org/download')
     fw_text = [line for line in r.text.split(
-        '\n') if keyword in line and any(x in line for x in ['bin','dfu','zip']) and 'firmware' in line]
+        '\n') if keyword in line and any(x in line for x in ['bin', 'dfu', 'zip']) and 'firmware' in line]
     for line in fw_text:
         for element in re.split(r"[=<>]+", line):
             if 'firmware' in element:
@@ -2389,9 +2389,9 @@ elif args.m == 'id':
         else:
             try:
                 if line[0] == '>':
-                    print('ID: {}'.format(line[4:]))
+                    print('ID: {}'.format(ast.literal_eval(line[4:]).decode()))
                 else:
-                    print('ID: {}'.format(line))
+                    print('ID: {}'.format(ast.literal_eval(line).decode()))
             except Exception as e:
                 if len(line) == 0:
                     pass
