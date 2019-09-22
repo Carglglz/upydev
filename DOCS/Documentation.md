@@ -997,7 +997,7 @@ for upy device unique id
 
 ```
 $ upydev id
-ID: b'30aea4233564'
+ID: 30aea4233564
 ```
 
 ### upysh
