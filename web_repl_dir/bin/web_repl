@@ -90,7 +90,7 @@ def tabpress(event):
         else:
             ws.send('\x09')
     else:
-        event.app.current_buffer.insert_text('       ')  # insert_text('\x09')
+        event.app.current_buffer.insert_text('    ')  # insert_text('\x09')
 
 
 @kb.add('up')
@@ -329,6 +329,15 @@ def toggle_autosgst(event):
     else:
         autosuggest_mode = True
 
+
+@kb.add('s-tab')
+def shif_tab(event):
+    global mode_paste, sync_mode
+    "Send dedent command"
+    if not mode_paste:
+        ws.send('\x08')
+    else:
+        event.app.current_buffer.delete_before_cursor(4)
 
 # PROMPT SESSION
 session_p = PromptSession()

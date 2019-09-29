@@ -50,6 +50,12 @@
 		- [set_localtime](#set_localtime)
 		- [set_ntptime](#set_ntptime)
 		- [get_datetime](#get_datetime)
+	- [Wifi utils](#Wifi_utils)
+	  - [wlan_init](#wlan_init)
+	  - [wsta_config](#wsta_config)
+	  - [wap_config](#wap_config)
+	  - [wsta_conn](#wsta_conn)
+	  - [wap_conn](#wap_conn)
 	- [SD](#sd)
 		- [sd_enable](#sdenable)
 		- [sd_init](#sd_init)
@@ -434,6 +440,8 @@ to enter the terminal WebREPL; CTRL-x to exit, CTRL-d to do soft reset
 To see more keybinding info do CTRL-k
  (Added custom keybindings and autocompletion on tab to the previous work
  see: [Terminal WebREPL](https://github.com/Hermann-SW/webrepl) for the original work)
+
+**To dedent an indented block or line use shif+tab*
 
 Custom keybindings:	
 
@@ -1343,6 +1351,57 @@ to get date and time (must be set first, see above commands)
 $ upydev get_datetime
 8-1-2019;19:20:29
 ```
+
+## Wifi utils
+
+### wlan_init
+
+Initiates wlan util (call this before the following commands)
+
+```
+$ upydev wlan_init
+WLAN UTIL INITIATED
+```
+
+### wsta_config
+
+Saves a "netowrk STA" configuration json file in upydevice, use with -wp option as -wp 'ssid' 'password'
+
+```
+$ upydev wsta_config -wp TP-Link_DD98 mypass9123912
+DEFAULT WLAN: TP-Link_DD98 configurated
+```
+
+### wap_config
+
+Saves a "netowrk AP" configuration json file in upydevice, use with -ap option as -ap 'ssid' 'password'
+
+```
+$ upydev wap_config -ap ESP_32 u123pass_esp32
+AP: ESP_32 configurated
+```
+
+### wsta_conn
+
+Connects to the wlan configurated with the command wsta_config
+
+```
+$ upydev wsta_conn
+Connected to TP-Link_DD98
+Network Config: ('192.168.1.49', '255.255.255.0', '192.168.1.1', '84.28.51.220')
+```
+
+### wap_conn
+
+Enables the upydevice AP configurated with the command wpa_config
+
+```
+$ upydev wap_conn
+Acces point configurated: ESP_32
+('192.168.4.1', '255.255.255.0', '192.168.4.1', '0.0.0.0')
+```
+
+
 
 ## SD
 

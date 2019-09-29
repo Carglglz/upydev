@@ -2,7 +2,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-07-23T00:25:14+01:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-07-25T18:24:41+01:00
+# @Last modified time: 2019-09-23T01:29:38+01:00
 
 
 from machine import Timer, PWM, Pin
@@ -11,11 +11,12 @@ import time
 
 class BUZZER:
 
-    def __init__(self, PIN, fq=4000, duty=512):
+    def __init__(self, PIN, fq=4000, duty=512, sleept=150, ntimes=2, ntspace=50):
         self.duty = duty
         self.fq = fq
         self.buff = bytearray(3)
         self.tim = Timer(-1)
+        self.tim2 = Timer(2)
         self.irq_busy = False
         self.hour = 0
         self.minute = 0
@@ -27,6 +28,9 @@ class BUZZER:
         self.buzz_detect = Pin(32, Pin.IN)
         self.buzz_button.on()
         self.irq_busy_buzz = False
+        self.sleeptime = sleept
+        self.ntimes = ntimes
+        self.ntspace = ntspace
 
     def time_print(self):
         return ('{}:{}:{}'.format(time.localtime()[3],
@@ -116,3 +120,18 @@ class BUZZER:
         self.buzz_detect = Pin(PIN2, Pin.IN)
         self.buzz_button.on()
         self.buzz_detect.irq(trigger=Pin.IRQ_FALLING, handler=self.buzzer_callback_rev)
+
+    def buzz_beep_callback(self, x):
+        if self.irq_busy:
+            return
+        try:
+            self.irq_busy = True
+            self.buzz_beep(self.sleeptime, self.ntimes, self.ntspace, self.fq)
+            self.irq_busy = False
+        except Exception as e:
+            self.irq_busy = False
+
+    def beep_interrupt(self):
+        self.irq_busy = False
+        self.tim2.init(period=1, mode=Timer.ONE_SHOT,
+                      callback=self.buzz_beep_callback)

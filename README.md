@@ -198,6 +198,8 @@ Example: Raw commands
           
 * **see**:  to get specific command help info indicated with -c option
 
+* **find**: to get a list of possible upy devices. Scans the local network to find devices with port 8266     (WebREPL) open. Use -n option to perform n scans (A single scan may not find all the devices)
+
 * **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
 
      ​	and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)
@@ -233,15 +235,13 @@ To target specific devices within a group add -devs option as `-devs [DEV_1 NAME
 uPy commands are organized in:
 
 * **General**: These commands should work 'out of the box' in any Micropython running board with WebREPL daemon enabled.
-
+* **Wifi utils** : This commands make easier to save/load wifi configuration (STA and AP ) and connect to an access point or enable its own (needs wifiutils.py in upydevice, see upyutils in upydev github repo)
 * **SD:** These commands need *sdcard.py* in the upy device, and a sd module/shield at least.
-
 * **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)
     * ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115) (for external module needs 'ads1115.py' and 'init_ADS.py')
     * ***IMU***: commands that make use of the LSM9DS1 module, although other IMU modules could be easily implemented (needs 'lsm9ds1.py' and 'init_MY_IMU.py')
     * ***WEATHER***: commands that make use of the BME280 module, although other weather sensor modules could be easily implemented (needs 'bme280.py' and 'init_BME280.py')
     * ***POWER:*** commands that make use of the INA219 module.
-
 * **OUTPUT:** These commands use the DAC or PWM of the board, some needs an actuator module (buzzer or motor driver and a motor) at least and the appropriate script in the upydevice.
 
   * ***DAC:*** to generate an analog signal (dc value, sine wave or square wave at the momment) (needs 'dac_signal_gen.py')
@@ -249,12 +249,10 @@ uPy commands are organized in:
   * ***DC MOTOR***: to control a DC motor (needs a motor driver and the appropriate script) (needs 'dcmotor.py')
   * ***SERVO:*** to drive a servo motor (needs 'servo.py')
   * ***STEPPER MOTOR***: to drive stepper motor (needs a motor driver and 'stepper.py')
-
 * **NETWORKING:**
     * ***MQTT:*** commands to connect to a broker, subscribe to topic, publish and receive messages (needs 'mqtt_client.py')
     * ***SOCKETS:*** commands to start client/server socket and send/receive messages (needs 'socket_client_server.py')
     * ***UREQUEST:*** commands to make http requests, and get json or text output
-
 * **PORT/BOARD SPECIFIC COMMANDS**:
 
     * battery : if running on battery, gets battery voltage (esp32 huzzah feather)

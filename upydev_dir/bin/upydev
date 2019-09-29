@@ -3,7 +3,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-03-12T18:52:56+00:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-08-16T12:27:24+01:00
+# @Last modified time: 2019-09-27T17:14:28+01:00
 
 # upydev CLI
 import argparse
@@ -15,6 +15,8 @@ import os
 import shlex
 import ast
 import requests
+import nmap
+import netifaces
 import re
 import upydev
 import socket
@@ -22,6 +24,7 @@ import struct
 import glob
 import multiprocessing
 from datetime import datetime, date
+from sys import platform as _platform
 import argcomplete
 from argcomplete.completers import ChoicesCompleter
 
@@ -176,6 +179,20 @@ def get_ip():
     scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
     ip = scanoutput.decode('utf-8').split('\n')[0]
     return ip
+
+
+def get_ssid():
+    if _platform == "linux" or _platform == "linux2":
+       # linux
+       return ''
+    elif _platform == "darwin":
+       # MAC OS X
+        scanoutput = subprocess.check_output(["airport", "-I"])
+        wifi_info = [data.strip()
+                     for data in scanoutput.decode('utf-8').split('\n')]
+        wifi_info_dic = {data.split(':')[0]: data.split(
+            ':')[1].strip() for data in wifi_info[:-1]}
+        return wifi_info_dic['SSID']
 
 
 def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
@@ -781,6 +798,9 @@ helparg = '''Mode:
             to flash do: "upydev flash -port [serial port] -f [firmware file]"
 - see: to get specific command help info indicated with -c option. To get specific
         info about a devices group use -G option as "see -G [GROUP NAME]"
+- find: to get a list of possible upy devices. Scans the local network to find devices
+        with port 8266 (WebREPL) open. Use -n option to perform n scans (A single scan
+        may not find all the devices)
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
@@ -832,6 +852,13 @@ upy Commands:
 - set_localtime: to pass host localtime and set upy device rtc
 - set_ntptime: to set rtc from server, (see -utc for time zone)
 - get_datetime: to get date and time (must be set first, see above commands)
+
+> WIFI UTILS (needs wifiutils.py in upydevice, see upyutils in upydev github repo)
+- wlan_init: Initiates wlan util (call this before the following commands)
+- wsta_config: Saves a "netowrk STA" configuration json file in upydevice, use with -wp option as -wp 'ssid' 'password'
+- wap_config: Saves a "netowrk AP" configuration json file in upydevice, use with -ap option as -ap 'ssid' 'password'
+- wsta_conn: Connects to the wlan configurated with the command wsta_config
+- wap_conn: Enables the upydevice AP configurated with the command wpa_config
 
 > SD
 - sd_enable: to enable/disable the LDO 3.3V regulator that powers the SD module
@@ -1004,14 +1031,16 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
                  'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-                 'ina_batt', 'make_group', 'srepl', 'mg_group']
+                 'ina_batt', 'make_group', 'srepl', 'mg_group', 'find',
+                 'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
+                 'wap_conn']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag)
-parser.version = '0.1.0'
+parser.version = '0.1.1'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-p", help='password', required=False)
@@ -1645,8 +1674,31 @@ def srepl(serial_port):
         pass
         print('')
 
+
+def find_devices():
+    print('Scanning WLAN {} for upy devices...'.format(get_ssid()))
+    gws = netifaces.gateways()
+    host_range = "{}-255".format(gws['default'][netifaces.AF_INET][0])
+    nmScan = nmap.PortScanner()
+    n_scans = 1
+    if args.n is not None:
+        n_scans = int(args.n)
+    for i in range(n_scans):
+        print('SCAN # {}'.format(i))
+        my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266')
+        hosts_list = [{'host':x, 'state':nmScan[x]['status']['state'], 'port':list(nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
+        devs = [host for host in hosts_list if host['status'] =='open']
+        print('FOUND {} device/s :'.format(len(devs)))
+        N = 1
+        for dev in devs:
+            try:
+                print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
+                N += 1
+            except Exception as e:
+                pass
+
 # keyword live output commands:
-kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl']
+kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl', 'find']
 
 # UPYDEVICE CLASS
 
@@ -2079,7 +2131,11 @@ if args.m not in keywords_mode:
         for i in range(6):
             proc.stdout.readline()
         while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
+            resp = proc.stdout.readline()
+            if b'\n' in resp:
+                resp = resp[:-1].decode()
+            else:
+                resp = resp.decode()
             if len(resp) > 0:
                 if resp[0] == '>':
                     print(resp[4:])
@@ -2314,6 +2370,12 @@ elif args.m == 'flash':
 # SEE
 elif args.m == 'see':
     see()
+    sys.exit()
+
+# FIND
+
+elif args.m == 'find':
+    find_devices()
     sys.exit()
 
 # MAKE_GROUP
@@ -3164,6 +3226,140 @@ elif args.m == 'get_datetime':
                 else:
                     print(line)
 
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+#############################################
+# WLAN UTILS COMMANDS
+
+# WLAN_INIT
+elif args.m == 'wlan_init':
+    wlan_init_cmd = 'from wifiutils import WIFI_UTIL; u_wlan = WIFI_UTIL(silent=False);gc.collect()'
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        wlan_init_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# WSTA_CONFIG
+
+elif args.m == 'wsta_config':
+    essid, passwd = args.wp
+    connect_to = "u_wlan.sta_config('{}', '{}')".format(
+        essid, passwd)
+    conn_cmd = "{};gc.collect()".format(connect_to)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        conn_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# WAP_CONFIG
+
+elif args.m == 'wap_config':
+    essid, passwd = args.ap
+    connect_to = "u_wlan.ap_config('{}', '{}')".format(
+        essid, passwd)
+    conn_cmd = "{};gc.collect()".format(connect_to)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        conn_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# WSTA_CONN
+
+elif args.m == 'wsta_conn':
+    connect_to = "u_wlan.STA_conn()"
+    conn_cmd = "{};gc.collect()".format(connect_to)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        conn_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
+            except Exception as e:
+                if len(line) == 0:
+                    pass
+                else:
+                    print(e)
+                    pass
+    sys.exit()
+
+# WAP_CONN
+
+elif args.m == 'wap_conn':
+    connect_to = "u_wlan.AP_conn()"
+    conn_cmd = "{};gc.collect()".format(connect_to)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        conn_cmd, args.t, args.p)
+    cmd_resp = run_command_rl(cmd_str)
+    resp = cmd_resp[1]
+    for line in resp[6:]:
+        if line == '### closed ###':
+            pass
+        else:
+            try:
+                if line[0] == '>':
+                    print(line[4:])
+                else:
+                    print(line)
             except Exception as e:
                 if len(line) == 0:
                     pass
