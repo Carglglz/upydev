@@ -17,6 +17,7 @@
 	- [fw](#fw)
 	- [flash](#flash)
 	- [see](#see)
+	- [find](#find)
 	- [make_group](#make_group)
 	- [mg_group](#mg_group)
 - [GROUP COMMAND MODE](#group-command-mode)
@@ -742,8 +743,6 @@ Hard resetting via RTS pin...
 Done!
 ```
 
-
-
 ## see
 
 to get specific command help info indicated with -c option.
@@ -755,7 +754,22 @@ $ upydev see -c config
  to save upy device settings (see -p, -t, -g), so the target and password arguments wont be required any more
 ```
 
+## find
 
+to get a list of possible upy devices. Scans the local network to find devices with port 8266 (WebREPL) open. Use -n option to perform n scans (A single scan may not find all the devices)
+
+```
+$ upydev find -n 2
+Scanning WLAN TP-Link_DD98 for upy devices...
+SCAN # 0
+FOUND 2 device/s :
+DEVICE 1: , IP: 192.168.1.49 , STATE: up, PORT: 8266, STATUS: open
+DEVICE 2: , IP: 192.168.1.53 , STATE: up, PORT: 8266, STATUS: open
+SCAN # 1
+FOUND 2 device/s :
+DEVICE 1: , IP: 192.168.1.49 , STATE: up, PORT: 8266, STATUS: open
+DEVICE 2: , IP: 192.168.1.53 , STATE: up, PORT: 8266, STATUS: open
+```
 
 ## make_group
 
