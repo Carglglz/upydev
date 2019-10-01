@@ -49,6 +49,10 @@ Python modules (automatically installed using pip):
 
 [esptool](https://github.com/espressif/esptool)
 
+[python-nmap](http://xael.org/pages/python-nmap-en.html)
+
+[netifaces](https://github.com/al45tair/netifaces)
+
 #### Tested on:
 
 MacOS X (Mojave 10.14.5)
