@@ -51,7 +51,7 @@
 		- [set_localtime](#set_localtime)
 		- [set_ntptime](#set_ntptime)
 		- [get_datetime](#get_datetime)
-	- [Wifi utils](#Wifi_utils)
+	- [Wifi utils](#wifi-utils)
 	  - [wlan_init](#wlan_init)
 	  - [wsta_config](#wsta_config)
 	  - [wap_config](#wap_config)
@@ -224,7 +224,7 @@ For multiple files use -fre option instead of -f: (This is valid for **put**, **
 
 This will upload all the files in current working directory
 
- *USE WITH CAUTION!! (YOU MAY RUN OUT OF MEMMORY)*
+ *USE WITH CAUTION!! (YOU MAY RUN OUT OF MEMORY)*
 
 ```
 $ upydev put -fre cwd
