@@ -176,8 +176,9 @@ def run_live(run_cmd, targ, password):
 
 
 def get_ip():
-    scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
-    ip = scanoutput.decode('utf-8').split('\n')[0]
+    # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
+    # ip = scanoutput.decode('utf-8').split('\n')[0]
+    ip = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
     return ip
 
 
@@ -762,8 +763,8 @@ def lognow(filename, sensor):
 helparg = '''Mode:
 - config : to save upy device settings (see -p, -t, -g),
             so the target and password arguments wont be required any more
-- put : to upload a file to upy device (see -f, -s and -rst)
-- get : to download a file from upy device (see -f and -s)
+- put : to upload a file to upy device (see -f, -s, -fre, -dir, -rst)
+- get : to download a file from upy device (see -f, -s, -fre, -dir)
 - sync : for a faster transfer of large files
     (this needs sync_tool.py in upy device) (see -f, -s and -lh)
 - cmd : to send command to upy device ; (see -c, -r, -rl);
@@ -1040,7 +1041,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag)
-parser.version = '0.1.1'
+parser.version = '0.1.2'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-p", help='password', required=False)
@@ -1053,6 +1054,8 @@ parser.add_argument(
     required=False)
 parser.add_argument(
     "-s", help='source dir in upy device, default is root dir (flash memory); sd for sd card source dir mounted as "/sd"', required=False)
+parser.add_argument(
+    "-dir", help='target dir in upy device, default is root dir (flash memory)', required=False)
 parser.add_argument(
     "-c", help='command to send to upy device, do not wait for a response',
     required=False, type=str).completer = ChoicesCompleter(keywords_mode)
@@ -1155,6 +1158,8 @@ def put_f(ip, passwd, rst=None):
         source = args.s + '/'
     passwd = passwd
     file = args.f
+    if args.dir is not None:
+        source = args.dir + '/'
     file_in_upy = file.split('/')[-1]
     host = ip
     print('Uploading file {}...'.format(file_in_upy))
@@ -1215,8 +1220,8 @@ def put_multiple_f(ip, passwd):
                 reset(ip, passwd)
 
 
-def get_f(ip, passwd, id_file=''):
-    if args.s is None:
+def get_f(ip, passwd, id_file='', check_file=True):
+    if args.s is None and args.dir is None:
         print('Looking for file in upy device root dir')
         cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip, passwd)
         dir = 'root'
@@ -1225,28 +1230,35 @@ def get_f(ip, passwd, id_file=''):
         cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
             str("'/sd'"), ip, passwd)
         dir = '/sd'
-
-    command = shlex.split(cmd_str)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    time.sleep(0.1)
-    stdout = process.communicate()
-    try:
-        resp = ast.literal_eval(
-            stdout[0].decode('utf-8').split('\n')[0][4:-1])
-    except Exception as e:
+    if args.dir is not None:
+        print('Looking for file in upy device {} dir'.format(args.dir))
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format("'/{}'".format(args.dir), ip, passwd)
+        dir = '/{}'.format(args.dir)
+    resp = []
+    if check_file:
+        command = shlex.split(cmd_str)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        time.sleep(0.1)
+        stdout = process.communicate()
         try:
-            resp = stdout[0].decode('utf-8').split('\n')[0]
+            resp = ast.literal_eval(
+                stdout[0].decode('utf-8').split('\n')[0][4:-1])
         except Exception as e:
-            resp = None
+            try:
+                resp = stdout[0].decode('utf-8').split('\n')[0]
+            except Exception as e:
+                resp = None
 
-        pass
+            pass
 
     try:
-        if args.f in resp:
+        if args.f in resp or check_file is False:
             print('Getting file {}...'.format(args.f))
             file_to_get = args.f
             if args.s == 'sd':
                 file_to_get = '/sd/{}'.format(args.f)
+            if args.dir is not None:
+                file_to_get = '/{}/{}'.format(args.dir, args.f)
             passwd = passwd
             target = ip
             copyfile_str = 'upytool -p {} {}:{} .{}'.format(
@@ -1259,6 +1271,8 @@ def get_f(ip, passwd, id_file=''):
             if dir == '/sd':
                 print(
                     'File Not found in upy device {} directory or sd unmounted'.format(dir))
+            else:
+                print('File Not found in upy device {} directory'.format(dir))
 
     except Exception as e:
         print(e)
@@ -1266,7 +1280,7 @@ def get_f(ip, passwd, id_file=''):
 
 
 def get_files_list(ip, passwd):
-    if args.s is None:
+    if args.s is None and args.dir is None:
         print('Looking for file in upy device root dir')
         cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip, passwd)
         dir = 'root'
@@ -1275,6 +1289,10 @@ def get_files_list(ip, passwd):
         cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
             str("'/sd'"), ip, passwd)
         dir = '/sd'
+    if args.dir is not None:
+        print('Looking for file in upy device {} dir'.format(args.dir))
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format("'/{}'".format(args.dir), ip, passwd)
+        dir = '/{}'.format(args.dir)
 
     command = shlex.split(cmd_str)
     process = subprocess.Popen(command, stdout=subprocess.PIPE)
@@ -1306,7 +1324,7 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
             args.f = file
             if id_file_dev != '':
                 id_file_dev = '/{}_{}'.format(device, args.f)
-            get_f(ip, passwd, id_file=id_file_dev)
+            get_f(ip, passwd, id_file=id_file_dev, check_file=False)
             print('\n')
             time.sleep(0.5)
     else:
@@ -1320,7 +1338,7 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
                 args.f = file
                 if id_file_dev != '':
                     id_file_dev = '/{}_{}'.format(device, args.f)
-                get_f(ip, passwd, id_file=id_file_dev)
+                get_f(ip, passwd, id_file=id_file_dev, check_file=False)
                 print('\n')
                 time.sleep(0.5)
         else:
@@ -1332,7 +1350,7 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
                 args.f = file
                 if id_file_dev != '':
                     id_file_dev = '/{}_{}'.format(device, args.f)
-                get_f(ip, passwd, id_file=id_file_dev)
+                get_f(ip, passwd, id_file=id_file_dev, check_file=False)
                 print('\n')
                 time.sleep(0.5)
 

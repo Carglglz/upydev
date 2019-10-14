@@ -9,6 +9,7 @@ import time as time_mac
 import os
 import argparse
 import ast
+import netifaces
 import subprocess
 import shlex
 import sys
@@ -32,8 +33,9 @@ args = parser.parse_args()
 
 
 def get_ip():
-    scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
-    ip = scanoutput.decode('utf-8').split('\n')[0]
+    # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
+    # ip = scanoutput.decode('utf-8').split('\n')[0]
+    ip = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
     return ip
 
 

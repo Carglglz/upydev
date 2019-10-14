@@ -1,3 +1,5 @@
 argcomplete
 esptool
-
+netifaces
+python-nmap
+prompt_toolkit

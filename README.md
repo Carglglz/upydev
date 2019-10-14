@@ -142,9 +142,9 @@ Example: Raw commands
 - **config** : to save upy device settings (*see -p, -t, -g)*,
             so the target and password arguments wont be required any more
 
-- **put** : to upload a file to upy device (*see -f, -s and -rst; for multiple files see -fre option)*
+- **put** : to upload a file to upy device (*see -f, -s , -dir, -rst; for multiple files see -fre option)*
 
-- **get** : to download a file from upy device (*see -f and -s; for multiple files see -fre option*)
+- **get** : to download a file from upy device (*see -f , -dir, -s; for multiple files see -fre option*)
 
 - **sync** : for a faster transfer of large files
     (this needs sync_tool.py in upy device) (*see -f, -s and -lh*; for multiple files see -fre option)

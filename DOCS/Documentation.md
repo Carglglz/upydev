@@ -172,7 +172,7 @@ so the target and password arguments wont be required any more
 
 ## put
 
-to upload a file to upy device (see -f, -s and -rst, for multiple files see -fre option)
+to upload a file to upy device (see -f, -s, -dir and -rst, for multiple files see -fre option)
 
 Usage: `$ upydev put -f [filename] [options]`
 
@@ -216,6 +216,20 @@ dummy_script.py -> /sd/dummy_script.py
 Remote WebREPL version: (1, 11, 0)
 Sent 44 of 44 bytes
 File Uploaded!
+```
+
+Uploading to a custom directory:
+
+```
+$ upydev put -f test_code.py -dir test_dir
+Uploading file test_code.py...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+test_code.py -> /test_dir/test_code.py
+Remote WebREPL version: (1, 11, 0)
+Sent 32 of 32 bytes
+File Uploaded!
+Rebooting upy device...
+Done!
 ```
 
 For multiple files use -fre option instead of -f: (This is valid for **put**, **get** and **sync** modes)
@@ -338,7 +352,7 @@ Done!
 
 ## get
 
-to download a file from upy device (see -f and -s, for multiple files see -fre option)
+to download a file from upy device (see -f , -s, and -dir,  for multiple files see -fre option)
 
 Usage: `$ upydev get -f [filename] [options]`
 
