@@ -5,13 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.3] [Unreleased] [Github Repo]
-
+### Fix
+- package requests dependency added
 ## [0.1.2] - 2019-10-14
 ### Added
 - '-dir' option to put/get commands to select in which directory to put file or get a file from
 ## [0.1.1] - 2019-10-01
 ### Fix
 - Dedent with shift-tab in wrepl (normal mode and paste mode)
+### Added
 - find command to scan for upy devices in the WLAN
 - WIFI UTILS commands
 ## [0.1.0] - 2019-09-19

@@ -2,7 +2,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-07-11T23:29:40+01:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-09-27T16:52:33+01:00
+# @Last modified time: 2019-10-19T17:01:54+01:00
 
 from setuptools import setup
 
@@ -46,4 +46,4 @@ setup(name='upydev',
                'web_repl_dir/bin/web_repl'],
       include_package_data=True,
       install_requires=['argcomplete', 'mpy-cross', 'esptool', 'prompt_toolkit',
-                        'python-nmap', 'netifaces'])
+                        'python-nmap', 'netifaces', 'requests'])

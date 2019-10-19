@@ -53,6 +53,8 @@ Python modules (automatically installed using pip):
 
 [netifaces](https://github.com/al45tair/netifaces)
 
+[requests](https://requests.kennethreitz.org/en/master/)
+
 #### Tested on:
 
 MacOS X (Mojave 10.14.5)
