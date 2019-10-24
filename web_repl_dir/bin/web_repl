@@ -2,7 +2,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-07-07T21:01:25+01:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-07-07T21:02:15+01:00
+# @Last modified time: 2019-10-23T02:12:53+01:00
 
 
 # complete rewrite of console webrepl client from aivarannamaa:
@@ -28,7 +28,7 @@ kb_info = """
 Custom keybindings:
 - CTRL-x : to exit WebREPL Terminal
 - CTRL-e : Enters paste mode
-- CTRL-d: In normal mode does a soft reset (an exit), in paste mode : executes pasted script
+- CTRL-d: In normal mode does a soft reset (and exit), in paste mode : executes pasted script
 - CTRL-c : Keyboard interrupt in normal mode, in paste mode : cancel
 - CTRL-r: Backsapce x 20 (to erase current line in chunks) or flush line buffer
 - CTRL-u: import shortcut command (writes import)

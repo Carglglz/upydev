@@ -462,7 +462,7 @@ Custom keybindings:
 
 - CTRL-x: to exit WebREPL
 - CTRL-e : Enters paste mode
-- CTRL-d: In normal mode does a soft reset (an exit), in paste mode : executes pasted script
+- CTRL-d: In normal mode does a soft reset (and exit), in paste mode : executes pasted script
 - CTRL-c : Keyboard interrupt in normal mode, in paste mode : cancel
 - CTRL-r: Backsapce x 20 (to erase current line in chunks) or flush line buffer
 - CTRL-u: import shortcut command (writes import)
@@ -1421,7 +1421,7 @@ Network Config: ('192.168.1.49', '255.255.255.0', '192.168.1.1', '84.28.51.220')
 
 ### wap_conn
 
-Enables the upydevice AP configurated with the command wpa_config
+Enables the upydevice AP configurated with the command wap_config
 
 ```
 $ upydev wap_conn

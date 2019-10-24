@@ -3,7 +3,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-03-12T18:52:56+00:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-09-27T17:14:28+01:00
+# @Last modified time: 2019-10-24T01:25:41+01:00
 
 # upydev CLI
 import argparse
@@ -859,7 +859,7 @@ upy Commands:
 - wsta_config: Saves a "netowrk STA" configuration json file in upydevice, use with -wp option as -wp 'ssid' 'password'
 - wap_config: Saves a "netowrk AP" configuration json file in upydevice, use with -ap option as -ap 'ssid' 'password'
 - wsta_conn: Connects to the wlan configurated with the command wsta_config
-- wap_conn: Enables the upydevice AP configurated with the command wpa_config
+- wap_conn: Enables the upydevice AP configurated with the command wap_config
 
 > SD
 - sd_enable: to enable/disable the LDO 3.3V regulator that powers the SD module
