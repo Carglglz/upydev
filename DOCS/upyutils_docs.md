@@ -43,3 +43,5 @@
 **time_it.py**: a script to measure execution time of other scripts, implemented from, [@peterhinch](https://github.com/peterhinch) [timed_fuction](https://github.com/peterhinch/micropython-samples/tree/master/timed_function)
 
 **sdcard.py**: a lib to read/write to an sd card using spi interface, source [@peterhinch](https://github.com/peterhinch)
+
+**wifiutils.py**: to make easier to save/load wifi configuration (STA and AP ) and connect to an access point or enable its own.

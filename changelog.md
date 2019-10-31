@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.3] [Unreleased] [Github Repo]
 ### Fix
 - package requests dependency added
+### Added
+- KeyboardInterrupt command (kbi) to stop for/while loops
 ## [0.1.2] - 2019-10-14
 ### Added
 - '-dir' option to put/get commands to select in which directory to put file or get a file from

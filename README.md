@@ -241,7 +241,7 @@ To target specific devices within a group add -devs option as `-devs [DEV_1 NAME
 uPy commands are organized in:
 
 * **General**: These commands should work 'out of the box' in any Micropython running board with WebREPL daemon enabled.
-* **Wifi utils** : This commands make easier to save/load wifi configuration (STA and AP ) and connect to an access point or enable its own (needs wifiutils.py in upydevice, see upyutils in upydev github repo)
+* **Wifi utils** : This commands make easier to save/load wifi configuration (STA and AP ) and connect to an access point or enable its own (needs wifiutils.py in upydevice, see [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)
 * **SD:** These commands need *sdcard.py* in the upy device, and a sd module/shield at least.
 * **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)
     * ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115) (for external module needs 'ads1115.py' and 'init_ADS.py')

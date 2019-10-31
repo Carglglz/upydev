@@ -1062,6 +1062,16 @@ $ upydev reset
 Rebooting upy device...
 ```
 
+### kbi
+
+To send CTRL-C signal to stop an ongoing (for/while) loop, to be able to acces repl again
+
+```
+$ upydev kbi
+Keyboard Interrupt sent!
+Done!
+```
+
 ### uhelp
 
 just calls micropython help
