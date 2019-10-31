@@ -28,6 +28,7 @@
 		- [id](#id)
 		- [upysh](#upysh)
 		- [reset](#reset)
+		- [kbi](#kbi)
 		- [uhelp](#uhelp)
 		- [umodules](#umodules)
 		- [mem_info](#mem_info)
