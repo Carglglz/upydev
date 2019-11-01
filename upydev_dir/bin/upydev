@@ -1522,7 +1522,9 @@ def ping_diagnose(ip, rep_file=None):
     if timeouts >= 3:
         print('DEVICE IS DOWN OR SIGNAL RSSI IS TO LOW')
         print('WIRELESS DIAGNOSTICS NOT POSSIBLE, PLEASE RESET THE DEVICE OR PLACE IT NEARER TO THE LOCAL AP')
-        sys.exit()
+        return False
+    else:
+        return True
 
 
 def run_script(ip, passwd, dev=''):
@@ -1789,402 +1791,403 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
     # CHECK IF DEVICE IS REACHABLE
     print('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
     FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
-    ping_diagnose(target, rep_file=FILE_REPORT)
+    device_is_on = ping_diagnose(target, rep_file=FILE_REPORT)
     # ISSUE A KBI
-    esp32.kbi(output=False)
-    while esp32.output is None:
-        esp32.cmd('dir()', silent=True)
-    glo_vars = esp32.output.copy()
-    # ID
-    print('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd('import machine; machine.unique_id();gc.collect()', silent=True)
-    print("ID: {}".format(hexlify(esp32.output).decode()))
-    upy_id = hexlify(esp32.output).decode()
-    FILE_REPORT.append("ID: {}".format(hexlify(esp32.output).decode()))
-    print('\n')
-    FILE_REPORT.append('\n')
-    # UNAME
-    print('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
-    esp32.response = None
-    while esp32.response is None:
-        esp32.cmd('import uos; uos.uname()', silent=True)
-    info = {data.split('=')[0].strip(): data.split('=')[1].replace("'", '') for data in esp32.response.strip()[1:-1].split(',')}
-    for key in info.keys():
-        print('{}: {}'.format(key.capitalize(), info[key]))
-        FILE_REPORT.append('{}: {}'.format(key.capitalize(), info[key]))
-    print('\n')
-    FILE_REPORT.append('\n')
-    # CHECK AVAILABLE FIRMWARE
-    print('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
-    print('Available firmware found for {}'.format(info['nodename']))
-    FILE_REPORT.append('Available firmware found for {}'.format(info['nodename']))
-    for vers in get_fw_versions(info['nodename'])[1]:
-        print('  - {}'.format(vers))
-        FILE_REPORT.append('  - {}'.format(vers))
-    print('\n')
-    FILE_REPORT.append('\n')
-    # RAM MEM
-    print('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
-    esp32.long_output = []
-    while len(esp32.long_output) == 0:
-        esp32.cmd('from micropython import mem_info;mem_info();gc.collect()', silent=True, capture_output=True)
-    for line in esp32.long_output:
-        print(line)
-        FILE_REPORT.append(line)
-    mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[1]) for elem in esp32.long_output[1][4:].strip().split(',')}
-    print('RAM INFO:')
-    FILE_REPORT.append('RAM INFO:')
-    for key in mem.keys():
-        print("  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
-        FILE_REPORT.append("  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
-    print('\n')
-    FILE_REPORT.append('\n')
-    # DIR()
-    print('{:<10} {} {:>10}'.format('='*10, 'GLOBAL SPACE VARIABLES', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'GLOBAL SPACE VARIABLES', '='*10))
-    print(glo_vars)
-    FILE_REPORT.append(glo_vars)
-    print('\n')
-    FILE_REPORT.append('\n')
-    # FLASH MEM
-    print('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd("import uos;uos.statvfs('');gc.collect()", silent=True)
-    filesys_info = esp32.output
-    size_info = filesys_info
-    total_mem = print_filesys_info(size_info[0] * size_info[2])
-    free_mem = print_filesys_info(size_info[0] * size_info[3])
-    used_mem = print_filesys_info(
-        (size_info[0] * size_info[2]) - (size_info[0] * size_info[3]))
-    print('{} Memory'.format('FLASH'))
-    FILE_REPORT.append('{} Memory'.format('FLASH'))
-    print('TOTAL: {} , FREE: {} , USED: {}'.format(
-        total_mem, free_mem, used_mem))
-    FILE_REPORT.append('TOTAL: {} , FREE: {} , USED: {}'.format(
-        total_mem, free_mem, used_mem))
-    print('\n')
-    FILE_REPORT.append('\n')
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd("import uos;uos.listdir('/')", silent=True)
-    if 'sd' in esp32.output:
-        try:
-            esp32.output = None
-            while esp32.output is None:
-                esp32.cmd("import uos;uos.statvfs('/sd');gc.collect()", silent=True, capture_output=True)
-        except Exception as e:
-            pass
+    if device_is_on:
+        esp32.kbi(output=False)
+        while esp32.output is None:
+            esp32.cmd('dir()', silent=True)
+        glo_vars = esp32.output.copy()
+        # ID
+        print('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd('import machine; machine.unique_id();gc.collect()', silent=True)
+        print("ID: {}".format(hexlify(esp32.output).decode()))
+        upy_id = hexlify(esp32.output).decode()
+        FILE_REPORT.append("ID: {}".format(hexlify(esp32.output).decode()))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # UNAME
+        print('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
+        esp32.response = None
+        while esp32.response is None:
+            esp32.cmd('import uos; uos.uname()', silent=True)
+        info = {data.split('=')[0].strip(): data.split('=')[1].replace("'", '') for data in esp32.response.strip()[1:-1].split(',')}
+        for key in info.keys():
+            print('{}: {}'.format(key.capitalize(), info[key]))
+            FILE_REPORT.append('{}: {}'.format(key.capitalize(), info[key]))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # CHECK AVAILABLE FIRMWARE
+        print('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
+        print('Available firmware found for {}'.format(info['nodename']))
+        FILE_REPORT.append('Available firmware found for {}'.format(info['nodename']))
+        for vers in get_fw_versions(info['nodename'])[1]:
+            print('  - {}'.format(vers))
+            FILE_REPORT.append('  - {}'.format(vers))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # RAM MEM
+        print('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
+        esp32.long_output = []
+        while len(esp32.long_output) == 0:
+            esp32.cmd('from micropython import mem_info;mem_info();gc.collect()', silent=True, capture_output=True)
+        for line in esp32.long_output:
+            print(line)
+            FILE_REPORT.append(line)
+        mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[1]) for elem in esp32.long_output[1][4:].strip().split(',')}
+        print('RAM INFO:')
+        FILE_REPORT.append('RAM INFO:')
+        for key in mem.keys():
+            print("  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
+            FILE_REPORT.append("  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # DIR()
+        print('{:<10} {} {:>10}'.format('='*10, 'GLOBAL SPACE VARIABLES', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'GLOBAL SPACE VARIABLES', '='*10))
+        print(glo_vars)
+        FILE_REPORT.append(glo_vars)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # FLASH MEM
+        print('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd("import uos;uos.statvfs('');gc.collect()", silent=True)
         filesys_info = esp32.output
         size_info = filesys_info
         total_mem = print_filesys_info(size_info[0] * size_info[2])
         free_mem = print_filesys_info(size_info[0] * size_info[3])
         used_mem = print_filesys_info(
             (size_info[0] * size_info[2]) - (size_info[0] * size_info[3]))
-        print('{} Memory'.format('SD'))
-        FILE_REPORT.append('{} Memory'.format('SD'))
+        print('{} Memory'.format('FLASH'))
+        FILE_REPORT.append('{} Memory'.format('FLASH'))
         print('TOTAL: {} , FREE: {} , USED: {}'.format(
             total_mem, free_mem, used_mem))
         FILE_REPORT.append('TOTAL: {} , FREE: {} , USED: {}'.format(
             total_mem, free_mem, used_mem))
         print('\n')
         FILE_REPORT.append('\n')
-    else:
-        print('SD NOT FOUND')
-        FILE_REPORT.append
-    # FILES IN FLASH + SIZE
-    print('{:<10} {} {:>10}'.format('='*10, 'Files in FLASH MEMORY', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Files in FLASH MEMORY', '='*10))
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd("[(filename,uos.stat(''+str(filename))[6]) for filename in uos.listdir('')]", silent=True)
-    filesize = esp32.output
-    filesize.sort(key=sortSecond, reverse=True)
-    print('Files in FLASH MEMORY:')
-    FILE_REPORT.append('Files in FLASH MEMORY:')
-    print_sizefile_all(filesize, frep=FILE_REPORT)
-    print('\n')
-    FILE_REPORT.append('\n')
-    # MODULES
-    print('{:<10} {} {:>10}'.format('='*10, 'Frozen Modules in Firmware', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Frozen Modules in Firmware', '='*10))
-    esp32.long_output = []
-    while len(esp32.long_output) == 0:
-        esp32.cmd("help('modules')", silent=True, capture_output=True)
-    for module in esp32.long_output:
-        print(module.strip())
-        FILE_REPORT.append(module.strip())
-    print('\n')
-    FILE_REPORT.append('\n')
-    # /LIB
-    print('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd("import uos; uos.listdir('/lib')", silent=True)
-    for flib in esp32.output:
-        print(flib)
-        FILE_REPORT.append(flib)
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('{:<10} {} {:>10}'.format('='*10, 'Modules/scripts in /', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Modules/scripts in /', '='*10))
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd("import uos; uos.listdir('/')", silent=True)
-    pyfiles = [pyf for pyf in esp32.output if '.py' in pyf]
-    for flib in pyfiles:
-        print(flib)
-        FILE_REPORT.append(flib)
-
-    print('\n')
-    FILE_REPORT.append('\n')
-    # HW
-    # PINS STATE
-    print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
-    pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
-    machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
-    status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
-    pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
-        pinlist, machine_pin, status)
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd(pin_status_cmd, silent=True)
-    pin_dict = esp32.output
-    pin_list = list(pin_dict.keys())
-    pin_list.sort()
-    for key in pin_list:
-        if pin_dict[key] == 1:
-            print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-            FILE_REPORT.append('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-        else:
-            print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-            FILE_REPORT.append('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-    print('\n')
-    FILE_REPORT.append('\n')
-
-    # I2C SCAN (config option)
-    print('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
-    i2c_scl = "22"
-    i2c_sda = "23"
-    i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
-        i2c_scl, i2c_sda)
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd(i2c_cmd, silent=True)
-    i2c_devs = esp32.output
-    print('Found {} i2c devices'.format(len(i2c_devs)))
-    FILE_REPORT.append('Found {} i2c devices'.format(len(i2c_devs)))
-    print('DEC: ')
-    FILE_REPORT.append('DEC: ')
-    print(i2c_devs)
-    FILE_REPORT.append(i2c_devs)
-    print('HEX:')
-    FILE_REPORT.append('HEX:')
-    print([hex(val) for val in i2c_devs])
-    FILE_REPORT.append([hex(val) for val in i2c_devs])
-
-    print('\n')
-    FILE_REPORT.append('\n')
-    # RTC CHECK LOCAL TIME - HOST TIME DIFF
-    print('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
-    get_time_cmd = "import time;tnow = time.localtime();"
-    get_time2_cmd = "print('{}-{}-{};{}:{}:{}'.format(tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]));gc.collect()"
-    get_datetime_cmd = get_time_cmd + get_time2_cmd
-    esp32.response = None
-    while esp32.response is None:
-        esp32.cmd(get_datetime_cmd, silent=True)
-    localtime = datetime.now().strftime("%m-%d-%Y;%H:%M:%S")
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('Device DateTime: {}'.format(esp32.response.strip()))
-    FILE_REPORT.append('Device DateTime: {}'.format(esp32.response.strip()))
-    print('Local DateTime: {}'.format(localtime))
-    FILE_REPORT.append('Local DateTime: {}'.format(localtime))
-    print('\n')
-    FILE_REPORT.append('\n')
-    # IF NETWORK:
-    # STA (NETINFOT)
-    print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA IF CONFIG', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA IF CONFIG', '='*10))
-    print('\n')
-    FILE_REPORT.append('\n')
-    net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
-    net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
-    net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
-    net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
-    esp32.long_output = []
-    while len(esp32.long_output) == 0:
-        esp32.cmd(net_comp_cmd, silent=True, capture_output=True)
-    net_info_list = esp32.long_output
-    print('=' * 106)
-    FILE_REPORT.append('=' * 106)
-    print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-        'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
-    FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-        'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
-    try:
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-            *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
-            net_info_list[2].strip()))
-        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-            *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
-            net_info_list[2].strip()))
-    except Exception as e:
-        print(e)
-        pass
-    # STA (NETSCAN)
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
-    print('\n')
-    FILE_REPORT.append('\n')
-    net_cmd = "import network;network.WLAN(network.STA_IF).scan();gc.collect()"
-    esp32.output = None
-    while esp32.output is None:
-        esp32.cmd(net_cmd, silent=True)
-    net_scan_list = esp32.output
-    print('=' * 110)
-    FILE_REPORT.append('=' * 110)
-    print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-        'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
-    FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-        'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
-    print('=' * 110)
-    FILE_REPORT.append('=' * 110)
-    for netscan in net_scan_list:
-        auth = AUTHMODE_DICT[netscan[4]]
-        print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-            netscan[0].decode(), str(netscan[1]), netscan[2], netscan[3],
-            auth, str(netscan[5])))
-        FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-            netscan[0].decode(), str(netscan[1]), netscan[2], netscan[3],
-            auth, str(netscan[5])))
-    print('\n')
-    FILE_REPORT.append('\n')
-    # AP (APSTAT)
-    esp32.output = None
-    esp32.long_output = []
-    print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP IF CONFIG', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP IF CONFIG', '='*10))
-    ap_state = "network.WLAN(network.AP_IF).active()"
-    ap_essid = "network.WLAN(network.AP_IF).config('essid')"
-    ap_channel = "network.WLAN(network.AP_IF).config('channel')"
-    ap_authmode = "network.WLAN(network.AP_IF).config('authmode')"
-    ap_ifconfig = "network.WLAN(network.AP_IF).ifconfig()"
-    apstat_cmd = "import network;{};{};{};{};{};gc.collect()".format(
-        ap_state, ap_essid, ap_channel, ap_authmode, ap_ifconfig)
-    while len(esp32.long_output) == 0:
-        esp32.cmd(apstat_cmd, silent=True, capture_output=True)
-    apstat_info = [val.strip() for val in esp32.long_output]
-    auth = AUTHMODE_DICT[int(apstat_info[-2])]
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('=' * 70)
-    FILE_REPORT.append('=' * 70)
-    print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-        'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
-    FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-        'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
-    print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-        *apstat_info[:-2], auth))
-    FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-        *apstat_info[:-2], auth))
-    print('=' * 70)
-    FILE_REPORT.append('=' * 70)
-    print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-        'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
-    FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-        'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
-    try:
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-            *ast.literal_eval(apstat_info[-1])))
-        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-            *ast.literal_eval(apstat_info[-1])))
-    except Exception as e:
-        print(e)
-        pass
-    print('\n')
-    FILE_REPORT.append('\n')
-
-    # AP (APSCAN)
-    print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
-    apscan_cmd = "import network;network.WLAN(network.AP_IF).status('stations');gc.collect()"
-    if apstat_info[:-2][0] != 'False':
         esp32.output = None
         while esp32.output is None:
-            esp32.cmd(apscan_cmd, silent=True)
-        print('Found {} devices'.format(len(esp32.output)))
-        FILE_REPORT.append('Found {} devices'.format(len(esp32.output)))
-        mac_addr = []
-        for dev in esp32.output:
-            bytdev = bytearray(dev[0])
-            mac_ad = ':'.join(str(val) for val in bytdev)
-            mac_addr.append(mac_ad)
-            print(f'MAC addres: {mac_ad}')
-            FILE_REPORT.append(f'MAC addres: {mac_ad}')
-    else:
-        print('AP DISABLED')
-        FILE_REPORT.append('AP DISABLED')
-    # CAT 'BOOT.PY'
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
-    esp32.long_output = []
-    esp32.cmd('from upysh import *', silent=True)
-    while len(esp32.long_output) == 0:
-        esp32.cmd("cat('boot.py')", silent=True, capture_output=True)
-    for val in esp32.long_output:
-        print(val)
-        FILE_REPORT.append(val)
-    print('\n')
-    FILE_REPORT.append('\n')
-    # CAT 'MAIN.PY'
+            esp32.cmd("import uos;uos.listdir('/')", silent=True)
+        if 'sd' in esp32.output:
+            try:
+                esp32.output = None
+                while esp32.output is None:
+                    esp32.cmd("import uos;uos.statvfs('/sd');gc.collect()", silent=True, capture_output=True)
+            except Exception as e:
+                pass
+            filesys_info = esp32.output
+            size_info = filesys_info
+            total_mem = print_filesys_info(size_info[0] * size_info[2])
+            free_mem = print_filesys_info(size_info[0] * size_info[3])
+            used_mem = print_filesys_info(
+                (size_info[0] * size_info[2]) - (size_info[0] * size_info[3]))
+            print('{} Memory'.format('SD'))
+            FILE_REPORT.append('{} Memory'.format('SD'))
+            print('TOTAL: {} , FREE: {} , USED: {}'.format(
+                total_mem, free_mem, used_mem))
+            FILE_REPORT.append('TOTAL: {} , FREE: {} , USED: {}'.format(
+                total_mem, free_mem, used_mem))
+            print('\n')
+            FILE_REPORT.append('\n')
+        else:
+            print('SD NOT FOUND')
+            FILE_REPORT.append
+        # FILES IN FLASH + SIZE
+        print('{:<10} {} {:>10}'.format('='*10, 'Files in FLASH MEMORY', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Files in FLASH MEMORY', '='*10))
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd("[(filename,uos.stat(''+str(filename))[6]) for filename in uos.listdir('')]", silent=True)
+        filesize = esp32.output
+        filesize.sort(key=sortSecond, reverse=True)
+        print('Files in FLASH MEMORY:')
+        FILE_REPORT.append('Files in FLASH MEMORY:')
+        print_sizefile_all(filesize, frep=FILE_REPORT)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # MODULES
+        print('{:<10} {} {:>10}'.format('='*10, 'Frozen Modules in Firmware', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Frozen Modules in Firmware', '='*10))
+        esp32.long_output = []
+        while len(esp32.long_output) == 0:
+            esp32.cmd("help('modules')", silent=True, capture_output=True)
+        for module in esp32.long_output:
+            print(module.strip())
+            FILE_REPORT.append(module.strip())
+        print('\n')
+        FILE_REPORT.append('\n')
+        # /LIB
+        print('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd("import uos; uos.listdir('/lib')", silent=True)
+        for flib in esp32.output:
+            print(flib)
+            FILE_REPORT.append(flib)
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format('='*10, 'Modules/scripts in /', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Modules/scripts in /', '='*10))
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd("import uos; uos.listdir('/')", silent=True)
+        pyfiles = [pyf for pyf in esp32.output if '.py' in pyf]
+        for flib in pyfiles:
+            print(flib)
+            FILE_REPORT.append(flib)
 
-    print('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
-    esp32.long_output = []
-    while len(esp32.long_output) == 0:
-        esp32.cmd("cat('main.py')", silent=True, capture_output=True)
-    for val in esp32.long_output:
-        print(val)
-        FILE_REPORT.append(val)
-    print('\n')
-    FILE_REPORT.append('\n')
+        print('\n')
+        FILE_REPORT.append('\n')
+        # HW
+        # PINS STATE
+        print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
+        pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
+        machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
+        status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
+        pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
+            pinlist, machine_pin, status)
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd(pin_status_cmd, silent=True)
+        pin_dict = esp32.output
+        pin_list = list(pin_dict.keys())
+        pin_list.sort()
+        for key in pin_list:
+            if pin_dict[key] == 1:
+                print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+                FILE_REPORT.append('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+            else:
+                print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+                FILE_REPORT.append('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+        print('\n')
+        FILE_REPORT.append('\n')
 
-    tdiff = time.time()-t0
-    print('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
-    print('TOTAL TIME: {} s'.format(round(tdiff, 2)))
-    FILE_REPORT.append('TOTAL TIME: {} s'.format(round(tdiff, 2)))
+        # I2C SCAN (config option)
+        print('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
+        i2c_scl = "22"
+        i2c_sda = "23"
+        i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
+            i2c_scl, i2c_sda)
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd(i2c_cmd, silent=True)
+        i2c_devs = esp32.output
+        print('Found {} i2c devices'.format(len(i2c_devs)))
+        FILE_REPORT.append('Found {} i2c devices'.format(len(i2c_devs)))
+        print('DEC: ')
+        FILE_REPORT.append('DEC: ')
+        print(i2c_devs)
+        FILE_REPORT.append(i2c_devs)
+        print('HEX:')
+        FILE_REPORT.append('HEX:')
+        print([hex(val) for val in i2c_devs])
+        FILE_REPORT.append([hex(val) for val in i2c_devs])
 
-    if save_rep:
-        name_file = 'upyd_{}_{}_report.txt'.format(upy_id, datetime.now().strftime("%m-%d-%Y_at_%H-%M-%S"))
-        if name_rep is not None:
-            name_file = "{}.txt".format(name_rep)
-        with open(name_file, 'w') as rfile:
-            for line in FILE_REPORT:
-                if isinstance(line, str):
-                    rfile.write(line)
-                    rfile.write('\n')
-                else:
-                    rfile.write("{}".format(line))
-                    rfile.write('\n')
-    if rst_opt:
-        esp32.reset()
+        print('\n')
+        FILE_REPORT.append('\n')
+        # RTC CHECK LOCAL TIME - HOST TIME DIFF
+        print('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
+        get_time_cmd = "import time;tnow = time.localtime();"
+        get_time2_cmd = "print('{}-{}-{};{}:{}:{}'.format(tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]));gc.collect()"
+        get_datetime_cmd = get_time_cmd + get_time2_cmd
+        esp32.response = None
+        while esp32.response is None:
+            esp32.cmd(get_datetime_cmd, silent=True)
+        localtime = datetime.now().strftime("%m-%d-%Y;%H:%M:%S")
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('Device DateTime: {}'.format(esp32.response.strip()))
+        FILE_REPORT.append('Device DateTime: {}'.format(esp32.response.strip()))
+        print('Local DateTime: {}'.format(localtime))
+        FILE_REPORT.append('Local DateTime: {}'.format(localtime))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # IF NETWORK:
+        # STA (NETINFOT)
+        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA IF CONFIG', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA IF CONFIG', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
+        net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
+        net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
+        net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
+        esp32.long_output = []
+        while len(esp32.long_output) == 0:
+            esp32.cmd(net_comp_cmd, silent=True, capture_output=True)
+        net_info_list = esp32.long_output
+        print('=' * 106)
+        FILE_REPORT.append('=' * 106)
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+            'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
+        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+            'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
+        try:
+            print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+                *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
+                net_info_list[2].strip()))
+            FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+                *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
+                net_info_list[2].strip()))
+        except Exception as e:
+            print(e)
+            pass
+        # STA (NETSCAN)
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        net_cmd = "import network;network.WLAN(network.STA_IF).scan();gc.collect()"
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd(net_cmd, silent=True)
+        net_scan_list = esp32.output
+        print('=' * 110)
+        FILE_REPORT.append('=' * 110)
+        print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+            'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
+        FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+            'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
+        print('=' * 110)
+        FILE_REPORT.append('=' * 110)
+        for netscan in net_scan_list:
+            auth = AUTHMODE_DICT[netscan[4]]
+            print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+                netscan[0].decode(), str(netscan[1]), netscan[2], netscan[3],
+                auth, str(netscan[5])))
+            FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+                netscan[0].decode(), str(netscan[1]), netscan[2], netscan[3],
+                auth, str(netscan[5])))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # AP (APSTAT)
+        esp32.output = None
+        esp32.long_output = []
+        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP IF CONFIG', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP IF CONFIG', '='*10))
+        ap_state = "network.WLAN(network.AP_IF).active()"
+        ap_essid = "network.WLAN(network.AP_IF).config('essid')"
+        ap_channel = "network.WLAN(network.AP_IF).config('channel')"
+        ap_authmode = "network.WLAN(network.AP_IF).config('authmode')"
+        ap_ifconfig = "network.WLAN(network.AP_IF).ifconfig()"
+        apstat_cmd = "import network;{};{};{};{};{};gc.collect()".format(
+            ap_state, ap_essid, ap_channel, ap_authmode, ap_ifconfig)
+        while len(esp32.long_output) == 0:
+            esp32.cmd(apstat_cmd, silent=True, capture_output=True)
+        apstat_info = [val.strip() for val in esp32.long_output]
+        auth = AUTHMODE_DICT[int(apstat_info[-2])]
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('=' * 70)
+        FILE_REPORT.append('=' * 70)
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
+            'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
+        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
+            'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
+            *apstat_info[:-2], auth))
+        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
+            *apstat_info[:-2], auth))
+        print('=' * 70)
+        FILE_REPORT.append('=' * 70)
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
+            'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
+        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
+            'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
+        try:
+            print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
+                *ast.literal_eval(apstat_info[-1])))
+            FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
+                *ast.literal_eval(apstat_info[-1])))
+        except Exception as e:
+            print(e)
+            pass
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        # AP (APSCAN)
+        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
+        apscan_cmd = "import network;network.WLAN(network.AP_IF).status('stations');gc.collect()"
+        if apstat_info[:-2][0] != 'False':
+            esp32.output = None
+            while esp32.output is None:
+                esp32.cmd(apscan_cmd, silent=True)
+            print('Found {} devices'.format(len(esp32.output)))
+            FILE_REPORT.append('Found {} devices'.format(len(esp32.output)))
+            mac_addr = []
+            for dev in esp32.output:
+                bytdev = bytearray(dev[0])
+                mac_ad = ':'.join(str(val) for val in bytdev)
+                mac_addr.append(mac_ad)
+                print(f'MAC addres: {mac_ad}')
+                FILE_REPORT.append(f'MAC addres: {mac_ad}')
+        else:
+            print('AP DISABLED')
+            FILE_REPORT.append('AP DISABLED')
+        # CAT 'BOOT.PY'
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
+        esp32.long_output = []
+        esp32.cmd('from upysh import *', silent=True)
+        while len(esp32.long_output) == 0:
+            esp32.cmd("cat('boot.py')", silent=True, capture_output=True)
+        for val in esp32.long_output:
+            print(val)
+            FILE_REPORT.append(val)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # CAT 'MAIN.PY'
+
+        print('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
+        esp32.long_output = []
+        while len(esp32.long_output) == 0:
+            esp32.cmd("cat('main.py')", silent=True, capture_output=True)
+        for val in esp32.long_output:
+            print(val)
+            FILE_REPORT.append(val)
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        tdiff = time.time()-t0
+        print('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
+        print('TOTAL TIME: {} s'.format(round(tdiff, 2)))
+        FILE_REPORT.append('TOTAL TIME: {} s'.format(round(tdiff, 2)))
+
+        if save_rep:
+            name_file = 'upyd_{}_{}_report.txt'.format(upy_id, datetime.now().strftime("%m-%d-%Y_at_%H-%M-%S"))
+            if name_rep is not None:
+                name_file = "{}.txt".format(name_rep)
+            with open(name_file, 'w') as rfile:
+                for line in FILE_REPORT:
+                    if isinstance(line, str):
+                        rfile.write(line)
+                        rfile.write('\n')
+                    else:
+                        rfile.write("{}".format(line))
+                        rfile.write('\n')
+        if rst_opt:
+            esp32.reset()
 
 #############################################
 
