@@ -18,6 +18,7 @@
 	- [flash](#flash)
 	- [see](#see)
 	- [find](#find)
+	- [diagnose](#diagnose)
 	- [make_group](#make_group)
 	- [mg_group](#mg_group)
 - [GROUP COMMAND MODE](#group-command-mode)
@@ -785,6 +786,42 @@ FOUND 2 device/s :
 DEVICE 1: , IP: 192.168.1.49 , STATE: up, PORT: 8266, STATUS: open
 DEVICE 2: , IP: 192.168.1.53 , STATE: up, PORT: 8266, STATUS: open
 ```
+
+## diagnose
+
+to make a diagnostic test of the device (sends useful to commands to get device state info)
+
+to save report to file see -rep, use -n to save the report with a custom name (automatic name is "upyd_ID_DATETIME.txt")
+
+```
+$ upydev diagnose
+******************** uPydev Diagnostics Test ********************
+
+
+upydev version : 0.1.3
+
+
+==================== PING TEST ====================
+PING 192.168.1.49 (192.168.1.49): 56 data bytes
+64 bytes from 192.168.1.49: icmp_seq=0 ttl=255 time=323.278 ms
+64 bytes from 192.168.1.49: icmp_seq=1 ttl=255 time=38.602 ms
+64 bytes from 192.168.1.49: icmp_seq=2 ttl=255 time=59.469 ms
+64 bytes from 192.168.1.49: icmp_seq=3 ttl=255 time=77.440 ms
+64 bytes from 192.168.1.49: icmp_seq=4 ttl=255 time=95.099 ms
+
+--- 192.168.1.49 ping statistics ---
+5 packets transmitted, 5 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 38.602/118.778/323.278/103.957 ms
+========== MACHINE ID ==========
+ID: 30aea41e73f8
+
+[........]
+
+******************** uPydev Diagnostics Test Finished! ********************
+TOTAL TIME: 50.61 s
+```
+
+
 
 ## make_group
 

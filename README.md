@@ -206,6 +206,8 @@ Example: Raw commands
 
 * **find**: to get a list of possible upy devices. Scans the local network to find devices with port 8266     (WebREPL) open. Use -n option to perform n scans (A single scan may not find all the devices)
 
+* **diagnose:** to make a diagnostic test of the device (sends useful to commands to get device state info)
+
 * **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
 
      ​	and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)

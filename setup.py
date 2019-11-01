@@ -2,7 +2,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-07-11T23:29:40+01:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-10-19T17:01:54+01:00
+# @Last modified time: 2019-11-01T22:24:09+00:00
 
 from setuptools import setup
 
@@ -13,7 +13,7 @@ def readme():
 
 
 setup(name='upydev',
-      version='0.1.2',
+      version='0.1.3',
       description='Command line tool for wireless Micropython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',
@@ -46,4 +46,4 @@ setup(name='upydev',
                'web_repl_dir/bin/web_repl'],
       include_package_data=True,
       install_requires=['argcomplete', 'mpy-cross', 'esptool', 'prompt_toolkit',
-                        'python-nmap', 'netifaces', 'requests'])
+                        'python-nmap', 'netifaces', 'requests', 'upydevice'])
