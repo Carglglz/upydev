@@ -55,6 +55,8 @@ Python modules (automatically installed using pip):
 
 [requests](https://requests.kennethreitz.org/en/master/)
 
+[upydevice](https://github.com/Carglglz/upydevice)
+
 #### Tested on:
 
 MacOS X (Mojave 10.14.5)
