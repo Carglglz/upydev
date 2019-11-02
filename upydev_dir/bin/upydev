@@ -1146,7 +1146,7 @@ parser.add_argument('-client', help='[ID] [BROKER ADDRESS] [USER] [PASSWORD]',
 parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGTH]; Server Socket [PORT] [BUFFER LENGTH]',
                     nargs='+')
 parser.add_argument('-md', help='for command suboptions',
-                    nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest'])
+                    nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest', 'local'])
 parser.add_argument('-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
 parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
                         nargs='+')
@@ -1774,7 +1774,7 @@ def find_devices():
 
 
 #############################################
-def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=None):
+def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=None, local=False):
     t0 = time.time()
     esp32 = W_UPYDEVICE(target, passwd)
 
@@ -1788,7 +1788,33 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
     FILE_REPORT.append('upydev version : {}'.format(vers))
     print('\n')
     FILE_REPORT.append('\n')
+    # CHECK IF PORT 8266 IS OPEN(WEBREPL)
+    host_range = target
+    nmScan = nmap.PortScanner()
+    print('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
+    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
+    print('\n')
+    FILE_REPORT.append('\n')
+    my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266')
+    hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port': list(nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
+    devs = [host for host in hosts_list if host['status'] == 'open']
+    if len(devs) > 0:
+        print('DEVICE FOUND')
+        FILE_REPORT.append('DEVICE FOUND')
+        N = 1
+        for dev in devs:
+            try:
+                print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
+                FILE_REPORT.append('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
+                N += 1
+            except Exception as e:
+                pass
+    else:
+        print('DEVICE NOT FOUND')
+        FILE_REPORT.append('DEVICE NOT FOUND')
     # CHECK IF DEVICE IS REACHABLE
+    print('\n')
+    FILE_REPORT.append('\n')
     print('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
     FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
     device_is_on = ping_diagnose(target, rep_file=FILE_REPORT)
@@ -1822,15 +1848,16 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('\n')
         FILE_REPORT.append('\n')
         # CHECK AVAILABLE FIRMWARE
-        print('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
-        print('Available firmware found for {}'.format(info['nodename']))
-        FILE_REPORT.append('Available firmware found for {}'.format(info['nodename']))
-        for vers in get_fw_versions(info['nodename'])[1]:
-            print('  - {}'.format(vers))
-            FILE_REPORT.append('  - {}'.format(vers))
-        print('\n')
-        FILE_REPORT.append('\n')
+        if not local:
+            print('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
+            FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
+            print('Available firmware found for {}'.format(info['nodename']))
+            FILE_REPORT.append('Available firmware found for {}'.format(info['nodename']))
+            for vers in get_fw_versions(info['nodename'])[1]:
+                print('  - {}'.format(vers))
+                FILE_REPORT.append('  - {}'.format(vers))
+            print('\n')
+            FILE_REPORT.append('\n')
         # RAM MEM
         print('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
@@ -2467,9 +2494,12 @@ if args.G is not None:
                         args.rst = True
                     else:
                         args.rst = False
+                    localdev = False
+                    if args.md is not None and args.md[0] == 'local':
+                        localdev = True
                     diagnose(dev_ip, dev_pass, save_rep=args.rep,
                              rst_opt=args.rst, name_rep=args.n,
-                             vers=parser.version)
+                             vers=parser.version, local=localdev)
 
 
         sys.exit()
@@ -2891,8 +2921,11 @@ elif args.m == 'diagnose':
         args.rst = True
     else:
         args.rst = False
+    localdev = False
+    if args.md is not None and args.md[0] == 'local':
+        localdev = True
     diagnose(args.t, args.p, save_rep=args.rep, rst_opt=args.rst,
-             name_rep=args.n, vers=parser.version)
+             name_rep=args.n, vers=parser.version, local=localdev)
     sys.exit()
 
 # MAKE_GROUP
