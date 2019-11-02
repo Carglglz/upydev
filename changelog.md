@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - KeyboardInterrupt command (kbi) to stop for/while loops
 - New mode diagnose
+- New -apmd option to set target to 192.168.4.1 (AP default)
 ## [0.1.2] - 2019-10-14
 ### Added
 - '-dir' option to put/get commands to select in which directory to put file or get a file from
