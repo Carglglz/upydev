@@ -1120,6 +1120,7 @@ parser.add_argument(
     required=False)
 parser.add_argument('-v', action='version')
 parser.add_argument('-rep', help='set to "t" to save the report in a text file', required=False)
+parser.add_argument('-apmd', help='set target to 192.168.4.1', required=False)
 parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
                     default=0)
 parser.add_argument('-imu', help='to select the imu library',
@@ -1786,6 +1787,12 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
     FILE_REPORT.append('\n')
     print('upydev version : {}'.format(vers))
     FILE_REPORT.append('upydev version : {}'.format(vers))
+    # CHECK IF DEVICE IS REACHABLE
+    print('\n')
+    FILE_REPORT.append('\n')
+    print('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
+    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
+    device_is_on = ping_diagnose(target, rep_file=FILE_REPORT)
     print('\n')
     FILE_REPORT.append('\n')
     # CHECK IF PORT 8266 IS OPEN(WEBREPL)
@@ -1795,29 +1802,30 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
     FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
     print('\n')
     FILE_REPORT.append('\n')
-    my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266')
-    hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port': list(nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
-    devs = [host for host in hosts_list if host['status'] == 'open']
-    if len(devs) > 0:
-        print('DEVICE FOUND')
-        FILE_REPORT.append('DEVICE FOUND')
-        N = 1
-        for dev in devs:
-            try:
-                print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
-                FILE_REPORT.append('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
-                N += 1
-            except Exception as e:
-                pass
-    else:
-        print('DEVICE NOT FOUND')
-        FILE_REPORT.append('DEVICE NOT FOUND')
-    # CHECK IF DEVICE IS REACHABLE
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
-    device_is_on = ping_diagnose(target, rep_file=FILE_REPORT)
+    n_tries = 0
+    while n_tries < 3:
+        my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266 -Pn')
+        hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port': list(nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
+        devs = [host for host in hosts_list if host['status'] == 'open']
+        if len(devs) > 0:
+            n_tries = 3
+            print('DEVICE FOUND')
+            FILE_REPORT.append('DEVICE FOUND')
+            N = 1
+            for dev in devs:
+                try:
+                    print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
+                    FILE_REPORT.append('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
+                    N += 1
+                except Exception as e:
+                    pass
+        else:
+            if n_tries >= 2:
+                print('DEVICE NOT FOUND')
+                FILE_REPORT.append('DEVICE NOT FOUND')
+                n_tries += 1
+            else:
+                n_tries += 1
     # ISSUE A KBI
     if device_is_on:
         esp32.kbi(output=False)
@@ -1981,6 +1989,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
         pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
+        if info['sysname'] == 'esp8266':
+            pinlist = "[0,2,4,5,12,13,14,15]"
         machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
         status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
         pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
@@ -2006,6 +2016,9 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
         i2c_scl = "22"
         i2c_sda = "23"
+        if info['sysname'] == 'esp8266':
+            i2c_scl = "5"
+            i2c_sda = "4"
         i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
             i2c_scl, i2c_sda)
         esp32.output = None
@@ -2044,35 +2057,45 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('\n')
         FILE_REPORT.append('\n')
         # IF NETWORK:
+        is_conn_cmd = 'import network; network.WLAN(network.STA_IF).isconnected()'
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd(is_conn_cmd, silent=True)
+        is_connected = esp32.output
         # STA (NETINFOT)
         print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA IF CONFIG', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA IF CONFIG', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
-        net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
-        net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
-        net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
-        net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
-        esp32.long_output = []
-        while len(esp32.long_output) == 0:
-            esp32.cmd(net_comp_cmd, silent=True, capture_output=True)
-        net_info_list = esp32.long_output
-        print('=' * 106)
-        FILE_REPORT.append('=' * 106)
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-            'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
-        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-            'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
-        try:
+        if is_connected:
+            is_connected = True
+            net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
+            net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
+            net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
+            net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
+            esp32.long_output = []
+            while len(esp32.long_output) == 0:
+                esp32.cmd(net_comp_cmd, silent=True, capture_output=True)
+            net_info_list = esp32.long_output
+            print('=' * 106)
+            FILE_REPORT.append('=' * 106)
             print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-                *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
-                net_info_list[2].strip()))
+                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
             FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-                *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
-                net_info_list[2].strip()))
-        except Exception as e:
-            print(e)
-            pass
+                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
+            try:
+                print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+                    *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
+                    net_info_list[2].strip()))
+                FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+                    *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
+                    net_info_list[2].strip()))
+            except Exception as e:
+                print(e)
+                pass
+        else:
+            print('STA NOT CONNECTED')
+            FILE_REPORT.append('STA NOT CONNECTED')
         # STA (NETSCAN)
         print('\n')
         FILE_REPORT.append('\n')
@@ -2080,7 +2103,7 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
-        net_cmd = "import network;network.WLAN(network.STA_IF).scan();gc.collect()"
+        net_cmd = "import network;network.WLAN(network.STA_IF).active(1);network.WLAN(network.STA_IF).scan();gc.collect()"
         esp32.output = None
         while esp32.output is None:
             esp32.cmd(net_cmd, silent=True)
@@ -2153,18 +2176,22 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
         apscan_cmd = "import network;network.WLAN(network.AP_IF).status('stations');gc.collect()"
         if apstat_info[:-2][0] != 'False':
-            esp32.output = None
-            while esp32.output is None:
-                esp32.cmd(apscan_cmd, silent=True)
-            print('Found {} devices'.format(len(esp32.output)))
-            FILE_REPORT.append('Found {} devices'.format(len(esp32.output)))
-            mac_addr = []
-            for dev in esp32.output:
-                bytdev = bytearray(dev[0])
-                mac_ad = ':'.join(str(val) for val in bytdev)
-                mac_addr.append(mac_ad)
-                print(f'MAC addres: {mac_ad}')
-                FILE_REPORT.append(f'MAC addres: {mac_ad}')
+            if info['sysname'] != 'esp8266':
+                esp32.output = None
+                while esp32.output is None:
+                    esp32.cmd(apscan_cmd, silent=True)
+                print('Found {} devices'.format(len(esp32.output)))
+                FILE_REPORT.append('Found {} devices'.format(len(esp32.output)))
+                mac_addr = []
+                for dev in esp32.output:
+                    bytdev = bytearray(dev[0])
+                    mac_ad = ':'.join(str(val) for val in bytdev)
+                    mac_addr.append(mac_ad)
+                    print(f'MAC addres: {mac_ad}')
+                    FILE_REPORT.append(f'MAC addres: {mac_ad}')
+            else:
+                print('ESP8266 NOT SUPPORTED')
+                FILE_REPORT.append('ESP8266 NOT SUPPORTED')
         else:
             print('AP DISABLED')
             FILE_REPORT.append('AP DISABLED')
@@ -2654,6 +2681,8 @@ if args.GP is not None:
         sys.exit()
 
 # UPYDEV RAW COMMAND MODE: (WHEN ARGUMENT Mode is not in keyword list)
+if args.apmd is not None:
+    args.t = '192.168.4.1'
 if args.m not in keywords_mode:
     cmd = args.m
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
