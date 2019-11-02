@@ -791,7 +791,7 @@ DEVICE 2: , IP: 192.168.1.53 , STATE: up, PORT: 8266, STATUS: open
 
 to make a diagnostic test of the device (sends useful to commands to get device state info)
 
-to save report to file see -rep, use -n to save the report with a custom name (automatic name is "upyd_ID_DATETIME.txt")
+to save report to file see -rep, use -n to save the report with a custom name (automatic name is "upyd_ID_DATETIME.txt"). Use "-md local" option if connected to esp AP.
 
 ```
 $ upydev diagnose
@@ -812,11 +812,23 @@ PING 192.168.1.49 (192.168.1.49): 56 data bytes
 --- 192.168.1.49 ping statistics ---
 5 packets transmitted, 5 packets received, 0.0% packet loss
 round-trip min/avg/max/stddev = 38.602/118.778/323.278/103.957 ms
+==================== NMAP TEST ====================
+
+
+DEVICE FOUND
+DEVICE 1: , IP: 192.168.1.49 , STATE: up, PORT: 8266, STATUS: open
 ========== MACHINE ID ==========
-ID: 30aea41e73f8
+ID: 30aea4233564
 
-[........]
 
+========== DEVICE INFO ==========
+Sysname: esp32
+Nodename: esp32
+Release: 1.11.0
+Version: v1.11-530-g25946d1ef on 2019-10-29
+Machine: ESP32 module with ESP32
+
+[....]
 ******************** uPydev Diagnostics Test Finished! ********************
 TOTAL TIME: 50.61 s
 ```

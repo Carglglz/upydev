@@ -812,6 +812,7 @@ helparg = '''Mode:
 - diagnose: to make a diagnostic test of the device (sends useful to commands
             to get device state info), to save report to file see -rep, use -n to save
             the report with a custom name (automatic name is "upyd_ID_DATETIME.txt")
+            Use "-md local" option if connected to esp AP.
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
