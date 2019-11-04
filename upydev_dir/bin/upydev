@@ -5201,8 +5201,9 @@ elif args.m == 'buzz_set_alarm':
 # BUZZ INTERRUPT
 elif args.m == 'buzz_interrupt':
     buzz_cmd = "my_buzz.active_button({},{});".format(*args.po)
-    if args.md[0] == 'rev':
-        buzz_cmd = "my_buzz.active_button_rev({},{});".format(*args.po)
+    if args.md is not None:
+        if args.md[0] == 'rev':
+            buzz_cmd = "my_buzz.active_button_rev({},{});".format(*args.po)
     cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
         buzz_cmd, args.t, args.p)
     cmd_resp = run_command_rl(cmd_str)
