@@ -190,7 +190,3 @@ class MY_IMU:
 
         self.tim.init(period=timeout, mode=Timer.PERIODIC,
                       callback=sampling_sensor)
-
-# TODO: chunk streaming --> socket and sd
-# imu_config : indicate the name of your library
-# imu_init : initialize imu, and defines standard methods

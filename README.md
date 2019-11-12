@@ -59,7 +59,7 @@ Python modules (automatically installed using pip):
 
 #### Tested on:
 
-MacOS X (Mojave 10.14.5)
+MacOS X (Mojave 10.14.5-6)
 
 Raspbian GNU/Linux 9 (stretch) *(through ssh session)*
 
@@ -71,6 +71,8 @@ $ git clone https://github.com/Carglglz/upydev.git
 $ cd upydev
 $ sudo pip3 install . --no-deps -r rpy_rqmnts.txt
 ```
+
+Then to install upydevice see instructions in [upydevice repo](https://github.com/Carglglz/upydevice)
 
 upy Boards:
 
@@ -104,11 +106,11 @@ In CLI do :
 
 * To save configuration globally use -g option:
 
-  `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD] -g t`
+  `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD] -g `
 
   example:
 
-  `$ upydev config -t 192.168.1.58 -p mypass -g t`
+  `$ upydev config -t 192.168.1.58 -p mypass -g `
 
  *upydev will use local working directory configuration unless it does not find any or manually indicated with -g option.*
 
@@ -210,6 +212,10 @@ Example: Raw commands
 
 * **diagnose:** to make a diagnostic test of the device (sends useful to commands to get device state info)
 
+*  **errlog**: if 'error.log' is present in the upydevice, this shows the content (cat('error.log')).
+
+     If 'error.log' in sd use -s sd (This command needs upysh installed, do `upydev install -f upysh`)
+
 * **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
 
      ​	and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)
@@ -283,7 +289,12 @@ The commands that need additional scripts in the upy device are under the [uPyut
 
 For more info see [upyutils_docs](https://github.com/Carglglz/upydev/blob/master/DOCS/upyutils_docs.md).
 
+------
 
+#### USEFUL DEVELOPER TOOLS: (*Under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) folder*)
+
+* [**upylog**](https://github.com/Carglglz/upydev/tree/master/DOCS/upylog.md): MicroPython logging module with time format and log to file capabilities.
+* [**upynotify**](https://github.com/Carglglz/upydev/tree/master/DOCS/upynotify.md) : module with NOTIFIER class to notify events with beeps and blinks. 
 
 ------
 

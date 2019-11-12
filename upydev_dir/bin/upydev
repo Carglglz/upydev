@@ -44,8 +44,22 @@ ATTEN_INFO = """
 3 = ADC.ATTN_11DB: 11dB attenuation, gives a maximum input voltage of approximately 3.6v
 """
 
+
 def sortSecond(val):
     return val[1]
+
+
+def _dt_format(number):
+        rtc_n = str(number)
+        if len(rtc_n) == 1:
+            rtc_n = "0{}".format(rtc_n)
+            return rtc_n
+        else:
+            return rtc_n
+
+
+def _ft_datetime(t_now):
+    return([_dt_format(i) for i in t_now])
 
 
 def get_fw_versions(keyword):
@@ -813,6 +827,8 @@ helparg = '''Mode:
             to get device state info), to save report to file see -rep, use -n to save
             the report with a custom name (automatic name is "upyd_ID_DATETIME.txt")
             Use "-md local" option if connected to esp AP.
+- errlog: if 'error.log' is present in the upydevice, this shows the content
+            (cat('error.log')), if 'error.log' in sd use -s sd
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
@@ -1046,14 +1062,14 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
                  'ina_batt', 'make_group', 'srepl', 'mg_group', 'find',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
-                 'wap_conn', 'kbi', 'diagnose']
+                 'wap_conn', 'kbi', 'diagnose', 'errlog']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag)
-parser.version = '0.1.3'
+parser.version = '0.1.4'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-p", help='password', required=False)
@@ -1074,12 +1090,12 @@ parser.add_argument(
 parser.add_argument(
     "-r", help='command to send to upy device, waits for a short response (one line)', required=False)
 parser.add_argument(
-    "-rl", help='command to send to upy device, waits for a longer response (multiple lines), so it can catch tracebaks messages', required=False)
+    "-rl", help='command to send to upy device, waits for a longer response (multiple lines), so it can catch tracebacks messages', required=False)
 parser.add_argument(
-    "-g", help=' y : to store/read the configuration file globally, if there is no config file in working directory, \n it uses the global file',
-    required=False)
+    "-g", help='to store/read the configuration file globally, if there is no config file in working directory, \n it uses the global file',
+    required=False, default=False, action='store_true')
 parser.add_argument(
-    "-st", help=' t : shows target ip if using config file', required=False)
+    "-st", help='shows target ip if using config file', required=False, default=False, action='store_true')
 parser.add_argument(
     "-rst", help='reset flag after put file operation, default true, "f" to disable', required=False)
 parser.add_argument(
@@ -1120,8 +1136,8 @@ parser.add_argument(
     help='tag a log shot from a sensor or adc',
     required=False)
 parser.add_argument('-v', action='version')
-parser.add_argument('-rep', help='set to "t" to save the report in a text file', required=False)
-parser.add_argument('-apmd', help='set target to 192.168.4.1', required=False)
+parser.add_argument('-rep', help='to save the report in a text file', required=False, default=False, action='store_true')
+parser.add_argument('-apmd', help='set target to 192.168.4.1', required=False, default=False, action='store_true')
 parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
                     default=0)
 parser.add_argument('-imu', help='to select the imu library',
@@ -1148,7 +1164,7 @@ parser.add_argument('-client', help='[ID] [BROKER ADDRESS] [USER] [PASSWORD]',
 parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGTH]; Server Socket [PORT] [BUFFER LENGTH]',
                     nargs='+')
 parser.add_argument('-md', help='for command suboptions',
-                    nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest', 'local'])
+                    nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest'])
 parser.add_argument('-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
 parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
                         nargs='+')
@@ -1703,7 +1719,7 @@ def see():
         print(help_dict[args.c])
     else:
         group_file = '{}.config'.format(args.G)
-        if group_file not in os.listdir() or args.g is not None:
+        if group_file not in os.listdir() or args.g:
             group_file = '{}/{}.config'.format(upydev.__path__[0], args.G)
         with open(group_file, 'r') as group:
             group_devs = (json.loads(group.read()))
@@ -1834,11 +1850,15 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             esp32.cmd('dir()', silent=True)
         glo_vars = esp32.output.copy()
         # ID
+        print('\n')
+        FILE_REPORT.append('\n')
         print('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
         esp32.output = None
         while esp32.output is None:
             esp32.cmd('import machine; machine.unique_id();gc.collect()', silent=True)
+        print('\n')
+        FILE_REPORT.append('\n')
         print("ID: {}".format(hexlify(esp32.output).decode()))
         upy_id = hexlify(esp32.output).decode()
         FILE_REPORT.append("ID: {}".format(hexlify(esp32.output).decode()))
@@ -1847,6 +1867,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # UNAME
         print('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.response = None
         while esp32.response is None:
             esp32.cmd('import uos; uos.uname()', silent=True)
@@ -1860,6 +1882,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         if not local:
             print('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
             FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
+            print('\n')
+            FILE_REPORT.append('\n')
             print('Available firmware found for {}'.format(info['nodename']))
             FILE_REPORT.append('Available firmware found for {}'.format(info['nodename']))
             for vers in get_fw_versions(info['nodename'])[1]:
@@ -1870,6 +1894,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # RAM MEM
         print('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.long_output = []
         while len(esp32.long_output) == 0:
             esp32.cmd('from micropython import mem_info;mem_info();gc.collect()', silent=True, capture_output=True)
@@ -1887,6 +1913,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # DIR()
         print('{:<10} {} {:>10}'.format('='*10, 'GLOBAL SPACE VARIABLES', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'GLOBAL SPACE VARIABLES', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         print(glo_vars)
         FILE_REPORT.append(glo_vars)
         print('\n')
@@ -1894,6 +1922,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # FLASH MEM
         print('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.output = None
         while esp32.output is None:
             esp32.cmd("import uos;uos.statvfs('');gc.collect()", silent=True)
@@ -1915,6 +1945,7 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         while esp32.output is None:
             esp32.cmd("import uos;uos.listdir('/')", silent=True)
         if 'sd' in esp32.output:
+            sd_ismounted = True
             try:
                 esp32.output = None
                 while esp32.output is None:
@@ -1936,11 +1967,14 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             print('\n')
             FILE_REPORT.append('\n')
         else:
+            sd_ismounted = False
             print('SD NOT FOUND')
-            FILE_REPORT.append
+            FILE_REPORT.append('SD NOT FOUND')
         # FILES IN FLASH + SIZE
         print('{:<10} {} {:>10}'.format('='*10, 'Files in FLASH MEMORY', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Files in FLASH MEMORY', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.output = None
         while esp32.output is None:
             esp32.cmd("[(filename,uos.stat(''+str(filename))[6]) for filename in uos.listdir('')]", silent=True)
@@ -1954,6 +1988,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # MODULES
         print('{:<10} {} {:>10}'.format('='*10, 'Frozen Modules in Firmware', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Frozen Modules in Firmware', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.long_output = []
         while len(esp32.long_output) == 0:
             esp32.cmd("help('modules')", silent=True, capture_output=True)
@@ -1965,6 +2001,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # /LIB
         print('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.output = None
         while esp32.output is None:
             esp32.cmd("import uos; uos.listdir('/lib')", silent=True)
@@ -1975,6 +2013,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         print('{:<10} {} {:>10}'.format('='*10, 'Modules/scripts in /', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Modules/scripts in /', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.output = None
         while esp32.output is None:
             esp32.cmd("import uos; uos.listdir('/')", silent=True)
@@ -1983,32 +2023,6 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             print(flib)
             FILE_REPORT.append(flib)
 
-        print('\n')
-        FILE_REPORT.append('\n')
-        # HW
-        # PINS STATE
-        print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
-        pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
-        if info['sysname'] == 'esp8266':
-            pinlist = "[0,2,4,5,12,13,14,15]"
-        machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
-        status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
-        pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
-            pinlist, machine_pin, status)
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd(pin_status_cmd, silent=True)
-        pin_dict = esp32.output
-        pin_list = list(pin_dict.keys())
-        pin_list.sort()
-        for key in pin_list:
-            if pin_dict[key] == 1:
-                print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-                FILE_REPORT.append('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-            else:
-                print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-                FILE_REPORT.append('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
         print('\n')
         FILE_REPORT.append('\n')
 
@@ -2022,6 +2036,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             i2c_sda = "4"
         i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
             i2c_scl, i2c_sda)
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.output = None
         while esp32.output is None:
             esp32.cmd(i2c_cmd, silent=True)
@@ -2043,7 +2059,7 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
         get_time_cmd = "import time;tnow = time.localtime();"
-        get_time2_cmd = "print('{}-{}-{};{}:{}:{}'.format(tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]));gc.collect()"
+        get_time2_cmd = "[tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]];gc.collect()"
         get_datetime_cmd = get_time_cmd + get_time2_cmd
         esp32.response = None
         while esp32.response is None:
@@ -2051,10 +2067,11 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         localtime = datetime.now().strftime("%m-%d-%Y;%H:%M:%S")
         print('\n')
         FILE_REPORT.append('\n')
-        print('Device DateTime: {}'.format(esp32.response.strip()))
-        FILE_REPORT.append('Device DateTime: {}'.format(esp32.response.strip()))
-        print('Local DateTime: {}'.format(localtime))
-        FILE_REPORT.append('Local DateTime: {}'.format(localtime))
+        devicetime = "{}-{}-{};{}:{}:{}".format(*_ft_datetime(esp32.output))
+        print('{:<15} :  {:^15}'.format('Device DateTime', devicetime))
+        FILE_REPORT.append('{:<15} :  {:^15}'.format('Device DateTime', devicetime))
+        print('{:<15} :  {:^15}'.format('Local DateTime', localtime))
+        FILE_REPORT.append('{:<15} :  {:^15}'.format('Local DateTime', localtime))
         print('\n')
         FILE_REPORT.append('\n')
         # IF NETWORK:
@@ -2175,6 +2192,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # AP (APSCAN)
         print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         apscan_cmd = "import network;network.WLAN(network.AP_IF).status('stations');gc.collect()"
         if apstat_info[:-2][0] != 'False':
             if info['sysname'] != 'esp8266':
@@ -2201,8 +2220,12 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         print('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.long_output = []
-        esp32.cmd('from upysh import *', silent=True)
+        while len(esp32.long_output) == 0:
+            esp32.cmd('from upysh import *', silent=True, capture_output=True)
+        esp32.long_output = []
         while len(esp32.long_output) == 0:
             esp32.cmd("cat('boot.py')", silent=True, capture_output=True)
         for val in esp32.long_output:
@@ -2214,12 +2237,89 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
 
         print('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
         FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
         esp32.long_output = []
         while len(esp32.long_output) == 0:
-            esp32.cmd("cat('main.py')", silent=True, capture_output=True)
+            esp32.cmd("cat('main.py');gc.collect()", silent=True, capture_output=True)
         for val in esp32.long_output:
             print(val)
             FILE_REPORT.append(val)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # CAT 'ERROR.LOG'
+
+        print('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd("import uos;uos.listdir('/')", silent=True)
+        if 'error.log' in esp32.output:
+            try:
+                esp32.long_output = []
+                while len(esp32.long_output) == 0:
+                    esp32.cmd("cat('error.log');gc.collect()", silent=True, capture_output=True)
+                for val in esp32.long_output:
+                    print(val)
+                    FILE_REPORT.append(val)
+            except Exception as e:
+                pass
+        else:
+            print('error.log NOT FOUND')
+            FILE_REPORT.append('error.log NOT FOUND')
+        print('\n')
+        FILE_REPORT.append('\n')
+        if sd_ismounted:
+            print('Looking for error.log in SD:')
+            print('\n')
+            FILE_REPORT.append('\n')
+            esp32.output = None
+            while esp32.output is None:
+                esp32.cmd("import uos;uos.listdir('/sd')", silent=True)
+            if 'error.log' in esp32.output:
+                try:
+                    esp32.long_output = []
+                    while len(esp32.long_output) == 0:
+                        esp32.cmd("cat('/sd/error.log');gc.collect()", silent=True, capture_output=True)
+                    for val in esp32.long_output:
+                        print(val)
+                        FILE_REPORT.append(val)
+                    print('\n')
+                    FILE_REPORT.append('\n')
+                except Exception as e:
+                    pass
+            else:
+                print('error.log NOT FOUND')
+                FILE_REPORT.append('error.log NOT FOUND')
+
+        # HW
+        # PINS STATE
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
+        pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
+        if info['sysname'] == 'esp8266':
+            pinlist = "[0,2,4,5,12,13,14,15]"
+        machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
+        status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
+        pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
+            pinlist, machine_pin, status)
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd(pin_status_cmd, silent=True)
+        pin_dict = esp32.output
+        pin_list = list(pin_dict.keys())
+        pin_list.sort()
+        for key in pin_list:
+            if pin_dict[key] == 1:
+                print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+                FILE_REPORT.append('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+            else:
+                print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+                FILE_REPORT.append('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
         print('\n')
         FILE_REPORT.append('\n')
 
@@ -2245,6 +2345,44 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             esp32.reset()
 
 #############################################
+
+
+def get_error_log(target, passwd, source=None):
+    esp32 = W_UPYDEVICE(target, passwd)
+    print('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
+    print('\n')
+    if source is None:
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd("from upysh import cat;import uos;uos.listdir('/')", silent=True)
+        if 'error.log' in esp32.output:
+            try:
+                esp32.long_output = []
+                while len(esp32.long_output) == 0:
+                    esp32.cmd("cat('error.log');gc.collect()", silent=True, capture_output=True)
+                for val in esp32.long_output:
+                    print(val)
+            except Exception as e:
+                pass
+        else:
+            print('error.log NOT FOUND')
+    else:
+        print('Looking for error.log in SD:')
+        esp32.output = None
+        while esp32.output is None:
+            esp32.cmd("import uos;uos.listdir('/sd')", silent=True)
+        if 'error.log' in esp32.output:
+            try:
+                esp32.long_output = []
+                while len(esp32.long_output) == 0:
+                    esp32.cmd("cat('/sd/error.log');gc.collect()", silent=True, capture_output=True)
+                for val in esp32.long_output:
+                    print(val)
+                print('\n')
+            except Exception as e:
+                pass
+        else:
+            print('error.log NOT FOUND')
 
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose']
@@ -2378,11 +2516,11 @@ if args.m == 'config':
     upydev_pass = args.p
     upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass}
     file_conf = 'upydev_.config'
-    if args.g is not None:
+    if args.g:
         file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
     with open(file_conf, 'w') as config_file:
         config_file.write(json.dumps(upy_conf))
-    if args.g is not None:
+    if args.g:
         print('upy device settings saved globally!')
     else:
         print('upy device settings saved in working directory!')
@@ -2392,14 +2530,16 @@ if args.m == 'config':
 if args.t is None:
     try:
         file_conf = 'upydev_.config'
-        if file_conf not in os.listdir() or args.g is not None:
+        if file_conf not in os.listdir() or args.g:
             file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
 
         with open(file_conf, 'r') as config_file:
             upy_conf = json.loads(config_file.read())
         args.t = upy_conf['ip']
         args.p = upy_conf['passwd']
-        if args.st is not None:
+        if args.apmd:
+            args.t = '192.168.4.1'
+        if args.st:
             print('Target:{}'.format(args.t))
     except Exception as e:
         print('upydev_.config file not found, please provide target and \
@@ -2411,7 +2551,7 @@ if args.G is not None:
     try:
         group_file = args.G
         # print(group_file)
-        if '{}.config'.format(group_file) not in os.listdir() or args.g is not None:
+        if '{}.config'.format(group_file) not in os.listdir() or args.g:
             group_file = '{}/{}'.format(upydev.__path__[0], args.G)
         if args.m == 'see':
             see()
@@ -2516,14 +2656,14 @@ if args.G is not None:
                 elif group_cmd_str.split()[1] == 'wrepl':
                     wrepl(dev_ip, dev_pass)
                 elif group_cmd_str.split()[1] == 'diagnose':
-                    if args.rep is not None:
+                    if args.rep:
                         args.rep = True
                     if args.rst is None:
                         args.rst = True
                     else:
                         args.rst = False
                     localdev = False
-                    if args.md is not None and args.md[0] == 'local':
+                    if args.apmd:
                         localdev = True
                     diagnose(dev_ip, dev_pass, save_rep=args.rep,
                              rst_opt=args.rst, name_rep=args.n,
@@ -2542,7 +2682,7 @@ if args.GP is not None:
     try:
         group_file = args.GP
         # print(group_file)
-        if '{}.config'.format(group_file) not in os.listdir() or args.g is not None:
+        if '{}.config'.format(group_file) not in os.listdir() or args.g:
             group_file = '{}/{}'.format(upydev.__path__[0], args.GP)
         print('Sending command to group: {}'.format(group_file.split('/')[-1]))
         with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
@@ -2682,7 +2822,7 @@ if args.GP is not None:
         sys.exit()
 
 # UPYDEV RAW COMMAND MODE: (WHEN ARGUMENT Mode is not in keyword list)
-if args.apmd is not None:
+if args.apmd:
     args.t = '192.168.4.1'
 if args.m not in keywords_mode:
     cmd = args.m
@@ -2945,29 +3085,32 @@ elif args.m == 'find':
 
 # DIAGNOSE
 elif args.m == 'diagnose':
-    if args.rep is not None:
-        args.rep = True
     if args.rst is None:
         args.rst = True
     else:
         args.rst = False
     localdev = False
-    if args.md is not None and args.md[0] == 'local':
+    if args.apmd:
         localdev = True
     diagnose(args.t, args.p, save_rep=args.rep, rst_opt=args.rst,
              name_rep=args.n, vers=parser.version, local=localdev)
+    sys.exit()
+
+# ERRLOG
+elif args.m == 'errlog':
+    get_error_log(args.t, args.p, args.s)
     sys.exit()
 
 # MAKE_GROUP
 elif args.m == 'make_group':
     group_file = '{}.config'.format(args.f)
     group_dict = dict(zip(args.devs[::3], [[args.devs[i], args.devs[i+1]] for i in range(1, len(args.devs)-1,3)]))
-    if args.g is not None:
+    if args.g:
         group_file = '{}/{}.config'.format(upydev.__path__[0], args.f)
     with open(group_file, 'w') as group:
         group.write(json.dumps(group_dict))
 
-    if args.g is not None:
+    if args.g:
         print('Group settings saved globally!')
     else:
         print('Group settings saved in working directory!')

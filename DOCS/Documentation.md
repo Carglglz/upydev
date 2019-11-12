@@ -159,12 +159,12 @@ so the target and password arguments wont be required any more
 
 - To save configuration globally use -g option:
 
-  `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD] -g t`
+  `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD] -g`
 
   example:
 
   ```
-  $ upydev config -t 192.168.1.58 -p mypass -g t
+  $ upydev config -t 192.168.1.58 -p mypass -g
   upy device settings saved globally!
   ```
 
@@ -791,7 +791,33 @@ DEVICE 2: , IP: 192.168.1.53 , STATE: up, PORT: 8266, STATUS: open
 
 to make a diagnostic test of the device (sends useful to commands to get device state info)
 
-to save report to file see -rep, use -n to save the report with a custom name (automatic name is "upyd_ID_DATETIME.txt"). Use "-md local" option if connected to esp AP.
+to save report to file see -rep, use -n to save the report with a custom name (automatic name is "upyd_ID_DATETIME.txt"). Use -apmd option if connected to esp AP.
+
+List of test: 
+
+* PING
+* NMAP
+* ID
+* SYS INFO
+* RAM
+* GLOBAL SPACE VARIABLES
+* FLASH MEMORY + SD MEMORY (if any)
+* FILES IN FLASH (ordered by size)
+* FROZEN MODULES
+* MODULES IN LIB 
+* SCRIPTS IN ROOT DIRECTORY ('/')
+* I2C SCAN
+* RTC DATETIME CHECK
+* NETWORK STA IF CONFIG (if enabled)
+* NETWORK STA SCAN (if enabled)
+* NETWORK AP IF CONFIG (if enabled)
+* NETWORK AP SCAN (if enabled)
+* boot.py CONTENT
+* main.py CONTENT
+* error.log CONTENT (if any)
+* PIN STATE
+
+**Usually the whole diagnostic Test takes under 1 minute*
 
 ```
 $ upydev diagnose

@@ -45,3 +45,9 @@
 **sdcard.py**: a lib to read/write to an sd card using spi interface, source [@peterhinch](https://github.com/peterhinch)
 
 **wifiutils.py**: to make easier to save/load wifi configuration (STA and AP ) and connect to an access point or enable its own.
+
+**upylog.py**: a modified version of MicroPython logging module, with time format logging and log to file option
+
+(default file: 'error.log')
+
+**upynotify.py** : a module to notify events with beeps (buzzer needed) and blinks. This is useful to "physical debugging".

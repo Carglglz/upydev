@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.4] [Unreleased] [Github Repo]
+### Added
+- New 'upyutils' script 'upylog.py' a modification of logging module to be able to log messages or exceptions to file and two formats to choose ([NAME] [LVL]
+  MSG) or ([DATETIME] [NAME] [LVL] MSG)
+- option to log to file in sd (mounted as 'sd')
+- New error.log content test in diagnose mode
+- New errlog command mode to see 'error.log' file if any with option to indicate
+source sd.
+- New 'upyutils' script 'upynotify.py' to make easier physical debugging (led, and buzzer notifications)
+### Fix
+- Command options -g , -st, -rep, -apmd (do not need any argument, they store true if used)
+- Option "-md local" in diagnose option (deprecated) use -apmd instead
 ## [0.1.3] - 2019-11-02
 ### Fix
 - package requests dependency added
