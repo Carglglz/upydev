@@ -3,7 +3,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-03-12T18:52:56+00:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-11-01T22:29:13+00:00
+# @Last modified time: 2019-11-14T21:29:48+00:00
 
 # upydev CLI
 import argparse
@@ -3872,36 +3872,21 @@ elif args.m == 'spi_config':
 
 elif args.m == 'set_localtime':
     print('Setting local time: {}'.format(
-        datetime.now().strftime("%m-%d-%Y;%H:%M:%S")))
+        datetime.now().strftime("%Y-%m-%d T %H:%M:%S")))
     rtc_cmd = "from machine import RTC;rtc = RTC();"
     wkoy = date.today().isocalendar()[1]
     datetime_local = [val for val in datetime.now().timetuple()[:-3]]
     datetime_tuple = datetime_local[:3]
     datetime_tuple.append(wkoy)
     datetime_final = datetime_tuple + datetime_local[3:] + [0]
-    utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}+3, {}));gc.collect()".format(
+    utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}+3, {}));['OK']".format(
         *datetime_final)
     settime_cmd = rtc_cmd + utc_zone_cmd
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        settime_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
+    dev = W_UPYDEVICE(args.t, args.p)
+    dev.output = None
+    while dev.output is None:
+        dev.cmd(settime_cmd, silent=True)
+    dev.cmd_nb('gc.collect()', silent=True)
     print('Done!')
     sys.exit()
 
@@ -3911,56 +3896,27 @@ elif args.m == 'set_ntptime':
     rtc_cmd = "from machine import RTC;rtc = RTC();"
     ntptime_cmd = "from ntptime import settime;settime();"
     rtc_config = "(year, month, mday, week_of_year, hour, minute, second, milisecond) = rtc.datetime();"
-    utc_zone_cmd = "rtc.datetime((year, month, mday, week_of_year,hour+{}, minute, second, milisecond));gc.collect()".format(args.utc)
+    utc_zone_cmd = "rtc.datetime((year, month, mday, week_of_year,hour+{}, minute, second, milisecond));['OK']".format(args.utc)
     settime_cmd = rtc_cmd + ntptime_cmd + rtc_config + utc_zone_cmd
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        settime_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
+    dev = W_UPYDEVICE(args.t, args.p)
+    dev.output = None
+    while dev.output is None:
+        dev.cmd(settime_cmd, silent=True)
+    dev.cmd_nb('gc.collect()', silent=True)
     print('Done!')
     sys.exit()
 
 # GET UPY DEVICE LOCALTIME
 elif args.m == 'get_datetime':
     get_time_cmd = "tnow = time.localtime();"
-    get_time2_cmd = "print('{}-{}-{};{}:{}:{}'.format(tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]));gc.collect()"
+    get_time2_cmd = "[tnow[0],tnow[1],tnow[2],tnow[3],tnow[4],tnow[5]];gc.collect()"
     get_datetime_cmd = get_time_cmd + get_time2_cmd
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        get_datetime_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
+    dev = W_UPYDEVICE(args.t, args.p)
+    dev.output = None
+    while dev.output is None:
+        dev.cmd(get_datetime_cmd, silent=True)
+    formatted_devtime = _ft_datetime(dev.output)
+    print('Device RTC time: {}-{}-{} T {}:{}:{}'.format(*formatted_devtime))
     sys.exit()
 #############################################
 # WLAN UTILS COMMANDS
