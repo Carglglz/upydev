@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.4] [Unreleased] [Github Repo]
+## [0.1.5] [Unreleased] [Github Repo]
+### Fix
+- Code refactoring using upydevice
+## [0.1.4] - 2019-11-12
 ### Added
 - New 'upyutils' script 'upylog.py' a modification of logging module to be able to log messages or exceptions to file and two formats to choose ([NAME] [LVL]
   MSG) or ([DATETIME] [NAME] [LVL] MSG)
