@@ -3,7 +3,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-03-12T18:52:56+00:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-11-14T21:29:48+00:00
+# @Last modified time: 2019-11-17T05:04:02+00:00
 
 # upydev CLI
 import argparse
@@ -23,12 +23,14 @@ import socket
 import struct
 import glob
 from binascii import hexlify
+from pathlib import Path
 import multiprocessing
 from datetime import datetime, date
 from sys import platform as _platform
 import argcomplete
 from argcomplete.completers import ChoicesCompleter
 from upydevice import W_UPYDEVICE
+from upydevice.phantom import UOS
 
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
@@ -62,6 +64,77 @@ def _ft_datetime(t_now):
     return([_dt_format(i) for i in t_now])
 
 
+class DisplayablePath(object):
+    display_filename_prefix_middle = '├──'
+    display_filename_prefix_last = '└──'
+    display_parent_prefix_middle = '    '
+    display_parent_prefix_last = '│   '
+
+    def __init__(self, path, parent_path, is_last):
+        self.path = Path(str(path))
+        self.parent = parent_path
+        self.is_last = is_last
+        if self.parent:
+            self.depth = self.parent.depth + 1
+        else:
+            self.depth = 0
+
+    @property
+    def displayname(self):
+        if self.path.is_dir():
+            return self.path.name + '/'
+        return self.path.name
+
+    @classmethod
+    def make_tree(cls, root, parent=None, is_last=False, criteria=None):
+        root = Path(str(root))
+        criteria = criteria or cls._default_criteria
+
+        displayable_root = cls(root, parent, is_last)
+        yield displayable_root
+
+        children = sorted(list(path
+                               for path in root.iterdir()
+                               if criteria(path)),
+                          key=lambda s: str(s).lower())
+        count = 1
+        for path in children:
+            is_last = count == len(children)
+            if path.is_dir():
+                yield from cls.make_tree(path,
+                                         parent=displayable_root,
+                                         is_last=is_last,
+                                         criteria=criteria)
+            else:
+                yield cls(path, displayable_root, is_last)
+            count += 1
+
+    @classmethod
+    def _default_criteria(cls, path):
+        return True
+
+
+    def displayable(self):
+        if self.parent is None:
+            return self.displayname
+
+        _filename_prefix = (self.display_filename_prefix_last
+                            if self.is_last
+                            else self.display_filename_prefix_middle)
+
+        parts = ['{!s} {!s}'.format(_filename_prefix,
+                                    self.displayname)]
+
+        parent = self.parent
+        while parent and parent.parent is not None:
+            parts.append(self.display_parent_prefix_middle
+                         if parent.is_last
+                         else self.display_parent_prefix_last)
+            parent = parent.parent
+
+        return ''.join(reversed(parts))
+
+
 def get_fw_versions(keyword):
     fw_list = []
     fw_links = []
@@ -87,8 +160,10 @@ def serial_ports():
 
 def see_groups():
     avoid_files = ['upydev_.config', 'help.config', 'esp32h.config']
-    local_cwd = [group_file.split('.')[0] for group_file in os.listdir() if '.config' in group_file and group_file not in 'upydev_.config']
-    globl_wd = [group_file.split('.')[0] for group_file in os.listdir(upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
+    local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
+    ) if '.config' in group_file and group_file not in 'upydev_.config']
+    globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
+        upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
     return local_cwd + globl_wd
 
 
@@ -215,6 +290,44 @@ def get_ssid():
         return wifi_info_dic['SSID']
 
 
+def read_file_sync_raw(file_tosync, soc):
+    # final_file = b''
+    buff = bytearray(2000)
+    with open(file_tosync, 'rb') as log:
+        while True:
+            try:
+                buff[:] = log.read(2000)  # 2 KB
+                # print(len(chunk))
+                if buff != b'':
+                    # in python use 'i'
+                    soc.sendall(buff)
+                    # final_file += chunk
+                else:
+                    print('END OF FILE')
+                    # soc.sendall
+                    break
+            except Exception as e:
+                print(e)
+                pass
+
+
+def sync_to_dev(file_tosync, dev):
+    source = ''
+    if args.s == 'sd':
+        source = args.s + '/'
+    # START A LOCAL SERVER
+    local_ip = get_ip()
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((local_ip, 8005))
+    server_socket.listen(1)
+    dev.cmd_nb("sync_to_filesys('{}', '{}', 8005)".format(source+file_tosync, local_ip))
+    conn, addr = server_socket.accept()
+    conn.settimeout(1)
+    read_file_sync_raw(file_tosync, conn)
+    conn.close()
+
+
 def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
                     r_format='fff', nb=12, log=False, variables=None):
     if args.lh is None:
@@ -256,7 +369,8 @@ def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
                     decode_print = dict(zip(variables,
                                             [format(val, '.4f') for val in struct.unpack(r_format, data_acc)]))
                     sys.stdout.write("\033[K")
-                    print(('{:^15}'*len(decode_print.values())).format(*decode_print.values()), end='\r')
+                    print(('{:^15}'*len(decode_print.values())
+                           ).format(*decode_print.values()), end='\r')
                     sys.stdout.flush()
                     with open(filename, 'a') as logfile:
                         logfile.write(json.dumps(decode))
@@ -274,7 +388,8 @@ def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
                     decode = dict(zip(variables,
                                       [format(val, '.4f') for val in struct.unpack(r_format, data_acc)]))
                     sys.stdout.write("\033[K")
-                    print(('{:^15}'*len(decode.values())).format(*decode.values()), end='\r')
+                    print(('{:^15}'*len(decode.values())
+                           ).format(*decode.values()), end='\r')
                     sys.stdout.flush()
                 except Exception as e:
                     # print(e)
@@ -357,7 +472,8 @@ def test_stream(run_cmd, targ, password, sensorlib, filename=None,
                     decode_print = dict(zip(variables,
                                             [format(val, '.4f') for val in struct.unpack(r_format, data_acc)]))
                     sys.stdout.write("\033[K")
-                    print(('{:^15}'*len(decode_print.values())).format(*decode_print.values()), end='\r')
+                    print(('{:^15}'*len(decode_print.values())
+                           ).format(*decode_print.values()), end='\r')
                     sys.stdout.flush()
                     with open(filename, 'a') as logfile:
                         logfile.write(json.dumps(decode))
@@ -375,9 +491,10 @@ def test_stream(run_cmd, targ, password, sensorlib, filename=None,
                     decode = dict(zip(variables,
                                       struct.unpack(r_format, data_acc)))
                     decode_p = dict(zip(variables,
-                                      [format(val, '.4f') for val in struct.unpack(r_format, data_acc)]))
+                                        [format(val, '.4f') for val in struct.unpack(r_format, data_acc)]))
                     sys.stdout.write("\033[K")
-                    print(('{:^15}'*len(decode_p.values())).format(*decode_p.values()), end='\r')
+                    print(('{:^15}'*len(decode_p.values())
+                           ).format(*decode_p.values()), end='\r')
                     sys.stdout.flush()
                     test_val.append(decode)
                     if t0 == 0:
@@ -515,7 +632,7 @@ def get_live_stream_chunk(run_cmd, targ, password, sensorlib, filename=None,
                         print(('{:^15}'*len(decode_p.values())
                                ).format(*decode_p.values()), end='\r')
                         sys.stdout.flush()
-                            # print(dict(zip(variables, [value])))
+                        # print(dict(zip(variables, [value])))
 
                 except Exception as e:
                     # print(e)
@@ -755,7 +872,8 @@ def print_sizefile_all(fileslist, tabs=0, frep=None):
         prettyprintname += namefile
         print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
         if frep is not None:
-            frep.append('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
+            frep.append('{0:<40} Size: {1:>10}'.format(
+                prettyprintname, sizestr))
 
 
 def print_filesys_info(filesize):
@@ -788,6 +906,9 @@ helparg = '''Mode:
 - get : to download a file from upy device (see -f, -s, -fre, -dir)
 - sync : for a faster transfer of large files
     (this needs sync_tool.py in upy device) (see -f, -s and -lh)
+- d_sync: to recursively sync a folder in upydevice filesystem use -dir
+            to indicate the folder (must be in cwd), use -tree to see dir
+            structure, to sync to an Sd card mounted as 'sd' use -s sd
 - cmd : to send command to upy device ; (see -c, -r, -rl);
         example: upydev cmd -c "led.on()" ; upydev cmd -r "print('Hello uPy')";
                 upydev cmd -rl "function_that_print_multiple_lines()";
@@ -1062,14 +1183,14 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
                  'ina_batt', 'make_group', 'srepl', 'mg_group', 'find',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
-                 'wap_conn', 'kbi', 'diagnose', 'errlog']
+                 'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag)
-parser.version = '0.1.4'
+parser.version = '0.1.5'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-p", help='password', required=False)
@@ -1084,6 +1205,8 @@ parser.add_argument(
     "-s", help='source dir in upy device, default is root dir (flash memory); sd for sd card source dir mounted as "/sd"', required=False)
 parser.add_argument(
     "-dir", help='target dir in upy device, default is root dir (flash memory)', required=False)
+parser.add_argument(
+    "-tree", help='to see the tree structure of a the directory to sync', required=False, default=False, action='store_true')
 parser.add_argument(
     "-c", help='command to send to upy device, do not wait for a response',
     required=False, type=str).completer = ChoicesCompleter(keywords_mode)
@@ -1136,8 +1259,10 @@ parser.add_argument(
     help='tag a log shot from a sensor or adc',
     required=False)
 parser.add_argument('-v', action='version')
-parser.add_argument('-rep', help='to save the report in a text file', required=False, default=False, action='store_true')
-parser.add_argument('-apmd', help='set target to 192.168.4.1', required=False, default=False, action='store_true')
+parser.add_argument('-rep', help='to save the report in a text file',
+                    required=False, default=False, action='store_true')
+parser.add_argument('-apmd', help='set target to 192.168.4.1',
+                    required=False, default=False, action='store_true')
 parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
                     default=0)
 parser.add_argument('-imu', help='to select the imu library',
@@ -1165,24 +1290,27 @@ parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGT
                     nargs='+')
 parser.add_argument('-md', help='for command suboptions',
                     nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest'])
-parser.add_argument('-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
+parser.add_argument(
+    '-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
 parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
-                        nargs='+')
+                    nargs='+')
 parser.add_argument('-add', help='to indicate the devices that will be added to a group, use as -add [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
-                        nargs='+')
+                    nargs='+')
 parser.add_argument('-rm', help='to indicate the devices that will be removed from a group, use as -rm [DEV_1] [DEV_2]...',
-                        nargs='+')
-parser.add_argument('-G', help='to indicate the group of devices that the command is directed to').completer = ChoicesCompleter(see_groups())
+                    nargs='+')
+parser.add_argument(
+    '-G', help='to indicate the group of devices that the command is directed to').completer = ChoicesCompleter(see_groups())
 parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
-                        nargs='+')
-parser.add_argument('-GP', help='to indicate the group of devices that the command is directed to, for threaded command execution').completer = ChoicesCompleter(see_groups())
+                    nargs='+')
+parser.add_argument(
+    '-GP', help='to indicate the group of devices that the command is directed to, for threaded command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
 # MODE FUNCTIONS
 
 
-def put_f(ip, passwd, rst=None):
+def put_f(ip, passwd, rst=None, abs_path=False):
     source = ''
     if args.s == 'sd':
         source = args.s + '/'
@@ -1191,6 +1319,8 @@ def put_f(ip, passwd, rst=None):
     if args.dir is not None:
         source = args.dir + '/'
     file_in_upy = file.split('/')[-1]
+    if abs_path:
+        file_in_upy = file
     host = ip
     print('Uploading file {}...'.format(file_in_upy))
     copyfile_str = 'upytool {} {}:/{}{} -p {}'.format(
@@ -1209,7 +1339,7 @@ def put_f(ip, passwd, rst=None):
         pass
 
 
-def put_multiple_f(ip, passwd):
+def put_multiple_f(ip, passwd, abs_path=False):
     # case 1: -fre is current working directory (cwd)
     rst = args.rst
     if args.fre[0] == 'cwd':
@@ -1218,7 +1348,7 @@ def put_multiple_f(ip, passwd):
             print(file)
         for file in os.listdir('./'):
             args.f = file
-            put_f(ip, passwd, rst=False)
+            put_f(ip, passwd, rst=False, abs_path=abs_path)
             print('\n')
         if rst is None:
             time.sleep(3)
@@ -1226,12 +1356,13 @@ def put_multiple_f(ip, passwd):
     else:
         # case 2: -fre is an expression to match
         if len(args.fre) == 1:
-            print("Files that match expression '{}' to upload:".format(args.fre[0]))
+            print("Files that match expression '{}' to upload:".format(
+                args.fre[0]))
             for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
                 print(file)
             for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
                 args.f = file
-                put_f(ip, passwd, rst=False)
+                put_f(ip, passwd, rst=False, abs_path=abs_path)
                 print('\n')
             if rst is None:
                 time.sleep(3)
@@ -1243,7 +1374,7 @@ def put_multiple_f(ip, passwd):
                 print(file)
             for file in args.fre:
                 args.f = file
-                put_f(ip, passwd, rst=False)
+                put_f(ip, passwd, rst=False, abs_path=abs_path)
                 print('\n')
             if rst is None:
                 time.sleep(3)
@@ -1262,7 +1393,8 @@ def get_f(ip, passwd, id_file='', check_file=True):
         dir = '/sd'
     if args.dir is not None:
         print('Looking for file in upy device {} dir'.format(args.dir))
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format("'/{}'".format(args.dir), ip, passwd)
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+            "'/{}'".format(args.dir), ip, passwd)
         dir = '/{}'.format(args.dir)
     resp = []
     if check_file:
@@ -1321,7 +1453,8 @@ def get_files_list(ip, passwd):
         dir = '/sd'
     if args.dir is not None:
         print('Looking for file in upy device {} dir'.format(args.dir))
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format("'/{}'".format(args.dir), ip, passwd)
+        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+            "'/{}'".format(args.dir), ip, passwd)
         dir = '/{}'.format(args.dir)
 
     command = shlex.split(cmd_str)
@@ -1491,6 +1624,157 @@ def sync_multiple_f(ip, passwd, id_file_dev=None, device=None, PORT_M=8005):
                     id_file_dev = '{}_{}'.format(device, args.f)
                 sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M)
                 print('\n')
+
+
+# DIR_SYNC
+
+def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
+                     show_tree=False):
+    t0 = time.time()
+    type_file_dict = {True:'<f>', False:'<d>'}
+    if folder == root_sync_folder:
+        print('DIRECTORY TO SYNC: {}'.format(folder))
+        print('DIRECTORY SIZE: {} kB'.format(os.path.getsize(folder)/1024))
+    if show_tree:
+        print('DIRECTORY TREE STRUCTURE:\n')
+        paths = DisplayablePath.make_tree(Path(folder))
+        for path in paths:
+            print(path.displayable())
+    time.sleep(1)
+    print('\n')
+    print('***** {} *****'.format(folder))
+    print('\n')
+    directory = folder
+    file_list = None
+    file_list_abs_path = []
+    dir_list_abs_path = []
+    current_dir = directory
+    # get directory structure:
+    print('ROOT DIRECTORY: {}'.format(rootdir))
+    print('DIRECTORY TO SYNC: {}'.format(directory))
+    print('\n')
+    print('CHECKING IF DIRECTORY {} IN: {}'.format(
+        directory.split('/')[-1], rootdir))
+    if directory.split('/')[-1] in os.listdir(rootdir):
+        print('DIRECTORY {} FOUND'.format(directory))
+        print('\n')
+        print('FILES/DIRS IN DIRECTORY {}:'.format(directory))
+        for file in os.listdir(directory):
+            print('- {} {}'.format(type_file_dict[os.path.isfile(os.path.join(current_dir, file))],
+                                   file))
+        file_list = os.listdir(directory)
+        print('\n')
+        for file in file_list:
+            if os.path.isfile(os.path.join(current_dir, file)):
+                file_list_abs_path.append(os.path.join(current_dir, file))
+            elif os.path.isdir(os.path.join(current_dir, file)):
+                dir_list_abs_path.append(os.path.join(current_dir, file))
+    print('LIST OF FILES TO UPLOAD:')
+    for file in file_list_abs_path:
+        print('- {}'.format(file.split('/')[-1]))
+    print('\n')
+    print('LIST OF SUBDIRS TO CREATE:')
+    for subdir in dir_list_abs_path:
+        print('- {}'.format(subdir.split('/')[-1]))
+    print('\n')
+    # Now create the root sync dir:
+    if './' == rootdir:
+        rootdir = ''
+    if args.s == 'sd':
+        rootdir = args.s + '/' + rootdir
+    dev.d.output = None
+    while dev.d.output is None:
+        try:
+            dev_root_list = dev.listdir(rootdir)
+        except Exception as e:
+            pass
+    if args.s == 'sd':
+        current_dir = args.s + '/' + current_dir
+    if current_dir.split('/')[-1] not in dev_root_list:
+    # print('uos = UOS(esp32); {} in uos.listdir("{}")'.format(
+    #     current_dir.split('/')[-1], rootdir))
+    # if dir not in root dir: create dir
+        print('\n')
+        print('MAKING DIR: {}'.format(current_dir))
+        print('\n')
+        dev.mkdir(current_dir)
+        print('\n')
+    print('UPLOADING FILES TO {}'.format(current_dir))
+    # Now put files in dir: ** if dir_list_abs_path empty (len()==0) args.rst = True, else false
+    # print('#upydev: args.fre = file_list_abs_path; put_multiple_f(args.t, args.p, abs_path=True)')
+    # for file in file_list_abs_path:
+    #     print('- {}'.format(file))
+    files_names_too_long = []
+    for file in file_list_abs_path:
+        if len(file) > 64:
+            print('\n')
+            print('WARNING FILE NAME TOO LONG (>64 chr)')
+            print('Using raw sync method instead...')
+            print(file)
+            files_names_too_long.append(file)
+    print('\n')
+    if len(files_names_too_long) > 0:
+        dev.d.output = None
+        while dev.d.output is None:
+            dev.d.cmd('from sync_tool import sync_to_filesys; [1]', silent=True)
+        print('RAW SYNC OF FILES:')
+        print('\n')
+    for file in files_names_too_long:
+        print('- {}'.format(file))
+    print('\n')
+    for file in files_names_too_long:
+        sync_to_dev(file, dev.d)
+        time.sleep(2)
+    for file in files_names_too_long:
+        file_list_abs_path.remove(file)
+    if len(file_list_abs_path) > 1:
+        args.fre = file_list_abs_path
+        args.rst = False
+        put_multiple_f(args.t, args.p, abs_path=True)
+    elif len(file_list_abs_path) == 1:
+        args.f = file_list_abs_path[0]
+        put_f(args.t, args.p, rst=False, abs_path=True)
+    else:
+        print('NO FILES IN DIR TO UPLOAD')
+    # Now create subdirs:
+    print('\n')
+    print('MAKING SUBDIRS NOW...')
+    for dir_ in dir_list_abs_path:
+        print('\n')
+        current_dir = dir_
+        # Now create the root sync dir:
+        # print('if not {} in uos.listdir("{}")'.format(
+        #     current_dir.split('/')[-1], directory))
+        # if dir not in root dir: create dir; else pass
+        dev.d.output = None
+        while dev.d.output is None:
+            try:
+                dir_to_sync = directory
+                if args.s == 'sd':
+                    dir_to_sync = args.s + '/' + directory
+                dev_directory = dev.listdir(dir_to_sync)
+            except Exception as e:
+                pass
+        if not current_dir.split('/')[-1] in dev_directory:
+            if args.s == 'sd':
+                current_dir = args.s + '/' + current_dir
+            print('Creating dir: {}'.format(current_dir))
+            # print(f'uos.mkdir("{current_dir}")')
+            dev.mkdir(current_dir)
+        else:
+            print('DIRECTORY {} ALREADY EXISTS'.format(current_dir.split('/')[-1]))
+    if len(dir_list_abs_path) == 0:
+        print('NO MORE SUBDIRS')
+    root = directory
+    for dir_ in dir_list_abs_path:
+        d_sync_recursive(dir_, dev, root)
+
+    if directory == root_sync_folder:
+        print('Rebooting now...')
+        print('Done in : {:.2f} seconds'.format(time.time()-t0))
+        # reset(args.t, args.p)
+        time.sleep(2)
+        dev.d.reset()
 
 
 def ping(ip):
@@ -1738,6 +2022,7 @@ def reset(ip, passwd):
     time.sleep(0.1)
     print('Done!')
 
+
 def kbi(ip, passwd):
     reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
         '0x3', ip, passwd)
@@ -1779,13 +2064,15 @@ def find_devices():
     for i in range(n_scans):
         print('SCAN # {}'.format(i))
         my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266')
-        hosts_list = [{'host':x, 'state':nmScan[x]['status']['state'], 'port':list(nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
-        devs = [host for host in hosts_list if host['status'] =='open']
+        hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port':list(
+            nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
+        devs = [host for host in hosts_list if host['status'] == 'open']
         print('FOUND {} device/s :'.format(len(devs)))
         N = 1
         for dev in devs:
             try:
-                print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
+                print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
+                    N, dev['host'], dev['state'], dev['port'], dev['status']))
                 N += 1
             except Exception as e:
                 pass
@@ -1799,7 +2086,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
     FILE_REPORT = []
     # FULL REPORT TEST
     print('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test', '*'*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test', '*'*20))
+    FILE_REPORT.append('{:<10} {} {:>10}'.format(
+        '*'*20, 'uPydev Diagnostics Test', '*'*20))
     print('\n')
     FILE_REPORT.append('\n')
     print('upydev version : {}'.format(vers))
@@ -1822,7 +2110,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
     n_tries = 0
     while n_tries < 3:
         my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266 -Pn')
-        hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port': list(nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
+        hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port': list(
+            nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
         devs = [host for host in hosts_list if host['status'] == 'open']
         if len(devs) > 0:
             n_tries = 3
@@ -1831,8 +2120,10 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             N = 1
             for dev in devs:
                 try:
-                    print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
-                    FILE_REPORT.append('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(N, dev['host'],dev['state'],dev['port'],dev['status']))
+                    print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
+                        N, dev['host'], dev['state'], dev['port'], dev['status']))
+                    FILE_REPORT.append('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
+                        N, dev['host'], dev['state'], dev['port'], dev['status']))
                     N += 1
                 except Exception as e:
                     pass
@@ -1853,10 +2144,12 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('\n')
         FILE_REPORT.append('\n')
         print('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'MACHINE ID', '='*10))
         esp32.output = None
         while esp32.output is None:
-            esp32.cmd('import machine; machine.unique_id();gc.collect()', silent=True)
+            esp32.cmd(
+                'import machine; machine.unique_id();gc.collect()', silent=True)
         print('\n')
         FILE_REPORT.append('\n')
         print("ID: {}".format(hexlify(esp32.output).decode()))
@@ -1866,13 +2159,15 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         # UNAME
         print('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'DEVICE INFO', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.response = None
         while esp32.response is None:
             esp32.cmd('import uos; uos.uname()', silent=True)
-        info = {data.split('=')[0].strip(): data.split('=')[1].replace("'", '') for data in esp32.response.strip()[1:-1].split(',')}
+        info = {data.split('=')[0].strip(): data.split('=')[1].replace(
+            "'", '') for data in esp32.response.strip()[1:-1].split(',')}
         for key in info.keys():
             print('{}: {}'.format(key.capitalize(), info[key]))
             FILE_REPORT.append('{}: {}'.format(key.capitalize(), info[key]))
@@ -1880,12 +2175,15 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         # CHECK AVAILABLE FIRMWARE
         if not local:
-            print('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
-            FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'AVAILABLE FIRMWARE', '='*10))
+            print('{:<10} {} {:>10}'.format(
+                '='*10, 'AVAILABLE FIRMWARE', '='*10))
+            FILE_REPORT.append('{:<10} {} {:>10}'.format(
+                '='*10, 'AVAILABLE FIRMWARE', '='*10))
             print('\n')
             FILE_REPORT.append('\n')
             print('Available firmware found for {}'.format(info['nodename']))
-            FILE_REPORT.append('Available firmware found for {}'.format(info['nodename']))
+            FILE_REPORT.append(
+                'Available firmware found for {}'.format(info['nodename']))
             for vers in get_fw_versions(info['nodename'])[1]:
                 print('  - {}'.format(vers))
                 FILE_REPORT.append('  - {}'.format(vers))
@@ -1898,21 +2196,26 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         esp32.long_output = []
         while len(esp32.long_output) == 0:
-            esp32.cmd('from micropython import mem_info;mem_info();gc.collect()', silent=True, capture_output=True)
+            esp32.cmd('from micropython import mem_info;mem_info();gc.collect()',
+                      silent=True, capture_output=True)
         for line in esp32.long_output:
             print(line)
             FILE_REPORT.append(line)
-        mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[1]) for elem in esp32.long_output[1][4:].strip().split(',')}
+        mem = {elem.strip().split(':')[0]: int(elem.strip().split(
+            ':')[1]) for elem in esp32.long_output[1][4:].strip().split(',')}
         print('RAM INFO:')
         FILE_REPORT.append('RAM INFO:')
         for key in mem.keys():
             print("  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
-            FILE_REPORT.append("  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
+            FILE_REPORT.append(
+                "  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
         print('\n')
         FILE_REPORT.append('\n')
         # DIR()
-        print('{:<10} {} {:>10}'.format('='*10, 'GLOBAL SPACE VARIABLES', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'GLOBAL SPACE VARIABLES', '='*10))
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'GLOBAL SPACE VARIABLES', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'GLOBAL SPACE VARIABLES', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         print(glo_vars)
@@ -1921,7 +2224,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         # FLASH MEM
         print('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'FLASH MEMORY', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.output = None
@@ -1949,7 +2253,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             try:
                 esp32.output = None
                 while esp32.output is None:
-                    esp32.cmd("import uos;uos.statvfs('/sd');gc.collect()", silent=True, capture_output=True)
+                    esp32.cmd("import uos;uos.statvfs('/sd');gc.collect()",
+                              silent=True, capture_output=True)
             except Exception as e:
                 pass
             filesys_info = esp32.output
@@ -1971,13 +2276,16 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             print('SD NOT FOUND')
             FILE_REPORT.append('SD NOT FOUND')
         # FILES IN FLASH + SIZE
-        print('{:<10} {} {:>10}'.format('='*10, 'Files in FLASH MEMORY', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Files in FLASH MEMORY', '='*10))
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'Files in FLASH MEMORY', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'Files in FLASH MEMORY', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.output = None
         while esp32.output is None:
-            esp32.cmd("[(filename,uos.stat(''+str(filename))[6]) for filename in uos.listdir('')]", silent=True)
+            esp32.cmd(
+                "[(filename,uos.stat(''+str(filename))[6]) for filename in uos.listdir('')]", silent=True)
         filesize = esp32.output
         filesize.sort(key=sortSecond, reverse=True)
         print('Files in FLASH MEMORY:')
@@ -1986,8 +2294,10 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('\n')
         FILE_REPORT.append('\n')
         # MODULES
-        print('{:<10} {} {:>10}'.format('='*10, 'Frozen Modules in Firmware', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Frozen Modules in Firmware', '='*10))
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'Frozen Modules in Firmware', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'Frozen Modules in Firmware', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.long_output = []
@@ -2000,7 +2310,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         # /LIB
         print('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'Modules in /lib', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.output = None
@@ -2011,8 +2322,10 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             FILE_REPORT.append(flib)
         print('\n')
         FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'Modules/scripts in /', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'Modules/scripts in /', '='*10))
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'Modules/scripts in /', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'Modules/scripts in /', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.output = None
@@ -2028,7 +2341,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
 
         # I2C SCAN (config option)
         print('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'I2C SCAN', '='*10))
         i2c_scl = "22"
         i2c_sda = "23"
         if info['sysname'] == 'esp8266':
@@ -2057,7 +2371,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         # RTC CHECK LOCAL TIME - HOST TIME DIFF
         print('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'RTC DATETIME CHECK', '='*10))
         get_time_cmd = "import time;tnow = time.localtime();"
         get_time2_cmd = "[tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]];gc.collect()"
         get_datetime_cmd = get_time_cmd + get_time2_cmd
@@ -2069,9 +2384,11 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('\n')
         devicetime = "{}-{}-{};{}:{}:{}".format(*_ft_datetime(esp32.output))
         print('{:<15} :  {:^15}'.format('Device DateTime', devicetime))
-        FILE_REPORT.append('{:<15} :  {:^15}'.format('Device DateTime', devicetime))
+        FILE_REPORT.append('{:<15} :  {:^15}'.format(
+            'Device DateTime', devicetime))
         print('{:<15} :  {:^15}'.format('Local DateTime', localtime))
-        FILE_REPORT.append('{:<15} :  {:^15}'.format('Local DateTime', localtime))
+        FILE_REPORT.append('{:<15} :  {:^15}'.format(
+            'Local DateTime', localtime))
         print('\n')
         FILE_REPORT.append('\n')
         # IF NETWORK:
@@ -2081,8 +2398,10 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             esp32.cmd(is_conn_cmd, silent=True)
         is_connected = esp32.output
         # STA (NETINFOT)
-        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA IF CONFIG', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA IF CONFIG', '='*10))
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK STA IF CONFIG', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK STA IF CONFIG', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         if is_connected:
@@ -2090,7 +2409,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
             net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
             net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
-            net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
+            net_comp_cmd = '{}{}{}'.format(
+                net_cmd, net_info_cmd, net_signal_cmd)
             esp32.long_output = []
             while len(esp32.long_output) == 0:
                 esp32.cmd(net_comp_cmd, silent=True, capture_output=True)
@@ -2103,10 +2423,12 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
                 'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
             try:
                 print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-                    *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
+                    *ast.literal_eval(net_info_list[0]
+                                      ), net_info_list[1].strip(),
                     net_info_list[2].strip()))
                 FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-                    *ast.literal_eval(net_info_list[0]), net_info_list[1].strip(),
+                    *ast.literal_eval(net_info_list[0]
+                                      ), net_info_list[1].strip(),
                     net_info_list[2].strip()))
             except Exception as e:
                 print(e)
@@ -2118,7 +2440,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('\n')
         FILE_REPORT.append('\n')
         print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK STA SCAN', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         net_cmd = "import network;network.WLAN(network.STA_IF).active(1);network.WLAN(network.STA_IF).scan();gc.collect()"
@@ -2147,8 +2470,10 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # AP (APSTAT)
         esp32.output = None
         esp32.long_output = []
-        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP IF CONFIG', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP IF CONFIG', '='*10))
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK AP IF CONFIG', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK AP IF CONFIG', '='*10))
         ap_state = "network.WLAN(network.AP_IF).active()"
         ap_essid = "network.WLAN(network.AP_IF).config('essid')"
         ap_channel = "network.WLAN(network.AP_IF).config('channel')"
@@ -2191,7 +2516,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
 
         # AP (APSCAN)
         print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK AP SCAN', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         apscan_cmd = "import network;network.WLAN(network.AP_IF).status('stations');gc.collect()"
@@ -2201,7 +2527,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
                 while esp32.output is None:
                     esp32.cmd(apscan_cmd, silent=True)
                 print('Found {} devices'.format(len(esp32.output)))
-                FILE_REPORT.append('Found {} devices'.format(len(esp32.output)))
+                FILE_REPORT.append(
+                    'Found {} devices'.format(len(esp32.output)))
                 mac_addr = []
                 for dev in esp32.output:
                     bytdev = bytearray(dev[0])
@@ -2219,7 +2546,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('\n')
         FILE_REPORT.append('\n')
         print('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'boot.py CONTENT', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.long_output = []
@@ -2236,12 +2564,14 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # CAT 'MAIN.PY'
 
         print('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'main.py CONTENT', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.long_output = []
         while len(esp32.long_output) == 0:
-            esp32.cmd("cat('main.py');gc.collect()", silent=True, capture_output=True)
+            esp32.cmd("cat('main.py');gc.collect()",
+                      silent=True, capture_output=True)
         for val in esp32.long_output:
             print(val)
             FILE_REPORT.append(val)
@@ -2250,7 +2580,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         # CAT 'ERROR.LOG'
 
         print('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'error.log CONTENT', '='*10))
         print('\n')
         FILE_REPORT.append('\n')
         esp32.output = None
@@ -2260,7 +2591,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
             try:
                 esp32.long_output = []
                 while len(esp32.long_output) == 0:
-                    esp32.cmd("cat('error.log');gc.collect()", silent=True, capture_output=True)
+                    esp32.cmd("cat('error.log');gc.collect()",
+                              silent=True, capture_output=True)
                 for val in esp32.long_output:
                     print(val)
                     FILE_REPORT.append(val)
@@ -2282,7 +2614,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
                 try:
                     esp32.long_output = []
                     while len(esp32.long_output) == 0:
-                        esp32.cmd("cat('/sd/error.log');gc.collect()", silent=True, capture_output=True)
+                        esp32.cmd("cat('/sd/error.log');gc.collect()",
+                                  silent=True, capture_output=True)
                     for val in esp32.long_output:
                         print(val)
                         FILE_REPORT.append(val)
@@ -2299,7 +2632,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         print('\n')
         FILE_REPORT.append('\n')
         print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'PINS STATE', '='*10))
         pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
         if info['sysname'] == 'esp8266':
             pinlist = "[0,2,4,5,12,13,14,15]"
@@ -2316,21 +2650,26 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         for key in pin_list:
             if pin_dict[key] == 1:
                 print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-                FILE_REPORT.append('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+                FILE_REPORT.append(
+                    '{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
             else:
                 print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-                FILE_REPORT.append('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+                FILE_REPORT.append(
+                    '{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
         print('\n')
         FILE_REPORT.append('\n')
 
         tdiff = time.time()-t0
-        print('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
+        print('{:<10} {} {:>10}'.format(
+            '*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
         print('TOTAL TIME: {} s'.format(round(tdiff, 2)))
         FILE_REPORT.append('TOTAL TIME: {} s'.format(round(tdiff, 2)))
 
         if save_rep:
-            name_file = 'upyd_{}_{}_report.txt'.format(upy_id, datetime.now().strftime("%m-%d-%Y_at_%H-%M-%S"))
+            name_file = 'upyd_{}_{}_report.txt'.format(
+                upy_id, datetime.now().strftime("%m-%d-%Y_at_%H-%M-%S"))
             if name_rep is not None:
                 name_file = "{}.txt".format(name_rep)
             with open(name_file, 'w') as rfile:
@@ -2354,12 +2693,14 @@ def get_error_log(target, passwd, source=None):
     if source is None:
         esp32.output = None
         while esp32.output is None:
-            esp32.cmd("from upysh import cat;import uos;uos.listdir('/')", silent=True)
+            esp32.cmd(
+                "from upysh import cat;import uos;uos.listdir('/')", silent=True)
         if 'error.log' in esp32.output:
             try:
                 esp32.long_output = []
                 while len(esp32.long_output) == 0:
-                    esp32.cmd("cat('error.log');gc.collect()", silent=True, capture_output=True)
+                    esp32.cmd("cat('error.log');gc.collect()",
+                              silent=True, capture_output=True)
                 for val in esp32.long_output:
                     print(val)
             except Exception as e:
@@ -2375,7 +2716,8 @@ def get_error_log(target, passwd, source=None):
             try:
                 esp32.long_output = []
                 while len(esp32.long_output) == 0:
-                    esp32.cmd("cat('/sd/error.log');gc.collect()", silent=True, capture_output=True)
+                    esp32.cmd("cat('/sd/error.log');gc.collect()",
+                              silent=True, capture_output=True)
                 for val in esp32.long_output:
                     print(val)
                 print('\n')
@@ -2384,8 +2726,10 @@ def get_error_log(target, passwd, source=None):
         else:
             print('error.log NOT FOUND')
 
+
 # keyword live output commands:
-kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install', 'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose']
+kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
+          'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync']
 
 # UPYDEVICE CLASS
 
@@ -2397,21 +2741,33 @@ class UPYDEVICE:
         self.password = passwd
         self.command = command
         self.port = port
-        self.dev_process = multiprocessing.Process(target=self.run_command_callback)
-        self.dev_process_raw = multiprocessing.Process(target=self.run_command_raw_callback)
+        self.dev_process = multiprocessing.Process(
+            target=self.run_command_callback)
+        self.dev_process_raw = multiprocessing.Process(
+            target=self.run_command_raw_callback)
         self.dev_ping = multiprocessing.Process(target=self.ping_callback)
-        self.dev_run_script = multiprocessing.Process(target=run_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
-        self.dev_timeit_script = multiprocessing.Process(target=timeit_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
-        self.dev_put = multiprocessing.Process(target=put_f, args=(self.ip, self.password, args.rst))
-        self.dev_put_multiple = multiprocessing.Process(target=put_multiple_f, args=(self.ip, self.password))
-        self.dev_install = multiprocessing.Process(target=install_f, args=(self.ip, self.password, '{}: '.format(self.name), ))
-        self.dev_get = multiprocessing.Process(target=get_f, args=(self.ip, self.password, '/{}_{}'.format(self.name, args.f)))
-        self.dev_get_multiple = multiprocessing.Process(target=get_multiple_f, args=(self.ip, self.password, 'device_id', self.name))
-        self.dev_sync = multiprocessing.Process(target=sync, args=(self.ip, self.password, '{}_{}'.format(self.name, args.f), self.port))
-        self.dev_sync_multiple = multiprocessing.Process(target=sync_multiple_f, args=(self.ip, self.password, 'device_id', self.name, self.port))
+        self.dev_run_script = multiprocessing.Process(
+            target=run_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
+        self.dev_timeit_script = multiprocessing.Process(
+            target=timeit_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
+        self.dev_put = multiprocessing.Process(
+            target=put_f, args=(self.ip, self.password, args.rst))
+        self.dev_put_multiple = multiprocessing.Process(
+            target=put_multiple_f, args=(self.ip, self.password))
+        self.dev_install = multiprocessing.Process(target=install_f, args=(
+            self.ip, self.password, '{}: '.format(self.name), ))
+        self.dev_get = multiprocessing.Process(target=get_f, args=(
+            self.ip, self.password, '/{}_{}'.format(self.name, args.f)))
+        self.dev_get_multiple = multiprocessing.Process(
+            target=get_multiple_f, args=(self.ip, self.password, 'device_id', self.name))
+        self.dev_sync = multiprocessing.Process(target=sync, args=(
+            self.ip, self.password, '{}_{}'.format(self.name, args.f), self.port))
+        self.dev_sync_multiple = multiprocessing.Process(target=sync_multiple_f, args=(
+            self.ip, self.password, 'device_id', self.name, self.port))
 
     def run_command_callback(self):
-        group_cmd_str = 'upydev {} -t {} -p {}'.format(self.command, self.ip, self.password)
+        group_cmd_str = 'upydev {} -t {} -p {}'.format(
+            self.command, self.ip, self.password)
         # print(group_cmd_str)
         group_cmd = shlex.split(group_cmd_str)
         try:
@@ -2419,7 +2775,8 @@ class UPYDEVICE:
                 group_cmd, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
             while proc.poll() is None:
-                print('{}:{}'.format(self.name, proc.stdout.readline()[:-1].decode()))
+                print('{}:{}'.format(
+                    self.name, proc.stdout.readline()[:-1].decode()))
         except KeyboardInterrupt:
             time.sleep(1)
             result = proc.stdout.readlines()
@@ -2427,7 +2784,8 @@ class UPYDEVICE:
                 print('{}:{}'.format(self.name, message[:-1].decode()))
 
     def run_command_raw_callback(self):
-        group_cmd_str = 'web_repl_cmd_r -c {} -t {} -p {} -wt 0.8'.format(self.command, self.ip, self.password)
+        group_cmd_str = 'web_repl_cmd_r -c {} -t {} -p {} -wt 0.8'.format(
+            self.command, self.ip, self.password)
         # print(group_cmd_str)
         group_cmd = shlex.split(group_cmd_str)
         try:
@@ -2459,7 +2817,8 @@ class UPYDEVICE:
                 ping_cmd, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
             while proc.poll() is None:
-                print('{}:{}'.format(self.name, proc.stdout.readline()[:-1].decode()))
+                print('{}:{}'.format(
+                    self.name, proc.stdout.readline()[:-1].decode()))
         except KeyboardInterrupt:
             time.sleep(1)
             result = proc.stdout.readlines()
@@ -2558,7 +2917,8 @@ if args.G is not None:
             sys.exit()
         if args.m == 'mg_group':
             if args.add is not None:
-                group_dict = dict(zip(args.add[::3], [[args.add[i], args.add[i+1]] for i in range(1, len(args.add)-1,3)]))
+                group_dict = dict(zip(args.add[::3], [
+                                  [args.add[i], args.add[i+1]] for i in range(1, len(args.add)-1, 3)]))
                 with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
                     devices = json.loads(group.read())
                     devices.update(group_dict)
@@ -2568,7 +2928,8 @@ if args.G is not None:
                 print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
                 print('# DEVICES ADDED: {}'.format(len(group_dict.keys())))
                 for key in group_dict.keys():
-                    print('DEVICE NAME: {}, IP: {}'.format(key, group_dict[key][0]))
+                    print('DEVICE NAME: {}, IP: {}'.format(
+                        key, group_dict[key][0]))
             elif args.rm is not None:
                 group_dict_rm = args.rm
                 removed_devs = {}
@@ -2584,7 +2945,8 @@ if args.G is not None:
                 print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
                 print('# DEVICES REMOVED: {}'.format(len(removed_devs.keys())))
                 for key in removed_devs.keys():
-                    print('DEVICE NAME: {}, IP: {}'.format(key, removed_devs[key][0]))
+                    print('DEVICE NAME: {}, IP: {}'.format(
+                        key, removed_devs[key][0]))
 
             sys.exit()
         print('Sending command to group: {}'.format(group_file.split('/')[-1]))
@@ -2610,10 +2972,12 @@ if args.G is not None:
             gcommand = ' '.join(single_command)
             # print(gcommand.split())
             # print(gcommand)
-            group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
+            group_cmd_str = 'upydev {} -t {} -p {}'.format(
+                gcommand, dev_ip, dev_pass)
             if group_cmd_str.split()[1] not in keywords_mode:
                 # print(group_cmd_str.split()[1])
-                group_cmd_str = 'upydev "{}" -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
+                group_cmd_str = 'upydev "{}" -t {} -p {}'.format(
+                    gcommand, dev_ip, dev_pass)
             # print(group_cmd_str)
             group_cmd = shlex.split(group_cmd_str)
             if group_cmd_str.split()[1] not in kw_loc:
@@ -2642,14 +3006,17 @@ if args.G is not None:
                         put_multiple_f(dev_ip, dev_pass)
                 elif group_cmd_str.split()[1] == 'get':
                     if args.fre is None:
-                        get_f(dev_ip, dev_pass, id_file='/{}_{}'.format(dev, args.f))
+                        get_f(dev_ip, dev_pass,
+                              id_file='/{}_{}'.format(dev, args.f))
                     else:
-                        get_multiple_f(dev_ip, dev_pass, id_file_dev='device_id', device=dev)
+                        get_multiple_f(dev_ip, dev_pass,
+                                       id_file_dev='device_id', device=dev)
                 elif group_cmd_str.split()[1] == 'sync':
                     if args.fre is None:
                         sync(dev_ip, dev_pass, id_file='{}_{}'.format(dev, args.f))
                     else:
-                        sync_multiple_f(dev_ip, dev_pass, id_file_dev='device_id', device=dev)
+                        sync_multiple_f(dev_ip, dev_pass,
+                                        id_file_dev='device_id', device=dev)
                 elif group_cmd_str.split()[1] == 'install':
                     install_f(dev_ip, dev_pass)
 
@@ -2668,7 +3035,6 @@ if args.G is not None:
                     diagnose(dev_ip, dev_pass, save_rep=args.rep,
                              rst_opt=args.rst, name_rep=args.n,
                              vers=parser.version, local=localdev)
-
 
         sys.exit()
     except Exception as e:
@@ -2708,14 +3074,17 @@ if args.GP is not None:
         gcommand = ' '.join(single_command)
         # print(gcommand.split())
         # group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
-        devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
+        devs_dict = {dev: UPYDEVICE(
+            dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
         if gcommand.split()[0] not in keywords_mode:
-            devs_dict = {dev: UPYDEVICE(dev, devices[dev][0], devices[dev][1], '"{};gc.collect()"'.format(gcommand)) for dev in devs}
+            devs_dict = {dev: UPYDEVICE(
+                dev, devices[dev][0], devices[dev][1], '"{};gc.collect()"'.format(gcommand)) for dev in devs}
             for dev in devs_dict.keys():
                 devs_dict[dev].run_command_raw()
             try:
                 while True:
-                    dev_proc_state = [devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
+                    dev_proc_state = [
+                        devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
                     if all(state is False for state in dev_proc_state):
                         time.sleep(1)
                         print('Done!')
@@ -2723,7 +3092,8 @@ if args.GP is not None:
             except KeyboardInterrupt:
                 time.sleep(2)
                 while True:
-                    dev_proc_state = [devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
+                    dev_proc_state = [
+                        devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
                     if all(state is False for state in dev_proc_state):
                         time.sleep(1)
                         for dev in devs_dict.keys():
@@ -2735,7 +3105,8 @@ if args.GP is not None:
                 devs_dict[dev].run_command()
             try:
                 while True:
-                    dev_proc_state = [devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
+                    dev_proc_state = [
+                        devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
                     if all(state is False for state in dev_proc_state):
                         time.sleep(1)
                         print('Done!')
@@ -2743,7 +3114,8 @@ if args.GP is not None:
             except KeyboardInterrupt:
                 time.sleep(2)
                 while True:
-                    dev_proc_state = [devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
+                    dev_proc_state = [
+                        devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
                     if all(state is False for state in dev_proc_state):
                         time.sleep(1)
                         for dev in devs_dict.keys():
@@ -2801,14 +3173,16 @@ if args.GP is not None:
 
                 try:
                     while True:
-                        dev_proc_state = [devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
+                        dev_proc_state = [
+                            devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
                         if all(state is False for state in dev_proc_state):
                             time.sleep(0.1)
                             break
                 except KeyboardInterrupt:
                     time.sleep(2)
                     while True:
-                        dev_proc_state = [devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
+                        dev_proc_state = [
+                            devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
                         if all(state is False for state in dev_proc_state):
                             time.sleep(1)
                             for dev in devs_dict.keys():
@@ -2881,6 +3255,17 @@ elif args.m == 'sync':
         sync(args.t, args.p)
     else:
         sync_multiple_f(args.t, args.p)
+    sys.exit()
+
+# D_SYNC:
+elif args.m == 'd_sync':
+    dir_to_sync = args.dir
+    args.dir = None
+    esp_dev = W_UPYDEVICE(args.t, args.p)
+    esp_dev.cmd('import uos')
+    uos = UOS(esp_dev)
+    d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
+                     show_tree=args.tree)
     sys.exit()
 
 # CMD (FOR DEBBUGING PURPOSE) # DEBUG:
@@ -3041,7 +3426,8 @@ elif args.m == 'fw':
 elif args.m == 'flash':
     if 'esp32' in args.f:
         print('Flashing firmware {} ...'.format(args.f))
-        esptool_cmd_str = "esptool.py --chip esp32 --port {} write_flash -z 0x1000 {}".format(args.port, args.f)
+        esptool_cmd_str = "esptool.py --chip esp32 --port {} write_flash -z 0x1000 {}".format(
+            args.port, args.f)
         esptool_cmd = shlex.split(esptool_cmd_str)
         try:
             proc = subprocess.Popen(
@@ -3056,7 +3442,8 @@ elif args.m == 'flash':
             for message in result:
                 print(message[:-1].decode())
     elif 'esp8266' in args.f:
-        esptool_cmd_str = "esptool.py --port {} --baud 460800 write_flash --flash_size=detect 0 {}".format(args.port, args.f)
+        esptool_cmd_str = "esptool.py --port {} --baud 460800 write_flash --flash_size=detect 0 {}".format(
+            args.port, args.f)
         esptool_cmd = shlex.split(esptool_cmd_str)
         try:
             proc = subprocess.Popen(
@@ -3104,7 +3491,8 @@ elif args.m == 'errlog':
 # MAKE_GROUP
 elif args.m == 'make_group':
     group_file = '{}.config'.format(args.f)
-    group_dict = dict(zip(args.devs[::3], [[args.devs[i], args.devs[i+1]] for i in range(1, len(args.devs)-1,3)]))
+    group_dict = dict(zip(args.devs[::3], [
+                      [args.devs[i], args.devs[i+1]] for i in range(1, len(args.devs)-1, 3)]))
     if args.g:
         group_file = '{}/{}.config'.format(upydev.__path__[0], args.f)
     with open(group_file, 'w') as group:
@@ -3896,7 +4284,8 @@ elif args.m == 'set_ntptime':
     rtc_cmd = "from machine import RTC;rtc = RTC();"
     ntptime_cmd = "from ntptime import settime;settime();"
     rtc_config = "(year, month, mday, week_of_year, hour, minute, second, milisecond) = rtc.datetime();"
-    utc_zone_cmd = "rtc.datetime((year, month, mday, week_of_year,hour+{}, minute, second, milisecond));['OK']".format(args.utc)
+    utc_zone_cmd = "rtc.datetime((year, month, mday, week_of_year,hour+{}, minute, second, milisecond));['OK']".format(
+        args.utc)
     settime_cmd = rtc_cmd + ntptime_cmd + rtc_config + utc_zone_cmd
     dev = W_UPYDEVICE(args.t, args.p)
     dev.output = None
@@ -4427,7 +4816,7 @@ elif args.m == 'imu_init':
     imu_init_cmd = "my_imu = imu.MY_IMU({},imu.i2c,None);".format(
         args.imu.upper())
     if args.i2c != [22, 23]:
-        imu_init_cmd  = "{};my_imu = imu.MY_IMU({},{},None);".format(
+        imu_init_cmd = "{};my_imu = imu.MY_IMU({},{},None);".format(
             'from machine import I2C', args.imu.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c))
     imu_final_init = "my_imu.init()"
     imu_init_cmd_str = import_imu_cmd + imu_init_cmd + imu_final_init
@@ -4725,7 +5114,7 @@ elif args.m == 'bme_init':
     bme_init_cmd = "my_bme = bme280.MY_BME280({},bme280.i2c);".format(
         args.bme.upper())
     if args.i2c != [22, 23]:
-        bme_init_cmd  = "{};my_bme = bme280.MY_BME280({},{});".format(
+        bme_init_cmd = "{};my_bme = bme280.MY_BME280({},{});".format(
             'from machine import I2C', args.bme.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c))
     bme_final_init = "my_bme.init()"
     bme_init_cmd_str = import_bme_cmd + bme_init_cmd + bme_final_init
@@ -4779,7 +5168,8 @@ elif args.m == 'bme_read':
                         print(e)
                         pass
         if len(bme_info_list) > 0:
-            print('{} C, {} Pa , {} % RH '.format(*ast.literal_eval(bme_info_list[0])))
+            print('{} C, {} Pa , {} % RH '.format(
+                *ast.literal_eval(bme_info_list[0])))
             if args.f is not None:
                 data_shot = [*ast.literal_eval(bme_info_list[0])]
                 tag_tstamp = datetime.now().strftime("%H:%M:%S")
@@ -4787,7 +5177,8 @@ elif args.m == 'bme_read':
                 if args.n is not None:
                     tag_tstamp = args.n
                 data_shot.append(tag_tstamp)
-                header = {'VAR': ['Temp(C)', 'Pressure(Pa)', 'RH(%)', 'TS'], 'UNIT': 'T: C; P: Pa; RH: %'}
+                header = {
+                    'VAR': ['Temp(C)', 'Pressure(Pa)', 'RH(%)', 'TS'], 'UNIT': 'T: C; P: Pa; RH: %'}
                 if args.f not in os.listdir():
                     with open(args.f, 'w') as file_log:
                         file_log.write(json.dumps(header))
@@ -4916,7 +5307,8 @@ elif args.m == 'ina_read':
                         print(e)
                         pass
         if len(ina_info_list) > 0:
-            print('{} V, {} mA , {} mW '.format(*ast.literal_eval(ina_info_list[0])))
+            print('{} V, {} mA , {} mW '.format(
+                *ast.literal_eval(ina_info_list[0])))
             if args.f is not None:
                 data_shot = [*ast.literal_eval(ina_info_list[0])]
                 tag_tstamp = datetime.now().strftime("%H:%M:%S")
@@ -4924,7 +5316,8 @@ elif args.m == 'ina_read':
                 if args.n is not None:
                     tag_tstamp = args.n
                 data_shot.append(tag_tstamp)
-                header = {'VAR': ['Voltage(V)', 'Current(mA)', 'Power(mW)', 'TS'], 'UNIT': 'V: v; C: mA; P: mW'}
+                header = {'VAR': [
+                    'Voltage(V)', 'Current(mA)', 'Power(mW)', 'TS'], 'UNIT': 'V: v; C: mA; P: mW'}
                 if args.f not in os.listdir():
                     with open(args.f, 'w') as file_log:
                         file_log.write(json.dumps(header))
@@ -5021,13 +5414,17 @@ elif args.m == 'ina_batt':
         current = sum(current_v)/len(current_v)
         power = sum(power_v)/len(power_v)
         print('\n')
-        print('{0:^15} {1:^15}'.format('','{}  {:>15}  {:>15}'.format('VOLTAGE', 'CURRENT', 'POWER')))
+        print('{0:^15} {1:^15}'.format(
+            '', '{}  {:>15}  {:>15}'.format('VOLTAGE', 'CURRENT', 'POWER')))
         print('  {0:>15}'.format('='*60))
-        print('{0:^15} {1:^15}'.format('| Average |','{:.2f} V {:>15.2f} mA  {:>15.2f} mW '.format(volts, current, power)))
+        print('{0:^15} {1:^15}'.format('| Average |',
+                                       '{:.2f} V {:>15.2f} mA  {:>15.2f} mW '.format(volts, current, power)))
         print('{0:^15}'.format('-'*len('| Average |')))
-        print('{0:^15} {1:^15}'.format('|   MAX   |','{:.2f} V {:>15.2f} mA  {:>15.2f} mW '.format(max(volts_v), max(current_v), max(power_v))))
+        print('{0:^15} {1:^15}'.format('|   MAX   |', '{:.2f} V {:>15.2f} mA  {:>15.2f} mW '.format(
+            max(volts_v), max(current_v), max(power_v))))
         print('{0:^15}'.format('-'*len('| Average |')))
-        print('{0:^15} {1:^15}'.format('|   MIN   |','{:.2f} V {:>15.2f} mA  {:>15.2f} mW '.format(min(volts_v), min(current_v), min(power_v))))
+        print('{0:^15} {1:^15}'.format('|   MIN   |', '{:.2f} V {:>15.2f} mA  {:>15.2f} mW '.format(
+            min(volts_v), min(current_v), min(power_v))))
         print('{0:^15}'.format('-'*len('| Average |')))
         print('\n')
         if current > 0:
@@ -5038,13 +5435,15 @@ elif args.m == 'ina_batt':
         batt_le_full = (args.batt[0]/current)*0.70
         batt_le_now = round((batt_le_full * percentage)/100, 2)
         header = ' | {0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^20}  |'.format(
-            'CAPACITY (mAh)', 'VOLTAGE (V)', 'LEVEL (%)','STATE', 'TIME LEFT (Hours)')
-        print('  {0:^15}   {1:^15}   {2:^15}   {3:^15}   {4:^20}  '.format('', '', 'BATTERY INFO', '', ''))
+            'CAPACITY (mAh)', 'VOLTAGE (V)', 'LEVEL (%)', 'STATE', 'TIME LEFT (Hours)')
+        print('  {0:^15}   {1:^15}   {2:^15}   {3:^15}   {4:^20}  '.format(
+            '', '', 'BATTERY INFO', '', ''))
         print(' {0:>15}'.format('='*(len(header)-1)))
         print(header)
         print(' {0:>15}'.format('-'*(len(header)-1)))
         # print('| {0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^20} |'.format('', '', '', '', ''))
-        print(' | {0:^15} | {1:^15.2f} | {2:^15} | {3:^15} | {4:^20}  |'.format(args.batt[0], volts, percentage, state, batt_le_now))
+        print(' | {0:^15} | {1:^15.2f} | {2:^15} | {3:^15} | {4:^20}  |'.format(
+            args.batt[0], volts, percentage, state, batt_le_now))
         # print('| {0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^20} |'.format('', '', '', '', ''))
         # print(' {0:>15}'.format('='*len(header)))
         print('\n')
@@ -5722,7 +6121,8 @@ elif args.m == 'mqtt_check':
 elif args.m == 'socli_init':
     if len(args.server) > 2:
         host, port, buff = args.server
-        socli_init_cmd = "my_cli=socket_client('{}',{},{})".format(host, port, buff)
+        socli_init_cmd = "my_cli=socket_client('{}',{},{})".format(
+            host, port, buff)
     else:
         host, port = args.server
         socli_init_cmd = "my_cli=socket_client('{}',{})".format(host, port)
@@ -6164,7 +6564,8 @@ elif args.m == 'pin_status':
             for key in pin_dict.keys():
                 if key in pin_rqst:
                     if pin_dict[key] == 1:
-                        print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+                        print('{0:^10} | {1:^5} | HIGH'.format(
+                            key, pin_dict[key]))
                     else:
                         print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
 

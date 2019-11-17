@@ -2,7 +2,7 @@
 # @Author: carlosgilgonzalez
 # @Date:   2019-07-09T19:42:05+01:00
 # @Last modified by:   carlosgilgonzalez
-# @Last modified time: 2019-07-09T23:09:51+01:00
+# @Last modified time: 2019-11-17T04:28:54+00:00
 
 import usocket as socket
 import os
@@ -78,3 +78,24 @@ def read_sd_file_sync_raw(file_in_sd, soc, buff=buffer_chunk):
             except Exception as e:
                 print(e)
                 pass
+
+
+def sync_to_filesys(filetoget, host, port, buff=buffer_chunk):
+    # final_file = b''
+    soc = connect_SOC(host, port)
+    soc.settimeout(2)
+    with open(filetoget, 'wb') as log:
+        pass
+    while True:
+        try:
+            chunk = soc.recv(2000)  # 2 KB
+            if chunk != b'':
+                with open(filetoget, 'ab') as log:
+                    log.write(chunk)
+            else:
+                print('END OF FILE')
+                soc.close()
+                break
+        except Exception as e:
+            if e == KeyboardInterrupt:
+                break

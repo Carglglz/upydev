@@ -7,6 +7,7 @@
 	- [put](#put)
 	- [get](#get)
 	- [sync](#sync)
+	- [d_sync](#d_sync)
 	- [cmd](#cmd)
 	- [wrepl](#wrepl)
 	- [ping](#ping)
@@ -414,6 +415,249 @@ Done in 5.55 seconds
 *if not using MacOS use -lh to indicate the local ip*
 
 *Linux automatic local ip detection is still on the way...*
+
+## d_sync
+
+to recursively sync a folder in upydevice filesystem use -dir to indicate the folder (must be in cwd), use 
+
+'-tree' to see dir structure or '-s sd' to sync to an Sd card mounted as 'sd'
+
+```
+$ upydev d_sync -dir test_sync_dir -tree -s sd
+
+DIRECTORY TO SYNC: test_sync_dir
+DIRECTORY SIZE: 0.1875 kB
+DIRECTORY TREE STRUCTURE:
+
+test_sync_dir/
+├── ATEXTFILE.txt
+├── my_other_dir_sync/
+│   └── another_file.txt
+├── test_subdir_sync/
+│   ├── sub_sub_dir_test_sync/
+│   │   ├── level_2_subtext.txt
+│   │   └── level_3_subtext.txt
+│   └── SUBTEXT.txt
+└── THETESTCODE.py
+
+
+***** test_sync_dir *****
+
+
+ROOT DIRECTORY: ./
+DIRECTORY TO SYNC: test_sync_dir
+
+
+CHECKING IF DIRECTORY test_sync_dir IN: ./
+DIRECTORY test_sync_dir FOUND
+
+
+FILES/DIRS IN DIRECTORY test_sync_dir:
+- <d> my_other_dir_sync
+- <f> ATEXTFILE.txt
+- <f> THETESTCODE.py
+- <d> test_subdir_sync
+
+
+LIST OF FILES TO UPLOAD:
+- ATEXTFILE.txt
+- THETESTCODE.py
+
+
+LIST OF SUBDIRS TO CREATE:
+- my_other_dir_sync
+- test_subdir_sync
+
+
+
+
+MAKING DIR: sd/test_sync_dir
+
+
+
+
+UPLOADING FILES TO sd/test_sync_dir
+
+
+
+
+Files to upload:
+test_sync_dir/ATEXTFILE.txt
+test_sync_dir/THETESTCODE.py
+Uploading file test_sync_dir/ATEXTFILE.txt...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+test_sync_dir/ATEXTFILE.txt -> /sd/test_sync_dir/ATEXTFILE.txt
+Remote WebREPL version: (1, 11, 0)
+Sent 31 of 31 bytes
+File Uploaded!
+
+
+Uploading file test_sync_dir/THETESTCODE.py...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+test_sync_dir/THETESTCODE.py -> /sd/test_sync_dir/THETESTCODE.py
+Remote WebREPL version: (1, 11, 0)
+Sent 54 of 54 bytes
+File Uploaded!
+
+
+
+
+MAKING SUBDIRS NOW...
+
+
+Creating dir: sd/test_sync_dir/my_other_dir_sync
+
+
+Creating dir: sd/test_sync_dir/test_subdir_sync
+
+
+***** test_sync_dir/my_other_dir_sync *****
+
+
+ROOT DIRECTORY: test_sync_dir
+DIRECTORY TO SYNC: test_sync_dir/my_other_dir_sync
+
+
+CHECKING IF DIRECTORY my_other_dir_sync IN: test_sync_dir
+DIRECTORY test_sync_dir/my_other_dir_sync FOUND
+
+
+FILES/DIRS IN DIRECTORY test_sync_dir/my_other_dir_sync:
+- <f> another_file.txt
+
+
+LIST OF FILES TO UPLOAD:
+- another_file.txt
+
+
+LIST OF SUBDIRS TO CREATE:
+
+
+UPLOADING FILES TO sd/test_sync_dir/my_other_dir_sync
+
+
+
+
+Uploading file test_sync_dir/my_other_dir_sync/another_file.txt...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+test_sync_dir/my_other_dir_sync/another_file.txt -> /sd/test_sync_dir/my_other_dir_sync/another_file.txt
+Remote WebREPL version: (1, 11, 0)
+Sent 0 of 0 bytes
+File Uploaded!
+
+
+MAKING SUBDIRS NOW...
+NO MORE SUBDIRS
+
+
+***** test_sync_dir/test_subdir_sync *****
+
+
+ROOT DIRECTORY: test_sync_dir
+DIRECTORY TO SYNC: test_sync_dir/test_subdir_sync
+
+
+CHECKING IF DIRECTORY test_subdir_sync IN: test_sync_dir
+DIRECTORY test_sync_dir/test_subdir_sync FOUND
+
+
+FILES/DIRS IN DIRECTORY test_sync_dir/test_subdir_sync:
+- <f> SUBTEXT.txt
+- <d> sub_sub_dir_test_sync
+
+
+LIST OF FILES TO UPLOAD:
+- SUBTEXT.txt
+
+
+LIST OF SUBDIRS TO CREATE:
+- sub_sub_dir_test_sync
+
+
+UPLOADING FILES TO sd/test_sync_dir/test_subdir_sync
+
+
+
+
+Uploading file test_sync_dir/test_subdir_sync/SUBTEXT.txt...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+test_sync_dir/test_subdir_sync/SUBTEXT.txt -> /sd/test_sync_dir/test_subdir_sync/SUBTEXT.txt
+Remote WebREPL version: (1, 11, 0)
+Sent 16 of 16 bytes
+File Uploaded!
+
+
+MAKING SUBDIRS NOW...
+
+
+Creating dir: sd/test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync
+
+
+***** test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync *****
+
+
+ROOT DIRECTORY: test_sync_dir/test_subdir_sync
+DIRECTORY TO SYNC: test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync
+
+
+CHECKING IF DIRECTORY sub_sub_dir_test_sync IN: test_sync_dir/test_subdir_sync
+DIRECTORY test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync FOUND
+
+
+FILES/DIRS IN DIRECTORY test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync:
+- <f> level_3_subtext.txt
+- <f> level_2_subtext.txt
+
+
+LIST OF FILES TO UPLOAD:
+- level_3_subtext.txt
+- level_2_subtext.txt
+
+
+LIST OF SUBDIRS TO CREATE:
+
+
+UPLOADING FILES TO sd/test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync
+
+
+WARNING FILE NAME TOO LONG (>64 chr)
+Using raw sync method instead...
+test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync/level_3_subtext.txt
+
+
+WARNING FILE NAME TOO LONG (>64 chr)
+Using raw sync method instead...
+test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync/level_2_subtext.txt
+
+
+RAW SYNC OF FILES:*
+
+
+- test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync/level_3_subtext.txt
+- test_sync_dir/test_subdir_sync/sub_sub_dir_test_sync/level_2_subtext.txt
+
+
+END OF FILE
+END OF FILE
+
+END OF FILE
+END OF FILE
+
+NO FILES IN DIR TO UPLOAD
+
+
+MAKING SUBDIRS NOW...
+NO MORE SUBDIRS
+Rebooting now...
+Done in : 57.21 seconds
+Rebooting device...
+
+### closed ###
+
+Done!
+```
+
+**If file name to sync (path+file name) is longer than 64 chrs, an alternative method is used*
 
 ## cmd
 

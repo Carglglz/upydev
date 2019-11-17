@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.5] [Unreleased] [Github Repo]
+### Added
+- New mode d_sync to sync recursively a directory (all files and subfolders)
+(this needs the new version of *sync_tool.py* from upyutils directory to be
+  uploaded to the device)
+  * the *-tree* option to get the dir tree view is from:
+  # "https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python" @abstrus
+  * to sync to an sd card, sd must be mounted as 'sd', and then use '-s sd' option
 ### Fix
 - Code refactoring using upydevice
 ## [0.1.4] - 2019-11-12
