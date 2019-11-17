@@ -212,7 +212,7 @@ Example: Raw commands
 
 * **find**: to get a list of possible upy devices. Scans the local network to find devices with port 8266     (WebREPL) open. Use -n option to perform n scans (A single scan may not find all the devices)
 
-* **diagnose:** to make a diagnostic test of the device (sends useful to commands to get device state info)
+* **diagnose:** to make a diagnostic test of the device (sends useful commands to get device state info)
 
 *  **errlog**: if 'error.log' is present in the upydevice, this shows the content (cat('error.log')).
 
