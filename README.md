@@ -157,11 +157,7 @@ Example: Raw commands
 
     *> sync_tool.py is under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory*
 
-- **d_sync**: to recursively sync a folder in upydevice filesystem use -dir  to indicate 
-
-     the folder (must be in cwd), use '-tree' to see dir structure, or '-s sd' to sync to an 
-
-     Sd card mounted as 'sd'
+- **d_sync**: to recursively sync a folder in upydevice filesystem use -dir  to indicate the folder (must be in cwd), use '-tree' to see dir structure, or '-s sd' to sync to an Sd card mounted as 'sd'
 
 - **cmd** : for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
 
