@@ -6,6 +6,8 @@
 
 import usocket as socket
 import os
+import gc
+import time
 
 buffer_chunk = bytearray(2000)
 
@@ -18,7 +20,7 @@ def connect_SOC(host, port):
     return cli_soc
 
 
-def print_sizefile(path, file_name, tabs=0):
+def print_sizefile(path, file_name, tabs=0, rtl=False):
     files = [filename for filename in os.listdir(
         path) if filename == file_name]
     for file in files:
@@ -26,12 +28,15 @@ def print_sizefile(path, file_name, tabs=0):
         filesize = stats[6]
         isdir = stats[0] & 0x4000
 
-        if filesize < 1000:
+        _kB = 1024
+        if filesize < _kB:
             sizestr = str(filesize) + " by"
-        elif filesize < 1000000:
-            sizestr = "%0.1f KB" % (filesize / 1000)
+        elif filesize < _kB**2:
+            sizestr = "%0.1f KB" % (filesize / _kB)
+        elif filesize < _kB**3:
+            sizestr = "%0.1f MB" % (filesize / _kB**2)
         else:
-            sizestr = "%0.1f MB" % (filesize / 1000000)
+            sizestr = "%0.1f GB" % (filesize / _kB**3)
 
         prettyprintname = ""
         for _ in range(tabs):
@@ -40,6 +45,8 @@ def print_sizefile(path, file_name, tabs=0):
         if isdir:
             prettyprintname += "/"
         print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
+    if rtl:
+        return filesize
 
 
 def read_sd_file_sync(file_in_sd, soc):  # for files wrote with new line separator(\n)
@@ -51,8 +58,6 @@ def read_sd_file_sync(file_in_sd, soc):  # for files wrote with new line separat
                     # in python use 'i'
                     soc.sendall(line[:-1])
                 else:
-                    print('END OF FILE')
-                    # soc.sendall
                     break
             except Exception as e:
                 print(e)
@@ -72,7 +77,7 @@ def read_sd_file_sync_raw(file_in_sd, soc, buff=buffer_chunk):
                     soc.sendall(buff)
                     # final_file += chunk
                 else:
-                    print('END OF FILE')
+                    # print('END OF FILE')
                     # soc.sendall
                     break
             except Exception as e:
@@ -99,3 +104,22 @@ def sync_to_filesys(filetoget, host, port, buff=buffer_chunk):
         except Exception as e:
             if e == KeyboardInterrupt:
                 break
+
+
+def w_stream_writer(host, port, chunk=20000, total=10000000):
+    soc = connect_SOC(host, port)
+    print('Connected!')
+    print('Streaming...\n')
+    n_times_chunk = int(total/chunk)
+    buff = os.urandom(chunk)
+    try:
+        for _ in range(n_times_chunk):
+            soc.sendall(buff)  # 20 kB
+    except Exception as e:
+        print(e)
+        if e == KeyboardInterrupt:
+            print(e)
+
+    time.sleep(0.5)
+    print('\nupydevice Done!')
+    gc.collect()

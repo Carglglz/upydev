@@ -20,6 +20,9 @@
 	- [see](#see)
 	- [find](#find)
 	- [diagnose](#diagnose)
+	- [stream_test](#stream_test)
+	- [sysctl](#sysctl)
+	- [log](#log)
 	- [make_group](#make_group)
 	- [mg_group](#mg_group)
 - [GROUP COMMAND MODE](#group-command-mode)
@@ -1101,6 +1104,177 @@ Machine: ESP32 module with ESP32
 [....]
 ******************** uPydev Diagnostics Test Finished! ********************
 TOTAL TIME: 50.61 s
+```
+
+## stream_test
+
+To test download speed (from device to host). Default test is 10 MB of random bytes are
+
+sent in chunks of 20 kB and received in chunks of 32 kB. To change test parameters use -chunk_tx , 
+
+chunk_rx, and -total_size. To use in 'AP' mode (connected to the AP of the device) use -apmd option.
+
+```bash
+**********  upydev STREAM TEST  **********
+DOWNLOAD SPEED TEST:
+CHUNK TX DATA SIZE:                                     2.00 kB
+CHUNK RX DATA SIZE:                                    32.00 kB
+TOTAL TX DATA SIZE:                                    10.00 MB
+
+Connected!
+Streaming...
+
+[****************************************************************************************************]    |  100 % | DATA: 10.00/10.00 MB | SPEED: 0.00 MB/s
+upydevice Done!
+
+END OF FILE
+Done!
+TEST RESULTS ARE:
+TEST DURATION : 15.943506956100464 (s)
+TEST DATA                                Size:    10.0 MB
+DATA TRANSFER RATE (kBps): 642.2677286869981 kB/s
+DATA TRANSFER RATE (Mbps): 5.138141829495985 Mbps
+```
+
+In AP mode:
+
+```bash
+**********  upydev STREAM TEST  **********
+DOWNLOAD SPEED TEST:
+CHUNK TX DATA SIZE:                                    20.00 kB
+CHUNK RX DATA SIZE:                                    32.00 kB
+TOTAL TX DATA SIZE:                                    10.00 MB
+
+Connected!
+Streaming...
+
+[****************************************************************************************************]    |  100 % | DATA: 10.00/10.00 MB | SPEED: 0.01 MB/s
+upydevice Done!
+
+END OF FILE
+Done!
+TEST RESULTS ARE:
+TEST DURATION : 7.670340061187744 (s)
+TEST DATA                                Size:    10.0 MB
+DATA TRANSFER RATE (kBps): 1335.0125181300432 kB/s
+DATA TRANSFER RATE (Mbps): 10.680100145040345 Mbps
+```
+
+## sysctl
+
+To start/stop a script without following the output. To follow initiate wrepl/srepl as normal, and
+
+exit with CTRL-x (webrepl) or CTRL-A,X (srepl) TO START: use -start [SCRIPT_NAME], TO STOP: use -stop
+
+[SCRIPT_NAME].
+
+```
+$ upydev sysctl -start dummy_inf_loop
+Loading dummy_inf_loop script...
+Done!
+$ upydev wrepl
+Password:
+WebREPL connected
+>>> bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+
+>>> closing...
+
+$ upydev sysctl -stop dummy_inf_loop
+Stopping dummy_inf_loop script...
+KeyboardInterrupt sent!
+
+MicroPython v1.11-530-g25946d1ef on 2019-10-29; ESP32 module with ESP32
+Type "help()" for more information.
+
+
+MicroPython v1.11-530-g25946d1ef on 2019-10-29; ESP32 module with ESP32
+Type "help()" for more information.
+3
+
+Done!
+Unloading dummy_inf_loop script...
+Script unloaded!
+
+Done!
+```
+
+## log
+
+To log the output of a upydevice script, indicate script with -f option, and the sys.stdout log level
+
+and file log level with -dslev and -dflev (defaults are debug for sys.stdout and error for file). To log in
+
+background use -daemon option, then the log will be redirected to a file with level -dslev. To stop the
+
+'daemon' log mode use -stopd and indicate script with -f option. 'Normal' file log and 'Daemon' file log
+
+are under .upydev_logs folder in $HOME directory, named after the name of the script. To follow an on
+
+going 'daemon' mode log, use -follow option and indicate the script with -f option.
+
+```bash
+$ upydev log -f dummy_inf_loop
+2019-11-23 16:50:47,071 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  Running dummy_inf_loop...
+2019-11-23 16:50:48,243 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  hello dummy!
+2019-11-23 16:50:48,244 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:49,264 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:50,243 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:51,414 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:52,254 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:53,263 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:54,485 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:55,410 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:56,336 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:57,354 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:58,481 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+2019-11-23 16:50:59,312 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  bye bye!
+^C2019-11-23 16:50:59,725 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  ...closing...
+
+### closed ###
+
+2019-11-23 16:51:08,159 [upydev_dummy_inf_loop] [33405] [MainThread] [INFO]  Done!
+```
+
+```bash
+$ upydev log -f dummy_inf_loop -daemon
+Running upydev log daemon-like mode
+Logging to dummy_inf_loop_daemon.log with level: debug
+Do '$ upydev log -stopd -f dummy_inf_loop' to stop the daemon
+```
+
+```bash
+upydev log -f dummy_inf_loop -follow
+2019-11-23 16:52:05,866 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  hello dummy!
+2019-11-23 16:52:05,867 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+2019-11-23 16:52:06,683 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+2019-11-23 16:52:07,618 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+2019-11-23 16:52:08,529 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+2019-11-23 16:52:09,552 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+2019-11-23 16:52:10,489 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+2019-11-23 16:52:11,700 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+2019-11-23 16:52:26,755 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+2019-11-23 16:52:27,573 [upydev_dummy_inf_loop] [33466] [MainThread] [INFO]  bye bye!
+^CUnfollowing, do '$ upydev log -stopd -f dummy_inf_loop' to stop the daemon
+```
+
+```bash
+$ upydev log -stopd -f dummy_inf_loop
+Stopping daemon log...
+Daemon process upydev log with PID: 33466 stopped
+Stopping script...
+Daemon process web_repl_cmd_r with PID: 33468 stopped
+Done!
+```
+
+```bash
+$ cd .upydev_logs/
+.upydev_logs$ ls
+dummy_inf_loop_daemon.log	dummy_inf_loop_error.log
 ```
 
 

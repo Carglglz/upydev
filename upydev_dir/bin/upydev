@@ -21,6 +21,7 @@ import re
 import upydev
 import socket
 import struct
+import logging
 import glob
 from binascii import hexlify
 from pathlib import Path
@@ -45,7 +46,7 @@ ATTEN_INFO = """
 2 = ADC.ATTN_6DB: 6dB attenuation, gives a maximum input voltage of approximately 2.00v
 3 = ADC.ATTN_11DB: 11dB attenuation, gives a maximum input voltage of approximately 3.6v
 """
-
+log_levs = ['debug', 'info', 'warning', 'error', 'critical']
 
 def sortSecond(val):
     return val[1]
@@ -326,6 +327,79 @@ def sync_to_dev(file_tosync, dev):
     conn.settimeout(1)
     read_file_sync_raw(file_tosync, conn)
     conn.close()
+
+
+def do_pg_bar(index, wheel, nb_of_total, speed):
+    sys.stdout.write("\033[K")
+    print('[{:<100}]{:>5}{:>5} % | DATA: {} | SPEED: {} MB/s'.format('*'*(index), wheel[index % 4],
+                                                   index, nb_of_total, speed),
+          end='\r')
+    sys.stdout.flush()
+
+
+def w_stream_reader(soc, total_size, chunk_rx):
+    buff = bytearray(0)
+    loop_index = 0
+    wheel = ['|', '/', '-', "\\"]
+    while True:
+        t0 = time.time()
+        try:
+            chunk = soc.recv(chunk_rx)  # 32 KB
+            if chunk != b'':
+                buff += chunk
+                loop_index = int(((len(buff))/total_size)*100)
+                nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), total_size/(1024**2))
+                tdiff = time.time() - t0
+                t_speed ="{:^2.2f}".format((len(chunk)/(1024**2))/tdiff)
+                do_pg_bar(loop_index, wheel, nb_of_total, t_speed)
+            else:
+                pass
+                #print('END OF FILE')
+                # soc.close()
+                # break
+        except Exception as e:
+            if e == KeyboardInterrupt:
+                break
+            else:
+                print('END OF FILE')
+                break
+    return buff
+
+
+def w_stream_writer(soc):
+    buff = os.urandom(20000)
+    try:
+        soc.sendall(buff)  # 20 kB
+    except Exception as e:
+        if e == KeyboardInterrupt:
+            print(e)
+
+
+def stream_test(dev, mode='download'):
+    if mode == 'download':
+        # START A LOCAL SERVER
+        chunk_size_kb = args.chunk_tx
+        _kB = 1024
+        _MB = 1024*_kB
+        print('DOWNLOAD SPEED TEST:')
+        print('CHUNK TX DATA SIZE: {:>40.2f} kB'.format(chunk_size_kb))
+        print('CHUNK RX DATA SIZE: {:>40.2f} kB'.format(args.chunk_rx))
+        print('TOTAL TX DATA SIZE: {:>40.2f} MB\n'.format(args.total_size))
+        local_ip = get_ip()
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((local_ip, 8005))
+        server_socket.listen(1)
+        dev.cmd_nb("w_stream_writer('{}', 8005, {}, {})".format(local_ip, args.chunk_tx*_kB, args.total_size*_MB ))
+        conn, addr = server_socket.accept()
+        soc_timeout = 1
+        conn.settimeout(soc_timeout)
+        t0 = time.time()
+        data_chunk = w_stream_reader(conn, args.total_size*_MB, args.chunk_rx*_kB)
+        dt = (time.time()-t0)-soc_timeout
+        conn.close()
+        return (data_chunk, dt)
+
 
 
 def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
@@ -838,14 +912,15 @@ def simple_cmd_r(cmd):
 
 
 def print_sizefile(file_name, filesize, tabs=0):
-    if filesize < 1000:
+    _kB = 1024
+    if filesize < _kB:
         sizestr = str(filesize) + " by"
-    elif filesize < 1000000:
-        sizestr = "%0.1f KB" % (filesize / 1000)
-    elif filesize < 1000000000:
-        sizestr = "%0.1f MB" % (filesize / 1000000)
+    elif filesize < _kB**2:
+        sizestr = "%0.1f KB" % (filesize / _kB)
+    elif filesize < _kB**3:
+        sizestr = "%0.1f MB" % (filesize / _kB**2)
     else:
-        sizestr = "%0.1f GB" % (filesize / 1000000000)
+        sizestr = "%0.1f GB" % (filesize / _kB**3)
 
     prettyprintname = ""
     for _ in range(tabs):
@@ -859,12 +934,15 @@ def print_sizefile_all(fileslist, tabs=0, frep=None):
         namefile = filedata[0]
         filesize = filedata[1]
 
-        if filesize < 1000:
+        _kB = 1024
+        if filesize < _kB:
             sizestr = str(filesize) + " by"
-        elif filesize < 1000000:
-            sizestr = "%0.1f KB" % (filesize / 1000)
+        elif filesize < _kB**2:
+            sizestr = "%0.1f KB" % (filesize / _kB)
+        elif filesize < _kB**3:
+            sizestr = "%0.1f MB" % (filesize / _kB**2)
         else:
-            sizestr = "%0.1f MB" % (filesize / 1000000)
+            sizestr = "%0.1f GB" % (filesize / _kB**3)
 
         prettyprintname = ""
         for _ in range(tabs):
@@ -877,14 +955,15 @@ def print_sizefile_all(fileslist, tabs=0, frep=None):
 
 
 def print_filesys_info(filesize):
-    if filesize < 1000:
+    _kB = 1024
+    if filesize < _kB:
         sizestr = str(filesize) + " by"
-    elif filesize < 1000000:
-        sizestr = "%0.1f KB" % (filesize / 1000)
-    elif filesize < 1000000000:
-        sizestr = "%0.1f MB" % (filesize / 1000000)
+    elif filesize < _kB**2:
+        sizestr = "%0.1f KB" % (filesize / _kB)
+    elif filesize < _kB**3:
+        sizestr = "%0.1f MB" % (filesize / _kB**2)
     else:
-        sizestr = "%0.1f GB" % (filesize / 1000000000)
+        sizestr = "%0.1f GB" % (filesize / _kB**3)
     return sizestr
 
 
@@ -950,7 +1029,20 @@ helparg = '''Mode:
             Use "-md local" option if connected to esp AP.
 - errlog: if 'error.log' is present in the upydevice, this shows the content
             (cat('error.log')), if 'error.log' in sd use -s sd
-
+- stream_test: to test download speed (from device to host). Default test is 10 MB of
+               random bytes are sent in chunks of 20 kB and received in chunks of 32 kB.
+               To change test parameters use -chunk_tx , -chunk_rx, and -total_size.
+- sysctl : to start/stop a script without following the output. To follow initiate
+           wrepl/srepl as normal, and exit with CTRL-x (webrepl) or CTRL-A,X (srepl)
+           TO START: use -start [SCRIPT_NAME], TO STOP: use -stop [SCRIPT_NAME]
+- log: to log the output of a upydevice script, indicate script with -f option, and
+        the sys.stdout log level and file log level with -dslev and -dflev (defaults
+        are debug for sys.stdout and error for file). To log in background use -daemon
+        option, then the log will be redirected to a file with level -dslev.
+        To stop the 'daemon' log mode use -stopd and indicate script with -f option.
+        'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME
+        directory, named after the name of the script. To follow an on going 'daemon'
+        mode log, use -follow option and indicate the script with -f option.
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
               password of each board. (To store the group settings globally use -g option)
@@ -1183,7 +1275,8 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
                  'ina_batt', 'make_group', 'srepl', 'mg_group', 'find',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
-                 'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync']
+                 'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
+                 'stream_test', 'sysctl', 'log']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -1259,10 +1352,25 @@ parser.add_argument(
     help='tag a log shot from a sensor or adc',
     required=False)
 parser.add_argument('-v', action='version')
+parser.add_argument('-start', help='To start a script with sysctl; use as -start [SCRIPT_NAME]',
+                    required=False)
+parser.add_argument('-stop', help='To start a script with sysctl; use as -stop [SCRIPT_NAME]',
+                    required=False)
+parser.add_argument('-dflev', help='debug file mode level, options [debug, info, warning, error, critical]; default=error', default='error').completer = ChoicesCompleter(log_levs)
+parser.add_argument('-dslev', help='debug sys.stdout mode level, options [debug, info, warning, error, critical]; default=debug', default='debug').completer = ChoicesCompleter(log_levs)
+parser.add_argument('-daemon', help='enable "daemon mode", uses nohup so this means running in background, output if any is redirected to [SCRIPT_NAME]_daemon.log', default=False, action='store_true')
+parser.add_argument('-stopd', help='To stop a log daemon script', default=False, action='store_true')
+parser.add_argument('-follow', help='To follow a daemon log script file, indicate script with -f option', default=False, action='store_true')
 parser.add_argument('-rep', help='to save the report in a text file',
                     required=False, default=False, action='store_true')
 parser.add_argument('-apmd', help='set target to 192.168.4.1',
                     required=False, default=False, action='store_true')
+parser.add_argument('-chunk_tx', help='chunk size of data packets in kB to send for wifi speed test',
+                    required=False, default=20, type=int)
+parser.add_argument('-chunk_rx', help='chunk size of data packets in kB to receive for wifi speed test',
+                    required=False, default=32, type=int)
+parser.add_argument('-total_size', help='total size of data packets in MB for wifi speed test',
+                    required=False, default=10, type=int)
 parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
                     default=0)
 parser.add_argument('-imu', help='to select the imu library',
@@ -1518,32 +1626,20 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
                 time.sleep(0.5)
 
 
-def sync(ip, passwd, id_file=None, PORT=8005):
+def sync(ip, passwd, id_file=None, PORT=8005, resp=None, getfilelist=True):
+    espdev = W_UPYDEVICE(ip, passwd)
     if args.s is None:
         print('Looking for file in upy device root dir')
-        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip,
-                                                                   passwd)
+        cmd_str = "uos.listdir()"
         dir = 'root'
     if args.s == 'sd':
         print('Looking in SD memory...')
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
-            str("'/sd'"), ip, passwd)
+        cmd_str = "uos.listdir('/sd')"
         dir = '/sd'
-
-    command = shlex.split(cmd_str)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    time.sleep(0.1)
-    stdout = process.communicate()
-    try:
-        resp = ast.literal_eval(
-            stdout[0].decode('utf-8').split('\n')[0][4:-1])
-    except Exception as e:
-        try:
-            resp = stdout[0].decode('utf-8').split('\n')[0]
-        except Exception as e:
-            resp = None
-
-        pass
+    if getfilelist:
+        while espdev.output is None:
+            espdev.cmd(cmd_str, silent=True)
+        resp = espdev.output
 
     try:
         if args.f in resp:
@@ -1574,7 +1670,20 @@ def sync(ip, passwd, id_file=None, PORT=8005):
                         copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {} -o {} -port {}'.format(
                             file_to_get, target, passwd, 'sd', args.lh, id_file, PORT)
 
-            resp = run_command_rt(copyfile)
+            # resp = run_command_rt(copyfile)
+            copyfile_cmd = shlex.split(copyfile)
+            subprocess.call(copyfile_cmd)
+            # try:
+            #     proc = subprocess.Popen(
+            #         copyfile_cmd, stdout=subprocess.PIPE,
+            #         stderr=subprocess.STDOUT)
+            #     while proc.poll() is None:
+            #         print(proc.stdout.readline()[:-1].decode())
+            # except KeyboardInterrupt:
+            #     time.sleep(1)
+            #     result = proc.stdout.readlines()
+            #     for message in result:
+            #         print(message[:-1].decode())
         else:
             if dir == 'root':
                 print('File Not found in upy device {} directory'.format(dir))
@@ -1598,7 +1707,8 @@ def sync_multiple_f(ip, passwd, id_file_dev=None, device=None, PORT_M=8005):
             args.f = file
             if id_file_dev is not None:
                 id_file_dev = '{}_{}'.format(device, args.f)
-            sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M)
+            sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M, resp=file_list,
+                 getfilelist=False)
             print('\n')
     else:
         # case 2: -fre is an expression to match
@@ -1611,7 +1721,8 @@ def sync_multiple_f(ip, passwd, id_file_dev=None, device=None, PORT_M=8005):
                 args.f = file
                 if id_file_dev is not None:
                     id_file_dev = '{}_{}'.format(device, args.f)
-                sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M)
+                sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M,
+                     resp=file_list, getfilelist=False)
                 print('\n')
         else:
             # case 3: -fre is a list of files
@@ -1622,7 +1733,8 @@ def sync_multiple_f(ip, passwd, id_file_dev=None, device=None, PORT_M=8005):
                 args.f = file
                 if id_file_dev is not None:
                     id_file_dev = '{}_{}'.format(device, args.f)
-                sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M)
+                sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M,
+                     resp=file_list, getfilelist=False)
                 print('\n')
 
 
@@ -2374,15 +2486,15 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('{:<10} {} {:>10}'.format(
             '='*10, 'RTC DATETIME CHECK', '='*10))
         get_time_cmd = "import time;tnow = time.localtime();"
-        get_time2_cmd = "[tnow[1],tnow[2],tnow[0],tnow[3],tnow[4],tnow[5]];gc.collect()"
+        get_time2_cmd = "[tnow[0],tnow[1],tnow[2],tnow[3],tnow[4],tnow[5]];gc.collect()"
         get_datetime_cmd = get_time_cmd + get_time2_cmd
         esp32.response = None
         while esp32.response is None:
             esp32.cmd(get_datetime_cmd, silent=True)
-        localtime = datetime.now().strftime("%m-%d-%Y;%H:%M:%S")
+        localtime = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         print('\n')
         FILE_REPORT.append('\n')
-        devicetime = "{}-{}-{};{}:{}:{}".format(*_ft_datetime(esp32.output))
+        devicetime = "{}-{}-{}T{}:{}:{}".format(*_ft_datetime(esp32.output))
         print('{:<15} :  {:^15}'.format('Device DateTime', devicetime))
         FILE_REPORT.append('{:<15} :  {:^15}'.format(
             'Device DateTime', devicetime))
@@ -2534,8 +2646,8 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
                     bytdev = bytearray(dev[0])
                     mac_ad = ':'.join(str(val) for val in bytdev)
                     mac_addr.append(mac_ad)
-                    print(f'MAC addres: {mac_ad}')
-                    FILE_REPORT.append(f'MAC addres: {mac_ad}')
+                    print('MAC addres: {}'.format(mac_ad))
+                    FILE_REPORT.append('MAC addres: {}'.format(mac_ad))
             else:
                 print('ESP8266 NOT SUPPORTED')
                 FILE_REPORT.append('ESP8266 NOT SUPPORTED')
@@ -2726,10 +2838,227 @@ def get_error_log(target, passwd, source=None):
         else:
             print('error.log NOT FOUND')
 
+#############################################
 
+# STREAM TEST
+
+
+def get_stream_test(ip, passwd, mode='download'):
+    espdev = W_UPYDEVICE(ip, passwd)
+    print('*'*10, ' upydev STREAM TEST ', '*'*10)
+    espdev.output = None
+    while espdev.output is None:
+        espdev.cmd('from sync_tool import w_stream_writer; [1]', silent=True)
+    data, total_time = stream_test(espdev, mode=mode)
+    print('Done!')
+    print('TEST RESULTS ARE:')
+    print('TEST DURATION : {} (s)'.format(total_time))
+    N_Bytes = len(data)
+    print_sizefile('TEST DATA', N_Bytes)
+    kBs = (N_Bytes/total_time)/1024
+    print('DATA TRANSFER RATE (kBps): {} kB/s'.format(kBs))
+    print('DATA TRANSFER RATE (Mbps): {} Mbps'.format((kBs*8)/1000))
+
+
+#############################################
+
+def sysctl(ip, passwd):
+    espdev = W_UPYDEVICE(ip, passwd)
+    sys_cmd = "import {}"
+    if args.start is not None:
+        print('Loading {} script...'.format(args.start))
+        sys_cmd = sys_cmd.format(args.start)
+        espdev.cmd_nb(sys_cmd, block_dev=False)
+        print('Done!')
+    elif args.stop is not None:
+        reload = "del(sys.modules['{}'])".format(args.stop)
+        print('Stopping {} script...'.format(args.stop))
+        espdev.kbi()
+        print('Unloading {} script...'.format(args.stop))
+        reload_cmd = "import sys;{};gc.collect();print('Script unloaded!')".format(reload)
+        time.sleep(1)
+        espdev.cmd(reload_cmd)
+        print('Done!')
+
+#############################################
+
+def log_script(ip, passwd, dev='', log=None):
+    dir = ''
+    script_filepy = args.f
+    script_name = script_filepy.split('.')[0]
+    reload = "del(sys.modules['{}'])".format(script_name)
+    run_cmd = "import {};".format(script_name)
+    e_keywords = ['Traceback', '<module>', 'Error', 'ERROR']
+    # print(run_cmd)
+    if args.s is not None:
+        dir = args.s
+        sd_path = "import sys;sys.path.append('/{}')".format(dir)
+        run_cmd = "{};import {}".format(
+            sd_path, script_name)
+    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        run_cmd, ip, passwd)
+    # print(run_cmd_str)
+    run_live_cmd = shlex.split(run_cmd_str)
+    log.info('Running {}...'.format(args.f))
+    try:
+        proc = subprocess.Popen(
+            run_live_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        for i in range(6):
+            proc.stdout.readline()
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            if len(resp) > 0:
+                if resp[0] == '>':
+                    if any([w in resp[4:] for w in e_keywords]):
+                        log.error('{}{}'.format(dev, resp[4:]))
+                    else:
+                        log.info('{}{}'.format(dev, resp[4:]))
+                else:
+                    if any([w in resp for w in e_keywords]):
+                        log.error('{}{}'.format(dev, resp))
+                    else:
+                        log.info('{}{}'.format(dev, resp))
+            else:
+                print(resp)
+    except KeyboardInterrupt:
+        try:
+            log.info('...closing...')
+            time.sleep(1)
+            result = proc.stdout.readlines()
+            for message in result:
+                print(message[:-1].decode())
+            for i in range(10):
+                proc.stdout.readlines()
+
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, ip, passwd)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            log.info('...wait for closing...')
+            # Flush error keyboardinterrupt
+            cmd = ''
+            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+                cmd, ip, passwd)
+            cmd_resp = run_command_rl(cmd_str)
+            time.sleep(1)
+    # Reload sys.modules and sys.path
+    time.sleep(1)
+    reload_cmd = "import sys;{};gc.collect()".format(reload)
+    if args.s is not None:
+        reload_syspath = "sys.path.remove('/{}')".format(dir)
+        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
+    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
+        reload_cmd, ip, passwd)
+    reload_cmd_resp = run_command_rl(cmd_str)
+    log.info('Done!')
+
+
+def get_log_script(ip, passwd):
+    script_filepy = args.f
+    script_name = script_filepy.split('.')[0]
+    filelog_path = "{}/.upydev_logs/".format(os.environ['HOME'])
+    filelog_daemon = ''.join([filelog_path, '{}_daemon.log'.format(script_name)])
+    if not args.daemon:
+        if not args.stopd:
+            if '.upydev_logs' not in os.listdir("{}".format(os.environ['HOME'])):
+                os.mkdir("{}/.upydev_logs".format(os.environ['HOME']))
+
+            # Logging Setup
+            # filelog_path = "{}/.upydev_logs/".format(os.environ['HOME'])
+            # filelog_daemon = ''.join([filelog_path, '{}_daemon.log'.format(script_name)])
+            log_levels = {'debug': logging.DEBUG, 'info': logging.INFO,
+                          'warning': logging.WARNING, 'error': logging.ERROR,
+                          'critical': logging.CRITICAL}
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(log_levels[args.dslev])
+            logging.basicConfig(
+                level=log_levels['debug'],
+                format="%(asctime)s [%(name)s] [%(process)d] [%(threadName)s] [%(levelname)s]  %(message)s",
+                handlers=[handler])
+            log = logging.getLogger('upydev_{}'.format(script_name))  # setup one logger per device
+            # log.setLevel(log_levels[args.dslev]) # MASTER LOG LEVEL
+            # Filehandler for error
+            fh_err = logging.FileHandler(''.join([filelog_path, '{}_error.log'.format(script_name)]))
+            fh_err.setLevel(log_levels[args.dflev])
+            # Formatter for errors
+            fmt_err = logging.Formatter("%(asctime)s [%(name)s] [%(process)d] [%(threadName)s] [%(levelname)s]  %(message)s")
+            fh_err.setFormatter(fmt_err)
+            log.addHandler(fh_err)
+
+            log_script(ip=ip, passwd=passwd, log=log)
+        else:
+            print('Stopping daemon log...')
+            print(stop_by_pid(proc_name='upydev log'))
+            time.sleep(1)
+            espdev = W_UPYDEVICE(ip, passwd)
+            print('Stopping script...')
+            print(stop_by_pid(proc_name='web_repl_cmd_r'))
+            espdev.kbi(output=False)
+            time.sleep(1)
+            espdev.output = None
+            while espdev.output is None:
+                reload = "import sys;del(sys.modules['{}']);[1]".format(script_name)
+                espdev.cmd(reload, silent=True)
+            print('Done!')
+
+    else:
+        single_command = []
+        for i in range(len(sys.argv[2:])):
+            if sys.argv[2:][i] != '-daemon':
+                single_command.append(sys.argv[2:][i])
+        gcommand = ' '.join(single_command)
+        daemon_cmd = "nohup upydev log {} > {} &".format(gcommand, filelog_daemon)
+        subprocess.call(daemon_cmd, shell=True)  # is this still safe?
+        print('Running upydev log daemon-like mode'.format(parser.version))
+        print('Logging to {} with level: {}'.format('{}_daemon.log'.format(script_name), args.dslev))
+        print("Do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
+
+
+# from https://stackoverflow.com/questions/12523044/how-can-i-tail-a-log-file-in-python
+def follow_daemon_log():
+    script_filepy = args.f
+    script_name = script_filepy.split('.')[0]
+    filelog_path = "{}/.upydev_logs/".format(os.environ['HOME'])
+    filelog_daemon = ''.join([filelog_path, '{}_daemon.log'.format(script_name)])
+
+    f = subprocess.Popen(['tail', '-F', filelog_daemon],
+                         stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    while True:
+        try:
+            line = f.stdout.readline()
+            print(line[:-1].decode())
+        except KeyboardInterrupt:
+            print("Unfollowing, do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
+            break
+
+
+def get_cmd(raw):
+    shcmd = shlex.split(raw)
+    output = subprocess.check_output(shcmd).decode()
+    return output
+
+
+def stop_by_pid(raw='ps ax', proc_name='upydev log'):  # upydev log, web_repl_cmd_r
+    shcmd = shlex.split(raw)
+    output = subprocess.check_output(shcmd).decode()
+    pline = [line for line in output.split('\n') if proc_name in line]
+    if len(pline) > 0:
+        pid = pline[0].strip().split(' ')[0]
+        k = get_cmd('kill {}'.format(pid))
+        return 'Daemon process {} with PID: {} stopped'.format(proc_name, pid)
+    else:
+        return('NO DAEMON PROCESS FOUND')
+
+
+#############################################
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
-          'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync']
+          'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
+          'stream_test', 'log']
 
 # UPYDEVICE CLASS
 
@@ -3486,6 +3815,27 @@ elif args.m == 'diagnose':
 # ERRLOG
 elif args.m == 'errlog':
     get_error_log(args.t, args.p, args.s)
+    sys.exit()
+
+# STREAM_TEST
+
+elif args.m == 'stream_test':
+    get_stream_test(args.t, args.p)
+    sys.exit()
+
+# SYSCTL
+
+elif args.m == 'sysctl':
+    sysctl(args.t, args.p)
+    sys.exit()
+
+# LOG
+
+elif args.m == 'log':
+    if not args.follow:
+        get_log_script(args.t, args.p)
+    else:
+        follow_daemon_log()
     sys.exit()
 
 # MAKE_GROUP

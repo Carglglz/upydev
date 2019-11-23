@@ -13,6 +13,7 @@ import netifaces
 import subprocess
 import shlex
 import sys
+from upydevice import W_UPYDEVICE
 
 
 parser = argparse.ArgumentParser()
@@ -39,6 +40,20 @@ def get_ip():
     return ip
 
 
+# def do_pg_bar(index, wheel):
+#     sys.stdout.write("\033[K")
+#     print('[{:<100}]{:>5}{:>5} %'.format('*'*(index), wheel[index % 4], index),
+#           end='\r')
+#     sys.stdout.flush()
+
+def do_pg_bar(index, wheel, nb_of_total, speed):
+    sys.stdout.write("\033[K")
+    print('[{:<100}]{:>5}{:>5} % | DATA: {} | SPEED: {} MB/s'.format('*'*(index), wheel[index % 4],
+                                                   index, nb_of_total, speed),
+          end='\r')
+    sys.stdout.flush()
+
+
 dir = ''
 if args.s is not None:
     dir = '/sd'
@@ -48,61 +63,78 @@ if args.lh is None:
 if args.lh is not None:
     local_ip = args.lh
 
-sync_cmd = 'upycmd -c "{}" -t {} -p {}'.format(
-    'import sync_tool as synct', args.t, args.p)
+espdev = W_UPYDEVICE(args.t, args.p)
 
-sync_tool = subprocess.call(sync_cmd, shell=True)
+# sync_cmd = 'upycmd -c "{}" -t {} -p {}'.format(
+#     'import sync_tool as synct', args.t, args.p)
+espdev.output = None
+while espdev.output is None:
+    espdev.cmd('import sync_tool as synct;[1]', silent=True)
+
+
+# sync_tool = subprocess.call(sync_cmd, shell=True)
 time_mac.sleep(1)
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind((local_ip, args.port))
 server_socket.listen(1)
 print('Server listening...')
-sync_connect_cmd = 'upycmd -c "{}" -t {} -p {}'.format(
-    'cli_soc = synct.connect_SOC({}, {})'.format("'{}'".format(local_ip), args.port) ,args.t, args.p)
-connect_cmd = shlex.split(sync_connect_cmd)
-sync_conn = subprocess.call(connect_cmd)
+sync_connect_cmd = "cli_soc = synct.connect_SOC('{}', {})".format(local_ip, args.port)
+espdev.output = None
+# while espdev.output is None:
+espdev.cmd_nb(sync_connect_cmd, silent=True)
 conn, addr = server_socket.accept()
 print('Connection received...')
-conn.settimeout(1)
+conn.settimeout(2)
 
 
-def sync_file_raw(soc, filetoget, dir):
-    cmd_filesize_str = 'upycmd_r -c "synct.print_sizefile({},{})" -t {} -p {}'.format(
-        "'{}'".format(dir), "'{}'".format(filetoget), args.t, args.p)
-    # print(cmd_filesize)
-    # use shlex to avoid shell=True
-    filesize_cmd = shlex.split(cmd_filesize_str)
-    resp_filesize = subprocess.call(filesize_cmd)
+def sync_file_raw(soc, filetoget, dir, espdev=espdev):
+    cmd_filesize_str = "synct.print_sizefile('{}','{}', rtl=True)".format(dir, filetoget)
+    espdev.output = None
+    while espdev.output is None:
+        espdev.cmd(cmd_filesize_str, silent=True)
+    filesize = espdev.output
+    print('File size: {:>40.2f} kB'.format(filesize/1024))
     flushed = 0
     while flushed == 0:
         try:
             conn.recv(128)
         except Exception as e:
             flushed = 1
-    sync_tool_cmd = 'upycmd -c "synct.read_sd_file_sync_raw({},cli_soc)" -t {} -p {}'.format(
-        "'{}/{}'".format(dir, filetoget), args.t, args.p)
-    sync_cmd = shlex.split(sync_tool_cmd)
-    sync_tool = subprocess.call(sync_cmd)
+    time_mac.sleep(1)
+    sync_tool_cmd = "synct.read_sd_file_sync_raw({},cli_soc)".format("'{}/{}'".format(dir, filetoget))
+    espdev.cmd_nb(sync_tool_cmd)
     print('Syncing file {} from upy device'.format(filetoget))
     print('Saving {} file'.format(filetoget))
+    print('Progress:\n')
     t0 = 0
+    buff = b''
+    wheel = ['|', '/', '-', "\\"]
     if args.o is not None:
         filetoget = args.o
     with open(filetoget, 'wb') as log:
         pass
     while True:
+        t_0 = time_mac.time()
         try:
-            chunk = soc.recv(2000)  # 2 KB
+            chunk = soc.recv(32*(1024**2))  # 2 KB
             if chunk != b'':
+                buff += chunk
+                loop_index = int(((len(buff))/filesize)*100)
+                nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), filesize/(1024**2))
+                tdiff = time_mac.time() - t_0
+                t_speed = "{:^2.2f}".format((len(chunk)/(1024**2))/tdiff)
+                do_pg_bar(loop_index, wheel, nb_of_total, t_speed)
+                # do_pg_bar(loop_index, wheel)
                 with open(filetoget, 'ab') as log:
                     log.write(chunk)
             else:
-                print('END OF FILE')
+                pass
+                # print('\nEND OF FILE')
                 # soc.sendall
-                final_time = abs(time_mac.time()-t0)
-                print('Done in {} seconds'.format(round(final_time, 2)))
-                break
+                # final_time = abs(time_mac.time()-t0)
+                # print('\nDone in {} seconds'.format(round(final_time, 2)))
+                # break
             if t0 == 0:
                 t0 = time_mac.time()
 
@@ -114,7 +146,8 @@ def sync_file_raw(soc, filetoget, dir):
             else:
                 # print(e)
                 if str(e) == 'timed out':
-                    print('Done in {} seconds'.format(round(final_time, 2)))
+                    print('\nDone in {} seconds'.format(round(final_time, 2)))
+                    print('Total data received: {:>30.2f} kB'.format(filesize/1024))
                     break
 
 

@@ -41,12 +41,15 @@ def pd_txtfiles(path, tabs=0):
         filesize = stats[6]
         isdir = stats[0] & 0x4000
 
-        if filesize < 1000:
+        _kB = 1024
+        if filesize < _kB:
             sizestr = str(filesize) + " by"
-        elif filesize < 1000000:
-            sizestr = "%0.1f KB" % (filesize / 1000)
+        elif filesize < _kB**2:
+            sizestr = "%0.1f KB" % (filesize / _kB)
+        elif filesize < _kB**3:
+            sizestr = "%0.1f MB" % (filesize / _kB**2)
         else:
-            sizestr = "%0.1f MB" % (filesize / 1000000)
+            sizestr = "%0.1f GB" % (filesize / _kB**3)
 
         prettyprintname = ""
         for _ in range(tabs):

@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * the *-tree* option to get the dir tree view is from:
   # "https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python" @abstrus
   * to sync to an sd card, sd must be mounted as 'sd', and then use '-s sd' option
+- New modes to execute scripts:
+  * sysctl: to execute scripts in the upydevice in non-blocking mode (won't
+            follow the output) (use -start and -stop options)
+  * log: to execute scripts and log its output; use -dslev and -dflev to
+        indicate log level of sys.stdout and log file. To stop use CTRL-C
+        Use option -daemon to log in 'daemon-like' mode, the output is logged
+        to daemon log file. To follow use -follow option. (detailed explanation
+          in docs)
+
+- New mode 'stream_test': (this needs the new version of *sync_tool.py*)
+  To test  wireless transmission speed of data through sockets (TCP).
+   In the default test the upydevice sends 10 MB of data in chunks of 20 kB,
+   then speed is obtained from total time elapsed and amount of data received.
+   See docs for more info.
+
+
 ### Fix
 - Code refactoring using upydevice
 ## [0.1.4] - 2019-11-12

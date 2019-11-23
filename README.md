@@ -218,6 +218,30 @@ Example: Raw commands
 
      If 'error.log' in sd use -s sd (This command needs upysh installed, do `upydev install -f upysh`)
 
+* **stream_test**: to test download speed (from device to host). Default test is 10 MB of random bytes are
+
+     sent in chunks of 20 kB and received in chunks of 32 kB. To change test parameters use -chunk_tx , 
+
+     chunk_rx, and -total_size.
+
+* **sysctl:** to start/stop a script without following the output. To follow initiate wrepl/srepl as normal, and
+
+     exit with CTRL-x (webrepl) or CTRL-A,X (srepl) TO START: use -start [SCRIPT_NAME], TO STOP: use -stop
+
+     [SCRIPT_NAME]
+
+* **log:** to log the output of a upydevice script, indicate script with -f option, and the sys.stdout log level
+
+     and file log level with -dslev and -dflev (defaults are debug for sys.stdout and error for file). To log in
+
+     background use -daemon option, then the log will be redirected to a file with level -dslev. To stop the
+
+     'daemon' log mode use -stopd and indicate script with -f option. 'Normal' file log and 'Daemon' file log
+
+     are under .upydev_logs folder in $HOME directory, named after the name of the script. To follow an on
+
+     going 'daemon' mode log, use -follow option and indicate the script with -f option.
+
 * **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
 
      ​	and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)
