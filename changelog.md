@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 (this needs the new version of *sync_tool.py* from upyutils directory to be
   uploaded to the device)
   * the *-tree* option to get the dir tree view is from:
-  # "https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python" @abstrus
+  "https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python" @abstrus
   * to sync to an sd card, sd must be mounted as 'sd', and then use '-s sd' option
 - New modes to execute scripts:
   * sysctl: to execute scripts in the upydevice in non-blocking mode (won't
