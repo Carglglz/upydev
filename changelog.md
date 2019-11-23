@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.5] [Unreleased] [Github Repo]
+## [0.1.6] [Unreleased] [Github Repo]
+## [0.1.5] - 2019-11-23
 ### Added
 - New mode d_sync to sync recursively a directory (all files and subfolders)
 (this needs the new version of *sync_tool.py* from upyutils directory to be
