@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.6] [Unreleased] [Github Repo]
+### Added
+- 'update_upyutils' mode to update the last versions of sync_tool.py, upylog.py
+   and upynotify.py (will be uploaded to '/lib' folder)
+### Fix
+- BSSID column of netscan command now shows mac address instead of bytes format
+- refactor of sync mode (shows transfer progress animation also)
+- improved 'fw' mode options of 'list latest' and 'get latest', now option '-n'
+  can be used to filter the results (e.g: -n ota or -n idf4)
 ## [0.1.5] - 2019-11-23
 ### Added
 - New mode d_sync to sync recursively a directory (all files and subfolders)

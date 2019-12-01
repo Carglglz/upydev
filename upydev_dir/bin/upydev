@@ -1043,6 +1043,8 @@ helparg = '''Mode:
         'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME
         directory, named after the name of the script. To follow an on going 'daemon'
         mode log, use -follow option and indicate the script with -f option.
+- update_upyutils: to update the last versions of sync_tool.py, upylog.py and
+                upynotify.py
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
               password of each board. (To store the group settings globally use -g option)
@@ -1276,14 +1278,14 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'ina_batt', 'make_group', 'srepl', 'mg_group', 'find',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
-                 'stream_test', 'sysctl', 'log']
+                 'stream_test', 'sysctl', 'log', 'update_upyutils']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag)
-parser.version = '0.1.5'
+parser.version = '0.1.6'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-p", help='password', required=False)
@@ -1411,7 +1413,7 @@ parser.add_argument(
 parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
                     nargs='+')
 parser.add_argument(
-    '-GP', help='to indicate the group of devices that the command is directed to, for threaded command execution').completer = ChoicesCompleter(see_groups())
+    '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
@@ -2571,11 +2573,13 @@ def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=No
         FILE_REPORT.append('=' * 110)
         for netscan in net_scan_list:
             auth = AUTHMODE_DICT[netscan[4]]
+            vals = hexlify(netscan[1]).decode()
+            bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
             print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                netscan[0].decode(), str(netscan[1]), netscan[2], netscan[3],
+                netscan[0].decode(), bssid , netscan[2], netscan[3],
                 auth, str(netscan[5])))
             FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                netscan[0].decode(), str(netscan[1]), netscan[2], netscan[3],
+                netscan[0].decode(), bssid , netscan[2], netscan[3],
                 auth, str(netscan[5])))
         print('\n')
         FILE_REPORT.append('\n')
@@ -3052,6 +3056,20 @@ def stop_by_pid(raw='ps ax', proc_name='upydev log'):  # upydev log, web_repl_cm
         return 'Daemon process {} with PID: {} stopped'.format(proc_name, pid)
     else:
         return('NO DAEMON PROCESS FOUND')
+
+
+#############################################
+def update_upyutils(ip, passwd):
+    print('Updating device upyutils...')
+    # sync_tool.py
+    sync_tool = '{}/sync_tool.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    # upylog.py
+    upylog = '{}/upylog.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    # sync_tool.py
+    upynotify = '{}/upynotify.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    args.fre = [sync_tool, upylog, upynotify]
+    args.dir = 'lib'
+    put_multiple_f(ip=ip, passwd=passwd)
 
 
 #############################################
@@ -3708,16 +3726,43 @@ elif args.m == 'fw':
                 print('Available Serial ports are:')
                 for port in glob.glob(ls_cmd_str):
                     print(port)
+            if args.md[1] == 'latest':
+                today = datetime.strftime(datetime.now(), "%Y%m%d")
+                print('Latest versions found for {}:'.format(args.b))
+                fw_v = get_fw_versions(args.b)
+                fw_v_latest = [v for v in fw_v[1] if today in v]
+                if args.n is not None:
+                    if args.n != 'def':
+                        fw_v_latest_opt = [v for v in fw_v_latest if args.n in v]
+                        for v in fw_v_latest_opt:
+                            print('- {}'.format(v))
+                    else:
+                        print('- {}'.format(fw_v_latest[0]))
+                else:
+                    for v in fw_v_latest:
+                        print('- {}'.format(v))
+                # fw_v_latest_link = fw_v[0][fw_v_latest]
 
         else:
             fw_v = get_fw_versions(args.b)[1]
             print('Firmware versions found for {}:'.format(args.b))
             for version in fw_v:
-                print(version)
+                print('- {}'.format(version))
     elif args.md[0] == 'get':
         if args.md[1] == 'latest':
+            today = datetime.strftime(datetime.now(), "%Y%m%d")
+            print('Latest version found for {}:'.format(args.b))
             fw_v = get_fw_versions(args.b)
-            fw_v_latest = fw_v[1][0]
+            fw_v_latest = [v for v in fw_v[1] if today in v]
+            if args.n is not None:
+                if args.n != 'def':
+                    fw_v_latest = [v for v in fw_v_latest if args.n in v]
+                    for v in fw_v_latest:
+                        print('- {}'.format(v))
+            else:
+                print('- {}'.format(fw_v_latest[0]))
+            fw_v_latest = fw_v_latest[0]
+            print('Firmware selected: {}'.format(fw_v_latest))
             fw_v_latest_link = fw_v[0][fw_v_latest]
             print('Downloading {} ...'.format(fw_v_latest))
             curl_cmd_str = "curl -O '{}'".format(fw_v_latest_link)
@@ -3836,6 +3881,11 @@ elif args.m == 'log':
         get_log_script(args.t, args.p)
     else:
         follow_daemon_log()
+    sys.exit()
+
+# UPDATE UPYUTILS
+elif args.m == 'update_upyutils':
+    update_upyutils(args.t, args.p)
     sys.exit()
 
 # MAKE_GROUP
@@ -4231,8 +4281,10 @@ elif args.m == 'netscan':
         netlist = ast.literal_eval(net)
         for netscan in netlist:
             auth = AUTHMODE_DICT[netscan[4]]
+            vals = hexlify(netscan[1]).decode()
+            bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
             print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                netscan[0].decode(), str(netscan[1]), netscan[2], netscan[3],
+                netscan[0].decode(), bssid, netscan[2], netscan[3],
                 auth, str(netscan[5])))
     sys.exit()
 
