@@ -6,13 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.6] [Unreleased] [Github Repo]
 ### Added
-- 'update_upyutils' mode to update the last versions of sync_tool.py, upylog.py
-   and upynotify.py (will be uploaded to '/lib' folder)
+- New 'update_upyutils' mode to update the last versions of sync_tool.py,
+  upylog.py and upynotify.py (will be uploaded to '/lib' folder)
+- New 'debug' mode to execute a local script line by line in the target
+  upydevice, use -f option to indicate the file
+- improved 'fw' mode options of 'list latest' and 'get latest', now option
+  '-n' can be used to filter the results (e.g: -n ota or -n idf4)
 ### Fix
 - BSSID column of netscan command now shows mac address instead of bytes format
 - refactor of sync mode (shows transfer progress animation also)
-- improved 'fw' mode options of 'list latest' and 'get latest', now option '-n'
-  can be used to filter the results (e.g: -n ota or -n idf4)
 ## [0.1.5] - 2019-11-23
 ### Added
 - New mode d_sync to sync recursively a directory (all files and subfolders)

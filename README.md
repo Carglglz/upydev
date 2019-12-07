@@ -224,9 +224,13 @@ Example: Raw commands
 
 * **log:** to log the output of a upydevice script, indicate script with -f option, and the sys.stdout log level and file log level with -dslev and -dflev (defaults are debug for sys.stdout and error for file). To log in background use -daemon option, then the log will be redirected to a file with level -dslev. To stop the 'daemon' log mode use -stopd and indicate script with -f option. 'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME directory, named after the name of the script. To follow an on going 'daemon' mode log, use -follow option and indicate the script with -f option.
 
-* **make_group:** to make a group of boards to send commands to. Use -f for the name of the group 
+* **update_upyutils**: to update the last versions of sync_tool.py, upylog.py and upynotify.py (these are uploaded to the '/lib' folder of the upydevice)
 
-     ​	and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)
+* **debug**: to execute a local script line by line in the target upydevice, use -f option to indicate the file. To enter next line press ENTER, to finish PRESS C then ENTER. To break a while loop do CTRL+C.
+
+* **make_group**: to make a group of boards to send commands to. Use -f for the name of the group 
+
+     and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)
      
 * **mg_group**: to manage a group of boards to send commands to. Use -G for the name of the group and -add option to add devices (indicate a name, ip and the password of each board) or -rm to remove devices (indicated by name)
 

@@ -23,6 +23,9 @@
 	- [stream_test](#stream_test)
 	- [sysctl](#sysctl)
 	- [log](#log)
+	- [update_upyutils](#update_upyutils)
+	- [debug](#debug)
+	
 	- [make_group](#make_group)
 	- [mg_group](#mg_group)
 - [GROUP COMMAND MODE](#group-command-mode)
@@ -1277,7 +1280,87 @@ $ cd .upydev_logs/
 dummy_inf_loop_daemon.log	dummy_inf_loop_error.log
 ```
 
+## update_upyutils
 
+to update the last versions of sync_tool.py, upylog.py and upynotify.py (these are uploaded to the '/lib' folder of the upydevice)
+
+```
+upydev update_upyutils
+Updating device upyutils...
+Files to upload:
+/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/upydev/upyutils_dir/sync_tool.py
+/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/upydev/upyutils_dir/upylog.py
+/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/upydev/upyutils_dir/upynotify.py
+Uploading file sync_tool.py...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/upydev/upyutils_dir/sync_tool.py -> /lib/sync_tool.py
+Remote WebREPL version: (1, 11, 0)
+Sent 3586 of 3586 bytes
+File Uploaded!
+
+
+Uploading file upylog.py...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/upydev/upyutils_dir/upylog.py -> /lib/upylog.py
+Remote WebREPL version: (1, 11, 0)
+Sent 4987 of 4987 bytes
+File Uploaded!
+
+
+Uploading file upynotify.py...
+op:put, host:192.168.1.53, port:8266, passwd:*******.
+/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/upydev/upyutils_dir/upynotify.py -> /lib/upynotify.py
+Remote WebREPL version: (1, 11, 0)
+Sent 2789 of 2789 bytes
+File Uploaded!
+
+
+Rebooting upy device...
+Done!
+```
+
+## debug
+
+ to execute a local script line by line in the target upydevice, use -f option to indicate the file. To enter next line press ENTER, to finish PRESS C then ENTER. To break a while loop do CTRL+C.
+
+```bash
+$ upydev debug -f udummy.py
+Loading udummy.py ...
+ENTER: EXECUTE NEXT LINE, C: BREAK
+EOF
+Password: #######
+WebREPL connected
+>>>
+>>> import time
+>>> print('hello dummy!')
+hello dummy!
+>>> n = 0
+>>> while True:
+        print('bye bye!')
+        time.sleep(1)
+        n += 1
+        if n == 10:
+            b = n/0
+
+
+...
+
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+bye bye!
+Traceback (most recent call last):
+  File "<stdin>", line 6, in <module>
+ZeroDivisionError: divide by zero
+EOF_SIG
+$
+```
 
 ## make_group
 
