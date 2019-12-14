@@ -23,6 +23,10 @@ import socket
 import struct
 import logging
 import glob
+import string
+import getpass
+import secrets
+import hashlib
 from binascii import hexlify
 from pathlib import Path
 import multiprocessing
@@ -32,6 +36,9 @@ import argcomplete
 from argcomplete.completers import ChoicesCompleter
 from upydevice import W_UPYDEVICE
 from upydevice.phantom import UOS
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
@@ -48,6 +55,7 @@ ATTEN_INFO = """
 """
 log_levs = ['debug', 'info', 'warning', 'error', 'critical']
 
+bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 def sortSecond(val):
     return val[1]
 
@@ -324,16 +332,20 @@ def sync_to_dev(file_tosync, dev):
     server_socket.listen(1)
     dev.cmd_nb("sync_to_filesys('{}', '{}', 8005)".format(source+file_tosync, local_ip))
     conn, addr = server_socket.accept()
-    conn.settimeout(1)
+    conn.settimeout(5)
     read_file_sync_raw(file_tosync, conn)
     conn.close()
 
 
-def do_pg_bar(index, wheel, nb_of_total, speed):
+def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l):
+    l_bloc = bloc_progress[loop_l]
+    if index == 80:
+        l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('[{:<100}]{:>5}{:>5} % | DATA: {} | SPEED: {} MB/s'.format('*'*(index), wheel[index % 4],
-                                                   index, nb_of_total, speed),
-          end='\r')
+    print('▏{:<81}▏{:>5}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc,
+                                                                    wheel[index % 4],
+                                                                    int((index/80)*100),
+                                                                    nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
     sys.stdout.flush()
 
 
@@ -341,17 +353,23 @@ def w_stream_reader(soc, total_size, chunk_rx):
     buff = bytearray(0)
     loop_index = 0
     wheel = ['|', '/', '-', "\\"]
+    t_start = time.time()
     while True:
         t0 = time.time()
         try:
             chunk = soc.recv(chunk_rx)  # 32 KB
             if chunk != b'':
                 buff += chunk
-                loop_index = int(((len(buff))/total_size)*100)
+                loop_index_f = ((len(buff))/total_size)*80
+                loop_index = int(loop_index_f)
+                loop_index_l = int(round(loop_index_f-loop_index,1)*6)
                 nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), total_size/(1024**2))
                 tdiff = time.time() - t0
+                t_elapsed = time.time() - t_start
                 t_speed ="{:^2.2f}".format((len(chunk)/(1024**2))/tdiff)
-                do_pg_bar(loop_index, wheel, nb_of_total, t_speed)
+                do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                if len(buff) == total_size:
+                    break
             else:
                 pass
                 #print('END OF FILE')
@@ -975,6 +993,61 @@ def lognow(filename, sensor):
     else:
         return filename
 
+# CRYPTO
+
+
+def rsa_keygen(dir='', store=True, show_key=False, id='00'):
+    private_key = rsa.generate_private_key(
+        public_exponent=65537, key_size=2048, backend=default_backend())
+    my_p = getpass.getpass(prompt='Password: ', stream=None)
+    pem = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
+                                    encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
+    if show_key:
+        print(pem)
+    if store:
+        with open(dir+'upy_pub_rsa{}.key'.format(id), 'wb') as keyfile:
+            keyfile.write(pem)
+    return pem
+
+
+def load_rsa_key(dir='', show_key=False, id='00'):
+    buff_key = b''
+    try:
+        with open(dir+'upy_pub_rsa{}.key'.format(id), 'rb') as keyfile:
+            while True:
+                try:
+                    buff = keyfile.read(2000)
+                    if buff != b'':
+                        buff_key += buff
+                    else:
+                        break
+                except Exception as e:
+                    print(e)
+        if show_key:
+            print(buff_key)
+        return buff_key
+    except Exception as e:
+        print("No RSA key found for this device, generate one first with '$ upydev gen_rsakey -tfkey' ")
+
+
+def upy_keygen(rsa_key):
+    aZ09 = bytes(string.ascii_letters + string.digits, 'ascii')
+    raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
+    raw_key = b''
+    for line in raw_key_list:
+        raw_key += line
+    random_token = secrets.token_bytes(32)  # send this
+    for b in random_token:
+        raw_key += bytes(chr(raw_key[b]), 'utf-8')
+    key_hash = hashlib.sha256()
+    key_hash.update(raw_key)
+    hashed_key = key_hash.digest()
+    index_key = [secrets.randbelow(len(hashed_key)) for i in range(8)]  # send this
+    password_long = bytes([hashed_key[val] for val in index_key])
+    password_short = bytes([aZ09[val % len(aZ09)] for val in password_long]).decode()
+
+    return (password_short, random_token + bytes(index_key))
+
 
 # TODO: threaded command group --> parallel comand mode --> device class
 
@@ -996,7 +1069,7 @@ helparg = '''Mode:
         for example: 'dummy_func()' ; use double quotes "" when the command
         includes a string like this example: "uos.listdir('/sd')"
 - wrepl : to enter the terminal WebREPL; CTRL-x to exit, CTRL-d to do soft reset
-        To see more keybinding info do CTRL-k
+        To see more keybindings info do CTRL-k
         (Added custom keybindings and autocompletion on tab to the previous work
         see: https://github.com/Hermann-SW/webrepl for the original work)
 - srepl : to enter the terminal serial repl using picocom, indicate port by -port option
@@ -1045,11 +1118,31 @@ helparg = '''Mode:
         'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME
         directory, named after the name of the script. To follow an on going 'daemon'
         mode log, use -follow option and indicate the script with -f option.
-- update_upyutils: to update the last versions of sync_tool.py, upylog.py and
-                upynotify.py
+- update_upyutils: to update the last versions of sync_tool.py, upylog.py,
+                upynotify.py and upysecrets.py
 - debug: to execute a local script line by line in the target upydevice, use -f option
         to indicate the file. To enter next line press ENTER, to finish PRESS C
         then ENTER. To break a while loop do CTRL+C.
+
+- gen_rsakey: To generate RSA-2048 bit key that will be shared with the device
+              (it is unique for each device) use -tfkey to send this key to the
+              device (use only if connected directly to the AP of the device or a
+              "secure" wifi e.g. local/home). If not connected to a "secure" wifi
+              upload the key (it is stored in upydev.__path__) by USB/Serial connection.
+- rf_wrkey: To "refresh" the WebREPL password with a new random password derivated from
+            the RSA key previously generated. A token then is sent to the device to generate
+            the same password from the RSA key previously uploaded. This won't leave
+            any clues in the TCP Websocekts packages of the current WebREPL password.
+            (Only the token will be visible; check this using wireshark)
+            (This needs upysecrets.py)
+
+- cryp_wrepl: To enter the terminal CrypWebREPL a E2EE terminal;
+             CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
+             To see more keybindings info do CTRL-k. By default resets after exit,
+             use -rkey option to refresh the WebREPL password with a new random password,
+             after exit.This passowrd will be stored in the working directory or in global directory with
+             -g option. (This mode needs upysecrets.py)
+
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
               password of each board. (To store the group settings globally use -g option)
@@ -1284,14 +1377,14 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
-                 'debug']
+                 'debug', 'gen_rsakey', 'rf_wrkey', 'cryp_wrepl']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag)
-parser.version = '0.1.6'
+parser.version = '0.1.7'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-p", help='password', required=False)
@@ -1379,6 +1472,14 @@ parser.add_argument('-chunk_rx', help='chunk size of data packets in kB to recei
                     required=False, default=32, type=int)
 parser.add_argument('-total_size', help='total size of data packets in MB for wifi speed test',
                     required=False, default=10, type=int)
+parser.add_argument('-show_key', help='show RSA key',
+                    required=False, default=False, action='store_true')
+parser.add_argument('-tfkey', help='transfer RSA key, this should be done only if connected to the AP of the device',
+                    required=False, default=False, action='store_true')
+parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection',
+                    required=False, default=False, action='store_true')
+parser.add_argument('-localkey_id', help='To refresh password manually of a current WebREPL connection',
+                    required=False)
 parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
                     default=0)
 parser.add_argument('-imu', help='to select the imu library',
@@ -1635,22 +1736,36 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
 
 
 def sync(ip, passwd, id_file=None, PORT=8005, resp=None, getfilelist=True):
-    espdev = W_UPYDEVICE(ip, passwd)
-    if args.s is None:
-        print('Looking for file in upy device root dir')
-        cmd_str = "uos.listdir()"
-        dir = 'root'
-    if args.s == 'sd':
-        print('Looking in SD memory...')
-        cmd_str = "uos.listdir('/sd')"
-        dir = '/sd'
     if getfilelist:
-        while espdev.output is None:
-            espdev.cmd(cmd_str, silent=True)
-        resp = espdev.output
+        espdev = W_UPYDEVICE(ip, passwd)
+        espdev.open_wconn()
+        if args.s is None:
+            print('Looking for file in upy device root dir')
+            cmd_str = "'{}' in uos.listdir()".format(args.f)
+            dir = 'root'
+        if args.s == 'sd':
+            print('Looking in SD memory...')
+            cmd_str = "'{}' in uos.listdir('/sd')".format(args.f)
+            dir = '/sd'
+        if getfilelist:
+            if dir == '/sd':
+                while espdev.output is None:
+                    espdev.wr_cmd("'sd' in uos.listdir()", silent=True, follow=False)
+                if espdev.output is True:
+                    print('Found SD memory...')
+                else:
+                    print('SD not mounted, try to mount it first')
+                    sys.exit()
+            espdev.output = None
+            while espdev.output is None:
+                espdev.wr_cmd(cmd_str, silent=True, follow=False)
+            found_file = espdev.output
+            espdev.close_wconn()
 
     try:
-        if args.f in resp:
+        if resp is not None:
+            found_file = True
+        if found_file is True:
             target = ip
             print('Getting file {}...'.format(args.f))
             file_to_get = args.f
@@ -2161,6 +2276,9 @@ def wrepl(ip, passwd):
     except KeyboardInterrupt:
         pass
         print('')
+    if args.rkey:
+        refresh_wrkey(ip, passwd)
+        sys.exit()
 
 
 def srepl(serial_port):
@@ -2860,14 +2978,14 @@ def get_stream_test(ip, passwd, mode='download'):
     while espdev.output is None:
         espdev.cmd('from sync_tool import w_stream_writer; [1]', silent=True)
     data, total_time = stream_test(espdev, mode=mode)
-    print('Done!')
+    print('\n\nDone!')
     print('TEST RESULTS ARE:')
-    print('TEST DURATION : {} (s)'.format(total_time))
+    print('TEST DURATION : {:.3f} (s)'.format(total_time))
     N_Bytes = len(data)
     print_sizefile('TEST DATA', N_Bytes)
     kBs = (N_Bytes/total_time)/1024
-    print('DATA TRANSFER RATE (kBps): {} kB/s'.format(kBs))
-    print('DATA TRANSFER RATE (Mbps): {} Mbps'.format((kBs*8)/1000))
+    print('DATA TRANSFER RATE (kBps): {:.3f} kB/s'.format(kBs))
+    print('DATA TRANSFER RATE (Mbps): {:.3f} Mbps'.format((kBs*8)/1000))
 
 
 #############################################
@@ -3073,7 +3191,9 @@ def update_upyutils(ip, passwd):
     upylog = '{}/upylog.py'.format(upydev.__path__[0]+'/upyutils_dir')
     # sync_tool.py
     upynotify = '{}/upynotify.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    args.fre = [sync_tool, upylog, upynotify]
+    # upysecrets.py
+    upysecrets = '{}/upysecrets.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    args.fre = [sync_tool, upylog, upynotify, upysecrets]
     args.dir = 'lib'
     put_multiple_f(ip=ip, passwd=passwd)
 
@@ -3091,10 +3211,100 @@ def debug_upyscript(ip, passwd, upyfile):
         kbi(ip, passwd)
 
 #############################################
+# CRYPTO
+
+
+def get_rsa_key(ip, passwd):
+    print('Generating RSA key...')
+    print('Getting unique id...')
+    espdev = W_UPYDEVICE(ip, passwd)
+    espdev.open_wconn()
+    espdev.wr_cmd("from machine import unique_id; unique_id()",
+                 silent=True, follow=False)
+    unique_id = hexlify(espdev.output).decode()
+    print('ID: {}'.format(unique_id))
+    pkey = rsa_keygen(dir=upydev.__path__[0]+'/', show_key=args.show_key,
+                      id=unique_id)
+    print('Done!')
+    espdev.close_wconn()
+    if args.tfkey:
+        print('Transfering RSA key to the device...')
+        args.f = '{}/{}'.format(upydev.__path__[0], 'upy_pub_rsa{}.key'.format(unique_id))
+        put_f(ip, passwd, rst=args.rst)
+        print('Done!')
+
+
+def refresh_wrkey(ip, passwd):
+    if args.localkey_id is None:
+        print('Generating new random WebREPL password...')
+        print('Getting unique id...')
+        espdev = W_UPYDEVICE(ip, passwd)
+        espdev.open_wconn()
+        espdev.wr_cmd("from machine import unique_id; unique_id()",
+                      silent=True, follow=False)
+        unique_id = hexlify(espdev.output).decode()
+        print('ID: {}'.format(unique_id))
+        pvkey = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=args.show_key,
+                             id=unique_id)
+        print('Generating random password from RSA key...')
+        new_p, new_token = upy_keygen(pvkey)
+        espdev.wr_cmd("from upysecrets import load_key, upy_keygen")
+        espdev.wr_cmd("rk = load_key()")
+        espdev.wr_cmd("newp = upy_keygen(rk, {})".format(new_token))
+        print('New random password generated!')
+    else:
+        print('Generating new random WebREPL password...')
+        unique_id = args.localkey_id
+        print('ID: {}'.format(unique_id))
+        pvkey = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=args.show_key,
+                             id=unique_id)
+        print('Generating random password from RSA key...')
+        new_p, new_token = upy_keygen(pvkey)
+        print('Use this token to generate new password in the device:\n', new_token)
+    upydev_ip = args.t
+    upydev_pass = new_p
+    upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass}
+    file_conf = 'upydev_.config'
+    if args.localkey_id is None:
+        espdev.close_wconn()
+        espdev.reset(output=False)
+    if args.g:
+        file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
+    with open(file_conf, 'w') as config_file:
+        config_file.write(json.dumps(upy_conf))
+    if args.g:
+        print('upy device settings saved globally!')
+    else:
+        print('upy device settings saved in working directory!')
+
+
+#############################################
+def cryp_wrepl(ip, passwd):
+    if not args.rkey:
+        crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r'.format(ip, passwd)
+        crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
+        try:
+            crypweb_repl = subprocess.call(crypweb_repl_cmd)
+        except KeyboardInterrupt:
+            pass
+            print('')
+    if args.rkey:
+        crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {}'.format(ip, passwd)
+        crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
+        try:
+            crypweb_repl = subprocess.call(crypweb_repl_cmd)
+        except KeyboardInterrupt:
+            pass
+            print('')
+
+        refresh_wrkey(ip, passwd)
+        sys.exit()
+
+#############################################
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
           'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
-          'stream_test', 'log', 'debug']  # implemented till sync in GP
+          'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey']  # implemented till sync in GP
 # diagnose in G
 
 # UPYDEVICE CLASS
@@ -3930,9 +4140,25 @@ elif args.m == 'update_upyutils':
     update_upyutils(args.t, args.p)
     sys.exit()
 
+# _DEBUG SCRIPT
 elif args.m == 'debug':
     debug_upyscript(args.t, args.p, args.f)
     sys.exit()
+
+#GEN_RSAKEY
+
+elif args.m == 'gen_rsakey':
+    get_rsa_key(args.t, args.p)
+    sys.exit()
+
+#RF_WRKEY
+elif args.m == 'rf_wrkey':
+    refresh_wrkey(args.t, args.p)
+    sys.exit()
+
+#CRYP_WREPL
+elif args.m == 'cryp_wrepl':
+    cryp_wrepl(args.t, args.p)
 
 # MAKE_GROUP
 elif args.m == 'make_group':

@@ -13,6 +13,7 @@ import netifaces
 import subprocess
 import shlex
 import sys
+from datetime import timedelta
 from upydevice import W_UPYDEVICE
 
 
@@ -31,7 +32,7 @@ args = parser.parse_args()
 # all interfaces)
 
 # TODO: make get_ip() platform independent
-
+bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
 def get_ip():
     # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
@@ -46,11 +47,22 @@ def get_ip():
 #           end='\r')
 #     sys.stdout.flush()
 
-def do_pg_bar(index, wheel, nb_of_total, speed):
+# def do_pg_bar(index, wheel, nb_of_total, speed, time_e):
+#     sys.stdout.write("\033[K")
+#     print('▏{:<80}▏{:>5}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█"*(index), wheel[index % 4],
+#                                                    int((index/80)*100), nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]),
+#           end='\r')
+#     sys.stdout.flush()
+
+def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l):
+    l_bloc = bloc_progress[loop_l]
+    if index == 80:
+        l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('[{:<100}]{:>5}{:>5} % | DATA: {} | SPEED: {} MB/s'.format('*'*(index), wheel[index % 4],
-                                                   index, nb_of_total, speed),
-          end='\r')
+    print('▏{:<81}▏{:>5}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc,
+                                                                    wheel[index % 4],
+                                                                    int((index/80)*100),
+                                                                    nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
     sys.stdout.flush()
 
 
@@ -64,16 +76,16 @@ if args.lh is not None:
     local_ip = args.lh
 
 espdev = W_UPYDEVICE(args.t, args.p)
-
+espdev.open_wconn()
 # sync_cmd = 'upycmd -c "{}" -t {} -p {}'.format(
 #     'import sync_tool as synct', args.t, args.p)
-espdev.output = None
-while espdev.output is None:
-    espdev.cmd('import sync_tool as synct;[1]', silent=True)
+# espdev.output = None
+# while espdev.output is None:
+espdev.wr_cmd('import sync_tool as synct', silent=True, follow=False)
 
 
 # sync_tool = subprocess.call(sync_cmd, shell=True)
-time_mac.sleep(1)
+time_mac.sleep(0.2)
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind((local_ip, args.port))
@@ -82,25 +94,26 @@ print('Server listening...')
 sync_connect_cmd = "cli_soc = synct.connect_SOC('{}', {})".format(local_ip, args.port)
 espdev.output = None
 # while espdev.output is None:
-espdev.cmd_nb(sync_connect_cmd, silent=True)
+espdev.wr_cmd(sync_connect_cmd, silent=True, follow=False)
 conn, addr = server_socket.accept()
 print('Connection received...')
-conn.settimeout(2)
+conn.settimeout(5)
 
 
 def sync_file_raw(soc, filetoget, dir, espdev=espdev):
     cmd_filesize_str = "synct.print_sizefile('{}','{}', rtl=True)".format(dir, filetoget)
-    espdev.output = None
-    while espdev.output is None:
-        espdev.cmd(cmd_filesize_str, silent=True)
+    # espdev.output = None
+    # while espdev.output is None:
+    espdev.wr_cmd(cmd_filesize_str, silent=True, follow=False)
     filesize = espdev.output
     print('File size: {:>40.2f} kB'.format(filesize/1024))
-    flushed = 0
-    while flushed == 0:
-        try:
-            conn.recv(128)
-        except Exception as e:
-            flushed = 1
+    # flushed = 0
+    espdev.close_wconn()
+    # while flushed == 0:
+    #     try:
+    #         conn.recv(128)
+    #     except Exception as e:
+    #         flushed = 1
     time_mac.sleep(1)
     sync_tool_cmd = "synct.read_sd_file_sync_raw({},cli_soc)".format("'{}/{}'".format(dir, filetoget))
     espdev.cmd_nb(sync_tool_cmd)
@@ -110,6 +123,10 @@ def sync_file_raw(soc, filetoget, dir, espdev=espdev):
     t0 = 0
     buff = b''
     wheel = ['|', '/', '-', "\\"]
+    t_start = time_mac.time()
+    EOF = False
+    n_EOF = 1
+    EOF_count = 0
     if args.o is not None:
         filetoget = args.o
     with open(filetoget, 'wb') as log:
@@ -117,17 +134,23 @@ def sync_file_raw(soc, filetoget, dir, espdev=espdev):
     while True:
         t_0 = time_mac.time()
         try:
-            chunk = soc.recv(32*(1024**2))  # 2 KB
+            chunk = soc.recv(32*(1024))  # 32 KB
             if chunk != b'':
                 buff += chunk
-                loop_index = int(((len(buff))/filesize)*100)
+                loop_index_f = ((len(buff))/filesize)*80
+                loop_index = int(loop_index_f)
+                loop_index_l = int(round(loop_index_f-loop_index,1)*6)
                 nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), filesize/(1024**2))
                 tdiff = time_mac.time() - t_0
+                t_elapsed = time_mac.time() - t_start
                 t_speed = "{:^2.2f}".format((len(chunk)/(1024**2))/tdiff)
-                do_pg_bar(loop_index, wheel, nb_of_total, t_speed)
+                do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
                 # do_pg_bar(loop_index, wheel)
                 with open(filetoget, 'ab') as log:
                     log.write(chunk)
+                if len(buff) == filesize:
+                    EOF = True
+                    break
             else:
                 pass
                 # print('\nEND OF FILE')
@@ -135,10 +158,10 @@ def sync_file_raw(soc, filetoget, dir, espdev=espdev):
                 # final_time = abs(time_mac.time()-t0)
                 # print('\nDone in {} seconds'.format(round(final_time, 2)))
                 # break
-            if t0 == 0:
-                t0 = time_mac.time()
+            # if t0 == 0:
+            #     t0 = time_mac.time()
 
-            final_time = abs(time_mac.time()-t0)
+            # final_time = abs(time_mac.time()-t_start)
         except Exception as e:
             if e == KeyboardInterrupt:
                 break
@@ -146,12 +169,75 @@ def sync_file_raw(soc, filetoget, dir, espdev=espdev):
             else:
                 # print(e)
                 if str(e) == 'timed out':
-                    print('\nDone in {} seconds'.format(round(final_time, 2)))
-                    print('Total data received: {:>30.2f} kB'.format(filesize/1024))
+                    # print('\nDone in {} seconds'.format(round(final_time, 2)))
+                    # print('Total data received: {:>30.2f} kB'.format(filesize/1024))
                     break
+    # print(chunk)
+    # print(filesize, len(buff))
+    if not EOF:
+        print('CONNECTION ERROR, TRYING AGAIN...')
+        espdev.cmd_nb(sync_tool_cmd)
+        print('Syncing file {} from upy device'.format(filetoget))
+        print('Saving {} file'.format(filetoget))
+        print('Progress:\n')
+        t0 = 0
+        buff = b''
+        wheel = ['|', '/', '-', "\\"]
+        t_start = time_mac.time()
+        EOF = False
+        n_EOF = 1
+        EOF_count = 0
+        if args.o is not None:
+            filetoget = args.o
+        with open(filetoget, 'wb') as log:
+            pass
+        while True:
+            t_0 = time_mac.time()
+            try:
+                chunk = soc.recv(32*(1024))  # 32 KB
+                if chunk != b'':
+                    buff += chunk
+                    loop_index_f = ((len(buff))/filesize)*80
+                    loop_index = int(loop_index_f)
+                    loop_index_l = int(round(loop_index_f-loop_index,1)*6)
+                    nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), filesize/(1024**2))
+                    tdiff = time_mac.time() - t_0
+                    t_elapsed = time_mac.time() - t_start
+                    t_speed = "{:^2.2f}".format((len(chunk)/(1024**2))/tdiff)
+                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                    # do_pg_bar(loop_index, wheel)
+                    with open(filetoget, 'ab') as log:
+                        log.write(chunk)
+                    if len(buff) == filesize:
+                        EOF = True
+                        break
+                else:
+                    pass
+                    # print('\nEND OF FILE')
+                    # soc.sendall
+                    # final_time = abs(time_mac.time()-t0)
+                    # print('\nDone in {} seconds'.format(round(final_time, 2)))
+                    # break
+                # if t0 == 0:
+                #     t0 = time_mac.time()
+
+                # final_time = abs(time_mac.time()-t_start)
+            except Exception as e:
+                if e == KeyboardInterrupt:
+                    break
+
+                else:
+                    # print(e)
+                    if str(e) == 'timed out':
+                        # print('\nDone in {} seconds'.format(round(final_time, 2)))
+                        # print('Total data received: {:>30.2f} kB'.format(filesize/1024))
+                        break
+    print('\n\nDone in {} seconds'.format(round(t_elapsed, 2)))
+    print('Total data received: {:>30.2f} kB'.format(filesize/1024))
 
 
 sync_file_raw(conn, args.f, dir)
 
 conn.close()
+espdev.cmd('cli_soc.close()')
 sys.exit()

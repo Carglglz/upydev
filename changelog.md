@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.7] [Unreleased] [Github Repo]
+### Added
+- Mode to generate RSA key, and send it to the device
+- Mode to refresh the WebREPL password with a random password
+ and don't leave explicit trace in tcp Websocket packets.
+ (this needs upysecrets.py in the device, more info in DOCS/help)
+- 'upysecrets.py' added to the scripts thar are updated with 'update_upyutils' mode
+- crypto webrepl mode (experimental) (add README AND DOCS)
+### Fix
+- Progress bar animation
+- sync mode improved
 ## [0.1.6] - 2019-12-08
 ### Added
 - New 'update_upyutils' mode to update the last versions of sync_tool.py,

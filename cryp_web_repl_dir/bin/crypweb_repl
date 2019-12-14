@@ -1,0 +1,720 @@
+#!/usr/bin/env python3
+from upydevice import W_UPYDEVICE
+from binascii import hexlify, unhexlify
+import getpass
+import secrets
+import hashlib
+import string
+import upydev
+import time
+import sys
+import os
+import argparse
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from prompt_toolkit import PromptSession
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.filters import Condition
+from prompt_toolkit.application import run_in_terminal
+from prompt_toolkit.styles import Style
+
+
+# CRYPTO
+
+
+def rsa_keygen(dir='', store=True, show_key=False, id='00'):
+    private_key = rsa.generate_private_key(
+        public_exponent=65537, key_size=2048, backend=default_backend())
+    my_p = getpass.getpass(prompt='Password: ', stream=None)
+    pem = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
+                                    encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
+    if show_key:
+        print(pem)
+    if store:
+        with open(dir+'upy_pub_rsa{}.key'.format(id), 'wb') as keyfile:
+            keyfile.write(pem)
+    return pem
+
+
+def load_rsa_key(dir='', show_key=False, id='00'):
+    buff_key = b''
+    try:
+        with open(dir+'upy_pub_rsa{}.key'.format(id), 'rb') as keyfile:
+            while True:
+                try:
+                    buff = keyfile.read(2000)
+                    if buff != b'':
+                        buff_key += buff
+                    else:
+                        break
+                except Exception as e:
+                    print(e)
+        if show_key:
+            print(buff_key)
+        return buff_key
+    except Exception as e:
+        print("No RSA key found for this device, generate one first with '$ upydev gen_rsakey -tfkey' ")
+        return None
+
+
+def upy_keygen(rsa_key):
+    aZ09 = bytes(string.ascii_letters + string.digits, 'ascii')
+    raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
+    raw_key = b''
+    for line in raw_key_list:
+        raw_key += line
+    random_token = secrets.token_bytes(32)  # send this
+    for b in random_token:
+        raw_key += bytes(chr(raw_key[b]), 'utf-8')
+    key_hash = hashlib.sha256()
+    key_hash.update(raw_key)
+    hashed_key = key_hash.digest()
+    index_key = [secrets.randbelow(len(hashed_key)) for i in range(8)]  # send this
+    password_long = bytes([hashed_key[val] for val in index_key])
+    password_short = bytes([aZ09[val % len(aZ09)] for val in password_long]).decode()
+
+    return (password_short, random_token + bytes(index_key))
+
+
+def upy_session_keygen(rsa_key, save_sessionkey=False, token=None, uid='00'):
+    raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
+    raw_key = b''
+    for line in raw_key_list:
+        raw_key += line
+    if token is None:
+        random_token = secrets.token_bytes(32) # send this
+    else:
+        random_token = token[:32]
+    for b in random_token:
+        raw_key += bytes(chr(raw_key[b]), 'utf-8')
+    key_hash = hashlib.sha256()
+    key_hash.update(raw_key)
+    hashed_key = key_hash.digest()
+    if token is None:
+        index_pvkey = [secrets.randbelow(len(hashed_key)) for i in range(32)] # send this
+    else:
+        index_pvkey = token[32:64]
+    pv_key = bytes([hashed_key[val] for val in index_pvkey])
+    if token is None:
+        index_ivkey = [secrets.randbelow(len(hashed_key)) for i in range(16)] # send this
+    else:
+        index_ivkey = token[64:]
+    iv = bytes([hashed_key[val] for val in index_ivkey])
+
+    if save_sessionkey:
+        path = upydev.__path__[0]
+        if token is None:
+            with open(path+'/.session_host_{}.key'.format(uid), 'w') as sess_config:
+                sess_keys = "{}\n{}\n".format(pv_key, iv)
+                sess_config.write(sess_keys)
+            print('New session host key saved in upydev session directory!')
+        else:
+            with open(path+'/.session_dev_{}.key'.format(uid), 'w') as sess_config:
+                sess_keys = "{}\n{}\n".format(pv_key, iv)
+                sess_config.write(sess_keys)
+            print('New session dev key saved in upydev session directory!')
+    if token is None:
+        return (pv_key, iv, [random_token + bytes(index_pvkey) + bytes(index_ivkey)])
+    else:
+        return (pv_key, iv)
+
+
+class CRYPTOGRAPHER:
+    def __init__(self, dev=None, mode=2, key_enc=None, iv_enc=None, key_dec=None,
+                 iv_dec=None, load_keys=False, uid='00'):
+        self.path = upydev.__path__[0]+'/'
+        self.sess_keyfile_dev = self.path + '.session_dev_{}.key'.format(uid)
+        self.sess_keyfile_host = self.path + '.session_host_{}.key'.format(uid)
+        self.mode = mode
+        self.msg_hex = b''
+        self.dev = dev
+        self.key_e = key_enc
+        self.iv_e = iv_enc
+        if key_dec is None:
+            self.key_d = key_enc
+            self.iv_d = iv_enc
+        else:
+            self.key_d = key_dec
+            self.iv_d = iv_dec
+        if load_keys:
+            try:
+                with open(self.sess_keyfile_dev, 'r') as sess_config:
+                    self.key_d = sess_config.readline()
+                    self.iv_d = sess_config.readline()
+
+                with open(self.sess_keyfile_host, 'r') as sess_config:
+                    self.key_e = sess_config.readline()
+                    self.iv_e = sess_config.readline()
+            except Exception as e:
+                print('No session keys found in the device')
+                pass
+
+        self.CI_enc = Cipher(algorithms.AES(self.key_e), modes.CBC(self.iv_e), backend=default_backend())
+        self.enc = self.CI_enc.encryptor()
+        self.CI_dec = Cipher(algorithms.AES(self.key_d), modes.CBC(self.iv_d), backend=default_backend())
+        self.dec = self.CI_dec.decryptor()
+
+    def decrypt(self, msg):
+        self.dec = self.CI_dec.decryptor()
+        return (self.dec.update(msg)).decode().split('\x00')[0]
+
+    def encrypt(self, msg):
+        self.enc = self.CI_enc.encryptor()
+        data_bytes = msg.encode()
+        # self.enc.update(data_bytes) + self.enc.finalize()
+        return self.enc.update(data_bytes + b'\x00' * ((16 - (len(data_bytes) % 16)) % 16)) #
+
+    def decrypt_hex(self, msg):
+        self.dec = self.CI_dec.decryptor()
+        return (self.dec.update(unhexlify(msg))).decode().split('\x00')[0]
+
+    def encrypt_hex(self, msg):
+        self.enc = self.CI_enc.encryptor()
+        data_bytes = msg.encode()
+        # self.enc.update(data_bytes) + self.enc.finalize()
+        return hexlify(self.enc.update(data_bytes + b'\x00' * ((16 - (len(data_bytes) % 16)) % 16))) #
+
+    def echo_msg(self, msg):
+        sec_msg = self.encrypt_hex(msg)
+        self.dev.wr_cmd("cp.recv_send({})".format(sec_msg), silent=True)
+        print(self.decrypt_hex(self.dev.output))
+
+    def crepl(self, msg):
+        self.dev.output = None
+        sec_msg = self.encrypt_hex(msg)
+        self.dev.wr_cmd("cp.crepl({})".format(sec_msg), silent=True)
+        if self.dev.output is not None:
+            dec_msg = self.decrypt_hex(self.dev.output)
+            # print(dec_msg)
+            self.dev.output = dec_msg
+            self.dev.response = dec_msg
+
+
+# ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
+parser = argparse.ArgumentParser()
+parser.add_argument("-p", help='host password', required=True)
+parser.add_argument("-v", help='verbose mode',
+                    default=False, action='store_true')
+parser.add_argument("-t", help='host direction', required=True)
+parser.add_argument("-r", help='reset on exit',
+                    default=False, action='store_true')
+args = parser.parse_args()
+
+# HANDSHAKE
+print('Welcome to CrypWebREPL 0.0.1!')
+print('Initiating SECURE HANDSHAKE...')
+espdev = W_UPYDEVICE(args.t, args.p)
+espdev.open_wconn()
+espdev.wr_cmd("from machine import unique_id; unique_id()",
+              silent=True)
+unique_id = hexlify(espdev.output).decode()
+espdev.wr_cmd("import sys; sys.platform",
+              silent=True)
+dev_platform = espdev.output
+print('{}@{}'.format(dev_platform, unique_id))
+rk = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=False,
+                  id=unique_id)
+if rk is None:
+    sys.exit()
+print('Generating HOST SESSION KEYS...', end='\r')
+h_key, h_iv, htok = upy_session_keygen(rk)
+espdev.wr_cmd("from upysecrets import load_key, upy_keygen, upy_session_keygen, CRYPTOGRAPHER")
+espdev.wr_cmd("from binascii import hexlify, unhexlify")
+espdev.wr_cmd("rk = load_key()")
+espdev.wr_cmd('htok=unhexlify({})'.format(hexlify(htok[0])))
+espdev.wr_cmd('h_key, h_iv = upy_session_keygen(rk, token=htok)')
+espdev.close_wconn()
+time.sleep(1)
+sys.stdout.flush()
+print('Generating DEVICE SESSION KEYS...', end='\r')
+espdev.open_wconn()
+espdev.wr_cmd('d_key, d_iv, dtok = upy_session_keygen(rk)')
+espdev.wr_cmd('hexlify(dtok[0])', silent=True)
+dtok = unhexlify(espdev.output)
+sys.stdout.flush()
+print('EXCHANGING SESSION KEYS...', end='\r')
+d_key, d_iv = upy_session_keygen(rk, token=dtok)
+# espdev.close_wconn()
+sys.stdout.flush()
+print('Done!, INITIATING CRYPTOGRAPHERS..', end='\r')
+h_cp = CRYPTOGRAPHER(dev=espdev, key_enc=h_key, iv_enc=h_iv, key_dec=d_key,
+                     iv_dec=d_iv)
+espdev.wr_cmd("cp = CRYPTOGRAPHER(key_enc=d_key, iv_enc=d_iv, key_dec=h_key, iv_dec=h_iv)")
+print('Done!')
+print('CrypWebREPL connected')
+print('>>> ')
+espdev.wr_cmd('B')
+# PROMT SESSION CONFIGURATION
+
+# Style
+style_p = Style.from_dict({
+    # User input (default text).
+    '':          '#ffffff',
+
+    # Prompt.
+    'username': 'ansigreen bold',
+    'at':       'ansigreen bold',
+    'colon':    '#ffffff',
+    'pound':    'ansiblue bold',
+    'host':     'ansigreen bold',
+    'path':     'ansiblue bold',
+})
+
+shell_message = [
+    ('class:username', dev_platform),
+    ('class:at',       '@'),
+    ('class:host',     unique_id),
+    ('class:colon',    ':'),
+    ('class:path',     '~ '),
+    ('class:pound',    '$ '),
+]
+
+d_prompt = '>>> '
+# KEYBINDINGS
+kb = KeyBindings()
+
+exit_flag = {'exit': False}
+encrypted_flag = {'sec': True}
+prompt = {'p': '>>> '}
+paste_flag = {'p': False}
+reset_flag = {'R': args.r}
+autosuggest = {'A': False}
+shell_mode = {'S': False}
+shell_prompt = {'s': shell_message}
+# upysh_cmd_dict = {'pwd':'pwd', }
+CRED = '\033[91m'
+CGREEN = '\33[32m'
+CEND = '\033[0m'
+ABLUE_bold = '\u001b[34;1m'
+MAGENTA_bold = '\u001b[35;1m'
+
+kb_info = """
+Custom keybindings:
+- CTRL-x : to exit CrypWebREPL Terminal
+- CTRL-u : toggle encryption mode (on/off)
+- CTRL-e : paste mode
+- CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
+- CTRL-r : to flush line buffer
+- CTRL-f : to list files in cwd (ls shorcut command)
+- CTRL-n : shows mem info
+- CTRL-y : gc.collect() shortcut command
+- CTRL-space : repeats last command
+- CTRL-t : runs test_code.py if present
+- CTRL-w : flush test_code from sys modules, so it can be run again
+- CTRL-a : set cursor position at the beggining
+- CTRL-p : toggle autosuggest mode (Fish shell like) (if not in synchronized mode)
+- CRTL-s , ENTER : toggle shell mode to navigate filesystem (upysh commands)
+- CTRL-k : prints the custom keybindings (this list)
+- CTRL-h : prints the shell commands (for the shell mode)
+>>> """
+
+
+# from @The Data Scientician : https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
+def print_table(data, cols=4, wide=16, format_SH=False):
+    '''Prints formatted data on columns of given width.'''
+    if format_SH:
+        data = ['{}{}{}{}'.format(ABLUE_bold, val, CEND, ' '*(wide-len(val))) if '.' not in val else val for val in data]
+        data = ['{}{}{}{}'.format(MAGENTA_bold, val, CEND, ' '*(wide-len(val))) if '.py' not in val and '.' in val else val for val in data]
+    n, r = divmod(len(data), cols)
+    pat = '{{:{}}}'.format(wide)
+    line = '\n'.join(pat * cols for _ in range(n))
+    last_line = pat * r
+    print(line.format(*data))
+    print(last_line.format(*data[n*cols:]))
+
+# make color formatter for shell_mode (dir/scripts/other)
+
+# def change_path: if in shell mode parse cd command # TODO: CUSTOM SHELL CMDS
+# df; du etc..., ifconfig, apconfig...
+
+def map_upysh(cmd_inp):
+    frst_cmd = cmd_inp.split(' ')[0]
+    if len(cmd_inp.split(' ')) > 1:
+        scnd_cmd = cmd_inp.split(' ')[1]
+        if scnd_cmd != '':
+            shell_cmd = "{}('{}')".format(frst_cmd, scnd_cmd)
+    else:
+        shell_cmd = frst_cmd
+
+    if shell_cmd == 'ls':
+        shell_cmd = 'ls()'
+    if frst_cmd == 'run':
+        shell_cmd = 'import {}'.format(scnd_cmd.split('.')[0])
+        # make a run interactive mode that do not escape input
+        # conditional ENTER, flush buffer, send run command, then CTRL-C can
+        # be catched, print in terminal
+    return shell_cmd, frst_cmd
+
+
+@Condition
+def autosuggest_is_on():
+    return autosuggest['A']
+
+
+# KEYBINDINGS
+@kb.add('c-x')
+def exitpress(event):
+    " Exit CrypWebREPL terminal "
+    print('\n>>> closing...')
+    espdev.close_wconn()
+    time.sleep(0.5)
+    if reset_flag['R']:
+        espdev.reset()
+    exit_flag['exit'] = True
+    event.app.exit()
+
+
+@kb.add('c-k')
+def see_cmd_info_press(event):
+    "CTRL-Commands info"
+    # event.app.current_buffer.insert_text('import')
+    def cmd_info():
+        print(kb_info)
+    run_in_terminal(cmd_info)
+
+
+@kb.add('c-r')
+def flush_line(event):
+    event.app.current_buffer.reset()
+
+
+@kb.add('c-d')
+def EOF_line(event):
+    NEW_F_BUFF = event.app.current_buffer.document.text
+    espdev.wr_cmd(NEW_F_BUFF)
+    espdev.wr_cmd('D')
+
+
+@kb.add('c-f')
+def cmd_ls(event):
+    espdev.wr_cmd('from upysh import *', silent=True)
+
+    def ls_out():
+        print('>>> ls')
+        if not encrypted_flag['sec']:
+            espdev.wr_cmd('ls')
+        else:
+            h_cp.crepl('ls()')
+        if espdev.output is not None:
+            print(espdev.output)
+
+    run_in_terminal(ls_out)
+
+
+@kb.add('c-n')
+def cmd_mem_info(event):
+
+    def mem_info_out():
+        print('>>> mem_info()')
+        if not encrypted_flag['sec']:
+            espdev.wr_cmd('from micropython import mem_info; mem_info()')
+        else:
+            h_cp.crepl('from micropython import mem_info; mem_info()')
+        if espdev.output is not None:
+            print(espdev.output)
+
+    run_in_terminal(mem_info_out)
+
+
+@kb.add('c-y')
+def cmd_gc_collect(event):
+
+    def gc_collect_out():
+        print('>>> gc.collect()')
+        if not encrypted_flag['sec']:
+            espdev.wr_cmd('import gc;gc.collect()')
+        else:
+            h_cp.crepl('import gc;gc.collect()')
+        if espdev.output is not None:
+            print(espdev.output)
+
+    run_in_terminal(gc_collect_out)
+
+
+@kb.add('c-p')
+def toggle_autosgst(event):
+    if autosuggest['A']:
+        autosuggest['A'] = False
+    else:
+        autosuggest['A'] = True
+
+
+@kb.add('c-space')
+def autocomppress(event):
+    "Send last command"
+    def print_last():
+        last_cmd = event.app.current_buffer.history.get_strings()[-1]
+        if shell_mode['S']:
+            last_cmd, frst_cmd = map_upysh(last_cmd)
+        print('>>> {}'.format(last_cmd))
+        if not encrypted_flag['sec']:
+            espdev.wr_cmd(last_cmd)
+        else:
+            h_cp.crepl(last_cmd)
+            if espdev.output is not None:
+                print(espdev.output)
+
+    run_in_terminal(print_last)
+
+
+@kb.add('c-t')
+def testpress(event):
+    "Test code command"
+    def test_code():
+        test_cmd = 'import test_code'
+        print('>>> {}'.format(test_cmd))
+        if not encrypted_flag['sec']:
+            espdev.wr_cmd(test_cmd)
+        else:
+            h_cp.crepl(test_cmd)
+        if espdev.output is not None:
+            print(espdev.output)
+
+    run_in_terminal(test_code)
+
+
+@kb.add('c-w')
+def reloadpress(event):
+    "Reload test_code command"
+    def reload_code():
+        reload_cmd = "import sys;del(sys.modules['test_code']);gc.collect()"
+        print('>>> {}'.format(reload_cmd))
+        if not encrypted_flag['sec']:
+            espdev.wr_cmd(reload_cmd)
+        else:
+            h_cp.crepl(reload_cmd)
+        if espdev.output is not None:
+            print(espdev.output)
+
+    run_in_terminal(reload_code)
+
+
+@kb.add('c-a')
+def reset_cursor(event):
+    "Move cursor to init position"
+    buff_text = event.app.current_buffer.document.text
+    event.app.current_buffer.reset()
+    event.app.current_buffer.insert_text(buff_text, move_cursor=False)
+
+
+@kb.add('c-s')
+def toggle_shell_mode(event):
+    if shell_mode['S']:
+        prompt['p'] = d_prompt
+        shell_mode['S'] = False
+    else:
+        prompt['p'] = shell_prompt['s']
+        shell_mode['S'] = True
+        if not encrypted_flag['sec']:
+            espdev.wr_cmd('from upysh import *', silent=True)
+        else:
+            h_cp.crepl('from upysh import *')
+        espdev.output = None
+
+
+@kb.add('c-c')
+def send_KBI(event):
+    espdev.wr_cmd('C')
+    paste_flag['p'] = False
+    event.app.current_buffer.reset()
+
+    def cmd_kbi():
+        if prompt['p'] == ">>> ":
+            print(prompt['p'])
+    run_in_terminal(cmd_kbi)
+
+
+@kb.add('c-e')
+def paste_mode(event):
+    "PASTE MODE"
+    paste_flag['p'] = True
+    # event.app.current_buffer.insert_text('import')
+
+    def cmd_paste():
+        print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
+        print("===")
+        prompt['p'] = "   "
+    run_in_terminal(cmd_paste)
+
+
+@kb.add('c-d')
+def paste_mode_exit(event):
+    "PASTE MODE exit"
+    # event.app.current_buffer.insert_text('import')
+
+    def cmd_paste_exit():
+        buff_text = event.app.current_buffer.document.text
+        if buff_text is not None and buff_text != '':
+            if not encrypted_flag['sec']:
+                espdev.wr_cmd(buff_text)
+            else:
+                h_cp.crepl(buff_text)
+                if espdev.output is not None:
+                    print(espdev.output)
+        # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
+        event.app.current_buffer.reset()
+        print(">>> ")
+        prompt['p'] = ">>> "
+    run_in_terminal(cmd_paste_exit)
+    paste_flag['p'] = False
+
+
+@kb.add('tab')
+def tab_press(event):
+    "Tab autocompletion info"
+    # event.app.current_buffer.insert_text('import')
+    glb = False
+    try:
+        buff_text = event.app.current_buffer.document.text.split(' ')[-1]
+        if isinstance(buff_text, str):
+            if '.' in buff_text:
+                root_text = buff_text.split('.')[0]
+                rest = buff_text.split('.')[1]
+                if encrypted_flag['sec']:
+                    h_cp.crepl('dir({})'.format(root_text))
+                else:
+                    espdev.wr_cmd('dir({})'.format(root_text), silent=True)
+            else:
+                rest = ''
+                glb = True
+                cmd_ls_glb = 'dir()'
+                if shell_mode['S']:
+                    cmd_ls_glb = 'uos.listdir()'
+                if encrypted_flag['sec']:
+                    h_cp.crepl(cmd_ls_glb)
+                else:
+                    espdev.wr_cmd(cmd_ls_glb, silent=True)
+
+        else:
+            root_text = buff_text.split('.')[0]
+            rest = buff_text.split('.')[1]
+            if encrypted_flag['sec']:
+                h_cp.crepl('dir({})'.format(root_text))
+            else:
+                espdev.wr_cmd('dir({})'.format(root_text), silent=True)
+    except Exception as e:
+        pass
+
+    def tab_cmd_info(rest_part=rest, flag=glb, buff=buff_text):
+        try:
+            if espdev.output is not None:
+                espdev.get_output()
+                if isinstance(espdev.output, str):
+                    # print(espdev.output)
+                    pass
+                else:
+                    if rest != '':
+                        result = [val for val in espdev.output if val.startswith(rest)]
+                        if len(result) > 1:
+                            comm_part = os.path.commonprefix(result)
+                            if comm_part == rest:
+                                print('>>> {}'.format(buff_text))
+                                print_table(result)
+                            else:
+                                event.app.current_buffer.insert_text(comm_part[len(rest):])
+                        else:
+                            event.app.current_buffer.insert_text(result[0][len(rest):])
+                    else:
+                        if not glb:
+                            print('>>> {}'.format(buff_text))
+                            print_table(espdev.output, wide=18)
+                        else:
+                            result = [val for val in espdev.output if val.startswith(buff_text)]
+                            if len(result) > 1:
+                                comm_part = os.path.commonprefix(result)
+                                if comm_part == buff_text:
+                                    print('>>> {}'.format(buff_text))
+                                    if shell_mode['S']:
+                                        print_table(result, wide=28, format_SH=True) # format ouput
+                                    else:
+                                        print_table(result, wide=22)
+                                else:
+                                    event.app.current_buffer.insert_text(comm_part[len(buff_text):])
+                            else:
+                                event.app.current_buffer.insert_text(result[0][len(buff_text):])
+
+        except Exception as e:
+            # print(e)
+            pass
+    run_in_terminal(tab_cmd_info)
+
+
+@kb.add('c-u')
+def unsecure_mode(event):
+    "Send unencrypted commands "
+    if encrypted_flag['sec']:
+        encrypted_flag['sec'] = False
+
+        def warning_us():
+            print(CRED + 'WARNING: ENCRYPTION DISABLED' + CEND)
+        run_in_terminal(warning_us)
+    else:
+        encrypted_flag['sec'] = True
+
+        def warning_sec():
+            print(CGREEN + 'INFO: ENCRYPTION ENABLED' + CEND)
+        run_in_terminal(warning_sec)
+
+
+session_p = PromptSession()
+
+repl = True
+while repl:
+    try:
+        espdev.output = None
+        if exit_flag['exit']:
+            break
+        else:
+            inp = session_p.prompt(prompt['p'],
+                                   auto_suggest=ConditionalAutoSuggest(AutoSuggestFromHistory(),
+                                                                       autosuggest_is_on),
+                                   key_bindings=kb, style=style_p)
+            if inp is not None and inp != '':
+                # HERE IN SHELL MODE PROCESS INPUT BEFORE SENDING
+                if shell_mode['S']:
+                    inp, frst_cmd = map_upysh(inp)
+                if not encrypted_flag['sec']:
+                    espdev.wr_cmd(inp)
+                else:
+                    h_cp.crepl(inp)
+                    if espdev.output is not None:
+                        print(espdev.output)
+                if shell_mode['S']:
+                    if frst_cmd == 'cd':
+                        espdev.output = None
+                        if not encrypted_flag['sec']:
+                            espdev.wr_cmd('pwd', silent=True)
+                            espdev.output = espdev.response
+                        else:
+                            h_cp.crepl('pwd')
+                        if espdev.output is not None:
+                            # print(espdev.output)
+                            devpath = espdev.output
+                            if devpath == '/':
+                                devpath = ' '
+                            shell_message = [
+                                ('class:username', dev_platform),
+                                ('class:at',       '@'),
+                                ('class:host',     unique_id),
+                                ('class:colon',    ':'),
+                                ('class:path',     '~{}'.format(devpath)),
+                                ('class:pound',    '$ '),
+                            ]
+                            shell_prompt = {'s': shell_message}
+                            prompt['p'] = shell_prompt['s']
+
+    except Exception as e:
+        print(e)
+    except KeyboardInterrupt:
+        try:
+            print('Exit now!, Please reboot device to erase the session keys')
+        except Exception as e:
+            print(e)
+        # espdev.reset()
+        # sys.exit()
+
+# sys.exit()

@@ -208,7 +208,7 @@ def mpy_info_press(event):
 
 @kb.add('c-k')
 def see_dir_press(event):
-    "Sends dir/() command to see global space"
+    "CTRL-Commands info"
     # event.app.current_buffer.insert_text('import')
     print(kb_info)
     # ws.send('dir()')
@@ -298,7 +298,7 @@ def resetpress(event):
 @kb.add('c-c')
 def keyintpress(event):
     global mode_paste
-    " Key interrupt MPY, cancel in paste mode"
+    " Keyboard interrupt MPY, cancel in paste mode"
     ws.send('\x03')
     event.app.current_buffer.reset()
     mode_paste = False

@@ -78,7 +78,9 @@ def read_sd_file_sync_raw(file_in_sd, soc, buff=buffer_chunk):
                     # final_file += chunk
                 else:
                     # print('END OF FILE')
-                    # soc.sendall
+                    # soc.sendall(b'EOF\x8a\xb1\x1a\xcb\x11')
+                    # soc.close()
+                    gc.collect()
                     break
             except Exception as e:
                 print(e)
@@ -99,11 +101,12 @@ def sync_to_filesys(filetoget, host, port, buff=buffer_chunk):
                     log.write(chunk)
             else:
                 print('END OF FILE')
-                soc.close()
                 break
         except Exception as e:
             if e == KeyboardInterrupt:
                 break
+    gc.collect()
+    # soc.close()
 
 
 def w_stream_writer(host, port, chunk=20000, total=10000000):
@@ -120,6 +123,7 @@ def w_stream_writer(host, port, chunk=20000, total=10000000):
         if e == KeyboardInterrupt:
             print(e)
 
-    time.sleep(0.5)
+    time.sleep(0.1)
     print('\nupydevice Done!')
+    # soc.close()
     gc.collect()
