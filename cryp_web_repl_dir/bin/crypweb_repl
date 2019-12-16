@@ -308,16 +308,18 @@ exit_flag = {'exit': False}
 encrypted_flag = {'sec': True}
 prompt = {'p': '>>> '}
 paste_flag = {'p': False}
+paste_buffer = {'B': []}
 reset_flag = {'R': args.r}
 autosuggest = {'A': False}
 shell_mode = {'S': False}
+edit_mode = {'E': False, 'File': ''}
 shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
 shell_commands = ['ls', 'cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'apconfig', 'apconfig_t', 'meminfo', 'install',
-                    'crypto_buffsize', 'apscan', 'set_ap']
+                    'crypto_buffsize', 'apscan', 'touch', 'edit', 'wrepl']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -380,6 +382,7 @@ shell_commands_info = """
     - apconfig_t: to see ACCESS POINT (AP) interface configuration in table format (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)
     - meminfo: to see RAM info
     - install: to install a library into the device with upip.
+    - touch  : to create a new file (e.g. touch 'test.txt')
     - crypto_buffsize: to see buffer size of the device 'cryptographer'
                       or set it in case it is too small
                       (default 2048 bytes, e.g. increase to 4096) (crypto_buffsize 4096)
@@ -422,6 +425,8 @@ def map_upysh(cmd_inp):
         # make a run interactive mode that do not escape input
         # conditional ENTER, flush buffer, send run command, then CTRL-C can
         # be catched, print in terminal
+    if shell_cmd == 'cd':
+        shell_cmd = "cd('/')"
     return shell_cmd, frst_cmd
 
 
@@ -633,6 +638,37 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print(e)
 
+    if cmd_inp.split(' ')[0] == 'touch':
+        try:
+            n_file = cmd_inp.split(' ')[1]
+            send_custom_sh_cmd("new_file = open('{}','w')".format(n_file))
+            send_custom_sh_cmd("new_file.close()")
+        except Exception as e:
+            print('Please write the name of the new file')
+
+    if cmd_inp.split(' ')[0] == 'edit':
+        try:
+            e_file = cmd_inp.split(' ')[1]
+            print('Press CTRL-E to edit {}'.format(e_file))
+            edit_mode['E'] = True
+            edit_mode['File'] = e_file
+            prompt['p'] = ""
+        except Exception as e:
+            print('Please write the name of the new file')
+
+    if cmd_inp.split(' ')[0] == 'wrepl':
+        print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
+        espdev.close_wconn()
+        web_repl_cmd_str = 'web_repl {} -p {}'.format(args.t, args.p)
+        web_repl_cmd = shlex.split(web_repl_cmd_str)
+        try:
+            web_repl = subprocess.call(web_repl_cmd)
+            espdev.open_wconn()
+        except KeyboardInterrupt:
+            espdev.open_wconn()
+            pass
+            print('')
+
 
 @Condition
 def autosuggest_is_on():
@@ -798,8 +834,10 @@ def reloadpress(event):
             h_cp.crepl(reload_cmd)
         if espdev.output is not None:
             print(espdev.output)
-
-    run_in_terminal(reload_code)
+    if not edit_mode['E']:
+        run_in_terminal(reload_code)
+    else:
+        edit_mode['E'] = False
 
 
 @kb.add('c-a')
@@ -856,24 +894,54 @@ def send_KBI(event):
 
 @kb.add('c-e')
 def paste_mode(event):
-    "PASTE MODE"
-    paste_flag['p'] = True
-    # event.app.current_buffer.insert_text('import')
+    "PASTE MODE IN REPL, EDIT MODE IN SHELL MODE"
+    if not shell_mode['S']:
+        paste_flag['p'] = True
+        # event.app.current_buffer.insert_text('import')
 
-    def cmd_paste():
-        print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
-        print("===")
-        prompt['p'] = ""
-    run_in_terminal(cmd_paste)
+        def cmd_paste():
+            print('paste mode; Ctrl-C to cancel, Ctrl-D to finish, Then ESC, ENTER to exit paste mode')
+            print("===")
+            prompt['p'] = ""
+        run_in_terminal(cmd_paste)
+    else:
+        if edit_mode['E']:
+            def cmd_paste():
+                print('Edit Mode; Ctrl-D to finish, then ESC, ENTER')
+                print("#<---- File: {} --->".format(edit_mode['File']))
+                prompt['p'] = ""
+            run_in_terminal(cmd_paste)
+            event.app.current_buffer.reset()
+            espdev.long_output = []
+            espdev.output = None
+            espdev.response = ''
+            if not encrypted_flag['sec']:
+                file_content = send_custom_sh_cmd("cat('{}')".format(edit_mode['File']), True)
+            else:
+                h_cp.crepl("cat('{}')".format(edit_mode['File']))
+                # espdev.get_output()
+                # print(espdev.output.split('\n'))
+                file_content = espdev.output.split('\n')
+                # print(len(file_content))
+                # file_content = send_custom_sh_cmd("cat('{}')".format(edit_mode['File']))
+            # paste_flag['p'] = True
+            # event.app.current_buffer.insert_text(file_content)
+            # print(file_content)
+            try:
+                process_content = ''.join(file_content).replace('\r', '\n')
+                # print(len(process_content))
+            except Exception as e:
+                process_content = ' '
+            event.app.current_buffer.insert_text(process_content)
 
 
 @kb.add('c-d')
 def paste_mode_exit(event):
-    "PASTE MODE exit"
+    "PASTE MODE exit in REPL, EDIT MODE exit in SHELL"
     # event.app.current_buffer.insert_text('import')
 
-    def cmd_paste_exit():
-            buff_text = event.app.current_buffer.document.text
+    def cmd_paste_exit(buff_P=paste_buffer['B']):
+            buff_text = '\n'.join(buff_P + [event.app.current_buffer.document.text])
             if buff_text is not None and buff_text != '':
                 # espdev.wr_cmd("cp.gbls = globals()", silent=True)
                 if not encrypted_flag['sec']:
@@ -887,11 +955,54 @@ def paste_mode_exit(event):
                         print(espdev.output)
             # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
             event.app.current_buffer.reset()
+            # print(buff_text)
             print(">>> ")
             prompt['p'] = ">>> "
-    if paste_flag['p']:
-        run_in_terminal(cmd_paste_exit)
-    paste_flag['p'] = False
+
+    def cmd_edit_exit(file_to_edit=edit_mode['File']):
+            buff_text = ''.join([event.app.current_buffer.document.text])
+            if buff_text is not None and buff_text != '':
+                send_custom_sh_cmd("_file_to_edit = open('{}','w')".format(file_to_edit))
+                send_custom_sh_cmd("nl = '\\n'")
+                if encrypted_flag['sec']:
+                    espdev.wr_cmd("cp.gbls = globals()", silent=True)
+                # if not encrypted_flag['sec']:
+                #     block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
+                #     # print(block_commad.splitlines())
+                #     espdev.wr_cmd(block_commad)
+                # else:
+                #     espdev.wr_cmd("cp.gbls = globals()", silent=True)
+                #     h_cp.crepl(buff_text)
+                #     if espdev.output is not None:
+                #         print(espdev.output)
+                # see if is too long, break in lines
+                print('Writing to file...')
+                lines_to_write = buff_text.split('\n')
+                for line in lines_to_write:
+                    if line != ' ' and line != "" and line != '':
+                        send_custom_sh_cmd('_file_to_edit.write("{}")'.format(line))
+                        # if not encrypted_flag['sec']:
+                        send_custom_sh_cmd('_file_to_edit.write(nl)')
+                    # time.sleep(0.1)
+                send_custom_sh_cmd("_file_to_edit.close()")
+                send_custom_sh_cmd("gc.collect()")
+            # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
+            event.app.current_buffer.reset()
+            # print(buff_text)
+            print("File {} edited succesfully!".format(file_to_edit))
+            print('PRESS ESC, THEN ENTER TO EXIT EDIT MODE')
+    if not shell_mode['S']:
+        if paste_flag['p']:
+            # print(paste_buffer['B'])
+            run_in_terminal(cmd_paste_exit)
+            paste_buffer['B'] = ['']
+        paste_flag['p'] = False
+    else:
+        if edit_mode['E']:
+            run_in_terminal(cmd_edit_exit)
+            prompt['p'] = shell_prompt['s']
+        edit_mode['E'] = False
+    # paste_buffer['B'] = ['']  # RESET PASTE BUFFER
 
 
 @kb.add('tab')
@@ -1040,8 +1151,8 @@ while repl:
             inp = session_p.prompt(prompt['p'],
                                    auto_suggest=ConditionalAutoSuggest(AutoSuggestFromHistory(),
                                                                        autosuggest_is_on),
-                                   key_bindings=kb, style=style_p)
-            if inp is not None and inp != '':
+                                   key_bindings=kb, style=style_p, multiline=edit_mode['E'] or paste_flag['p'])
+            if inp is not None and inp != '' and not paste_flag['p']:
                 # HERE IN SHELL MODE PROCESS INPUT BEFORE SENDING # shlex.split
                 if shell_mode['S']:  # SHELL
                     inp_args = shlex.split(inp)
@@ -1092,7 +1203,9 @@ while repl:
                         h_cp.crepl(inp)
                         if espdev.output is not None:
                             print(espdev.output)
-
+            else:
+                if inp != '':  # PASTE BUFFER
+                    paste_buffer['B'].append(inp)
     except Exception as e:
         print(e)
         continue
