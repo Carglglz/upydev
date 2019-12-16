@@ -27,6 +27,7 @@ import string
 import getpass
 import secrets
 import hashlib
+import signal
 from binascii import hexlify
 from pathlib import Path
 import multiprocessing
@@ -56,6 +57,8 @@ ATTEN_INFO = """
 log_levs = ['debug', 'info', 'warning', 'error', 'critical']
 
 bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+
+
 def sortSecond(val):
     return val[1]
 
@@ -1377,7 +1380,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
-                 'debug', 'gen_rsakey', 'rf_wrkey', 'cryp_wrepl']
+                 'debug', 'gen_rsakey', 'rf_wrkey', 'cryp_wrepl', 'upy']
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -3279,17 +3282,30 @@ def refresh_wrkey(ip, passwd):
 
 
 #############################################
-def cryp_wrepl(ip, passwd):
+def cryp_wrepl(ip, passwd, usr=None):
     if not args.rkey:
-        crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r'.format(ip, passwd)
+        if usr is not None:
+            crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r -dev {}'.format(ip, passwd, usr)
+        else:
+            crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r'.format(ip, passwd)
         crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
-        try:
-            crypweb_repl = subprocess.call(crypweb_repl_cmd)
-        except KeyboardInterrupt:
-            pass
-            print('')
+        clean_exit = False
+        while not clean_exit:
+            try:
+                crypweb_repl = subprocess.call(crypweb_repl_cmd)
+                clean_exit = True
+            except KeyboardInterrupt:
+                print('KeyboardInterrupt!')
+                print('Reinitiating CrypWebREPL...')
+                time.sleep(10)
+            except Exception as e:
+                print('Reinitiating CrypWebREPL...')
+                time.sleep(5)
     if args.rkey:
-        crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {}'.format(ip, passwd)
+        if usr is not None:
+            crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -dev {}'.format(ip, passwd, usr)
+        else:
+            crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {}'.format(ip, passwd)
         crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
         try:
             crypweb_repl = subprocess.call(crypweb_repl_cmd)
@@ -3304,7 +3320,7 @@ def cryp_wrepl(ip, passwd):
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
           'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
-          'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey']  # implemented till sync in GP
+          'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy']  # implemented till sync in GP
 # diagnose in G
 
 # UPYDEVICE CLASS
@@ -3441,6 +3457,10 @@ class UPYDEVICE:
 #############################################
 
 # UPYDEV MODES:
+
+# @ ENTRY
+if "@" in args.m:
+    args.m, entry_point = args.m.split('@')
 
 # CONFIG:
 if args.m == 'config':
@@ -4145,20 +4165,48 @@ elif args.m == 'debug':
     debug_upyscript(args.t, args.p, args.f)
     sys.exit()
 
-#GEN_RSAKEY
+# GEN_RSAKEY
 
 elif args.m == 'gen_rsakey':
     get_rsa_key(args.t, args.p)
     sys.exit()
 
-#RF_WRKEY
+# RF_WRKEY
 elif args.m == 'rf_wrkey':
     refresh_wrkey(args.t, args.p)
     sys.exit()
 
-#CRYP_WREPL
+# CRYP_WREPL
 elif args.m == 'cryp_wrepl':
     cryp_wrepl(args.t, args.p)
+
+# MAKE AN DIRECT ENTRY WITH @ FORMAT
+
+elif args.m == 'upy':
+    group_file = 'UPY_G'
+    # print(group_file)
+    if '{}.config'.format(group_file) not in os.listdir() or args.g:
+        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
+    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+        devices = json.loads(group.read())
+        # print(devices)
+    devs = devices.keys()
+    # NAME ENTRY POINT
+    if entry_point in devs:
+        dev_ip = devices[entry_point][0]
+        dev_pass = devices[entry_point][1]
+        cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
+    else:
+        # get dev by ip
+        which_dev = [devices[dev][1] for dev in devs if devices[dev][0] == entry_point ]
+        if len(which_dev) > 0:
+            dev_ip = entry_point
+            dev_pass = which_dev[0]
+            cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
+        else:
+            print('Device Not configurated PASSWORD NEEDED')
+            my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
+            cryp_wrepl(entry_point, my_p, usr=entry_point)
 
 # MAKE_GROUP
 elif args.m == 'make_group':

@@ -100,7 +100,7 @@ def upy_session_keygen(rsa_key, save_sessionkey=False, token=None):
 
 class CRYPTOGRAPHER:
     def __init__(self, mode=2, key_enc=None, iv_enc=None, key_dec=None,
-                 iv_dec=None, load_keys=False, buffer_size=4096):
+                 iv_dec=None, load_keys=False, buffer_size=2048):
         self.sess_keyfile_dev = 'session.key'
         self.sess_keyfile_host = 'session{}.key'.format(hexlify(unique_id()).decode())
         self.mode = mode
@@ -112,6 +112,7 @@ class CRYPTOGRAPHER:
         self.buff_size = buffer_size
         self.err_buff = io.StringIO(100)
         self.buff_out = io.StringIO(500)
+        self.gbls = globals()
         self.wrepl = None
         self.buff_crepl = None
         self.message_out = ''
@@ -206,7 +207,7 @@ class CRYPTOGRAPHER:
         except Exception as e:
             try:
                 # self.buff_crepl = uos.dupterm(self.wrepl, 0)
-                exec(rec_msg)
+                exec(rec_msg, self.gbls)
                 self.message_out = self.buff_out.getvalue()
                 self.buff_crepl = uos.dupterm(self.wrepl, 0)
                 if self.message_out == '':

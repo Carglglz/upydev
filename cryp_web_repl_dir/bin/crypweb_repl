@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from upydevice import W_UPYDEVICE
+from upydevice import W_UPYDEVICE, uparser_dec
 from binascii import hexlify, unhexlify
 import getpass
 import secrets
@@ -9,6 +9,8 @@ import upydev
 import time
 import sys
 import os
+import subprocess
+import shlex
 import argparse
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -21,6 +23,24 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.application import run_in_terminal
 from prompt_toolkit.styles import Style
+
+
+def get_cmd(raw):
+    shcmd = shlex.split(raw)
+    output = subprocess.check_output(shcmd).decode()
+    return output
+
+
+def stop_by_pid(raw='ps ax', proc_name='web_repl_cmd_r'):  # upydev log, web_repl_cmd_r
+    shcmd = shlex.split(raw)
+    output = subprocess.check_output(shcmd).decode()
+    pline = [line for line in output.split('\n') if proc_name in line]
+    if len(pline) > 0:
+        pid = pline[0].strip().split(' ')[0]
+        k = get_cmd('kill {}'.format(pid))
+        return 'Daemon process {} with PID: {} stopped'.format(proc_name, pid)
+    else:
+        return('NO DAEMON PROCESS FOUND')
 
 
 # CRYPTO
@@ -200,6 +220,7 @@ parser.add_argument("-p", help='host password', required=True)
 parser.add_argument("-v", help='verbose mode',
                     default=False, action='store_true')
 parser.add_argument("-t", help='host direction', required=True)
+parser.add_argument("-dev", help='device name, default unique_id', required=False)
 parser.add_argument("-r", help='reset on exit',
                     default=False, action='store_true')
 args = parser.parse_args()
@@ -208,6 +229,7 @@ args = parser.parse_args()
 print('Welcome to CrypWebREPL 0.0.1!')
 print('Initiating SECURE HANDSHAKE...')
 espdev = W_UPYDEVICE(args.t, args.p)
+espdev.kbi(output=False)
 espdev.open_wconn()
 espdev.wr_cmd("from machine import unique_id; unique_id()",
               silent=True)
@@ -264,10 +286,15 @@ style_p = Style.from_dict({
     'path':     'ansiblue bold',
 })
 
+# SET DEV NAME
+host_name = unique_id
+if args.dev is not None:
+    host_name = args.dev
+
 shell_message = [
     ('class:username', dev_platform),
     ('class:at',       '@'),
-    ('class:host',     unique_id),
+    ('class:host',     host_name),
     ('class:colon',    ':'),
     ('class:path',     '~ '),
     ('class:pound',    '$ '),
@@ -284,14 +311,32 @@ paste_flag = {'p': False}
 reset_flag = {'R': args.r}
 autosuggest = {'A': False}
 shell_mode = {'S': False}
+shell_mode_run = {'R': False}
+script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
-# upysh_cmd_dict = {'pwd':'pwd', }
-CRED = '\033[91m'
-CGREEN = '\33[32m'
+shell_commands = ['ls', 'cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd']
+custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
+                    'apconfig', 'apconfig_t', 'meminfo', 'install',
+                    'crypto_buffsize', 'apscan', 'set_ap']
+CRED = '\033[91;1m'
+CGREEN = '\33[32;1m'
 CEND = '\033[0m'
 ABLUE_bold = '\u001b[34;1m'
 MAGENTA_bold = '\u001b[35;1m'
+AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
+                    4: 'WPA/WAP2 PSK'}
 
+# START IN SHELL MODE
+if shell_mode['S']:
+    prompt['p'] = d_prompt
+    shell_mode['S'] = False
+else:
+    prompt['p'] = shell_prompt['s']
+    shell_mode['S'] = True
+    espdev.wr_cmd('from upysh import *;gc.collect()', silent=True)
+    espdev.output = None
+
+# KEYBINDINGS INFO
 kb_info = """
 Custom keybindings:
 - CTRL-x : to exit CrypWebREPL Terminal
@@ -306,11 +351,43 @@ Custom keybindings:
 - CTRL-t : runs test_code.py if present
 - CTRL-w : flush test_code from sys modules, so it can be run again
 - CTRL-a : set cursor position at the beggining
-- CTRL-p : toggle autosuggest mode (Fish shell like) (if not in synchronized mode)
-- CRTL-s , ENTER : toggle shell mode to navigate filesystem (upysh commands)
-- CTRL-k : prints the custom keybindings (this list)
-- CTRL-h : prints the shell commands (for the shell mode)
+- CTRL-p : toggle autosuggest mode (Fish shell like)
+- CRTL-s , ENTER : toggle shell mode to navigate filesystem (see shell commands)
+- CTRL-k : prints the custom keybindings (this list) (+ shell commands if in shell mode)
 >>> """
+
+shell_commands_info = """
+* Hit tab to autocomplete file / dirs names / raw micropython (repl commands)
+* Hit shif-tab to autocomplete shell comands
+* upysh commands:
+    - ls   : list files
+    - head : print the head of a file
+    - cat  : prints the content of a file
+    - mkdir: make directory
+    - cd   : change directory (cd .. to go back one level)
+    - pwd  : print working directory
+    - rm   : to remove a file
+    - rmdir: to remove a directory
+
+* custom shell commands:
+    - run  : to run a 'script.py' (To access again to the shell do CTRL-C)
+    - df   : to see system flash usage (df sd to see sd usage if already mounted)
+    - datetime: to see device datetime (if not set, will display uptime)
+    - ifconfig: to see STATION interface configuration (IP, SUBNET, GATEAWAY, DNS)
+    - ifconfig_t: to see STATION interface configuration in table format (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
+    - netscan: to scan WLAN's available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
+    - apconfig: to see ACCESS POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
+    - apconfig_t: to see ACCESS POINT (AP) interface configuration in table format (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)
+    - meminfo: to see RAM info
+    - install: to install a library into the device with upip.
+    - crypto_buffsize: to see buffer size of the device 'cryptographer'
+                      or set it in case it is too small
+                      (default 2048 bytes, e.g. increase to 4096) (crypto_buffsize 4096)
+
+
+"""
+
+# TAB OPTIONS FORMATTER
 
 
 # from @The Data Scientician : https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
@@ -326,10 +403,8 @@ def print_table(data, cols=4, wide=16, format_SH=False):
     print(line.format(*data))
     print(last_line.format(*data[n*cols:]))
 
-# make color formatter for shell_mode (dir/scripts/other)
 
-# def change_path: if in shell mode parse cd command # TODO: CUSTOM SHELL CMDS
-# df; du etc..., ifconfig, apconfig...
+# SHELL COMMANDS HANDLERS
 
 def map_upysh(cmd_inp):
     frst_cmd = cmd_inp.split(' ')[0]
@@ -350,12 +425,222 @@ def map_upysh(cmd_inp):
     return shell_cmd, frst_cmd
 
 
+def _dt_format(number):
+        rtc_n = str(number)
+        if len(rtc_n) == 1:
+            rtc_n = "0{}".format(rtc_n)
+            return rtc_n
+        else:
+            return rtc_n
+
+
+def _ft_datetime(t_now):
+    return([_dt_format(i) for i in t_now])
+
+
+def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True):
+    if not encrypted_flag['sec']:
+        if not capture_output:
+            espdev.wr_cmd(cmd, silent=sh_silent)
+        else:
+            espdev.close_wconn()
+            espdev.cmd(cmd, silent=sh_silent, capture_output=True)
+            espdev.output = espdev.long_output
+            espdev.open_wconn()
+    else:
+        h_cp.crepl(cmd)
+        espdev.get_output()
+        if not sh_silent:
+            print(espdev.output)
+    return espdev.output
+
+
+def print_filesys_info(filesize):
+    _kB = 1024
+    if filesize < _kB:
+        sizestr = str(filesize) + " by"
+    elif filesize < _kB**2:
+        sizestr = "%0.1f KB" % (filesize / _kB)
+    elif filesize < _kB**3:
+        sizestr = "%0.1f MB" % (filesize / _kB**2)
+    else:
+        sizestr = "%0.1f GB" % (filesize / _kB**3)
+    return sizestr
+
+
+def custom_sh_cmd(cmd_inp):
+    # map cmd_inp to comand string
+    if cmd_inp == 'df':
+        resp = send_custom_sh_cmd("uos.statvfs('')")
+        resp_sd = send_custom_sh_cmd("uos.statvfs('sd')")
+        size_info = resp
+        total_b = size_info[0] * size_info[2]
+        used_b = (size_info[0] * size_info[2]) - (size_info[0] * size_info[3])
+        total_mem = print_filesys_info(total_b)
+        free_mem = print_filesys_info(size_info[0] * size_info[3])
+        used_mem = print_filesys_info(used_b)
+        print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Filesystem',
+                                                            'Size', 'Used',
+                                                            'Avail',
+                                                            'Capacity']))
+        print('{0:12}{1:^12}{2:^12}{3:^12}{4:^12}'.format('Flash', total_mem,
+                                                          used_mem, free_mem,
+                                                          "{:.1f} %".format((used_b/total_b)*100)))
+        if resp_sd != resp:
+            size_info_sd = resp_sd
+            total_b_sd = size_info_sd[0] * size_info_sd[2]
+            used_b_sd = (size_info_sd[0] * size_info_sd[2]) - (size_info_sd[0] * size_info_sd[3])
+            total_mem_sd = print_filesys_info(total_b_sd)
+            free_mem_sd = print_filesys_info(size_info_sd[0] * size_info_sd[3])
+            used_mem_sd = print_filesys_info(used_b_sd)
+            print('{0:12}{1:^12}{2:^12}{3:^12}{4:^12}'.format('SD', total_mem_sd,
+                                                              used_mem_sd, free_mem_sd,
+                                                              "{:.1f} %".format((used_b_sd/total_b_sd)*100)))
+
+    if cmd_inp == 'datetime':
+        send_custom_sh_cmd("import time;tnow=time.localtime()")
+        resp = send_custom_sh_cmd('tnow[:6]')
+        print("{}-{}-{}T{}:{}:{}".format(*_ft_datetime(resp)))
+
+    if cmd_inp == 'ifconfig':
+        sta_isconnected = send_custom_sh_cmd("network.WLAN(network.STA_IF).isconnected()")
+        if sta_isconnected:
+            ifconf = send_custom_sh_cmd("network.WLAN(network.STA_IF).ifconfig()")
+            print(ifconf)
+
+        else:
+            print('STA interface not connected')
+
+    if cmd_inp == 'ifconfig_t':
+        sta_isconnected = send_custom_sh_cmd("network.WLAN(network.STA_IF).isconnected()")
+        if sta_isconnected:
+            ifconf = send_custom_sh_cmd("network.WLAN(network.STA_IF).ifconfig()")
+            essid = send_custom_sh_cmd("network.WLAN(network.STA_IF).config('essid')")
+            signal_rssi = send_custom_sh_cmd("network.WLAN(network.STA_IF).status('rssi')")
+            print('=' * 106)
+            print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'SSID', 'RSSI'))
+            print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(*ifconf,
+                                                                                       essid,
+                                                                                       signal_rssi))
+
+        else:
+            print('STA interface not connected')
+
+    if cmd_inp == 'netscan':
+        enable_sta = send_custom_sh_cmd("network.WLAN(network.STA_IF).active(1)")
+        if enable_sta:
+            scan = send_custom_sh_cmd("network.WLAN(network.STA_IF).scan()")
+            print('=' * 110)
+            print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+                'SSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
+
+            for netscan in scan:
+                auth = AUTHMODE_DICT[netscan[4]]
+                vals = hexlify(netscan[1]).decode()
+                bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
+                print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+                    netscan[0].decode(), bssid, netscan[2], netscan[3],
+                    auth, str(netscan[5])))
+
+        else:
+            print("Can't enable STA interface")
+
+    if cmd_inp == 'apconfig':
+        ap_isconnected = send_custom_sh_cmd("network.WLAN(network.AP_IF).active()")
+        if ap_isconnected:
+            apconf = send_custom_sh_cmd("network.WLAN(network.AP_IF).ifconfig()")
+            print(apconf)
+
+        else:
+            print('AP interface not connected')
+
+    if cmd_inp == 'apconfig_t':
+        ap_isconnected = send_custom_sh_cmd("network.WLAN(network.AP_IF).active()")
+        if ap_isconnected:
+            apconf = send_custom_sh_cmd("network.WLAN(network.AP_IF).ifconfig()")
+            essid = send_custom_sh_cmd("network.WLAN(network.AP_IF).config('essid')")
+            channel = send_custom_sh_cmd("network.WLAN(network.AP_IF).config('channel')")
+            auth_mode = send_custom_sh_cmd("network.WLAN(network.AP_IF).config('authmode')")
+            mac_addrs = ':'.join([unique_id[i:i+2] for i in range(0, len(unique_id), 2)])
+            print('=' * 70)
+            print('{0:^15} | {1:^18} | {2:^15} | {3:^15} '.format(
+                'SSID', 'BSSID', 'CHANNEL', 'AUTHMODE'))
+            print('{0:^15} | {1:^18} | {2:^15} | {3:^15}'.format(essid,
+                                                                 mac_addrs,
+                                                                 channel,
+                                                                 AUTHMODE_DICT[auth_mode]))
+            print('=' * 70)
+            print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
+                'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
+            print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(*apconf))
+
+        else:
+            print('AP interface not connected')
+
+    if cmd_inp == 'apscan':
+        enable_sta = send_custom_sh_cmd("network.WLAN(network.AP_IF).active(1)")
+        if enable_sta:
+            scan = send_custom_sh_cmd("network.WLAN(network.AP_IF).status('stations')")
+            print('Found {} devices'.format(len(scan)))
+            for dev in scan:
+                bytdev = bytearray(dev[0])
+                mac_ad = ':'.join(str(val) for val in bytdev)
+                print('MAC: {}'.format(mac_ad))
+
+        else:
+            print("Can't enable AP interface")
+
+    if cmd_inp == 'meminfo':
+        if encrypted_flag['sec']:
+            RAM = send_custom_sh_cmd('from micropython import mem_info;mem_info()')
+            mem_info = RAM.splitlines()[1]
+        else:
+            RAM = send_custom_sh_cmd('from micropython import mem_info;mem_info()', True)
+            mem_info = RAM[1].strip()
+        mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[1]) for elem in mem_info[4:].split(',')}
+        print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memmory',
+                                                            'Size', 'Used',
+                                                            'Avail',
+                                                            'Capacity']))
+        total_mem = mem['total']/1024
+        used_mem = mem['used']/1024
+        free_mem = mem['free']/1024
+        total_mem_s = "{:.3f} KB".format(total_mem)
+        used_mem_s = "{:.3f} KB".format(used_mem)
+        free_mem_s = "{:.3f} KB".format(free_mem)
+
+        print('{0:12}{1:^12}{2:^12}{3:^12}{4:^12}'.format('RAM', total_mem_s,
+                                                          used_mem_s, free_mem_s,
+                                                          "{:.1f} %".format((used_mem/total_mem)*100)))
+
+    if cmd_inp.split(' ')[0] == 'install':
+        try:
+            lib = cmd_inp.split(' ')[1]
+            install_resp = send_custom_sh_cmd("import upip;upip.install('{}')".format(lib), sh_silent=False)
+        except Exception as e:
+            print('Please indicate a library to install')
+
+    if cmd_inp.split(' ')[0] == 'crypto_buffsize':
+        try:
+            if len(cmd_inp.split(' ')) > 1:  # SET BUFFERSIZE
+                new_size = cmd_inp.split(' ')[1]
+                send_custom_sh_cmd("cp.buff_size = {}".format(new_size))
+                print('Crypto Buffer size set to: {} bytes'.format(new_size))
+            else:  # GET BUFFERSIZE
+                buffsize = send_custom_sh_cmd("cp.buff_size")
+                print('Current Crypto Buffer size: {} bytes'.format(buffsize))
+        except Exception as e:
+            print(e)
+
+
 @Condition
 def autosuggest_is_on():
     return autosuggest['A']
 
 
 # KEYBINDINGS
+
 @kb.add('c-x')
 def exitpress(event):
     " Exit CrypWebREPL terminal "
@@ -374,6 +659,8 @@ def see_cmd_info_press(event):
     # event.app.current_buffer.insert_text('import')
     def cmd_info():
         print(kb_info)
+        if shell_mode['S']:
+            print(shell_commands_info)
     run_in_terminal(cmd_info)
 
 
@@ -382,18 +669,12 @@ def flush_line(event):
     event.app.current_buffer.reset()
 
 
-@kb.add('c-d')
-def EOF_line(event):
-    NEW_F_BUFF = event.app.current_buffer.document.text
-    espdev.wr_cmd(NEW_F_BUFF)
-    espdev.wr_cmd('D')
-
-
 @kb.add('c-f')
 def cmd_ls(event):
     espdev.wr_cmd('from upysh import *', silent=True)
 
     def ls_out():
+        espdev.output = None
         print('>>> ls')
         if not encrypted_flag['sec']:
             espdev.wr_cmd('ls')
@@ -409,6 +690,7 @@ def cmd_ls(event):
 def cmd_mem_info(event):
 
     def mem_info_out():
+        espdev.output = None
         print('>>> mem_info()')
         if not encrypted_flag['sec']:
             espdev.wr_cmd('from micropython import mem_info; mem_info()')
@@ -424,6 +706,7 @@ def cmd_mem_info(event):
 def cmd_gc_collect(event):
 
     def gc_collect_out():
+        espdev.output = None
         print('>>> gc.collect()')
         if not encrypted_flag['sec']:
             espdev.wr_cmd('import gc;gc.collect()')
@@ -446,17 +729,41 @@ def toggle_autosgst(event):
 @kb.add('c-space')
 def autocomppress(event):
     "Send last command"
+
     def print_last():
+        espdev.output = None
         last_cmd = event.app.current_buffer.history.get_strings()[-1]
         if shell_mode['S']:
-            last_cmd, frst_cmd = map_upysh(last_cmd)
-        print('>>> {}'.format(last_cmd))
-        if not encrypted_flag['sec']:
-            espdev.wr_cmd(last_cmd)
+            g_p = [val[1] for val in prompt['p'][:3]]
+            b_p = [val[1] for val in prompt['p'][4:]]
+            color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format("".join(g_p), "".join(b_p), last_cmd)
+            print(color_p)
+            if last_cmd in custom_sh_cmd_kw:
+                custom_sh_cmd(last_cmd)
+            else:
+                inp, frst_cmd = map_upysh(last_cmd)
+                if frst_cmd == 'run':
+                    script_is_running['R'] = True
+                    script_is_running['script'] = inp.split(' ')[1]
+                    print('Running {}...'.format(script_is_running['script']))
+                    espdev.close_wconn()
+                    time.sleep(0.2)
+                    espdev.cmd_nb(inp)
+                else:
+                    if not encrypted_flag['sec']:
+                        espdev.wr_cmd(inp)
+                    else:
+                        h_cp.crepl(inp)
+                        if espdev.output is not None:
+                            print(espdev.output)
         else:
-            h_cp.crepl(last_cmd)
-            if espdev.output is not None:
-                print(espdev.output)
+            print('>>> {}'.format(last_cmd))
+            if not encrypted_flag['sec']:
+                espdev.wr_cmd(last_cmd)
+            else:
+                h_cp.crepl(last_cmd)
+                if espdev.output is not None:
+                    print(espdev.output)
 
     run_in_terminal(print_last)
 
@@ -465,6 +772,7 @@ def autocomppress(event):
 def testpress(event):
     "Test code command"
     def test_code():
+        espdev.output = None
         test_cmd = 'import test_code'
         print('>>> {}'.format(test_cmd))
         if not encrypted_flag['sec']:
@@ -481,6 +789,7 @@ def testpress(event):
 def reloadpress(event):
     "Reload test_code command"
     def reload_code():
+        espdev.output = None
         reload_cmd = "import sys;del(sys.modules['test_code']);gc.collect()"
         print('>>> {}'.format(reload_cmd))
         if not encrypted_flag['sec']:
@@ -518,9 +827,26 @@ def toggle_shell_mode(event):
 
 @kb.add('c-c')
 def send_KBI(event):
-    espdev.wr_cmd('C')
-    paste_flag['p'] = False
-    event.app.current_buffer.reset()
+    # def send_KBI():
+    try:
+        if script_is_running['R']:
+            script_is_running['R'] = False
+            print('KeyboardInterrupt')
+            print('Stopping {}...'.format(script_is_running['script']))
+            stop_by_pid(proc_name='web_repl_cmd_r')
+            espdev.kbi(output=False)
+            time.sleep(1)
+            espdev.open_wconn()
+            time.sleep(0.5)
+            reload = "import sys;del(sys.modules['{}']);[1]".format(script_is_running['script'])
+            espdev.wr_cmd(reload, silent=True)
+            print('Done!')
+        else:
+            espdev.wr_cmd('C')
+            paste_flag['p'] = False
+            event.app.current_buffer.reset()
+    except Exception as e:
+        pass
 
     def cmd_kbi():
         if prompt['p'] == ">>> ":
@@ -537,7 +863,7 @@ def paste_mode(event):
     def cmd_paste():
         print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
         print("===")
-        prompt['p'] = "   "
+        prompt['p'] = ""
     run_in_terminal(cmd_paste)
 
 
@@ -547,19 +873,24 @@ def paste_mode_exit(event):
     # event.app.current_buffer.insert_text('import')
 
     def cmd_paste_exit():
-        buff_text = event.app.current_buffer.document.text
-        if buff_text is not None and buff_text != '':
-            if not encrypted_flag['sec']:
-                espdev.wr_cmd(buff_text)
-            else:
-                h_cp.crepl(buff_text)
-                if espdev.output is not None:
-                    print(espdev.output)
-        # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
-        event.app.current_buffer.reset()
-        print(">>> ")
-        prompt['p'] = ">>> "
-    run_in_terminal(cmd_paste_exit)
+            buff_text = event.app.current_buffer.document.text
+            if buff_text is not None and buff_text != '':
+                # espdev.wr_cmd("cp.gbls = globals()", silent=True)
+                if not encrypted_flag['sec']:
+                    block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
+                    # print(block_commad.splitlines())
+                    espdev.wr_cmd(block_commad)
+                else:
+                    espdev.wr_cmd("cp.gbls = globals()", silent=True)
+                    h_cp.crepl(buff_text)
+                    if espdev.output is not None:
+                        print(espdev.output)
+            # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
+            event.app.current_buffer.reset()
+            print(">>> ")
+            prompt['p'] = ">>> "
+    if paste_flag['p']:
+        run_in_terminal(cmd_paste_exit)
     paste_flag['p'] = False
 
 
@@ -568,7 +899,11 @@ def tab_press(event):
     "Tab autocompletion info"
     # event.app.current_buffer.insert_text('import')
     glb = False
+    import_cmd = False
     try:
+        buff_text_frst_cmd = event.app.current_buffer.document.text.split(' ')[0]
+        if buff_text_frst_cmd == 'import':
+            import_cmd = True
         buff_text = event.app.current_buffer.document.text.split(' ')[-1]
         if isinstance(buff_text, str):
             if '.' in buff_text:
@@ -582,6 +917,8 @@ def tab_press(event):
                 rest = ''
                 glb = True
                 cmd_ls_glb = 'dir()'
+                if import_cmd:
+                    cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp]"
                 if shell_mode['S']:
                     cmd_ls_glb = 'uos.listdir()'
                 if encrypted_flag['sec']:
@@ -627,10 +964,15 @@ def tab_press(event):
                             if len(result) > 1:
                                 comm_part = os.path.commonprefix(result)
                                 if comm_part == buff_text:
-                                    print('>>> {}'.format(buff_text))
                                     if shell_mode['S']:
+                                        last_cmd = event.app.current_buffer.document.text
+                                        g_p = [val[1] for val in prompt['p'][:3]]
+                                        b_p = [val[1] for val in prompt['p'][4:]]
+                                        color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format("".join(g_p), "".join(b_p), last_cmd)
+                                        print(color_p)
                                         print_table(result, wide=28, format_SH=True) # format ouput
                                     else:
+                                        print('>>> {}'.format(buff_text))
                                         print_table(result, wide=22)
                                 else:
                                     event.app.current_buffer.insert_text(comm_part[len(buff_text):])
@@ -641,6 +983,31 @@ def tab_press(event):
             # print(e)
             pass
     run_in_terminal(tab_cmd_info)
+
+
+@kb.add('s-tab')
+def shif_tab(event):
+    "Autocomplete shell commands"
+    def autocomplete_sh_cmd():
+        if shell_mode['S']:
+            buff_text = event.app.current_buffer.document.text
+            result = [sh_cmd for sh_cmd in shell_commands+custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
+            if len(result) > 1:
+                comm_part = os.path.commonprefix(result)
+                if comm_part == buff_text:
+                    last_cmd = buff_text
+                    g_p = [val[1] for val in prompt['p'][:3]]
+                    b_p = [val[1] for val in prompt['p'][4:]]
+                    color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format("".join(g_p), "".join(b_p), last_cmd)
+                    print(color_p)
+                    print_table(result)
+                else:
+                    event.app.current_buffer.insert_text(comm_part[len(buff_text):])
+            else:
+                if len(result) > 0:
+                    event.app.current_buffer.insert_text(result[0][len(buff_text):])
+
+    run_in_terminal(autocomplete_sh_cmd)
 
 
 @kb.add('c-u')
@@ -662,6 +1029,7 @@ def unsecure_mode(event):
 
 session_p = PromptSession()
 
+# REPL/SHELL LOOP
 repl = True
 while repl:
     try:
@@ -674,46 +1042,71 @@ while repl:
                                                                        autosuggest_is_on),
                                    key_bindings=kb, style=style_p)
             if inp is not None and inp != '':
-                # HERE IN SHELL MODE PROCESS INPUT BEFORE SENDING
-                if shell_mode['S']:
-                    inp, frst_cmd = map_upysh(inp)
-                if not encrypted_flag['sec']:
-                    espdev.wr_cmd(inp)
-                else:
-                    h_cp.crepl(inp)
-                    if espdev.output is not None:
-                        print(espdev.output)
-                if shell_mode['S']:
-                    if frst_cmd == 'cd':
-                        espdev.output = None
-                        if not encrypted_flag['sec']:
-                            espdev.wr_cmd('pwd', silent=True)
-                            espdev.output = espdev.response
+                # HERE IN SHELL MODE PROCESS INPUT BEFORE SENDING # shlex.split
+                if shell_mode['S']:  # SHELL
+                    inp_args = shlex.split(inp)
+                    if inp_args[0] in custom_sh_cmd_kw:
+                        custom_sh_cmd(inp)
+                    else:
+                        inp, frst_cmd = map_upysh(inp)
+                        if frst_cmd == 'run':
+                            script_is_running['R'] = True
+                            script_is_running['script'] = inp.split(' ')[1]
+                            print('Running {}...'.format(script_is_running['script']))
+                            espdev.close_wconn()
+                            time.sleep(0.2)
+                            espdev.cmd_nb(inp)
                         else:
-                            h_cp.crepl('pwd')
+                            if not encrypted_flag['sec']:
+                                espdev.wr_cmd(inp)
+                            else:
+                                h_cp.crepl(inp)
+                                if espdev.output is not None:
+                                    print(espdev.output)
+                        if frst_cmd == 'cd':
+                            espdev.output = None
+                            if not encrypted_flag['sec']:
+                                espdev.wr_cmd('pwd', silent=True)
+                                espdev.output = espdev.response
+                            else:
+                                h_cp.crepl('pwd')
+                            if espdev.output is not None:
+                                # print(espdev.output)
+                                devpath = espdev.output
+                                if devpath == '/':
+                                    devpath = ' '
+                                shell_message = [
+                                    ('class:username', dev_platform),
+                                    ('class:at',       '@'),
+                                    ('class:host',     host_name),
+                                    ('class:colon',    ':'),
+                                    ('class:path',     '~{}'.format(devpath)),
+                                    ('class:pound',    '$ '),
+                                ]
+                                shell_prompt = {'s': shell_message}
+                                prompt['p'] = shell_prompt['s']
+                else:  # REPL
+                    if not encrypted_flag['sec']:
+                        espdev.wr_cmd(inp)
+                    else:
+                        h_cp.crepl(inp)
                         if espdev.output is not None:
-                            # print(espdev.output)
-                            devpath = espdev.output
-                            if devpath == '/':
-                                devpath = ' '
-                            shell_message = [
-                                ('class:username', dev_platform),
-                                ('class:at',       '@'),
-                                ('class:host',     unique_id),
-                                ('class:colon',    ':'),
-                                ('class:path',     '~{}'.format(devpath)),
-                                ('class:pound',    '$ '),
-                            ]
-                            shell_prompt = {'s': shell_message}
-                            prompt['p'] = shell_prompt['s']
+                            print(espdev.output)
 
     except Exception as e:
         print(e)
+        continue
     except KeyboardInterrupt:
         try:
             print('Exit now!, Please reboot device to erase the session keys')
+            # send_KBI()
+            continue
         except Exception as e:
             print(e)
+            continue
+    except EOFError:
+            # print('This is EOF ERROR!')
+            continue
         # espdev.reset()
         # sys.exit()
 
