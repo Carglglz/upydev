@@ -34,7 +34,10 @@ def load_key(p_key=False):
 
 
 def upy_keygen(rsa_key, token, save_pass=True):
-    raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
+    if sys.platform == 'esp8266':
+        raw_key_list = [line.encode() for line in rsa_key.decode().split('\n')[1:-2]]
+    else:
+        raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
     raw_key = b''
     for line in raw_key_list:
         raw_key += line
@@ -56,7 +59,10 @@ def upy_keygen(rsa_key, token, save_pass=True):
 
 
 def upy_session_keygen(rsa_key, save_sessionkey=False, token=None):
-    raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
+    if sys.platform == 'esp8266':
+        raw_key_list = [line.encode() for line in rsa_key.decode().split('\n')[1:-2]]
+    else:
+        raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
     raw_key = b''
     for line in raw_key_list:
         raw_key += line
@@ -70,12 +76,18 @@ def upy_session_keygen(rsa_key, save_sessionkey=False, token=None):
     key_hash.update(raw_key)
     hashed_key = key_hash.digest()
     if token is None:
-        index_pvkey = [urandom.randrange(0, len(hashed_key)) for i in range(32)] # send this
+        if sys.platform == 'esp8266':
+            index_pvkey = [urandom.getrandbits(4)+urandom.getrandbits(4) for i in range(32)]
+        else:
+            index_pvkey = [urandom.randrange(0, len(hashed_key)) for i in range(32)] # send this
     else:
         index_pvkey = token[32:64]
     pv_key = bytes([hashed_key[val] for val in index_pvkey])
     if token is None:
-        index_ivkey = [urandom.randrange(0, len(hashed_key)) for i in range(16)] # send this
+        if sys.platform == 'esp8266':
+            index_ivkey = [urandom.getrandbits(4)+urandom.getrandbits(4) for i in range(16)]
+        else:
+            index_ivkey = [urandom.randrange(0, len(hashed_key)) for i in range(16)] # send this
     else:
         index_ivkey = token[64:]
     iv = bytes([hashed_key[val] for val in index_ivkey])

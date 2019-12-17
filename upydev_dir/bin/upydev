@@ -1713,7 +1713,7 @@ def get_multiple_f(ip, passwd, id_file_dev='', device=None):
     else:
         # case 2: -fre is an expression to match
         if len(args.fre) == 1:
-            print("Files in that match expression '{}' to get:".format(
+            print("Files in upy device that match expression '{}' to get:".format(
                 args.fre[0]))
             for file in [fl for fl in file_list if args.fre[0] in fl]:
                 print(file)
