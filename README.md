@@ -167,6 +167,8 @@ How to use it:
 
 * With **Encryption mode**: This needs some configuration before (which is basically generate an RSA private key and pass it to the device). Follow [this instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/crypto_wrepl_docs.md) to do this.
 
+  **Encryption mode works only with esp32. Esp8266 has not enough RAM*
+
   After the configuration is done, to use this mode do:
 
   `$ upydev crypto_wrepl` 
@@ -176,7 +178,7 @@ How to use it:
   e.g.:
 
   `$ upydev upy@esp_room1`  or `$ upydev upy@192.168.1.42` 
-
+  
   ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/CryptoWebREPL_demo.gif)
 
 ------
