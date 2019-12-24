@@ -177,7 +177,7 @@ How to use it:
 
   `$ upydev upy@esp_room1`  or `$ upydev upy@192.168.1.42` 
 
-  ![](https://github.com/Carglglz/upydev/tree/master/DOCS/CryptoWebREPL_demo.gif)
+  ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/CryptoWebREPL_demo.gif)
 
 ------
 
