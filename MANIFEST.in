@@ -5,3 +5,4 @@ include upydev/upyutils_dir/sync_tool.py
 include upydev/upyutils_dir/upylog.py
 include upydev/upyutils_dir/upynotify.py
 include upydev/upyutils_dir/upysecrets.py
+include upydev/upyutils_dir/upysh2.py

@@ -10,7 +10,6 @@ import json
 import gc
 import sys
 import io
-import uos
 
 aZ09 = b'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
@@ -128,6 +127,9 @@ class CRYPTOGRAPHER:
         self.wrepl = None
         self.buff_crepl = None
         self.message_out = ''
+        self.data_bytes = bytearray(20)
+        self.rec_msg = ''
+        self.resp_msg = ''
         if key_dec is None:
             self.key_d = key_enc
             self.iv_d = iv_enc
@@ -162,9 +164,9 @@ class CRYPTOGRAPHER:
     def encrypt(self, msg):
         self.buff[:] = bytearray(self.buff_size)
         self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
-        data_bytes = msg.encode()
-        self.block_len = len(data_bytes + b'\x00' * ((16 - (len(data_bytes) % 16)) % 16))
-        self.enc.encrypt(data_bytes + b'\x00' * ((16 - (len(data_bytes) % 16)) % 16), self.buff)
+        self.data_bytes = msg.encode()
+        self.block_len = len(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16))
+        self.enc.encrypt(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
         gc.collect()
         return bytes(self.buff[:self.block_len])
 
@@ -179,18 +181,18 @@ class CRYPTOGRAPHER:
     def encrypt_hex(self, msg):
         self.buff[:] = bytearray(self.buff_size)
         self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
-        data_bytes = msg.encode()
-        self.block_len = len(data_bytes + b'\x00' * ((16 - (len(data_bytes) % 16)) % 16))
-        self.enc.encrypt(data_bytes + b'\x00' * ((16 - (len(data_bytes) % 16)) % 16), self.buff)
+        self.data_bytes = msg.encode()
+        self.block_len = len(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16))
+        self.enc.encrypt(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
         gc.collect()
         return hexlify(bytes(self.buff[:self.block_len]))
 
     def encrypt_hex_bytes(self, msg):
         self.buff[:] = bytearray(self.buff_size)
         self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
-        data_bytes = msg
-        self.block_len = len(data_bytes + b'\x00' * ((16 - (len(data_bytes) % 16)) % 16))
-        self.enc.encrypt(data_bytes + b'\x00' * ((16 - (len(data_bytes) % 16)) % 16), self.buff)
+        self.data_bytes = msg
+        self.block_len = len(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16))
+        self.enc.encrypt(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
         gc.collect()
         return hexlify(bytes(self.buff[:self.block_len]))
 
@@ -199,13 +201,13 @@ class CRYPTOGRAPHER:
         return self.encrypt_hex(rec_msg)
 
     def crepl(self, msg):
-        rec_msg = self.decrypt_hex(msg)
+        self.rec_msg = self.decrypt_hex(msg)
         self.buff_out = io.StringIO(500)
         try:
             self.wrepl = uos.dupterm(self.buff_out, 0)
-            resp_msg = eval(rec_msg)
+            self.resp_msg = eval(self.rec_msg)
             # self.buff_crepl = uos.dupterm(self.wrepl, 0)
-            if resp_msg is None:
+            if self.resp_msg is None:
                 self.message_out = self.buff_out.getvalue()
                 self.buff_crepl = uos.dupterm(self.wrepl, 0)
                 if self.message_out == '':
@@ -215,11 +217,11 @@ class CRYPTOGRAPHER:
                     return self.encrypt_hex(self.message_out)
             else:
                 self.buff_crepl = uos.dupterm(self.wrepl, 0)
-                return self.encrypt_hex(str(resp_msg))
+                return self.encrypt_hex(str(self.resp_msg))
         except Exception as e:
             try:
                 # self.buff_crepl = uos.dupterm(self.wrepl, 0)
-                exec(rec_msg, self.gbls)
+                exec(self.rec_msg, self.gbls)
                 self.message_out = self.buff_out.getvalue()
                 self.buff_crepl = uos.dupterm(self.wrepl, 0)
                 if self.message_out == '':
@@ -230,9 +232,9 @@ class CRYPTOGRAPHER:
             except Exception as e:
                 self.buff_crepl = uos.dupterm(self.wrepl, 0)
                 sys.print_exception(e, self.err_buff)
-                resp_msg = self.err_buff.getvalue()
+                self.resp_msg = self.err_buff.getvalue()
                 self.err_buff.seek(0)
-                return self.encrypt_hex(resp_msg)
+                return self.encrypt_hex(self.resp_msg)
 
 # TODO: ENCRYPT/DECRYPT FILE
 

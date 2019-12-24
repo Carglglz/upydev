@@ -10,6 +10,29 @@ import json
 import gc
 import sys
 import io
+import machine
+from micropython import const
+import micropython
+
+_MP_STREAM_POLL = const(3)
+_MP_STREAM_POLL_RD = const(0x0001)
+
+# TODO: Remove this when STM32 gets machine.Timer.
+if hasattr(machine, 'Timer'):
+    _timer = machine.Timer(-1)
+else:
+    _timer = None
+
+
+# Batch writes into 50ms intervals.
+def schedule_in(handler, delay_ms):
+    def _wrap(_arg):
+        handler()
+    if _timer:
+        _timer.init(mode=machine.Timer.ONE_SHOT, period=delay_ms, callback=_wrap)
+    else:
+        micropython.schedule(_wrap, None)
+
 
 aZ09 = b'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
@@ -237,6 +260,95 @@ class CRYPTOGRAPHER:
                 return self.encrypt_hex(self.resp_msg)
 
 
+# Simple buffering stream to support the dupterm requirements.
+class CryptoStream(io.IOBase):
+    def __init__(self, key_host, iv_host, key_dev, iv_dev, mode=2, buffer_size=2048):
+        self._data = bytearray()
+        self._n_bytes = 0
+        self.buff = bytearray(buffer_size)
+        self.buff_size = buffer_size
+        self.key_host = key_host
+        self.key_dev = key_dev
+        self.iv_host = iv_host
+        self.iv_dev = iv_dev
+        self.mode = mode
+        self.msg_hex = b''
+        self.enc = ucryptolib.aes(self.key_dev, self.mode, self.iv_dev)
+        self.dec = ucryptolib.aes(self.key_host, self.mode, self.iv_host)
+
+    def recv(self, msg):
+        # Needed for ESP32.
+        self._data += self.decrypt_hex(msg)
+
+        if hasattr(uos, 'dupterm_notify'):
+            uos.dupterm_notify(None)
+
+    # def inject(self, data):
+    #     self._data += data
+    #
+    #     # Needed for ESP32.
+    #     if hasattr(uos, 'dupterm_notify'):
+    #         uos.dupterm_notify(None)
+
+    def readinto(self, buf):
+        if not self._data:
+            return None
+        b = min(len(buf), len(self._data))
+        buf[:b] = self._data[:b]
+        self._data = self._data[b:]
+        return b
+
+    def read(self, sz=None):
+        d = self._data
+        self._data[:] = b''
+        return d
+
+    def ioctl(self, op, arg):
+        if op == _MP_STREAM_POLL:
+            if self._data:
+                return _MP_STREAM_POLL_RD
+        return 0
+
+    def _flush(self):
+        data = self._data[0:100]
+        self._data = self._data[100:]
+        # self._n_bytes = sys.stdout.write(data)
+        if self._data:
+            schedule_in(self._flush, 50)
+
+    def write(self, buf):
+        empty = not self._data
+        self._data += self.encrypt_hex_bytes(buf)
+        if empty:
+            schedule_in(self._flush, 50)
+        if hasattr(uos, 'dupterm_notify'):
+            uos.dupterm_notify(None)
+
+    def decrypt_hex(self, msg):
+        self.msg_hex = unhexlify(msg)
+        self.buff[:] = bytearray(self.buff_size)
+        self.dec = ucryptolib.aes(self.key_host, self.mode, self.iv_host)
+        self.dec.decrypt(self.msg_hex, self.buff)
+        gc.collect()
+        return self.buff.decode().split('\x00')[0]
+
+    def encrypt_hex(self, msg):
+        self.buff[:] = bytearray(self.buff_size)
+        self.enc = ucryptolib.aes(self.key_dev, self.mode, self.iv_dev)
+        self.data_bytes = msg.encode()
+        self.block_len = len(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16))
+        self.enc.encrypt(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
+        gc.collect()
+        return hexlify(bytes(self.buff[:self.block_len]))
+
+    def encrypt_hex_bytes(self, msg):
+        self.buff[:] = bytearray(self.buff_size)
+        self.enc = ucryptolib.aes(self.key_dev, self.mode, self.iv_dev)
+        self.data_bytes = msg
+        self.block_len = len(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16))
+        self.enc.encrypt(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
+        gc.collect()
+        return hexlify(bytes(self.buff[:self.block_len]))
 # TODO: ENCRYPT/DECRYPT FILE
 
 # TODO: DECRYPT/ENCRYPT MESSAGE

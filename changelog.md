@@ -6,14 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.7] [Unreleased] [Github Repo]
 ### Added
-- Mode to generate RSA key, and send it to the device
+- Mode to generate RSA private key, and send it to the device ('gen_rsakey')
 - Mode to refresh the WebREPL password with a random password
  and don't leave explicit trace in tcp Websocket packets.
- (this needs upysecrets.py in the device, more info in DOCS/help)
-- 'upysecrets.py' added to the scripts thar are updated with 'update_upyutils' mode
-- crypto webrepl mode (experimental) (add README AND DOCS)
+ (this needs upysecrets.py in the device, more info in DOCS/help) ('rf_wrkey')
+ This can be automatically after a wrepl session using '-rkey' option (e.g. upydev wrepl -rkey)
+- 'upysecrets.py' added to the scripts that are updated with 'update_upyutils' mode
+- 'upysh2.py' implements the 'tree' comand to print filesystem in a tree view
+- "crypto"-webrepl-shell mode (experimental) (see DOCS)
+- New option '-@' to redirect a command to a specific device saved in global
+  Group 'UPY_G' (this needs to be created with the 'make_group' command )
+  (e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
+  Then commands can be redirected to this device from anywhere using -@ foo_device (e.g. upydev ping -@ foo_device )
 ### Fix
-- Progress bar animation
+- Progress bar animation now available in put/get/sync modes and auto-adjust to terminal size
 - sync mode improved
 ## [0.1.6] - 2019-12-08
 ### Added

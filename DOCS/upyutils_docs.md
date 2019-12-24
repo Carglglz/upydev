@@ -51,3 +51,5 @@
 (default file: 'error.log')
 
 **upynotify.py** : a module to notify events with beeps (buzzer needed) and blinks. This is useful to "physical debugging".
+
+**upysecrets.py**: a module to enable end-to-end-encryption and random password generation

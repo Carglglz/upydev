@@ -9,6 +9,9 @@ from __future__ import print_function
 import sys
 import os
 import struct
+import time
+from upydevice import W_UPYDEVICE
+from datetime import timedelta
 try:
     import usocket as socket
 except ImportError:
@@ -26,6 +29,36 @@ WEBREPL_REQ_S = "<2sBBQLH64s"
 WEBREPL_PUT_FILE = 1
 WEBREPL_GET_FILE = 2
 WEBREPL_GET_VER = 3
+
+bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+
+columns, rows = os.get_terminal_size(0)
+cnt_size = 75
+if columns > cnt_size:
+    bar_size = int((columns - cnt_size))
+    pb = True
+else:
+    bar_size = 1
+    pb = False
+
+# + " "*((bar_size+1) - len("█" *index + l_bloc)
+# parser = argparse.ArgumentParser()
+# parser.add_argument("op", metavar='Mode', help='operation')
+# parser.add_argument("-size", help='size of file to get', required=False)
+# parser.add_argument("-p", help='password', required=False)
+# args = parser.parse_args()
+
+
+def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l, size_bar=bar_size):
+    l_bloc = bloc_progress[loop_l]
+    if index == bar_size:
+        l_bloc = "█"
+    sys.stdout.write("\033[K")
+    print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} KB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((bar_size+1) - len("█" *index + l_bloc)),
+                                                                    wheel[index % 4],
+                                                                    int((index/bar_size)*100),
+                                                                    nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
+    sys.stdout.flush()
 
 
 def debugmsg(msg):
@@ -125,6 +158,7 @@ def get_ver(ws):
 
 
 def put_file(ws, local_file, remote_file):
+    wheel = ['|', '/', '-', "\\"]
     sz = os.stat(local_file)[6]
     dest_fname = (SANDBOX + remote_file).encode("utf-8")
     rec = struct.pack(WEBREPL_REQ_S, b"WA", WEBREPL_PUT_FILE,
@@ -134,26 +168,46 @@ def put_file(ws, local_file, remote_file):
     ws.write(rec[10:])
     assert read_resp(ws) == 0
     cnt = 0
+    t_start = time.time()
+    print('\n')
     with open(local_file, "rb") as f:
         while True:
-            sys.stdout.write("Sent %d of %d bytes\r" % (cnt, sz))
-            sys.stdout.flush()
+            t_0 = time.time()
+            # sys.stdout.write("Sent %d of %d bytes\r" % (cnt, sz))
+            # sys.stdout.flush()
             buf = f.read(1024)
             if not buf:
                 break
             ws.write(buf)
             cnt += len(buf)
+            loop_index_f = (cnt/sz)*bar_size
+            loop_index = int(loop_index_f)
+            loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+            nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+            t_elapsed = time.time() - t_start
+            t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+            if pb:
+                do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+            else:
+                sys.stdout.write("Sent %d of %d bytes\r" % (cnt, sz))
+                sys.stdout.flush()
+
+    print('\n')
     print()
     assert read_resp(ws) == 0
 
 
-def get_file(ws, local_file, remote_file):
+def get_file(ws, local_file, remote_file, file_size):
+    sz_r = file_size
+    wheel = ['|', '/', '-', "\\"]
     src_fname = (SANDBOX + remote_file).encode("utf-8")
     rec = struct.pack(WEBREPL_REQ_S, b"WA", WEBREPL_GET_FILE,
                       0, 0, 0, len(src_fname), src_fname)
     debugmsg("%r %d" % (rec, len(rec)))
     ws.write(rec)
     assert read_resp(ws) == 0
+    t_start = time.time()
+    print('\n')
     with open(local_file, "wb") as f:
         cnt = 0
         while True:
@@ -168,9 +222,19 @@ def get_file(ws, local_file, remote_file):
                 cnt += len(buf)
                 f.write(buf)
                 sz -= len(buf)
-                sys.stdout.write("Received %d bytes\r" % cnt)
-                sys.stdout.flush()
+                if pb:
+                    loop_index_f = (cnt/sz_r)*bar_size
+                    loop_index = int(loop_index_f)
+                    loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                    nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz_r/(1024))
+                    t_elapsed = time.time() - t_start
+                    t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                else:
+                    sys.stdout.write("Received %d bytes\r" % cnt)
+                    sys.stdout.flush()
     print()
+    print('\n')
     assert read_resp(ws) == 0
 
 
@@ -242,6 +306,10 @@ def main():
         print("op:%s, host:%s, port:%d, passwd:%s." %
               (op, host, port, '*'*len(passwd)))
         print(src_file, "->", dst_file)
+        dev = W_UPYDEVICE(host, passwd)
+        if op == 'get':
+            dev.cmd("import uos; uos.stat('{}')[6]".format(src_file), silent=True)
+            size_file_to_get = dev.output
 
     s = socket.socket()
 
@@ -261,7 +329,8 @@ def main():
     ws.ioctl(9, 2)
 
     if op == "get":
-        get_file(ws, dst_file, src_file)
+        print('File size: {:.2f} KB'.format(dev.output/1024))
+        get_file(ws, dst_file, src_file, size_file_to_get)
     elif op == "put":
         put_file(ws, src_file, dst_file)
 

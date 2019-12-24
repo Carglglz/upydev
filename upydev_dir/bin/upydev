@@ -27,7 +27,6 @@ import string
 import getpass
 import secrets
 import hashlib
-import signal
 from binascii import hexlify
 from pathlib import Path
 import multiprocessing
@@ -57,6 +56,16 @@ ATTEN_INFO = """
 log_levs = ['debug', 'info', 'warning', 'error', 'critical']
 
 bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+
+# TERMINAL SIZE
+columns, rows = os.get_terminal_size(0)
+cnt_size = 75
+if columns > cnt_size:
+    bar_size = int((columns - cnt_size))
+    pb = True
+else:
+    bar_size = 1
+    pb = False
 
 
 def sortSecond(val):
@@ -177,6 +186,19 @@ def see_groups():
     globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
         upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
     return local_cwd + globl_wd
+
+
+def see_global_devs():
+    # avoid_files = ['upydev_.config', 'help.config', 'esp32h.config']
+    # # local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
+    # # ) if '.config' in group_file and group_file not in 'upydev_.config']
+    # globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
+    #     upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
+    with open('{}/UPY_G.config'.format(upydev.__path__[0]), 'r', encoding='utf-8') as group:
+        devices = json.loads(group.read())
+        # print(devices)
+    devs = list(devices.keys())
+    return devs
 
 
 def run_command_rl(command):
@@ -340,14 +362,25 @@ def sync_to_dev(file_tosync, dev):
     conn.close()
 
 
-def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l):
+# def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l):
+#     l_bloc = bloc_progress[loop_l]
+#     if index == 80:
+#         l_bloc = "█"
+#     sys.stdout.write("\033[K")
+#     print('▏{:<81}▏{:>5}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc,
+#                                                                     wheel[index % 4],
+#                                                                     int((index/80)*100),
+#                                                                     nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
+#     sys.stdout.flush()
+
+def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l, size_bar=bar_size):
     l_bloc = bloc_progress[loop_l]
-    if index == 80:
+    if index == bar_size:
         l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('▏{:<81}▏{:>5}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc,
+    print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((bar_size+1) - len("█" *index + l_bloc)),
                                                                     wheel[index % 4],
-                                                                    int((index/80)*100),
+                                                                    int((index/bar_size)*100),
                                                                     nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
     sys.stdout.flush()
 
@@ -363,14 +396,14 @@ def w_stream_reader(soc, total_size, chunk_rx):
             chunk = soc.recv(chunk_rx)  # 32 KB
             if chunk != b'':
                 buff += chunk
-                loop_index_f = ((len(buff))/total_size)*80
+                loop_index_f = ((len(buff))/total_size)*bar_size
                 loop_index = int(loop_index_f)
-                loop_index_l = int(round(loop_index_f-loop_index,1)*6)
+                loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
                 nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), total_size/(1024**2))
-                tdiff = time.time() - t0
                 t_elapsed = time.time() - t_start
-                t_speed ="{:^2.2f}".format((len(chunk)/(1024**2))/tdiff)
-                do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                t_speed = "{:^2.2f}".format((len(buff)/(1024**2))/t_elapsed)
+                if pb:
+                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
                 if len(buff) == total_size:
                     break
             else:
@@ -1139,12 +1172,17 @@ helparg = '''Mode:
             (Only the token will be visible; check this using wireshark)
             (This needs upysecrets.py)
 
-- cryp_wrepl: To enter the terminal CrypWebREPL a E2EE terminal;
+- crypto_wrepl: To enter the terminal CryptoWebREPL a E2EE wrepl/shell terminal;
              CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
              To see more keybindings info do CTRL-k. By default resets after exit,
              use -rkey option to refresh the WebREPL password with a new random password,
              after exit.This passowrd will be stored in the working directory or in global directory with
              -g option. (This mode needs upysecrets.py)
+- upy: to acces crypto_wrepl in a 'ssh' style command to be used like e.g.:
+      "upydev upy@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
+       needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
+       The device can be accesed as "upydev upy@foo_device" or redirect any command as e.g.
+       "upydev ping -@foo_device"
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
@@ -1181,12 +1219,12 @@ upy Commands:
 - netinfo : for upy device network info if station is enabled and connected to an AP
 - netinfot : same as netinfo but in table format
 - netscan : for upy device network scan
-- netstat_on : for enable STA
-- netstat_off : for disable STA
-- netstat_conn : for connect to an AP , must provide essid and password (see -wp)
+- netstat_on : to enable STA
+- netstat_off : to disable STA
+- netstat_conn : to connect to an AP , must provide essid and password (see -wp)
 - netstat : STA state ; returns True if enabled, False if disabled
-- ap_on : for enable AP
-- ap_off : for disable AP
+- ap_on : to enable AP
+- ap_off : to disable AP
 - apstat : AP state ; returns True if enabled, False if disabled
 - apconfig : AP configuration of essid and password with authmode WPA/WPA2/PSK,
             (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
@@ -1380,16 +1418,18 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
-                 'debug', 'gen_rsakey', 'rf_wrkey', 'cryp_wrepl', 'upy']
+                 'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy']
 
+help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
-                                 usage=usag)
+                                 usage=usag, prefix_chars='-')
 parser.version = '0.1.7'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
+parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
 parser.add_argument("-p", help='password', required=False)
 parser.add_argument("-f", help='script or file name', required=False)
 parser.add_argument(
@@ -1483,6 +1523,8 @@ parser.add_argument('-rkey', help='To refresh password after WebREPL disconnecti
                     required=False, default=False, action='store_true')
 parser.add_argument('-localkey_id', help='To refresh password manually of a current WebREPL connection',
                     required=False)
+parser.add_argument('-nem', help='To initiate CryptoWebREPL in unencrypted mode only',
+                    required=False, default=False, action='store_true')
 parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
                     default=0)
 parser.add_argument('-imu', help='to select the imu library',
@@ -1531,6 +1573,7 @@ args = parser.parse_args()
 
 
 def put_f(ip, passwd, rst=None, abs_path=False):
+    dev = W_UPYDEVICE(ip, passwd)
     source = ''
     if args.s == 'sd':
         source = args.s + '/'
@@ -1545,15 +1588,14 @@ def put_f(ip, passwd, rst=None, abs_path=False):
     print('Uploading file {}...'.format(file_in_upy))
     copyfile_str = 'upytool {} {}:/{}{} -p {}'.format(
         file, host, source, file_in_upy, passwd)
-    reset_str = 'upycmd -c "{}" -t {} -p {}'.format('D', host, passwd)
-    run_command_rt(copyfile_str)
+    # reset_str = 'upycmd -c "{}" -t {} -p {}'.format('D', host, passwd)
+    subprocess.call(shlex.split(copyfile_str))
 
     print('File Uploaded!')
     time.sleep(3)
     if rst is None:
         print('Rebooting upy device...')
-        command = shlex.split(reset_str)
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        dev.reset(output=False)
         print('Done!')
     else:
         pass
@@ -1646,7 +1688,8 @@ def get_f(ip, passwd, id_file='', check_file=True):
             copyfile_str = 'upytool -p {} {}:{} .{}'.format(
                 passwd, target, file_to_get, id_file)
 
-            run_command_rt(copyfile_str)
+            subprocess.call(shlex.split(copyfile_str))
+            print('Done!')
         else:
             if dir == 'root':
                 print('File Not found in upy device {} directory'.format(dir))
@@ -1664,16 +1707,16 @@ def get_f(ip, passwd, id_file='', check_file=True):
 def get_files_list(ip, passwd):
     if args.s is None and args.dir is None:
         print('Looking for file in upy device root dir')
-        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip, passwd)
+        cmd_str = 'upycmd_r -c "[file for file in uos.listdir() if not(uos.stat(file)[0] & 0x4000)]" -t {} -p {}'.format(ip, passwd)
         dir = 'root'
     if args.s == 'sd':
         print('Looking in SD memory...')
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+        cmd_str = 'upycmd_r -c "[file for file in uos.listdir({}) if not(uos.stat(file)[0] & 0x4000)]" -t {} -p {}'.format(
             str("'/sd'"), ip, passwd)
         dir = '/sd'
     if args.dir is not None:
         print('Looking for file in upy device {} dir'.format(args.dir))
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
+        cmd_str = 'upycmd_r -c "[file for file in uos.listdir({}) if not(uos.stat(file)[0] & 0x4000)]" -t {} -p {}'.format(
             "'/{}'".format(args.dir), ip, passwd)
         dir = '/{}'.format(args.dir)
 
@@ -2008,11 +2051,12 @@ def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
         d_sync_recursive(dir_, dev, root)
 
     if directory == root_sync_folder:
-        print('Rebooting now...')
         print('Done in : {:.2f} seconds'.format(time.time()-t0))
         # reset(args.t, args.p)
-        time.sleep(2)
-        dev.d.reset()
+        if args.rst is None:
+            print('Rebooting now...')
+            time.sleep(2)
+            dev.d.reset()
 
 
 def ping(ip):
@@ -3196,7 +3240,9 @@ def update_upyutils(ip, passwd):
     upynotify = '{}/upynotify.py'.format(upydev.__path__[0]+'/upyutils_dir')
     # upysecrets.py
     upysecrets = '{}/upysecrets.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    args.fre = [sync_tool, upylog, upynotify, upysecrets]
+    # upysh2.py
+    upysh2 = '{}/upysh2.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    args.fre = [sync_tool, upylog, upynotify, upysecrets, upysh2]
     args.dir = 'lib'
     put_multiple_f(ip=ip, passwd=passwd)
 
@@ -3284,23 +3330,45 @@ def refresh_wrkey(ip, passwd):
 #############################################
 def cryp_wrepl(ip, passwd, usr=None):
     if not args.rkey:
-        if usr is not None:
-            crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r -dev {}'.format(ip, passwd, usr)
+        if not args.nem:
+            if usr is not None:
+                crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r -dev {}'.format(ip, passwd, usr)
+            else:
+                crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r'.format(ip, passwd)
+            crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
+            clean_exit = False
+            while not clean_exit:
+                try:
+                    crypweb_repl = subprocess.call(crypweb_repl_cmd)
+                    clean_exit = True
+                except KeyboardInterrupt:
+                    print('KeyboardInterrupt!')
+                    print('Reinitiating CryptoWebREPL...')
+                    crypweb_repl_cmd = crypweb_repl_cmd + ' -ping'
+                    time.sleep(7)
+                except Exception as e:
+                    print('Reinitiating CryptoWebREPL...')
+                    time.sleep(5)
         else:
-            crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r'.format(ip, passwd)
-        crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
-        clean_exit = False
-        while not clean_exit:
-            try:
-                crypweb_repl = subprocess.call(crypweb_repl_cmd)
-                clean_exit = True
-            except KeyboardInterrupt:
-                print('KeyboardInterrupt!')
-                print('Reinitiating CrypWebREPL...')
-                time.sleep(10)
-            except Exception as e:
-                print('Reinitiating CrypWebREPL...')
-                time.sleep(5)
+            if usr is not None:
+                crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -dev {} -nem'.format(ip, passwd, usr)
+            else:
+                crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -nem'.format(ip, passwd)
+            crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
+            clean_exit = False
+            while not clean_exit:
+                try:
+                    crypweb_repl = subprocess.call(crypweb_repl_cmd)
+                    clean_exit = True
+                except KeyboardInterrupt:
+                    print('KeyboardInterrupt!')
+                    print('Reinitiating CryptoWebREPL...')
+                    crypweb_repl_cmd = crypweb_repl_cmd + ' -ping'
+                    time.sleep(7)
+                except Exception as e:
+                    print('Reinitiating CryptoWebREPL...')
+                    time.sleep(5)
+
     if args.rkey:
         if usr is not None:
             crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -dev {}'.format(ip, passwd, usr)
@@ -3316,6 +3384,28 @@ def cryp_wrepl(ip, passwd, usr=None):
         refresh_wrkey(ip, passwd)
         sys.exit()
 
+
+#############################################
+
+
+def address_entry_point(entry_point, group_file=''):
+    if group_file == '':
+        group_file = 'UPY_G'
+    # print(group_file)
+    if '{}.config'.format(group_file) not in os.listdir() or args.g:
+        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
+    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+        devices = json.loads(group.read())
+        # print(devices)
+    devs = devices.keys()
+    # NAME ENTRY POINT
+    if entry_point in devs:
+        dev_ip = devices[entry_point][0]
+        dev_pass = devices[entry_point][1]
+        return (dev_ip, dev_pass)
+    else:
+        print('Device not configurated in global group: {}'.format(group_file))
+        sys.exit()
 #############################################
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
@@ -3492,6 +3582,14 @@ if args.t is None:
             upy_conf = json.loads(config_file.read())
         args.t = upy_conf['ip']
         args.p = upy_conf['passwd']
+        # @ ENTRY POINT
+        if args.b is not None:
+            if "@" in args.b:
+                gf, entryp = args.b.split('@')
+                args.t, args.p = address_entry_point(entryp, gf)
+        if vars(args)['@'] is not None:
+                entryp = vars(args)['@']
+                args.t, args.p = address_entry_point(entryp)
         if args.apmd:
             args.t = '192.168.4.1'
         if args.st:
@@ -4177,7 +4275,7 @@ elif args.m == 'rf_wrkey':
     sys.exit()
 
 # CRYP_WREPL
-elif args.m == 'cryp_wrepl':
+elif args.m == 'crypto_wrepl':
     cryp_wrepl(args.t, args.p)
 
 # MAKE AN DIRECT ENTRY WITH @ FORMAT
@@ -4195,18 +4293,28 @@ elif args.m == 'upy':
     if entry_point in devs:
         dev_ip = devices[entry_point][0]
         dev_pass = devices[entry_point][1]
-        cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
+        try:
+            cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
+        except Exception as e:
+            print('PASSWORD INVALID or DEVICE NOT REACHABLE')
     else:
         # get dev by ip
         which_dev = [devices[dev][1] for dev in devs if devices[dev][0] == entry_point ]
         if len(which_dev) > 0:
             dev_ip = entry_point
             dev_pass = which_dev[0]
-            cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
+            try:
+                cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
+            except Exception as e:
+                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
         else:
             print('Device Not configurated PASSWORD NEEDED')
             my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
-            cryp_wrepl(entry_point, my_p, usr=entry_point)
+            try:
+                cryp_wrepl(entry_point, my_p, usr=entry_point)
+            except Exception as e:
+                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
+
 
 # MAKE_GROUP
 elif args.m == 'make_group':
