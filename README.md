@@ -1,4 +1,8 @@
+
+
 <img align="right" width="100" height="100" src="uPydevlogo.png">
+
+
 
 # uPydev
 
@@ -54,6 +58,8 @@ Python modules (automatically installed using pip):
 [netifaces](https://github.com/al45tair/netifaces)
 
 [requests](https://requests.kennethreitz.org/en/master/)
+
+[cryptography]()
 
 [upydevice](https://github.com/Carglglz/upydevice)
 
@@ -113,6 +119,65 @@ In CLI do :
   `$ upydev config -t 192.168.1.58 -p mypass -g `
 
  *upydev will use local working directory configuration unless it does not find any or manually indicated with -g option.*
+
+**Make a global group of uPy devices named "UPY_G" to enable redirection to a specific device:**  ** (**New in version 0.1.7**)
+
+Make a global group named "UPY_G" of devices, so next time any command can be redirected to any device within the group:
+
+Example:
+
+`$ upydev make_group -g -f UPY_G -devs esp_room1 192.168.1.42 mypass esp_room2 192.168.1.54 mypass2`
+
+To see the devices saved in this global group do:
+
+```
+$ upydev see -G UPY_G -g
+GROUP NAME: UPY_G
+# DEVICES: 2
+DEVICE NAME: esp_room1, IP: 192.168.1.42
+DEVICE NAME: esp_room2, IP: 192.168.1.54
+```
+
+*To add or remove devices from this group use "mg_group" command (see uPydev Mode/Tools)*
+
+Now any command can be redirected to one of these devices with the "-@" option:
+
+```
+$ upydev info -@ esp_room1
+SYSTEM NAME: esp32
+NODE NAME: esp32
+RELEASE: 1.12.0
+VERSION: v1.12 on 2019-12-20
+MACHINE: ESP32 module with ESP32
+```
+
+*Option "-@" has autocompletion on tab so hit tab and see what devices are available*
+
+***New in version 0.1.7: Mode 'crypto_wrepl', a repl/shell with encryption mode** (*experimental)
+
+The idea behind this mode is to try to mimic a SSH protocol. (But right now although encryption works this doesn't mean it is secure. )
+
+(This mode needs upysh in the device, so if it is not already installed or it's not included in the frozen modules do: `$ upydev install -f upysh`)
+
+How to use it:
+
+* TLDR: To test the functionality of this mode **without encryption** do:
+
+  `$ upydev crypto_wrepl -nem`
+
+* With **Encryption mode**: This needs some configuration before (which is basically generate an RSA private key and pass it to the device). Follow [this instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/crypto_wrepl_docs.md) to do this.
+
+  After the configuration is done, to use this mode do:
+
+  `$ upydev crypto_wrepl` 
+
+  Or if there is already a global "UPY_G" named group, any device can be accessed with this mode using:
+
+  e.g.:
+
+  `$ upydev upy@esp_room1`  or `$ upydev upy@192.168.1.42` 
+
+  ![](https://github.com/Carglglz/upydev/tree/master/DOCS/CryptoWebREPL_demo.gif)
 
 ------
 
@@ -228,6 +293,14 @@ Example: Raw commands
 * **update_upyutils**: to update the last versions of sync_tool.py, upylog.py and upynotify.py (these are uploaded to the '/lib' folder of the upydevice)
 
 * **debug**: to execute a local script line by line in the target upydevice, use -f option to indicate the file. To enter next line press ENTER, to finish PRESS C then ENTER. To break a while loop do CTRL+C.
+
+* **gen_rsakey:** To generate RSA-2048 bit key that will be shared with the device (it is unique for each device) use -tfkey to send this key to the device (use only if connected directly to the AP of the device or a "secure" wifi e.g. local/home). If not connected to a "secure" wifi upload the key (it is stored in upydev.\__path__) by USB/Serial connection.
+
+* **rf_wrkey:** To "refresh" the WebREPL password with a new random password derivated from the RSA key previously generated. A token then is sent to the device to generate the same password from the RSA key previously uploaded. This won't leave any clues in the TCP Websocekts packages of the current WebREPL password. (Only the token will be visible; check this using wireshark)  (This needs upysecrets.py)
+
+* **crypto_wrepl**:To enter the terminal CryptoWebREPL a E2EE wrepl/shell terminal; CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default) To see more keybindings info do CTRL-k. By default resets after exit, use -rkey option to refresh the WebREPL password with a new random password, after exit. This passowrd will be stored in the working directory or in global directory with -g option. (This mode needs upysecrets.py)
+
+* **upy:** to acces crypto_wrepl in a 'ssh' style command to be used like e.g.: "upydev upy@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass") The device can be accesed as "upydev upy@foo_device" or redirect any command as e.g. "upydev ping -@foo_device"
 
 * **make_group**: to make a group of boards to send commands to. Use -f for the name of the group 
 
@@ -414,4 +487,4 @@ For more info see [upyutils_docs](https://github.com/Carglglz/upydev/blob/master
 
   In a terminal window open a 'serial repl' with `upydev srepl --port /dev/tty.[USBPORT]` command
 
-  In another window use upydev normally. Now in the terminal window with the serial repl you can see what commands are sent.
+  In another window use upydev normally. Now in the terminal window with the serial repl you can see which commands are sent.
