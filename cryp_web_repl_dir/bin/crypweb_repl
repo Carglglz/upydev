@@ -9,10 +9,13 @@ import upydev
 import time
 import sys
 import os
+import netifaces
+import nmap
 import subprocess
 import shlex
 import argparse
 from datetime import datetime, date
+from sys import platform as _platform
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
@@ -366,7 +369,8 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'crypto_buffsize', 'apscan', 'touch', 'edit', 'wrepl',
                     'whoami', 'exit', 'pwdl', 'lsl', 'cdl', 'put', 'get',
                     'catl', 'l_micropython', 'ls', 'python', 'vim',
-                    'set_localtime', 'tree', 'sync', 'd_sync']
+                    'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
+                    'l_ifconfig_t', 'lsof']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -464,6 +468,10 @@ shell_commands_info = """
     - l_micropython: if "micropython" local machine version available in $PATH, runs it.
     - python : switch to local python3 repl
     - vim    : to edit a local file with vim  (e.g. vim script.py)
+    - l_ifconfig: to see local machine STATION interface configuration (IP, SUBNET, GATEAWAY, DNS)
+    - l_ifconfig_t: to see local machine STATION interface configuration in table format
+                  (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
+    - lsof : to scan TCP ports of the device (TCP ports 1-10000)
 
 
 """
@@ -634,7 +642,7 @@ def custom_sh_cmd(cmd_inp):
             scan = send_custom_sh_cmd("network.WLAN(network.STA_IF).scan()")
             print('=' * 110)
             print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                'SSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
+                'SSID', 'BSSID', 'CHANNEL', 'RSSI', 'AUTHMODE', 'HIDDEN'))
 
             for netscan in scan:
                 auth = AUTHMODE_DICT[netscan[4]]
@@ -770,7 +778,7 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp.split(' ')[0] == 'wrepl':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
         print('<-- Device {} MicroPython -->'.format(dev_platform))
-        print('Use CTRL-x to exit, Use CTRL-k to see custom wrepl Keybdings')
+        print('Use CTRL-x to exit, Use CTRL-k to see custom wrepl Keybindings')
         espdev.close_wconn()
         web_repl_cmd_str = 'web_repl {} -p {}'.format(args.t, args.p)
         web_repl_cmd = shlex.split(web_repl_cmd_str)
@@ -1043,6 +1051,53 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'tree':
         send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
+
+    if cmd_inp == 'l_ifconfig':
+        ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]
+        gateaway = list(netifaces.gateways()['default'].values())[0][0]
+        print("('{}', '{}', '{}', '{}')".format(ifconfig_local['addr'],
+                                                ifconfig_local['netmask'],
+                                                gateaway,
+                                                ifconfig_local['broadcast']))
+
+    if cmd_inp == 'l_ifconfig_t':
+        if _platform == "linux" or _platform == "linux2":
+            # linux
+            return ''
+        elif _platform == "darwin":
+            # MAC OS X
+            scanoutput = subprocess.check_output(["airport", "-I"])
+            wifi_info = [data.strip()
+                         for data in scanoutput.decode('utf-8').split('\n')]
+            wifi_info_dic = {data.split(':')[0]: data.split(
+                ':')[1].strip() for data in wifi_info[:-1]}
+        ssid = wifi_info_dic['SSID']
+        rssi = wifi_info_dic['agrCtlRSSI']
+        ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]
+        gateaway = list(netifaces.gateways()['default'].values())[0][0]
+        print('=' * 106)
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
+            'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'SSID', 'RSSI'))
+        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(ifconfig_local['addr'],
+                                                                                  ifconfig_local['netmask'],
+                                                                                  gateaway,
+                                                                                  ifconfig_local['broadcast'],
+                                                                                  ssid,
+                                                                                  rssi))
+    if cmd_inp == 'lsof':
+        nm_scan = nmap.PortScanner()
+        print('Scanning TCP ports...')
+        nm_scan.scan(hosts=args.t, arguments='-p 1-10000')
+        result = nm_scan[args.t]['tcp']
+        ports = list(result.keys())
+        print('Found {} open port/s'.format(len(ports)))
+        print('{0:8}  {1:^15}  {2:^15} '.format(
+            'PORT', 'STATE', 'SERVICE'))
+        for port in ports:
+            print('{0:<8}  {1:^15}  {2:^15} '.format(port,
+                                                         result[port]['state'],
+                                                         result[port]['name']))
+
 
     if cmd_inp == 'exit':
         print('closing...')

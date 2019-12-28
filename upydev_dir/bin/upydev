@@ -1426,7 +1426,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = '0.1.7'
+parser.version = '0.1.8'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
@@ -4292,6 +4292,8 @@ elif args.m == 'upy':
     # NAME ENTRY POINT
     if entry_point in devs:
         dev_ip = devices[entry_point][0]
+        if args.apmd:
+            dev_ip = '192.168.4.1'
         dev_pass = devices[entry_point][1]
         try:
             cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
