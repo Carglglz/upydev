@@ -47,6 +47,6 @@ setup(name='upydev',
                'dbg_wrepl_cmd_dir/bin/dbg_wrepl',
                'cryp_web_repl_dir/bin/crypweb_repl'],
       include_package_data=True,
-      install_requires=['argcomplete', 'mpy-cross', 'esptool', 'prompt_toolkit',
+      install_requires=['websocket-client', 'argcomplete', 'mpy-cross', 'esptool', 'prompt_toolkit',
                         'python-nmap', 'netifaces', 'requests', 'cryptography',
                         'upydevice'])

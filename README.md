@@ -59,7 +59,9 @@ Python modules (automatically installed using pip):
 
 [requests](https://requests.kennethreitz.org/en/master/)
 
-[cryptography]()
+[cryptography](https://github.com/pyca/cryptography)
+
+[websocket-client](https://github.com/websocket-client/websocket-client)
 
 [upydevice](https://github.com/Carglglz/upydevice)
 
