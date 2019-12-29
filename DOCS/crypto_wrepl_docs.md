@@ -107,6 +107,8 @@ The repl mode has some limitations:
 
 - In both encrypted and unencrypted modes CTRL-C cannot be use to break an infinite loop.
 
+- To define a function/class or make a loop use the paste mode. (CTRL-E)
+
   *However the original WebREPL Terminal can be accesed from shell with 'wrepl' command*
 
   e.g.
@@ -131,22 +133,40 @@ The repl mode has some limitations:
 
 Custom keybindings:
 - CTRL-x : to exit CryptoWebREPL Terminal
+
 - CTRL-u : toggle encryption mode (on/off), this prints a right aligned status message
+
 - CTRL-p : toggle encryption right aligned status message
+
 - CTRL-e : paste mode in repl, (edit mode after 'edit' shell command)
+
 - CTRL-d : ends paste mode in repl, (ends edit mode after 'edit' shell command)
+
 - CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
+
 - CTRL-r : to flush line buffer
+
 - CTRL-o : to list files in cwd (ls shorcut command)
+
 - CTRL-n : shows mem_info()
+
 - CTRL-y : gc.collect() shortcut command
+
 - CTRL-space : repeats last command
+
 - CTRL-t : runs test_code.py if present
+
 - CTRL-w : flush test_code from sys modules, so it can be run again
+
 - CTRL-a : set cursor position at the beggining
+
 - CTRL-f : toggle autosuggest mode (Fish shell like)
+
 - CRTL-s , ENTER : toggle shell mode to navigate filesystem (see shell commands)
+
 - CTRL-k : prints the custom keybindings (this list) (+ shell commands if in shell mode)
+
+  
 * Autocompletion commands:
      - tab to autocomplete device file / dirs names / raw micropython (repl commands)
      - shift-tab to autocomplete shell comands
@@ -188,11 +208,12 @@ Custom keybindings:
         - sync   : to get file (faster) from the device (use with > 10 KB files)
         - d_sync: to recursively sync a local directory with the device filesystem
         - wrepl  : to enter the original WebREPL terminal (no encryption mode)
+        - reload : to delete a module from sys.path so it can be imported again.
         - exit   : to exit CryptoWebREPL Terminal
         - crypto_buffsize: to see buffer size of the device 'cryptographer'
                           or set it in case it is too small
-                      (default 2048 bytes, e.g. increase to 4096) (crypto_buffsize 4096)
-    
+                          (default 2048 bytes, e.g. increase to 4096) (crypto_buffsize 4096)
+
 * Local shell commands:
     - pwdl   : to see local path
     - cdl    : to change local directory
@@ -201,8 +222,12 @@ Custom keybindings:
     - l_micropython: if "micropython" local machine version available in $PATH, runs it.
     - python : switch to local python3 repl
     - vim    : to edit a local file with vim  (e.g. vim script.py)
-
-
+    - l_ifconfig: to see local machine STATION interface configuration (IP, SUBNET, GATEAWAY, DNS)
+    - l_ifconfig_t: to see local machine STATION interface configuration in table format
+                  (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
+    - lsof : to scan TCP ports of the device (TCP ports 1-10000)
+    - docs : to open MicroPython docs site in the default web browser, if a second term
+            is passed e.g. 'docs machine' it will open the docs site and search for 'machine'
 
 Some examples of these commands:
 
