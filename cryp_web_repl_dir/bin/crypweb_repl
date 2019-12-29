@@ -13,6 +13,7 @@ import netifaces
 import nmap
 import subprocess
 import shlex
+import webbrowser
 import argparse
 from datetime import datetime, date
 from sys import platform as _platform
@@ -370,7 +371,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'whoami', 'exit', 'pwdl', 'lsl', 'cdl', 'put', 'get',
                     'catl', 'l_micropython', 'ls', 'python', 'vim',
                     'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
-                    'l_ifconfig_t', 'lsof']
+                    'l_ifconfig_t', 'lsof', 'reload', 'docs']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -455,6 +456,7 @@ shell_commands_info = """
         - sync   : to get file (faster) from the device (use with > 10 KB files)
         - d_sync: to recursively sync a local directory with the device filesystem
         - wrepl  : to enter the original WebREPL terminal (no encryption mode)
+        - reload : to delete a module from sys.path so it can be imported again.
         - exit   : to exit CryptoWebREPL Terminal
         - crypto_buffsize: to see buffer size of the device 'cryptographer'
                           or set it in case it is too small
@@ -472,6 +474,8 @@ shell_commands_info = """
     - l_ifconfig_t: to see local machine STATION interface configuration in table format
                   (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
     - lsof : to scan TCP ports of the device (TCP ports 1-10000)
+    - docs : to open MicroPython docs site in the default web browser, if a second term
+            is passed e.g. 'docs machine' it will open the docs site and search for 'machine'
 
 
 """
@@ -582,9 +586,9 @@ def custom_sh_cmd(cmd_inp):
                                                                    'Size', 'Used',
                                                                    'Avail',
                                                                    'Use%', 'Mounted on']))
-        print('{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:>6}'.format('Flash', total_mem,
+        print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format('Flash', total_mem,
                                                                 used_mem, free_mem,
-                                                                "{:.1f} %".format((used_b/total_b)*100), '/'))
+                                                                "{:.1f} %".format((used_b/total_b)*100), ' ', '/'))
         vfs_resp = send_custom_sh_cmd("{dir:uos.statvfs(dir) for dir in uos.listdir() if uos.stat(dir)[0] & 0x4000}")
         for vfs in vfs_resp.keys():
             if vfs_resp[vfs] != resp:
@@ -595,9 +599,9 @@ def custom_sh_cmd(cmd_inp):
                 total_mem_sd = print_filesys_info(total_b_sd)
                 free_mem_sd = print_filesys_info(size_info_sd[0] * size_info_sd[3])
                 used_mem_sd = print_filesys_info(used_b_sd)
-                print('{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:>6}'.format(vfs, total_mem_sd,
+                print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(vfs, total_mem_sd,
                                                                         used_mem_sd, free_mem_sd,
-                                                                        "{:.1f} %".format((used_b_sd/total_b_sd)*100), '/{}'.format(vfs)))
+                                                                        "{:.1f} %".format((used_b_sd/total_b_sd)*100), ' ', '/{}'.format(vfs)))
 
     if cmd_inp == 'datetime':
         send_custom_sh_cmd("import time;tnow=time.localtime()")
@@ -733,7 +737,7 @@ def custom_sh_cmd(cmd_inp):
         used_mem_s = "{:.3f} KB".format(used_mem)
         free_mem_s = "{:.3f} KB".format(free_mem)
 
-        print('{0:12}{1:^12}{2:^12}{3:^12}{4:^12}'.format('RAM', total_mem_s,
+        print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
                                                           used_mem_s, free_mem_s,
                                                           "{:.1f} %".format((used_mem/total_mem)*100)))
 
@@ -1098,13 +1102,36 @@ def custom_sh_cmd(cmd_inp):
                                                          result[port]['state'],
                                                          result[port]['name']))
 
+    if cmd_inp.split(' ')[0] == 'reload':
+        try:
+            module = cmd_inp.split(' ')[1]
+        except Exception as e:
+            print('Indicate a module to reload')
+        espdev.output = None
+        reload_cmd = "import sys;del(sys.modules['{}']);gc.collect()".format(module)
+        if not encrypted_flag['sec']:
+            espdev.wr_cmd(reload_cmd)
+        else:
+            h_cp.crepl(reload_cmd)
+        if espdev.output is not None:
+            print(espdev.output)
+
+    if cmd_inp.split(' ')[0] == 'docs':
+        if len(cmd_inp.split(' ')) > 1:
+            key_word = cmd_inp.split(' ')[1]
+            search = 'http://docs.micropython.org/en/latest/search.html?q={}&check_keywords=yes&area=default'.format(key_word)
+            webbrowser.open(search)
+        else:
+            webbrowser.open('http://docs.micropython.org/en/latest/')
 
     if cmd_inp == 'exit':
         print('closing...')
         espdev.close_wconn()
-        time.sleep(0.5)
+        # time.sleep(0.5)
         if reset_flag['R']:
-            espdev.reset()
+            print('Rebooting device...')
+            espdev.reset(output=False)
+            print('Done!')
         exit_flag['exit'] = True
 
 
@@ -1118,11 +1145,16 @@ def autosuggest_is_on():
 @kb.add('c-x')
 def exitpress(event):
     " Exit CryptoWebREPL terminal "
-    print('\n>>> closing...')
+    if shell_mode['S']:
+        print('\nclosing...')
+    else:
+        print('\n>>> closing...')
     espdev.close_wconn()
-    time.sleep(0.5)
+    # time.sleep(0.5)
     if reset_flag['R']:
-        espdev.reset()
+        print('Rebooting device...')
+        espdev.reset(output=False)
+        print('Done!')
     exit_flag['exit'] = True
     event.app.exit()
 
@@ -1320,10 +1352,10 @@ def send_KBI(event):
             print('Stopping {}...'.format(script_is_running['script']))
             stop_by_pid(proc_name='web_repl_cmd_r')
             espdev.kbi(output=False)
-            time.sleep(1)
+            # time.sleep(1)
             espdev.open_wconn()
-            time.sleep(0.5)
-            reload = "import sys;del(sys.modules['{}']);[1]".format(
+            # time.sleep(0.5)
+            reload = "import sys;del(sys.modules['{}'])".format(
                 script_is_running['script'])
             espdev.wr_cmd(reload, silent=True)
             print('Done!')
@@ -1407,9 +1439,14 @@ def paste_mode_exit(event):
             if buff_text is not None and buff_text != '':
                 # espdev.wr_cmd("cp.gbls = globals()", silent=True)
                 if not encrypted_flag['sec']:
-                    block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
+                    # block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
+                    # espdev.wr_cmd(block_commad)
                     # print(block_commad.splitlines())
-                    espdev.wr_cmd(block_commad)
+                    espdev._wconn.child.sendline('E')
+                    espdev._wconn.child.sendline(buff_text)
+                    # espdev._wconn.child.sendline('D')
+                    espdev.wr_cmd('D')
+
                 else:
                     espdev.wr_cmd("cp.gbls = globals()", silent=True)
                     h_cp.crepl(buff_text)
@@ -1938,6 +1975,7 @@ while repl:
                             espdev.close_wconn()
                             time.sleep(0.2)
                             espdev.cmd_nb(inp)
+
                         else:
                             if not encrypted_flag['sec']:
                                 if frst_cmd != 'cat':

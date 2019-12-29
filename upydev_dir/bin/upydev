@@ -134,7 +134,6 @@ class DisplayablePath(object):
     def _default_criteria(cls, path):
         return True
 
-
     def displayable(self):
         if self.parent is None:
             return self.displayname
@@ -194,11 +193,14 @@ def see_global_devs():
     # # ) if '.config' in group_file and group_file not in 'upydev_.config']
     # globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
     #     upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
-    with open('{}/UPY_G.config'.format(upydev.__path__[0]), 'r', encoding='utf-8') as group:
-        devices = json.loads(group.read())
-        # print(devices)
-    devs = list(devices.keys())
-    return devs
+    try:
+        with open('{}/UPY_G.config'.format(upydev.__path__[0]), 'r', encoding='utf-8') as group:
+            devices = json.loads(group.read())
+            # print(devices)
+        devs = list(devices.keys())
+        return devs
+    except Exception as e:
+        return []
 
 
 def run_command_rl(command):
@@ -453,7 +455,6 @@ def stream_test(dev, mode='download'):
         dt = (time.time()-t0)-soc_timeout
         conn.close()
         return (data_chunk, dt)
-
 
 
 def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
