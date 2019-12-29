@@ -49,4 +49,4 @@ setup(name='upydev',
       include_package_data=True,
       install_requires=['websocket-client', 'argcomplete', 'mpy-cross', 'esptool', 'prompt_toolkit',
                         'python-nmap', 'netifaces', 'requests', 'cryptography',
-                        'upydevice'])
+                        'upydevice>=0.1.4'])
