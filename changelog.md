@@ -4,14 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.8] Unreleased [Github Repo]
+## [0.1.9] Unreleased [Github Repo]
+## [0.1.8] - 2019-12-29
 ### Added
-- New shell local commands ('lsof', 'l_ifconfig', 'l_ifconfig_t') (last one works only on MacOS, linux pending...). Network utilities
-- New shell local command 'docs' to open MicroPython Docs site in browser
-- New shell local command 'reload' to delete a module/script from sys.path so it can be imported/run again
+- New CryptoWebREPL shell local commands ('lsof', 'l_ifconfig', 'l_ifconfig_t') (last one works only on MacOS, linux pending...). Network utilities
+- New CryptoWebREPL shell local command 'docs' to open MicroPython Docs site in browser
+- New CryptoWebREPL shell local command 'reload' to delete a module/script from sys.path so it can be imported/run again
 ### Fix
 - Paste mode in unencrypted mode
 - Fix -h command error if there is no 'UPY_G.config' global group file
+- Installation dependencies
 ## [0.1.7] - 2019-12-24
 ### Added
 - Mode to generate RSA private key, and send it to the device ('gen_rsakey')
