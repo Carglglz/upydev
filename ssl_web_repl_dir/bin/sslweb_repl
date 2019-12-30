@@ -210,14 +210,21 @@ class SSL_REPL_server:
                 self.port += 1
         self.serv_soc.listen(1)
         self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        self.context.load_cert_chain(keyfile=self.key, certfile=self.cert)
+        while True:
+            try:
+                my_p = getpass.getpass(prompt="Enter passphrase for key 'SSL_key.pem':", stream=None)
+                self.context.load_cert_chain(keyfile=self.key, certfile=self.cert,
+                                             password=my_p)
+                break
+            except ssl.SSLError as e:
+                print('Passphrase incorrect, try again...')
+
         # self.context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
-        self.context.set_ciphers('EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH')
-        self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}')".format(self.host))
+        self.context.set_ciphers('EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:AES256+SHA256')
+        self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
         self.conn, self.addr_client = self.serv_soc.accept()
         self.conn = self.context.wrap_socket(self.conn, server_side=True)
-        print('Connection received...')
-        print(self.addr_client)
+        print('SSLWebREPL connection from: {}'.format(self.addr_client))
         self.conn.settimeout(0)
 
     def flush(self):
@@ -375,7 +382,7 @@ ssl_key = upydev.__path__[0]+'/'+'SSL_key.pem'
 ssl_cert = upydev.__path__[0]+'/'+'SSL_certificate.pem'
 if not args.nem:
     ssl_cp = SSL_REPL_server(dev=espdev, key=ssl_key, cert=ssl_cert)
-print('Done!')
+# print('Done!')
 print('SSLWebREPL connected')
 if args.nem:
     print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
@@ -536,10 +543,7 @@ shell_commands_info = """
         - d_sync: to recursively sync a local directory with the device filesystem
         - wrepl  : to enter the original WebREPL terminal (no encryption mode)
         - reload : to delete a module from sys.path so it can be imported again.
-        - exit   : to exit CryptoWebREPL Terminal
-        - crypto_buffsize: to see buffer size of the device 'cryptographer'
-                          or set it in case it is too small
-                          (default 2048 bytes, e.g. increase to 4096) (crypto_buffsize 4096)
+        - exit   : to exit SSLWebREPL Terminal
 
 * Local shell commands:
     - pwdl   : to see local path

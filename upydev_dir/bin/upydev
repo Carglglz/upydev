@@ -39,6 +39,9 @@ from upydevice.phantom import UOS
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes
 
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
@@ -1035,7 +1038,9 @@ def lognow(filename, sensor):
 
 def rsa_keygen(dir='', store=True, show_key=False, id='00'):
     private_key = rsa.generate_private_key(
-        public_exponent=65537, key_size=2048, backend=default_backend())
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend())
     my_p = getpass.getpass(prompt='Password: ', stream=None)
     pem = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
                                     encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
@@ -1086,7 +1091,38 @@ def upy_keygen(rsa_key):
     return (password_short, random_token + bytes(index_key))
 
 
-# TODO: threaded command group --> parallel comand mode --> device class
+def ssl_rsa_key_certgen(dir='', store=True):
+    key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend())
+    my_p = getpass.getpass(prompt='Passphrase: ', stream=None)
+    pem = key.private_bytes(encoding=serialization.Encoding.PEM,
+                            format=serialization.PrivateFormat.TraditionalOpenSSL,
+                            encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
+
+    if store:
+        with open(dir+'SSL_key.pem', 'wb') as keyfile:
+            keyfile.write(pem)
+
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
+                                  x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
+                                  x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
+                                  x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"MicroPython"),
+                                  x509.NameAttribute(NameOID.COMMON_NAME, u"mysite.com")])
+    host_ip = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
+    cert = x509.CertificateBuilder().subject_name(
+                subject).issuer_name(issuer).public_key(key.public_key()
+                ).serial_number(x509.random_serial_number()
+                ).not_valid_before(datetime.utcnow()
+                ).not_valid_after(datetime.utcnow() + timedelta(days=365)
+                ).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
+                                                            x509.DNSName(u"{}".format(host_ip))]),
+                                                            critical=False
+                ).sign(key, hashes.SHA256(), default_backend())
+    if store:
+        with open(dir+'SSL_certificate.pem', 'wb') as certfile:
+            certfile.write(cert.public_bytes(serialization.Encoding.PEM))
 
 helparg = '''Mode:
 - config : to save upy device settings (see -p, -t, -g),
@@ -1184,6 +1220,16 @@ helparg = '''Mode:
        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
        The device can be accesed as "upydev upy@foo_device" or redirect any command as e.g.
        "upydev ping -@foo_device"
+
+- sslgen_rsakey: To generate RSA-2048 bit key and a self-signed certificate to enable SSL sockets
+               This needs a passphrase, that will be required every time the key is loaded.
+
+- ssl_wrepl: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal (SSL sockets);
+             CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
+             To see more keybindings info do CTRL-k. By default resets after exit,
+             use -rkey option to refresh the WebREPL password with a new random password,
+             after exit.This passowrd will be stored in the working directory or in global directory with
+             -g option. (This mode needs upysecrets.py, ssl_socket_client_server.py, ssl_repl.py)
 - ssl: to acces ssl_wrepl in a 'ssh' style command to be used like e.g.:
       "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
@@ -1425,7 +1471,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
-                 'ssl_wrepl', 'ssl']
+                 'sslgen_rsakey','ssl_wrepl', 'ssl']
 
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
@@ -3249,7 +3295,10 @@ def update_upyutils(ip, passwd):
     upysecrets = '{}/upysecrets.py'.format(upydev.__path__[0]+'/upyutils_dir')
     # upysh2.py
     upysh2 = '{}/upysh2.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    args.fre = [sync_tool, upylog, upynotify, upysecrets, upysh2]
+    # ssl_repl.py
+    ssl_repl = '{}/ssl_repl.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    args.fre = [sync_tool, upylog, upynotify, upysecrets, upysh2,
+                ssl_repl]
     args.dir = 'lib'
     put_multiple_f(ip=ip, passwd=passwd)
 
@@ -3392,6 +3441,12 @@ def cryp_wrepl(ip, passwd, usr=None):
         sys.exit()
 
 
+#############################################
+
+def get_ssl_rsa_keycert(ip, passwd):
+    print('Generating SSL RSA key and certificates...')
+    ssl_rsa_key_certgen(dir=upydev.__path__[0]+'/')
+    print('Done!')
 #############################################
 
 def ssl_wrepl(ip, passwd, usr=None):
@@ -4342,6 +4397,12 @@ elif args.m == 'rf_wrkey':
 # CRYP_WREPL
 elif args.m == 'crypto_wrepl':
     cryp_wrepl(args.t, args.p)
+
+# SSLGEN_RSAKEY
+
+elif args.m == 'sslgen_rsakey':
+    get_ssl_rsa_keycert(args.t, args.p)
+    sys.exit()
 
 # SSL_WREPL
 elif args.m == 'ssl_wrepl':
