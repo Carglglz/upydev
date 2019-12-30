@@ -8,6 +8,9 @@
 import socket
 import binascii
 import ssl
+import os
+import sys
+import time
 try:
     import network
 except Exception as e:
@@ -40,12 +43,12 @@ cert = binascii.unhexlify(
     b'979b57f0b3')
 
 
-class socket_client:
+class SSL_socket_client:
     """
     Socket client simple class
     """
 
-    def __init__(self, host, port, buff=1024):
+    def __init__(self, host, port=8443, buff=1024):
         self.cli_soc = None
         self.host = host
         self.port = port
@@ -53,10 +56,14 @@ class socket_client:
         self.cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.addr = socket.getaddrinfo(self.host, self.port)[0][-1]
         self.buff = bytearray(buff)
+        self.buff_size = buff
 
     def connect_SOC(self):
         self.cli_soc.connect(self.addr)
-        self.cli_soc.settimeout(1)
+        # self.cli_soc.settimeout(1)
+        self.cli_soc = ssl.wrap_socket(self.cli_soc)
+        self.cli_soc.setblocking(False)
+        # self.cli_soc.settimeout(1)
 
     def flush(self):
         flushed = 0
@@ -68,19 +75,82 @@ class socket_client:
                 print('flushed!')
 
     def send_message(self, message):
-        self.cli_soc.sendall(bytes(message, 'utf-8'))
+        self.cli_soc.write(bytes(message, 'utf-8'))
 
     def recv_message(self):
-        self.buff[:] = self.cli_soc.recv(len(self.buff))
-        print(self.buff.decode())
+        try:
+            self.buff[:] = self.cli_soc.read(self.buff_size)
+            print(self.buff.decode())
+        except Exception as e:
+            pass
 
 
-class socket_server:
+class SSL_socket_client_repl:
+    """
+    Socket client simple class repl
+    """
+
+    def __init__(self, host, port=8443, buff=1024, init=True):
+        self.cli_soc = None
+        self.host = host
+        self.port = port
+        self.cli_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.wrepl = None
+        self.cli_soc.setsockopt(socket.SOL_SOCKET, 20, os.dupterm_notify)
+        self.addr = socket.getaddrinfo(self.host, self.port)[0][-1]
+        self.buff = bytearray(buff)
+        self.buff_size = buff
+        if init:
+            print('>>> ')
+            time.sleep(2)
+            self.connect_SOC()
+
+    def connect_SOC(self):
+        self.cli_soc.connect(self.addr)
+        # self.cli_soc.settimeout(1)
+        self.cli_soc = ssl.wrap_socket(self.cli_soc)
+        self.cli_soc.setblocking(False)
+        # self.cli_soc.settimeout(1)
+        print('>>> ')
+        self.wrepl = os.dupterm(self.cli_soc, 0)
+
+    def flush(self):
+        flushed = 0
+        while flushed == 0:
+            try:
+                self.cli_soc.recv(128)
+            except Exception as e:
+                flushed = 1
+                print('flushed!')
+
+    def send_message(self, message):
+        self.cli_soc.write(bytes(message, 'utf-8'))
+
+    def recv_message(self):
+        try:
+            self.buff[:] = self.cli_soc.read(self.buff_size)
+            print(self.buff.decode())
+        except Exception as e:
+            pass
+
+    def switch_wrepl(self):
+        print('>>> ')
+        self.cli_soc = os.dupterm(self.wrepl, 0)
+        # print('WebREPL enabled!')
+
+    def switch_ssl_repl(self):
+        print('>>> ')
+        self.wrepl = os.dupterm(self.cli_soc, 0)
+        # print('SSL_REPL enabled!')
+
+
+class SSL_socket_server:
     """
     Socket server simple class
     """
 
-    def __init__(self, port, buff=1024, key=key, cert=cert, ssl=False):
+    def __init__(self, port=8443, buff=1024, key=key, cert=cert, ssl=True):
         try:
             self.host = network.WLAN(network.STA_IF).ifconfig()[0]
             print(self.host)
@@ -145,3 +215,168 @@ class socket_server:
     def recv_message(self):
         self.buff[:] = self.conn.recv(len(self.buff))
         print(self.buff.decode())
+
+
+class HOST_SSL_socket_client:
+    """
+    SSL HOST Socket client simple class
+    """
+
+    def __init__(self, host, port=8443, buff=1024):
+        self.cli_soc = None
+        self.host = host
+        self.port = port
+        # self.context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        self.context = ssl._create_unverified_context()
+        # self.context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+        self.cli_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.cli_soc = self.context.wrap_socket(self.cli_soc,
+                                                server_hostname=self.host)
+        print(self.cli_soc.version())
+        self.addr = socket.getaddrinfo(self.host, self.port)[0][-1]
+        self.buff = bytearray(buff)
+
+    def connect_SOC(self):
+        self.cli_soc.connect(self.addr)
+        self.cli_soc.settimeout(0)
+
+    def flush(self):
+        flushed = 0
+        while flushed == 0:
+            try:
+                self.cli_soc.recv(128)
+            except Exception as e:
+                flushed = 1
+                print('flushed!')
+
+    def send_message(self, message):
+        self.cli_soc.sendall(bytes(message, 'utf-8'))
+
+    def recv_message(self):
+        self.buff[:] = self.cli_soc.recv(len(self.buff))
+        print(self.buff.decode())
+
+
+class HOST_SSL_socket_server:
+    """
+    SSL HOST Socket server simple class
+    """
+
+    def __init__(self, port=8443, buff=1024, key='SSL_key.pem',
+                 cert='SSL_certificate.pem'):
+        try:
+            self.host = network.WLAN(network.STA_IF).ifconfig()[0]
+            print(self.host)
+        except Exception as e:
+            try:
+                self.host = self.find_localip()
+                print(self.host)
+            except Exception as e:
+                print(e)
+        self.host_ap = '192.168.4.1'
+        self.port = port
+        self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serv_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.addr = None
+        self.b_buff = bytearray(buff)
+        self.buff = b''
+        self.message = b''
+        self.prompt = b'>>> '
+        self.prompt_seen = True
+        self.conn = None
+        self.addr_client = None
+        self.output = None
+        self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        self.key = key
+        self.cert = cert
+
+    def find_localip(self):
+        ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ip_soc.connect(('8.8.8.8', 1))
+        local_ip = ip_soc.getsockname()[0]
+        ip_soc.close()
+        return local_ip
+
+    def start_SOC(self):
+        self.serv_soc.bind((self.host, self.port))
+        self.serv_soc.listen(1)
+        print('Server listening...')
+        self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        self.context.load_cert_chain(keyfile=self.key, certfile=self.cert)
+        # self.context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+        self.context.set_ciphers('EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH')
+        self.conn, self.addr_client = self.serv_soc.accept()
+        self.conn = self.context.wrap_socket(self.conn, server_side=True)
+        print('Connection received...')
+        print(self.addr_client)
+        self.conn.settimeout(0)
+
+    # def start_SOC_AP(self):
+    #     self.serv_soc.bind((self.host_ap, self.port))
+    #     self.serv_soc.listen(1)
+    #     print('Server listening...')
+    #     self.conn, self.addr_client = self.serv_soc.accept()
+    #     print('Connection received...')
+    #     print(self.addr_client)
+    #     self.conn.settimeout(1)
+
+    def flush(self):
+        flushed = 0
+        while flushed == 0:
+            try:
+                self.serv_soc.recv(128)
+            except Exception as e:
+                flushed = 1
+                print('flushed!')
+
+    def send_message(self, message):
+        self.conn.sendall(bytes(message, 'utf-8'))
+
+    def recv_message(self):
+        try:
+            self.buff = b''
+            self.buff += self.conn.recv()
+            print(self.buff.decode())
+        except Exception as e:
+            if self.buff.decode() == '':
+                pass
+            else:
+                print(self.buff.decode())
+            pass
+
+    def ssl_repl(self, inp, just_recv=False):
+        self.buff = b''
+        if not just_recv:
+            self.send_message(inp+'\r')
+        # WAIT TILL DATA AVAILABLE
+        # CATCH PROMPT
+        while True:
+            try:
+                self.message = self.conn.recv()
+                # print('DATA RECEIVED: ', self.message)
+                break
+            except Exception as e:
+                pass
+        # CATCH MESSAGE
+        while True:
+            try:
+                self.message = self.conn.recv()
+                self.buff += self.message
+                if self.message == b'>>> ':
+                    break
+            except Exception as e:
+                pass
+        # WAIT TILL NO DATA AVAILABLE
+        while True:
+            try:
+                self.message = self.conn.recv()
+                self.buff += self.message
+                if self.message == b'>>> ':
+                    break
+            except Exception as e:
+                break
+        if self.buff != b'':
+            self.output = '\n'.join([m.decode() for m in self.buff.splitlines()[1:-1]])
+            if self.output != '':
+                print(self.output)
