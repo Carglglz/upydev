@@ -224,7 +224,8 @@ class SSL_REPL_server:
         self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
         self.conn, self.addr_client = self.serv_soc.accept()
         self.conn = self.context.wrap_socket(self.conn, server_side=True)
-        print('SSLWebREPL connection from: {}'.format(self.addr_client))
+        if args.v:
+            print('SSLWebREPL connection from: {}'.format(self.addr_client))
         self.conn.settimeout(0)
 
     def flush(self):
@@ -295,13 +296,17 @@ class SSL_REPL_server:
                 self.dev.open_wconn()
 
     def ssl_repl(self, inp, just_recv=False, silent=True, follow=False, n=0,
-                 traceback=False):
+                 traceback=False, debug=False, prevent_hang=False):
         self.dev.output = None
         self.buff = b''
+        self.flush_conn()
         if not just_recv:
             self.send_message(inp+'\r')
         # WAIT TILL DATA AVAILABLE
         # CATCH PROMPT
+        if prevent_hang:
+            time.sleep(0.5)
+        time.sleep(0.1)
         while True:
             try:
                 self.message = self.conn.recv()
@@ -309,13 +314,21 @@ class SSL_REPL_server:
                     self.buff += self.message
                 # print('DATA RECEIVED: ', self.message)
                 break
+            except KeyboardInterrupt:
+                if prevent_hang:
+                    self.conn.sendall(b'\x03')
+                    self.flush_conn()
+                break
             except Exception as e:
+                if debug:
+                    pass
+                    # print(e, 1)
                 pass
         # CATCH MESSAGE
         n = n
         while True:
             try:
-                self.message = self.conn.recv()
+                self.message = self.conn.recv(1024)
                 self.buff += self.message
                 # print(self.buff)
                 if follow:
@@ -329,9 +342,17 @@ class SSL_REPL_server:
                             n += 1
                 if self.message == b'>>> ':
                     break
-            except KeyboardInterrupt:
-                self.conn.sendall(b'\x03')
+            # except KeyboardInterrupt:
+            #     if prevent_hang:
+            #         self.conn.sendall(b'\x03')
+            #         self.flush_conn()
+            #     break
             except Exception as e:
+                if debug:
+                    print(e, 2)
+                if prevent_hang:
+                    time.sleep(0.5)
+                    self.conn.sendall(b'\x0d')
                 pass
         # WAIT TILL NO DATA AVAILABLE
         while True:
@@ -357,6 +378,14 @@ class SSL_REPL_server:
                     print(self.output)
             if traceback:
                 print(self.buff.decode())
+
+    def paste_buff(self, long_command):
+        self.conn.sendall(b'\x05')
+        lines = long_command.split('\n')
+        for line in lines:
+            self.flush_conn()
+            time.sleep(0.1)
+            self.send_message(line+'\n')
 
 
 # ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
@@ -384,33 +413,40 @@ if args.ping:
     else:
         print('DEVICE NOT REACHABLE')
         sys.exit()
-print('Welcome to SSLWebREPL 0.0.1!')
+if args.v:
+    print('Welcome to SSLWebREPL 0.0.1!')
 if not args.nem:
-    print('Initiating SECURE HANDSHAKE...')
-espdev.kbi(output=False)
+    if args.v:
+        print('Initiating SECURE HANDSHAKE...')
+# espdev.kbi(output=False)
 espdev.open_wconn()
+espdev.wr_cmd('C')
 espdev.wr_cmd("from machine import unique_id; unique_id()",
               silent=True)
 unique_id = hexlify(espdev.output).decode()
 espdev.wr_cmd("import sys; sys.platform",
               silent=True)
 dev_platform = espdev.output
-print('{}@{}'.format(dev_platform, unique_id))
+if args.v:
+    print('{}@{}'.format(dev_platform, unique_id))
 ssl_key = upydev.__path__[0]+'/'+'SSL_key.pem'
 ssl_cert = upydev.__path__[0]+'/'+'SSL_certificate.pem'
 if not args.nem:
     ssl_cp = SSL_REPL_server(dev=espdev, key=ssl_key, cert=ssl_cert)
 # print('Done!')
-print('SSLWebREPL connected')
+# if args.v:
+#     print('SSLWebREPL connected')
 if args.nem:
     print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
-print('>>> ')
+    print('')
+    espdev.wr_cmd('B')
 # espdev.wr_cmd('B')
 if not args.nem:
-    ssl_cp.ssl_repl("\x02", silent=False)
+    print('SSLWebREPL connected\n')
+    ssl_cp.ssl_repl("\x02", follow=True)
     ssl_cp.flush_conn()
     espdev.output = None
-print('Use CTRL-x to exit, Use CTRL-s,ENTER to toggle shell/repl mode, Use CTRL-k to see more info')
+print('\nUse CTRL-x to exit, Use CTRL-s,ENTER to toggle shell/repl mode\nUse CTRL-k to see more info')
 # PROMT SESSION CONFIGURATION
 
 # Style
@@ -489,7 +525,7 @@ else:
     prompt['p'] = shell_prompt['s']
     shell_mode['S'] = True
     if encrypted_flag['sec']:
-        ssl_cp.ssl_repl('from upysh import *;gc.collect()', silent=True)
+        ssl_cp.ssl_repl('import gc;from upysh import *;gc.collect()', silent=True)
         time.sleep(1)
         ssl_cp.flush_conn()
         ssl_cp.flush_conn()
@@ -588,7 +624,8 @@ shell_commands_info = """
 
 
 # from @The Data Scientician : https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-def print_table(data, cols=4, wide=16, format_SH=False, autocols=True):
+def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
+                autocol_tab=False):
     '''Prints formatted data on columns of given width.'''
     if format_SH:
         if autocols:
@@ -601,6 +638,8 @@ def print_table(data, cols=4, wide=16, format_SH=False, autocols=True):
                 if '.py' not in val and '.mpy' not in val and '.' in val else val for val in data]
         data = ['{}{}{}{}'.format(
             CGREEN, val, CEND, ' '*(wide-len(val))) if '.mpy' in val else val for val in data]
+    if autocol_tab:
+        data = [namefile  if len(namefile) < wide else namefile+'\n' for namefile in data]
     n, r = divmod(len(data), cols)
     pat = '{{:{}}}'.format(wide)
     line = '\n'.join(pat * cols for _ in range(n))
@@ -1159,8 +1198,11 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'tree':
         # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
-        ssl_cp.ssl_repl('from upysh2 import tree;tree()', follow=True)
-        ssl_cp.flush_conn()
+        if encrypted_flag['sec']:
+            ssl_cp.ssl_repl('from upysh2 import tree;tree()', follow=True)
+            ssl_cp.flush_conn()
+        else:
+            send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
 
     if cmd_inp == 'l_ifconfig':
         ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]
@@ -1590,7 +1632,18 @@ def paste_mode_exit(event):
 
                 else:
                     # espdev.wr_cmd("cp.gbls = globals()", silent=True)
-                    ssl_cp.ssl_repl("\x05{}\x04".format(buff_text), follow=True)
+                    try:
+                        ssl_cp.paste_buff(buff_text)
+                        ssl_cp.ssl_repl("\x04", follow=True)
+                    except KeyboardInterrupt:
+                        time.sleep(0.2)
+                        ssl_cp.ssl_repl('\x03', silent=True,
+                                        traceback=True)  # KBI
+                        time.sleep(0.2)
+                        for i in range(1):
+                            ssl_cp.ssl_repl('\x0d', silent=True)
+                            ssl_cp.flush_conn()
+                        pass
                     # ssl_cp.ssl_repl('', just_recv=True, silent=False) blocking
                     # if espdev.output is not None:
                     #     print(espdev.output)
@@ -1660,101 +1713,160 @@ def paste_mode_exit(event):
 def tab_press(event):
     "Tab autocompletion info"
     # event.app.current_buffer.insert_text('import')
-    glb = False
-    import_cmd = False
-    try:
-        buff_text_frst_cmd = event.app.current_buffer.document.text.split(' ')[
-                                                                          0]
-        if buff_text_frst_cmd == 'import':
-            import_cmd = True
-        buff_text = event.app.current_buffer.document.text.split(' ')[-1]
-        if isinstance(buff_text, str):
-            if '.' in buff_text and not shell_mode['S']:
+    if paste_flag['p'] or edit_mode['E']:
+        event.app.current_buffer.insert_text('    ')
+    else:
+        glb = False
+        import_cmd = False
+        try:
+            buff_text_frst_cmd = event.app.current_buffer.document.text.split(' ')[
+                                                                              0]
+            if buff_text_frst_cmd == 'import':
+                import_cmd = True
+            buff_text = event.app.current_buffer.document.text.split(' ')[-1]
+            if isinstance(buff_text, str):
+                if '.' in buff_text and not shell_mode['S']:
 
-                root_text = '.'.join(buff_text.split('.')[:-1])
-                rest = buff_text.split('.')[-1]
-                if rest != '':
-                    if encrypted_flag['sec']:
-                        ssl_cp.ssl_repl("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest))
-                        ssl_cp.flush_conn()
+                    root_text = '.'.join(buff_text.split('.')[:-1])
+                    rest = buff_text.split('.')[-1]
+                    if rest != '':
+                        if encrypted_flag['sec']:
+                            ssl_cp.ssl_repl("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest))
+                            ssl_cp.flush_conn()
+                        else:
+                            espdev.wr_cmd("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest), silent=True)
                     else:
-                        espdev.wr_cmd("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest), silent=True)
+                        if encrypted_flag['sec']:
+                            try:
+                                ssl_cp.ssl_repl('dir({});gc.collect()'.format(root_text),
+                                                debug=False, prevent_hang=True)
+                            except KeyboardInterrupt:
+                                time.sleep(0.2)
+                                ssl_cp.ssl_repl('\x03', silent=True,
+                                                traceback=True)
+
+                            ssl_cp.flush_conn()
+                        else:
+                            espdev.wr_cmd('dir({})'.format(root_text), silent=True)
                 else:
+                    rest = ''
+                    glb = True
+                    cmd_ls_glb = 'dir()'
+                    if buff_text != '':
+                        cmd_ls_glb = "[val for val in dir() if val.startswith('{}')]".format(buff_text)
+                    if import_cmd:
+                        cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp]"
+                        if buff_text != '':
+                            cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
+
+                    if shell_mode['S']:
+
+                        if '/' in buff_text:
+                            glb = False
+                            dir_to_list = '/'.join(buff_text.split('/')[:-1])
+                            cmd_ls_glb = "uos.listdir('{}')".format(dir_to_list)
+                            if buff_text.split('/')[-1] != '':
+                                cmd_ls_glb = "[val for val in uos.listdir('{}') if val.startswith('{}')]".format(dir_to_list, buff_text.split('/')[-1])
+
+                        else:
+                            cmd_ls_glb = 'uos.listdir()'
+                            if buff_text != '':
+                                cmd_ls_glb = "[val for val in uos.listdir() if val.startswith('{}')]".format(buff_text)
                     if encrypted_flag['sec']:
-                        ssl_cp.ssl_repl('dir({})'.format(root_text))
+                        try:
+                            ssl_cp.ssl_repl(cmd_ls_glb+';gc.collect()',
+                                            debug=False, prevent_hang=True)
+                        except KeyboardInterrupt:
+                            time.sleep(0.2)
+                            ssl_cp.ssl_repl('\x03', silent=True,
+                                            traceback=True)
                         ssl_cp.flush_conn()
                     else:
-                        espdev.wr_cmd('dir({})'.format(root_text), silent=True)
+                        espdev.wr_cmd(cmd_ls_glb, silent=True)
+
             else:
-                rest = ''
-                glb = True
-                cmd_ls_glb = 'dir()'
-                if buff_text != '':
-                    cmd_ls_glb = "[val for val in dir() if val.startswith('{}')]".format(buff_text)
-                if import_cmd:
-                    cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp]"
-                    if buff_text != '':
-                        cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
-
-                if shell_mode['S']:
-
-                    if '/' in buff_text:
-                        glb = False
-                        dir_to_list = '/'.join(buff_text.split('/')[:-1])
-                        cmd_ls_glb = "uos.listdir('{}')".format(dir_to_list)
-                        if buff_text.split('/')[-1] != '':
-                            cmd_ls_glb = "[val for val in uos.listdir('{}') if val.startswith('{}')]".format(dir_to_list, buff_text.split('/')[-1])
-
-                    else:
-                        cmd_ls_glb = 'uos.listdir()'
-                        if buff_text != '':
-                            cmd_ls_glb = "[val for val in uos.listdir() if val.startswith('{}')]".format(buff_text)
+                root_text = buff_text.split('.')[0]
+                rest = buff_text.split('.')[1]
                 if encrypted_flag['sec']:
-                    ssl_cp.ssl_repl(cmd_ls_glb)
+                    try:
+                        ssl_cp.ssl_repl('dir({});gc.collect()'.format(root_text))
+                    except KeyboardInterrupt:
+                        time.sleep(0.2)
+                        ssl_cp.ssl_repl('\x03', silent=True,
+                                        traceback=True)
                     ssl_cp.flush_conn()
                 else:
-                    espdev.wr_cmd(cmd_ls_glb, silent=True)
+                    espdev.wr_cmd('dir({})'.format(root_text), silent=True)
+        except Exception as e:
+            pass
 
-        else:
-            root_text = buff_text.split('.')[0]
-            rest = buff_text.split('.')[1]
-            if encrypted_flag['sec']:
-                ssl_cp.ssl_repl('dir({})'.format(root_text))
-            else:
-                espdev.wr_cmd('dir({})'.format(root_text), silent=True)
-    except Exception as e:
-        pass
-
-    def tab_cmd_info(rest_part=rest, flag=glb, buff=buff_text):
-        try:
-            if espdev.output is not None:
-                espdev.get_output()
-                if isinstance(espdev.output, str):
-                    # print(espdev.output)
-                    pass
-                else:
-                    if rest != '':
-                        result = [
-                            val for val in espdev.output if val.startswith(rest)]
-                        if len(result) > 1:
-                            comm_part = os.path.commonprefix(result)
-                            if comm_part == rest:
-                                print('>>> {}'.format(buff_text))
-                                print_table(result)
+        def tab_cmd_info(rest_part=rest, flag=glb, buff=buff_text):
+            try:
+                if espdev.output is not None:
+                    espdev.get_output()
+                    if isinstance(espdev.output, str):
+                        # print(espdev.output)
+                        pass
+                    else:
+                        if rest != '':
+                            result = [
+                                val for val in espdev.output if val.startswith(rest)]
+                            if len(result) > 1:
+                                comm_part = os.path.commonprefix(result)
+                                if comm_part == rest:
+                                    print('>>> {}'.format(buff_text))
+                                    print_table(result)
+                                else:
+                                    event.app.current_buffer.insert_text(
+                                        comm_part[len(rest):])
                             else:
                                 event.app.current_buffer.insert_text(
-                                    comm_part[len(rest):])
+                                    result[0][len(rest):])
                         else:
-                            event.app.current_buffer.insert_text(
-                                result[0][len(rest):])
-                    else:
-                        if not glb:
-                            if shell_mode['S']:
-                                result = [val for val in espdev.output if val.startswith(
-                                    buff_text.split('/')[-1])]
+                            if not glb:
+                                if shell_mode['S']:
+                                    result = [val for val in espdev.output if val.startswith(
+                                        buff_text.split('/')[-1])]
+                                    if len(result) > 1:
+                                        comm_part = os.path.commonprefix(result)
+                                        if comm_part == buff_text.split('/')[-1]:
+                                            if shell_mode['S']:
+                                                last_cmd = event.app.current_buffer.document.text
+                                                if local_path['p'] == '':
+                                                    g_p = [val[1]
+                                                           for val in prompt['p'][1:5]]
+                                                    b_p = [val[1]
+                                                           for val in prompt['p'][5:]]
+                                                    color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                                        "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                                    print(color_p)
+                                                else:
+                                                    m_p = [prompt['p'][0][1]]
+                                                    g_p = [val[1]
+                                                           for val in prompt['p'][1:5]]
+                                                    b_p = [val[1]
+                                                           for val in prompt['p'][5:]]
+                                                    color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                                        "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                                    print(color_p)
+                                                # format ouput
+                                                print_table(
+                                                    result, wide=28, format_SH=True)
+                                        else:
+                                            event.app.current_buffer.insert_text(
+                                                comm_part[len(buff_text.split('/')[-1]):])
+                                    else:
+                                        event.app.current_buffer.insert_text(
+                                            result[0][len(buff_text.split('/')[-1]):])
+                                else:
+                                    print('>>> {}'.format(buff_text))
+                                    print_table(espdev.output, wide=18, autocol_tab=True)
+                            else:
+                                result = [
+                                    val for val in espdev.output if val.startswith(buff_text)]
                                 if len(result) > 1:
                                     comm_part = os.path.commonprefix(result)
-                                    if comm_part == buff_text.split('/')[-1]:
+                                    if comm_part == buff_text:
                                         if shell_mode['S']:
                                             last_cmd = event.app.current_buffer.document.text
                                             if local_path['p'] == '':
@@ -1777,57 +1889,20 @@ def tab_press(event):
                                             # format ouput
                                             print_table(
                                                 result, wide=28, format_SH=True)
+                                        else:
+                                            print('>>> {}'.format(buff_text))
+                                            print_table(result, wide=22, autocol_tab=True)
                                     else:
                                         event.app.current_buffer.insert_text(
-                                            comm_part[len(buff_text.split('/')[-1]):])
+                                            comm_part[len(buff_text):])
                                 else:
                                     event.app.current_buffer.insert_text(
-                                        result[0][len(buff_text.split('/')[-1]):])
-                            else:
-                                print('>>> {}'.format(buff_text))
-                                print_table(espdev.output, wide=18)
-                        else:
-                            result = [
-                                val for val in espdev.output if val.startswith(buff_text)]
-                            if len(result) > 1:
-                                comm_part = os.path.commonprefix(result)
-                                if comm_part == buff_text:
-                                    if shell_mode['S']:
-                                        last_cmd = event.app.current_buffer.document.text
-                                        if local_path['p'] == '':
-                                            g_p = [val[1]
-                                                   for val in prompt['p'][1:5]]
-                                            b_p = [val[1]
-                                                   for val in prompt['p'][5:]]
-                                            color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                            print(color_p)
-                                        else:
-                                            m_p = [prompt['p'][0][1]]
-                                            g_p = [val[1]
-                                                   for val in prompt['p'][1:5]]
-                                            b_p = [val[1]
-                                                   for val in prompt['p'][5:]]
-                                            color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                            print(color_p)
-                                        # format ouput
-                                        print_table(
-                                            result, wide=28, format_SH=True)
-                                    else:
-                                        print('>>> {}'.format(buff_text))
-                                        print_table(result, wide=22)
-                                else:
-                                    event.app.current_buffer.insert_text(
-                                        comm_part[len(buff_text):])
-                            else:
-                                event.app.current_buffer.insert_text(
-                                    result[0][len(buff_text):])
+                                        result[0][len(buff_text):])
 
-        except Exception as e:
-            # print(e)
-            pass
-    run_in_terminal(tab_cmd_info)
+            except Exception as e:
+                # print(e)
+                pass
+        run_in_terminal(tab_cmd_info)
 
 
 @kb.add('s-tab')
@@ -2143,8 +2218,8 @@ while repl:
                                     time.sleep(0.2)
                                     ssl_cp.ssl_repl('\x03', silent=True,
                                                     traceback=True)  # KBI
-                                    time.sleep(1)
-                                    for i in range(3):
+                                    time.sleep(0.2)
+                                    for i in range(1):
                                         ssl_cp.ssl_repl('\x0d', silent=True)
                                         ssl_cp.flush_conn()
                                     pass
@@ -2202,8 +2277,8 @@ while repl:
                             time.sleep(0.2)
                             ssl_cp.ssl_repl('\x03', silent=True,
                                             traceback=True)  # KBI
-                            time.sleep(1)
-                            for i in range(3):
+                            time.sleep(0.2)
+                            for i in range(1):
                                 ssl_cp.ssl_repl('\x0d', silent=True)
                                 ssl_cp.flush_conn()
                             pass
@@ -2215,7 +2290,7 @@ while repl:
         continue
     except KeyboardInterrupt:
         try:
-            print('Exit now!')
+            # print('Exit now!')
             # send_KBI()
             continue
         except Exception as e:
