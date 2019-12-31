@@ -26,6 +26,7 @@ import glob
 import string
 import getpass
 import secrets
+import signal
 import hashlib
 from binascii import hexlify
 from pathlib import Path
@@ -3457,38 +3458,34 @@ def ssl_wrepl(ip, passwd, usr=None):
             else:
                 sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r'.format(ip, passwd)
             sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
-            clean_exit = False
-            while not clean_exit:
-                try:
-                    sslweb_repl = subprocess.call(sslweb_repl_cmd)
-                    clean_exit = True
-                except KeyboardInterrupt:
-                    print('KeyboardInterrupt!')
-                    print('Reinitiating SSLWebREPL...')
-                    sslweb_repl_cmd = sslweb_repl_cmd + ' -ping'
-                    time.sleep(7)
-                except Exception as e:
-                    print('Reinitiating SSLWebREPL...')
-                    time.sleep(5)
+
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+
+            try:
+                sslweb_repl = subprocess.call(sslweb_repl_cmd, preexec_fn=preexec_function)
+            except KeyboardInterrupt:
+                pass
+
         else:
             if usr is not None:
                 sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -nem'.format(ip, passwd, usr)
             else:
                 sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -nem'.format(ip, passwd)
             sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
-            clean_exit = False
-            while not clean_exit:
-                try:
-                    sslweb_repl = subprocess.call(sslweb_repl_cmd)
-                    clean_exit = True
-                except KeyboardInterrupt:
-                    print('KeyboardInterrupt!')
-                    print('Reinitiating SSLWebREPL...')
-                    sslweb_repl_cmd = sslweb_repl_cmd + ' -ping'
-                    time.sleep(7)
-                except Exception as e:
-                    print('Reinitiating SSLWebREPL...')
-                    time.sleep(5)
+
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+
+            try:
+                sslweb_repl = subprocess.call(sslweb_repl_cmd, preexec_fn=preexec_function)
+            except KeyboardInterrupt:
+                pass
+
 
     if args.rkey:
         if usr is not None:
