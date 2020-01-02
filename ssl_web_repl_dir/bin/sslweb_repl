@@ -13,11 +13,12 @@ import sys
 import os
 import netifaces
 import nmap
+import select
 import subprocess
 import shlex
 import webbrowser
 import argparse
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sys import platform as _platform
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -189,6 +190,7 @@ class SSL_REPL_server:
         self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         self.key = key
         self.cert = cert
+        self.passph = None
         self.SSL_MODE = True
         self.IO = False
         if init is True:
@@ -213,6 +215,7 @@ class SSL_REPL_server:
         while True:
             try:
                 my_p = getpass.getpass(prompt="Enter passphrase for key 'SSL_key.pem':", stream=None)
+                self.passph = my_p
                 self.context.load_cert_chain(keyfile=self.key, certfile=self.cert,
                                              password=my_p)
                 break
@@ -388,6 +391,129 @@ class SSL_REPL_server:
             self.send_message(line+'\n')
 
 
+class SSL_TOOL:
+    def __init__(self, ssl_repl, port=8433, key=None,
+                 cert=None):
+        self.host = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
+        self.port = port
+        self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serv_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.ssl_repl = ssl_repl
+        self.key = key
+        self.cert = cert
+        self.buff = bytearray(1024*2)
+        self.bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+        self.columns, self.rows = os.get_terminal_size(0)
+        self.cnt_size = 85
+        self.bar_size = int((self.columns - self.cnt_size))
+        self.pb = False
+        self.wheel = ['|', '/', '-', "\\"]
+
+    def start_SOC(self):
+        self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serv_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        while True:
+            try:
+                self.serv_soc.bind((self.host, self.port))
+                break
+            except Exception as e:
+                self.port += 1
+        self.serv_soc.listen(1)
+        try:
+            self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            self.context.load_cert_chain(keyfile=self.key, certfile=self.cert,
+                                             password=self.ssl_repl.passph)
+        except ssl.SSLError as e:
+            print('Passphrase incorrect, try again...')
+
+        # self.context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+        self.context.set_ciphers('EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:AES256+SHA256')
+        self.ssl_repl.ssl_repl("ssl_tool=ssl_repl.SSL_socket_client_tool('{}', {})".format(self.host, self.port))
+        self.ssl_repl.ssl_repl("ssl_tool.connect_SOC()")
+        self.conn, self.addr_client = self.serv_soc.accept()
+        self.conn = self.context.wrap_socket(self.conn, server_side=True)
+        if args.v:
+            print('SSLtool connection from: {}'.format(self.addr_client))
+        self.conn.settimeout(0)
+
+    def stop_SOC(self):
+        self.conn.close()
+        self.serv_soc.close()
+        self.ssl_repl.ssl_repl("ssl_tool.cli_soc.close()")
+
+    def get_pb(self):
+        self.columns, self.rows = os.get_terminal_size(0)
+        if self.columns > self.cnt_size:
+            self.bar_size = int((self.columns - self.cnt_size))
+            self.pb = True
+        else:
+            self.bar_size = 1
+            self.pb = False
+
+    def do_pg_bar(self, index, wheel, nb_of_total, speed, time_e, loop_l):
+        l_bloc = self.bloc_progress[loop_l]
+        if index == self.bar_size:
+            l_bloc = "█"
+        sys.stdout.write("\033[K")
+        print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} KB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((self.bar_size+1) - len("█" *index + l_bloc)),
+                                                                        wheel[index % 4],
+                                                                        int((index/self.bar_size)*100),
+                                                                        nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
+        sys.stdout.flush()
+
+    def put(self, filetoput, chunk=(1024*8), chunk_rx=(4096*3)):
+        self.get_pb()
+        sz = os.stat(filetoput)[6]
+        cnt = 0
+        t_start = time.time()
+        put_soc = [self.conn]
+        # def_chunk = chunk
+        print('\n')
+        self.ssl_repl.send_message("ssl_tool.put('{}', {}, chunk={})".format(filetoput, sz, chunk_rx) + '\r')
+        with open(filetoput, "rb") as f:
+            self.buff = f.read(chunk)
+            while True:
+                try:
+                    readable, writable, exceptional = select.select(put_soc,
+                                                                    put_soc,
+                                                                    put_soc)
+                    # self.buff = f.read(1024)  # 1 KB
+                    # print(len(chunk))
+                    if len(writable) == 1:
+                        if self.buff != b'':
+                            # in python use 'i'
+                            self.conn.sendall(self.buff)
+                            cnt += len(self.buff)
+                            loop_index_f = (cnt/sz)*self.bar_size
+                            loop_index = int(loop_index_f)
+                            loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                            nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                            t_elapsed = time.time() - t_start
+                            t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                            if self.pb:
+                                self.do_pg_bar(loop_index, self.wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                            self.buff = f.read(chunk)
+                            # chunk = def_chunk
+                            # final_file += chunk
+                        else:
+                            break
+                        # cnt += len(self.buff)
+                        # loop_index_f = (cnt/sz)*self.bar_size
+                        # loop_index = int(loop_index_f)
+                        # loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                        # nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                        # t_elapsed = time.time() - t_start
+                        # t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                        # if self.pb:
+                        #     self.do_pg_bar(loop_index, self.wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                except Exception as e:
+                    # print(e)
+                    # chunk = 64
+                    time.sleep(0.02)
+                    pass
+            print('\n')
+
+
 # ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", help='host password', required=True)
@@ -433,6 +559,7 @@ ssl_key = upydev.__path__[0]+'/'+'SSL_key.pem'
 ssl_cert = upydev.__path__[0]+'/'+'SSL_certificate.pem'
 if not args.nem:
     ssl_cp = SSL_REPL_server(dev=espdev, key=ssl_key, cert=ssl_cert)
+    ssl_htool = SSL_TOOL(ssl_repl=ssl_cp, key=ssl_key, cert=ssl_cert)
 # print('Done!')
 # if args.v:
 #     print('SSLWebREPL connected')
@@ -1053,42 +1180,91 @@ def custom_sh_cmd(cmd_inp):
             print('Indicate a file to get')
 
     if cmd_inp.split(' ')[0] == 'put':
-        print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-        ssl_cp.enable_wrepl_io()
-        if dev_path['p'] != ' ':
-            dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
-        else:
-            dev_dir = ''
-        try:
-            # file = cmd_inp.split(' ')[1]
-            # put_str = 'upydev put -f {} -t {} -p {} -rst f'.format(file, args.t, args.p)
-            # put_cmd = shlex.split(put_str)
-            file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
-            if file == 'cwd':
-                put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                    file, args.t, args.p, dev_dir)
-            elif '*' in file:
-                put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                    file.replace('*', ''), args.t, args.p, dev_dir)
-            elif len(cmd_inp.split(' ')) > 2:
-                file = ' '.join(cmd_inp.split(' ')[1:])
-                put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                    file, args.t, args.p, dev_dir)
+        if not encrypted_flag['sec']:
+            print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
+            ssl_cp.enable_wrepl_io()
+            if dev_path['p'] != ' ':
+                dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
             else:
-                put_str = 'upydev put -f {} -t {} -p {} {} -rst f'.format(
-                    file, args.t, args.p, dev_dir)
-            put_cmd = shlex.split(put_str)
+                dev_dir = ''
             try:
-                put_file = subprocess.call(put_cmd)
-                ssl_cp.enable_wrepl_io()
-            except KeyboardInterrupt:
-                ssl_cp.enable_wrepl_io()
-                pass
-                print('Operation aborted')
-        except Exception as e:
-            # print(e)
-            print('Indicate a file to put')
-
+                # file = cmd_inp.split(' ')[1]
+                # put_str = 'upydev put -f {} -t {} -p {} -rst f'.format(file, args.t, args.p)
+                # put_cmd = shlex.split(put_str)
+                file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
+                if file == 'cwd':
+                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
+                        file, args.t, args.p, dev_dir)
+                elif '*' in file:
+                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
+                        file.replace('*', ''), args.t, args.p, dev_dir)
+                elif len(cmd_inp.split(' ')) > 2:
+                    file = ' '.join(cmd_inp.split(' ')[1:])
+                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
+                        file, args.t, args.p, dev_dir)
+                else:
+                    put_str = 'upydev put -f {} -t {} -p {} {} -rst f'.format(
+                        file, args.t, args.p, dev_dir)
+                put_cmd = shlex.split(put_str)
+                try:
+                    put_file = subprocess.call(put_cmd)
+                    ssl_cp.enable_wrepl_io()
+                except KeyboardInterrupt:
+                    ssl_cp.enable_wrepl_io()
+                    pass
+                    print('Operation aborted')
+            except Exception as e:
+                # print(e)
+                print('Indicate a file to put')
+        else:
+            try:
+                print('File/s to put:')
+                file = cmd_inp.split(' ')[1]
+                if file == 'cwd':
+                    files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl)]
+                    for file in files_to_put:
+                        print('- {}'.format(file))
+                    ssl_htool.start_SOC()
+                    for file in files_to_put:
+                        ssl_htool.put(file)
+                    ssl_cp.ssl_repl("print('Done!')")
+                    time.sleep(0.2)
+                    ssl_htool.stop_SOC()
+                elif '*' in file:
+                    files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl)]
+                    files_to_put_re = [fl for fl in files_to_put if file.replace('*', '') in fl]
+                    for file in files_to_put_re:
+                        print('- {}'.format(file))
+                    ssl_htool.start_SOC()
+                    for file in files_to_put_re:
+                        ssl_htool.put(file)
+                    ssl_cp.ssl_repl("print('Done!')")
+                    time.sleep(0.2)
+                    ssl_htool.stop_SOC()
+                elif len(cmd_inp.split(' ')) > 2:
+                    files_to_put = cmd_inp.split(' ')[1:]
+                    files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in files_to_put]
+                    if len(files_to_put_dir) != len(files_to_put):
+                        print('One or more files not found in cwd')
+                    else:
+                        for file in files_to_put_dir:
+                            print('- {}'.format(file))
+                        ssl_htool.start_SOC()
+                        for file in files_to_put_dir:
+                            ssl_htool.put(file)
+                        ssl_cp.ssl_repl("print('Done!')")
+                        time.sleep(0.2)
+                        ssl_htool.stop_SOC()
+                else:
+                    print('- {}'.format(file))
+                    ssl_htool.start_SOC()
+                    ssl_htool.put(file)
+                    ssl_cp.ssl_repl("print('Done!')")
+                    time.sleep(0.2)
+                    ssl_htool.stop_SOC()
+            except Exception as e:
+                # print(e)
+                print('Indicate a file to put')
     if cmd_inp.split(' ')[0] == 'catl':
         try:
             file = cmd_inp.split(' ')[1]
@@ -1419,10 +1595,10 @@ def autocomppress(event):
                     if not encrypted_flag['sec']:
                         script_is_running['R'] = True
                         script_is_running['script'] = inp.split(' ')[1]
-                        print('Running {}...'.format(script_is_running['script']))
-                        ssl_cp.enable_wrepl_io()
-                        time.sleep(0.2)
-                        espdev.cmd_nb(inp)
+                        # print('Running {}...'.format(script_is_running['script']))
+                        # ssl_cp.enable_wrepl_io()
+                        # time.sleep(0.2)
+                        espdev.wr_cmd(inp)
                     else:
                         try:
                             ssl_cp.ssl_repl(inp, follow=True)
@@ -1524,19 +1700,19 @@ def send_KBI(event):
     try:
         if script_is_running['R']:
             script_is_running['R'] = False
-            print('KeyboardInterrupt')
-            print('Stopping {}...'.format(script_is_running['script']))
-            stop_by_pid(proc_name='web_repl_cmd_r')
-            espdev.kbi(output=False)
-            # time.sleep(1)
-            espdev.open_wconn()
-            # time.sleep(0.5)
-            reload = "import sys;del(sys.modules['{}'])".format(
-                script_is_running['script'])
-            espdev.wr_cmd(reload, silent=True)
-            espdev.close_wconn()
-            ssl_cp.enable_wrepl_io()
-            print('Done!')
+            # print('KeyboardInterrupt')
+            # print('Stopping {}...'.format(script_is_running['script']))
+            # stop_by_pid(proc_name='web_repl_cmd_r')
+            # espdev.kbi(output=False)
+            # # time.sleep(1)
+            # espdev.open_wconn()
+            # # time.sleep(0.5)
+            # reload = "import sys;del(sys.modules['{}'])".format(
+            #     script_is_running['script'])
+            # espdev.wr_cmd(reload, silent=True)
+            # espdev.close_wconn()
+            # ssl_cp.enable_wrepl_io()
+            # print('Done!')
             prompt['p'] = shell_prompt['s']
         else:
             if edit_mode['E']:
@@ -1626,8 +1802,16 @@ def paste_mode_exit(event):
                     # espdev.wr_cmd(block_commad)
                     # print(block_commad.splitlines())
                     espdev._wconn.child.sendline('E')
-                    espdev._wconn.child.sendline(buff_text)
+                    time.sleep(0.2)
+                    for line in buff_text.split('\n'):
+                        espdev._wconn.child.sendline(line)
+                        cmd_echo = espdev._wconn.child.readline()
+                        # time.sleep(0.2)
                     # espdev._wconn.child.sendline('D')
+                    try:
+                        cmd_echo = espdev._wconn.child.read_nonblocking(2**16, 0.2)
+                    except Exception as e:
+                        pass
                     espdev.wr_cmd('D')
 
                 else:
@@ -2203,12 +2387,14 @@ while repl:
                             if not encrypted_flag['sec']:
                                 script_is_running['R'] = True
                                 script_is_running['script'] = inp.split(' ')[1]
-                                print('Running {}.py in Background...do CTRL-C to enable Shell again'.format(
-                                    script_is_running['script']))
-                                prompt['p'] = ""
-                                ssl_cp.enable_wrepl_io()
-                                time.sleep(0.2)
-                                espdev.cmd_nb(inp)
+                                # print('Running {}.py in Background...do CTRL-C to enable Shell again'.format(
+                                #     script_is_running['script']))
+                                # prompt['p'] = ""
+                                # ssl_cp.enable_wrepl_io()
+                                # time.sleep(0.2)
+                                # espdev.cmd_nb(inp)
+
+                                espdev.wr_cmd(inp)
                             else:
                                 try:
                                     ssl_cp.ssl_repl(inp, follow=True)
@@ -2233,7 +2419,7 @@ while repl:
                                     espdev.cmd(inp)
                                     espdev.open_wconn()
                             else:
-                                if inp == 'ls()':
+                                if inp == 'ls()' or frst_cmd == 'cat':
                                     ssl_cp.ssl_repl(inp, follow=True)
                                     ssl_cp.flush_conn()
                                 else:
@@ -2290,7 +2476,7 @@ while repl:
         continue
     except KeyboardInterrupt:
         try:
-            # print('Exit now!')
+            # print('KBI_1!!')
             # send_KBI()
             continue
         except Exception as e:
