@@ -404,7 +404,7 @@ class SSL_TOOL:
         self.buff = bytearray(1024*2)
         self.bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
         self.columns, self.rows = os.get_terminal_size(0)
-        self.cnt_size = 85
+        self.cnt_size = 65
         self.bar_size = int((self.columns - self.cnt_size))
         self.pb = False
         self.wheel = ['|', '/', '-', "\\"]
@@ -450,15 +450,18 @@ class SSL_TOOL:
             self.bar_size = 1
             self.pb = False
 
-    def do_pg_bar(self, index, wheel, nb_of_total, speed, time_e, loop_l):
+    def do_pg_bar(self, index, wheel, nb_of_total, speed, time_e, loop_l,
+                  percentage, ett):
         l_bloc = self.bloc_progress[loop_l]
         if index == self.bar_size:
             l_bloc = "█"
         sys.stdout.write("\033[K")
-        print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} KB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((self.bar_size+1) - len("█" *index + l_bloc)),
+        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((self.bar_size+1) - len("█" *index + l_bloc)),
                                                                         wheel[index % 4],
-                                                                        int((index/self.bar_size)*100),
-                                                                        nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
+                                                                        int((percentage)*100),
+                                                                        nb_of_total, speed,
+                                                                        str(timedelta(seconds=time_e)).split('.')[0][3:],
+                                                                        str(timedelta(seconds=ett)).split('.')[0][3:]), end='\r')
         sys.stdout.flush()
 
     def put(self, filetoput, chunk=(1024*8), chunk_rx=(4096*3)):
@@ -468,8 +471,10 @@ class SSL_TOOL:
         t_start = time.time()
         put_soc = [self.conn]
         # def_chunk = chunk
-        print('\n')
+        print("{}  [{:.2f} KB]".format(filetoput, sz / 1024))
+        self.ssl_repl.flush_conn()
         self.ssl_repl.send_message("ssl_tool.put('{}', {}, chunk={})".format(filetoput, sz, chunk_rx) + '\r')
+        # self.ssl_repl.ssl_repl("ssl_tool.put('{}', {}, chunk={})".format(filetoput, sz, chunk_rx))
         with open(filetoput, "rb") as f:
             self.buff = f.read(chunk)
             while True:
@@ -488,30 +493,85 @@ class SSL_TOOL:
                             loop_index = int(loop_index_f)
                             loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
                             nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                            percentage = cnt / sz
                             t_elapsed = time.time() - t_start
                             t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                            ett = sz / (cnt / t_elapsed)
                             if self.pb:
-                                self.do_pg_bar(loop_index, self.wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                                self.do_pg_bar(loop_index, self.wheel,
+                                               nb_of_total, t_speed, t_elapsed,
+                                               loop_index_l, percentage, ett)
                             self.buff = f.read(chunk)
                             # chunk = def_chunk
                             # final_file += chunk
                         else:
                             break
-                        # cnt += len(self.buff)
-                        # loop_index_f = (cnt/sz)*self.bar_size
-                        # loop_index = int(loop_index_f)
-                        # loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                        # nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
-                        # t_elapsed = time.time() - t_start
-                        # t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
-                        # if self.pb:
-                        #     self.do_pg_bar(loop_index, self.wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+
                 except Exception as e:
                     # print(e)
-                    # chunk = 64
                     time.sleep(0.02)
                     pass
             print('\n')
+        self.ssl_repl.ssl_repl("print('Done!')")
+
+    def get(self, filetoget, chunk=(4096*2), chunk_tx=(2048)):
+        self.get_pb()
+        cnt = 0
+        t_start = time.time()
+        put_soc = [self.conn]
+        # def_chunk = chunk
+        self.ssl_repl.ssl_repl("ssl_tool.get_size('{}')".format(filetoget))
+        self.ssl_repl.dev.get_output()
+        sz = self.ssl_repl.dev.output
+        print("{}  [{:.2f} KB]".format(filetoget, sz / 1024))
+        self.ssl_repl.flush_conn()
+        self.ssl_repl.send_message("ssl_tool.get('{}', chunk={})".format(filetoget, chunk_tx) + '\r')
+        # self.ssl_repl.ssl_repl("ssl_tool.put('{}', {}, chunk={})".format(filetoget, sz, chunk_rx))
+        with open(filetoget, 'wb') as f:
+            pass
+        with open(filetoget, "ab") as f:
+            while True:
+                try:
+                    readable, writable, exceptional = select.select(put_soc,
+                                                                    put_soc,
+                                                                    put_soc)
+                    # # self.buff = f.read(1024)  # 1 KB
+                    # # print(len(chunk))
+                    if len(readable) == 1:
+                        self.buff = self.conn.recv(chunk)
+                        if self.buff != b'':
+                            # in python use 'i'
+                            f.write(self.buff)
+                            if isinstance(self.buff, int):
+                                cnt += 0
+                            else:
+                                cnt += len(self.buff)
+                            loop_index_f = (cnt/sz)*self.bar_size
+                            loop_index = int(loop_index_f)
+                            loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                            nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                            percentage = cnt / sz
+                            t_elapsed = time.time() - t_start
+                            t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                            ett = sz / (cnt / t_elapsed)
+                            if self.pb:
+                                self.do_pg_bar(loop_index, self.wheel,
+                                               nb_of_total, t_speed, t_elapsed,
+                                               loop_index_l, percentage, ett)
+                            if cnt == sz:
+                                break
+                            # chunk = def_chunk
+                            # final_file += chunk
+                        else:
+                            break
+
+                except Exception as e:
+                    # print(e)
+                    # print(len(readable))
+                    time.sleep(0.02)
+                    pass
+            print('\n')
+        self.ssl_repl.ssl_repl("print('Done!');gc.collect()")
 
 
 # ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
@@ -1113,37 +1173,100 @@ def custom_sh_cmd(cmd_inp):
         print_table(list_of_files, wide=28, format_SH=True)
 
     if cmd_inp.split(' ')[0] == 'get':
-        print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-        ssl_cp.enable_wrepl_io()
-        if dev_path['p'] != ' ':
-            dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
-        else:
-            dev_dir = ''
-        try:
-            file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
-            if file == 'cwd':
-                get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                    file, args.t, args.p, dev_dir)
-            elif '*' in file:
-                get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                    file.replace('*', ''), args.t, args.p, dev_dir)
-            elif len(cmd_inp.split(' ')) > 2:
-                file = ' '.join(cmd_inp.split(' ')[1:])
-                get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                    file, args.t, args.p, dev_dir)
+        if not encrypted_flag['sec']:
+            print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
+            ssl_cp.enable_wrepl_io()
+            if dev_path['p'] != ' ':
+                dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
             else:
-                get_str = 'upydev get -f {} -t {} -p {} {}'.format(
-                    file, args.t, args.p, dev_dir)
-            get_cmd = shlex.split(get_str)
+                dev_dir = ''
             try:
-                get_file = subprocess.call(get_cmd)
-                ssl_cp.enable_wrepl_io()
-            except KeyboardInterrupt:
-                ssl_cp.enable_wrepl_io()
-                pass
-                print('Operation aborted')
-        except Exception as e:
-            print('Indicate a file to get')
+                file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
+                if file == 'cwd':
+                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
+                        file, args.t, args.p, dev_dir)
+                elif '*' in file:
+                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
+                        file.replace('*', ''), args.t, args.p, dev_dir)
+                elif len(cmd_inp.split(' ')) > 2:
+                    file = ' '.join(cmd_inp.split(' ')[1:])
+                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
+                        file, args.t, args.p, dev_dir)
+                else:
+                    get_str = 'upydev get -f {} -t {} -p {} {}'.format(
+                        file, args.t, args.p, dev_dir)
+                get_cmd = shlex.split(get_str)
+                try:
+                    get_file = subprocess.call(get_cmd)
+                    ssl_cp.enable_wrepl_io()
+                except KeyboardInterrupt:
+                    ssl_cp.enable_wrepl_io()
+                    pass
+                    print('Operation aborted')
+            except Exception as e:
+                print('Indicate a file to get')
+
+        else:
+            try:
+                print('File/s to get:')
+                file = cmd_inp.split(' ')[1]
+                if file == 'cwd':
+                    ssl_cp.ssl_repl("ssl_repl.get_files_cwd()")
+                    espdev.get_output()
+                    files_to_put = espdev.output
+                    for file in files_to_put:
+                        print('- {}'.format(file))
+                    ssl_htool.start_SOC()
+                    for file in files_to_put:
+                        ssl_htool.get(file)
+                        time.sleep(0.2)
+                    # ssl_cp.ssl_repl("print('Done!')")
+                    time.sleep(0.2)
+                    ssl_htool.stop_SOC()
+                elif '*' in file:
+                    ssl_cp.ssl_repl("ssl_repl.get_files_re('{}')".format(file.replace('*', '')))
+                    espdev.get_output()
+                    files_to_put_re = espdev.output
+                    if files_to_put_re is None or files_to_put_re == []:
+                        print('No files found that match "{}"'.format(file))
+                    else:
+                        for file in files_to_put_re:
+                            print('- {}'.format(file))
+                        ssl_htool.start_SOC()
+                        for file in files_to_put_re:
+                            ssl_htool.get(file)
+                            time.sleep(0.2)
+                        # ssl_cp.ssl_repl("print('Done!')")
+                        time.sleep(0.2)
+                        ssl_htool.stop_SOC()
+                elif len(cmd_inp.split(' ')) > 2:
+                    files_to_put = cmd_inp.split(' ')[1:]
+                    # files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in files_to_put]
+                    ssl_cp.ssl_repl("ssl_repl.get_files_dir({})".format(files_to_put))
+                    espdev.get_output()
+                    files_to_put_dir = espdev.output
+                    if len(files_to_put_dir) != len(files_to_put):
+                        print('One or more files not found in cwd')
+                    else:
+                        for file in files_to_put_dir:
+                            print('- {}'.format(file))
+                        ssl_htool.start_SOC()
+                        for file in files_to_put_dir:
+                            ssl_htool.get(file)
+                            time.sleep(0.2)
+                        # ssl_cp.ssl_repl("print('Done!')")
+                        time.sleep(0.2)
+                        ssl_htool.stop_SOC()
+                else:
+                    print('- {}'.format(file))
+                    ssl_htool.start_SOC()
+                    ssl_htool.get(file)
+                    # ssl_cp.ssl_repl("print('Done!')")
+                    time.sleep(0.2)
+                    ssl_htool.stop_SOC()
+            except Exception as e:
+                # print(e)
+                print('Indicate a file to put')
 
     if cmd_inp.split(' ')[0] == 'sync':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
@@ -1227,7 +1350,8 @@ def custom_sh_cmd(cmd_inp):
                     ssl_htool.start_SOC()
                     for file in files_to_put:
                         ssl_htool.put(file)
-                    ssl_cp.ssl_repl("print('Done!')")
+                        time.sleep(0.2)
+                    # ssl_cp.ssl_repl("print('Done!')")
                     time.sleep(0.2)
                     ssl_htool.stop_SOC()
                 elif '*' in file:
@@ -1238,7 +1362,8 @@ def custom_sh_cmd(cmd_inp):
                     ssl_htool.start_SOC()
                     for file in files_to_put_re:
                         ssl_htool.put(file)
-                    ssl_cp.ssl_repl("print('Done!')")
+                        time.sleep(0.2)
+                    # ssl_cp.ssl_repl("print('Done!')")
                     time.sleep(0.2)
                     ssl_htool.stop_SOC()
                 elif len(cmd_inp.split(' ')) > 2:
@@ -1252,14 +1377,15 @@ def custom_sh_cmd(cmd_inp):
                         ssl_htool.start_SOC()
                         for file in files_to_put_dir:
                             ssl_htool.put(file)
-                        ssl_cp.ssl_repl("print('Done!')")
+                            time.sleep(0.2)
+                        # ssl_cp.ssl_repl("print('Done!')")
                         time.sleep(0.2)
                         ssl_htool.stop_SOC()
                 else:
                     print('- {}'.format(file))
                     ssl_htool.start_SOC()
                     ssl_htool.put(file)
-                    ssl_cp.ssl_repl("print('Done!')")
+                    # ssl_cp.ssl_repl("print('Done!')")
                     time.sleep(0.2)
                     ssl_htool.stop_SOC()
             except Exception as e:
@@ -2478,6 +2604,9 @@ while repl:
         try:
             # print('KBI_1!!')
             # send_KBI()
+            if encrypted_flag['sec']:
+                ssl_cp.flush_conn()
+                ssl_htool.stop_SOC()
             continue
         except Exception as e:
             print(e)

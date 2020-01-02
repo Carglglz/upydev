@@ -3,7 +3,7 @@ import ssl
 import os
 import time
 import sys
-import select
+# import select
 import gc
 
 
@@ -97,13 +97,11 @@ class SSL_socket_client_tool:
         # self.cli_soc.settimeout(2)
 
     def put(self, filetoget, size, chunk=4096, dbg=False):
-        # final_file = b''
-        # self.connect_SOC()  # for file in filelist
         local_size = 0
-        index = 0
         chunk = chunk
-        put_soc = [self.cli_soc]
+        # put_soc = [self.cli_soc]
         # chunk_sizes = [chunk]
+        print(size)
         if size < chunk:
             chunk = size
             chunk_rest = size % chunk
@@ -131,7 +129,6 @@ class SSL_socket_client_tool:
                     pass
                 else:
                     if self.buff != b'':
-                        index += 1
                         local_size += len(self.buff)
                         with open(filetoget, 'ab') as log:
                             log.write(self.buff)
@@ -144,10 +141,74 @@ class SSL_socket_client_tool:
                     break
                 else:
                     sys.print_exception(e)
+        print(local_size)
         self.buff = b''
         gc.collect()
+
+    def get_size(self, filetoget):
+        return os.stat(filetoget)[6]
+
+    def get(self, filetoget, chunk=4096, dbg=False):
+        size = self.get_size(filetoget)
+        remote_size = 0
+        chunk = chunk
+        write_b = 0
+        write_buff = 0
+        if size < chunk:
+            chunk = size
+            chunk_rest = size % chunk
+        else:
+            # chunk_sizes = [chunk for i in range(size//chunk)] + [size % chunk]
+            chunk_rest = size % chunk
+        # final_file = b''
+        time.sleep(0.1)
+        with open(filetoget, 'rb') as log:
+            self.buff = log.read(chunk)
+            while True:
+                try:
+                    # print(len(chunk))
+                    if self.buff != b'':
+                        # in python use 'i'
+                        write_b = self.cli_soc.write(self.buff)
+                        if isinstance(write_b, int):
+                            write_buff += write_b
+                            if dbg:
+                                print(write_b)
+                            if remote_size == (size // (chunk))*(chunk):
+                                chunk = chunk_rest
+                            # final_file += chunk
+                            self.buff = log.read(chunk)
+                            remote_size += len(self.buff)
+                    else:
+                        # print('END OF FILE')
+                        # soc.sendall(b'EOF\x8a\xb1\x1a\xcb\x11')
+                        # soc.close()
+                        # gc.collect()
+
+                        time.sleep(0.1)
+                        print(write_buff)
+                        break
+                except Exception as e:
+                    if e == KeyboardInterrupt:
+                        break
+                    else:
+                        sys.print_exception(e)
+            # self.buff = b''
+            # gc.collect()
 
 
 def start(host, port):
     ssl_repl_serv = SSL_socket_client_repl(host, port=port)
     return ssl_repl_serv
+
+
+def get_files_cwd():
+    return [file for file in os.listdir() if not os.stat(file)[0] & 0x4000]
+
+
+def get_files_re(reg):
+    return [file for file in get_files_cwd() if reg in file]
+
+
+def get_files_dir(filelist):
+    return [file for file in get_files_cwd() if file in filelist]

@@ -379,14 +379,15 @@ def sync_to_dev(file_tosync, dev):
 #                                                                     nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
 #     sys.stdout.flush()
 
-def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l, size_bar=bar_size):
+def do_pg_bar(index, wheel, nb_of_total, speed, time_e,
+              loop_l, percentage, size_bar=bar_size):
     l_bloc = bloc_progress[loop_l]
     if index == bar_size:
         l_bloc = "█"
     sys.stdout.write("\033[K")
     print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((bar_size+1) - len("█" *index + l_bloc)),
                                                                     wheel[index % 4],
-                                                                    int((index/bar_size)*100),
+                                                                    int((percentage)*100),
                                                                     nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
     sys.stdout.flush()
 
@@ -406,10 +407,12 @@ def w_stream_reader(soc, total_size, chunk_rx):
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
                 nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), total_size/(1024**2))
+                percentage = len(buff)/total_size
                 t_elapsed = time.time() - t_start
                 t_speed = "{:^2.2f}".format((len(buff)/(1024**2))/t_elapsed)
                 if pb:
-                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
+                              t_elapsed, loop_index_l, percentage)
                 if len(buff) == total_size:
                     break
             else:

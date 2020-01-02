@@ -33,7 +33,7 @@ WEBREPL_GET_VER = 3
 bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
 columns, rows = os.get_terminal_size(0)
-cnt_size = 75
+cnt_size = 80
 if columns > cnt_size:
     bar_size = int((columns - cnt_size))
     pb = True
@@ -49,14 +49,15 @@ else:
 # args = parser.parse_args()
 
 
-def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l, size_bar=bar_size):
+def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l,
+              percentage, size_bar=bar_size):
     l_bloc = bloc_progress[loop_l]
     if index == bar_size:
         l_bloc = "█"
     sys.stdout.write("\033[K")
     print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} KB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((bar_size+1) - len("█" *index + l_bloc)),
                                                                     wheel[index % 4],
-                                                                    int((index/bar_size)*100),
+                                                                    int((percentage)*100),
                                                                     nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
     sys.stdout.flush()
 
@@ -184,10 +185,12 @@ def put_file(ws, local_file, remote_file):
             loop_index = int(loop_index_f)
             loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
             nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+            percentage = cnt/sz
             t_elapsed = time.time() - t_start
             t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
             if pb:
-                do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed,
+                          loop_index_l, percentage)
             else:
                 sys.stdout.write("Sent %d of %d bytes\r" % (cnt, sz))
                 sys.stdout.flush()
@@ -227,9 +230,11 @@ def get_file(ws, local_file, remote_file, file_size):
                     loop_index = int(loop_index_f)
                     loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
                     nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz_r/(1024))
+                    percentage = cnt / sz_r
                     t_elapsed = time.time() - t_start
                     t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
-                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed, loop_index_l)
+                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
+                              t_elapsed, loop_index_l, percentage)
                 else:
                     sys.stdout.write("Received %d bytes\r" % cnt)
                     sys.stdout.flush()
