@@ -19,7 +19,8 @@ class SSL_socket_client_repl:
         self.cli_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # self.cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.wrepl = None
-        self.cli_soc.setsockopt(socket.SOL_SOCKET, 20, os.dupterm_notify)
+        if hasattr(os, 'dupterm_notify'):
+            self.cli_soc.setsockopt(socket.SOL_SOCKET, 20, os.dupterm_notify)
         self.addr = socket.getaddrinfo(self.host, self.port)[0][-1]
         self.buff = bytearray(buff)
         self.buff_size = buff
