@@ -37,10 +37,10 @@ class SSL_socket_client_repl:
         self.buff_size = buff
         if init:
             print('>>> ')
-            time.sleep(2)
+            time.sleep(0.5)
             self.connect_SOC()
-            self.key = None
-            self.cert = None
+            # self.key = None
+            # self.cert = None
 
     def connect_SOC(self):
         self.cli_soc.connect(self.addr)
@@ -99,15 +99,16 @@ class SSL_socket_client_tool:
         self.writable = None
         self.exceptional = None
 
-    def connect_SOC(self):
+    def connect_SOC(self, key, cert):
         print('>>> ')
         # self.cli_soc.close()
         self.cli_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        time.sleep(1)
+        time.sleep(0.2)
         self.cli_soc.connect(self.addr)
         # self.cli_soc.settimeout(2)
-        self.cli_soc = ssl.wrap_socket(self.cli_soc)
+        self.cli_soc = ssl.wrap_socket(self.cli_soc, key=key,
+                                       cert=cert)
         self.cli_soc.setblocking(False)
         # self.cli_soc.settimeout(2)
 
@@ -227,37 +228,3 @@ def get_files_re(reg):
 
 def get_files_dir(filelist):
     return [file for file in get_files_cwd() if file in filelist]
-
-
-def load_key():
-    id = hexlify(unique_id()).decode()
-    buff_key = b''
-    with open('upy_pub_rsa{}.key'.format(id), 'rb') as keyfile:
-        while True:
-            try:
-                buff = keyfile.read(2000)
-                if buff != b'':
-                    buff_key += buff
-                else:
-                    break
-            except Exception as e:
-                print(e)
-    return buff_key
-
-
-def client_auth(rsa_key, token=None):
-    if sys.platform == 'esp8266':
-        raw_key_list = [line.encode() for line in rsa_key.decode().split('\n')[1:-2]]
-    else:
-        raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
-    raw_key = b''
-    for line in raw_key_list:
-        raw_key += line
-    random_token = token
-    for b in random_token:
-        raw_key += bytes(chr(raw_key[b]), 'utf-8')
-    key_hash = sha256()
-    key_hash.update(raw_key)
-    hashed_key = key_hash.digest()
-    gc.collect()
-    return hashed_key

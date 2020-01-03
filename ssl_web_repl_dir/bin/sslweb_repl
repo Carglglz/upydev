@@ -472,8 +472,10 @@ class SSL_TOOL:
 
         # self.context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
         # self.context.set_ciphers('EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:AES256+SHA256')
+        self.context.verify_mode = ssl.CERT_REQUIRED
+        self.context.load_verify_locations(cafile=self.cert)
         self.ssl_repl.ssl_repl("ssl_tool=ssl_repl.SSL_socket_client_tool('{}', {})".format(self.host, self.port))
-        self.ssl_repl.ssl_repl("ssl_tool.connect_SOC()")
+        self.ssl_repl.ssl_repl("ssl_tool.connect_SOC(ssl_client.key, ssl_client.cert)")
         self.conn, self.addr_client = self.serv_soc.accept()
         self.conn = self.context.wrap_socket(self.conn, server_side=True)
         if args.v:
@@ -618,6 +620,19 @@ class SSL_TOOL:
         self.ssl_repl.ssl_repl("print('Done!');gc.collect()")
 
 
+class WBREPL_IO:
+    def __init__(self, dev):
+        self.WBREPL_ON = True
+        self.dev = dev
+
+    def enable_wrepl_io(self):
+        if self.WBREPL_ON:
+            self.dev.close_wconn()
+            self.WBREPL_ON = False
+        else:
+            self.dev.open_wconn()
+            self.WBREPL_ON = True
+
 # ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", help='host password', required=True)
@@ -673,6 +688,7 @@ if not args.nem:
 # if args.v:
 #     print('SSLWebREPL connected')
 if args.nem:
+    ssl_cp = WBREPL_IO(dev=espdev)
     print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
     print('')
     espdev.wr_cmd('B')
@@ -1167,14 +1183,23 @@ def custom_sh_cmd(cmd_inp):
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
         print('<-- Device {} MicroPython -->'.format(dev_platform))
         print('Use CTRL-x to exit, Use CTRL-k to see custom wrepl Keybindings')
-        ssl_cp.enable_wrepl_io()
+        try:
+            ssl_cp.enable_wrepl_io()
+        except Exception as e:
+            pass
         web_repl_cmd_str = 'web_repl {} -p {}'.format(args.t, args.p)
         web_repl_cmd = shlex.split(web_repl_cmd_str)
         try:
             web_repl = subprocess.call(web_repl_cmd)
-            ssl_cp.enable_wrepl_io()
+            try:
+                ssl_cp.enable_wrepl_io()
+            except Exception as e:
+                pass
         except KeyboardInterrupt:
-            ssl_cp.enable_wrepl_io()
+            try:
+                ssl_cp.enable_wrepl_io()
+            except Exception as e:
+                pass
             pass
             print('')
 
@@ -1229,7 +1254,10 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp.split(' ')[0] == 'get':
         if not encrypted_flag['sec']:
             print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-            ssl_cp.enable_wrepl_io()
+            try:
+                ssl_cp.enable_wrepl_io()
+            except Exception as e:
+                pass
             if dev_path['p'] != ' ':
                 dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
             else:
@@ -1252,9 +1280,15 @@ def custom_sh_cmd(cmd_inp):
                 get_cmd = shlex.split(get_str)
                 try:
                     get_file = subprocess.call(get_cmd)
-                    ssl_cp.enable_wrepl_io()
+                    try:
+                        ssl_cp.enable_wrepl_io()
+                    except Exception as e:
+                        pass
                 except KeyboardInterrupt:
-                    ssl_cp.enable_wrepl_io()
+                    try:
+                        ssl_cp.enable_wrepl_io()
+                    except Exception as e:
+                        pass
                     pass
                     print('Operation aborted')
             except Exception as e:
@@ -1324,7 +1358,10 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp.split(' ')[0] == 'sync':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-        ssl_cp.enable_wrepl_io()
+        try:
+            ssl_cp.enable_wrepl_io()
+        except Exception as e:
+            pass
         if dev_path['p'] != ' ':
             dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
         else:
@@ -1348,9 +1385,15 @@ def custom_sh_cmd(cmd_inp):
             sync_cmd = shlex.split(get_str)
             try:
                 get_file = subprocess.call(sync_cmd)
-                ssl_cp.enable_wrepl_io()
+                try:
+                    ssl_cp.enable_wrepl_io()
+                except Exception as e:
+                    pass
             except KeyboardInterrupt:
-                ssl_cp.enable_wrepl_io()
+                try:
+                    ssl_cp.enable_wrepl_io()
+                except Exception as e:
+                    pass
                 pass
                 print('Operation aborted')
         except Exception as e:
@@ -1359,7 +1402,10 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp.split(' ')[0] == 'put':
         if not encrypted_flag['sec']:
             print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-            ssl_cp.enable_wrepl_io()
+            try:
+                ssl_cp.enable_wrepl_io()
+            except Exception as e:
+                pass
             if dev_path['p'] != ' ':
                 dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
             else:
@@ -1385,9 +1431,15 @@ def custom_sh_cmd(cmd_inp):
                 put_cmd = shlex.split(put_str)
                 try:
                     put_file = subprocess.call(put_cmd)
-                    ssl_cp.enable_wrepl_io()
+                    try:
+                        ssl_cp.enable_wrepl_io()
+                    except Exception as e:
+                        pass
                 except KeyboardInterrupt:
-                    ssl_cp.enable_wrepl_io()
+                    try:
+                        ssl_cp.enable_wrepl_io()
+                    except Exception as e:
+                        pass
                     pass
                     print('Operation aborted')
             except Exception as e:
@@ -1461,7 +1513,10 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp.split(' ')[0] == 'd_sync':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-        ssl_cp.enable_wrepl_io()
+        try:
+            ssl_cp.enable_wrepl_io()
+        except Exception as e:
+            pass
         if dev_path['p'] != ' ':
             dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
         else:
@@ -1476,9 +1531,15 @@ def custom_sh_cmd(cmd_inp):
             d_sync_cmd = shlex.split(d_sync_str)
             try:
                 dir_sync = subprocess.call(d_sync_cmd)
-                ssl_cp.enable_wrepl_io()
+                try:
+                    ssl_cp.enable_wrepl_io()
+                except Exception as e:
+                    pass
             except KeyboardInterrupt:
-                ssl_cp.enable_wrepl_io()
+                try:
+                    ssl_cp.enable_wrepl_io()
+                except Exception as e:
+                    pass
                 pass
                 print('Operation aborted')
         except Exception as e:
