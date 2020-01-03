@@ -1095,7 +1095,16 @@ def upy_keygen(rsa_key):
     return (password_short, random_token + bytes(index_key))
 
 
-def ssl_rsa_key_certgen(dir='', store=True):
+def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
+    # print('Generating RSA key and Cerficate...')
+    print('Getting unique id...')
+    espdev = W_UPYDEVICE(ip, passwd)
+    espdev.open_wconn()
+    espdev.wr_cmd("from machine import unique_id; unique_id()",
+                  silent=True, follow=False)
+    unique_id = hexlify(espdev.output).decode()
+    print('ID: {}'.format(unique_id))
+    espdev.close_wconn()
     key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
@@ -1106,7 +1115,7 @@ def ssl_rsa_key_certgen(dir='', store=True):
                             encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
 
     if store:
-        with open(dir+'SSL_key.pem', 'wb') as keyfile:
+        with open(dir+'SSL_key{}.pem'.format(unique_id), 'wb') as keyfile:
             keyfile.write(pem)
 
     subject = issuer = x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
@@ -1125,8 +1134,23 @@ def ssl_rsa_key_certgen(dir='', store=True):
                                                             critical=False
                 ).sign(key, hashes.SHA256(), default_backend())
     if store:
-        with open(dir+'SSL_certificate.pem', 'wb') as certfile:
+        with open(dir+'SSL_certificate{}.pem'.format(unique_id), 'wb') as certfile:
             certfile.write(cert.public_bytes(serialization.Encoding.PEM))
+
+    # CONVERT TO DER FORMAT
+    cert_args = shlex.split('openssl x509 -in {}SSL_certificate{}.pem -out {}SSL_certificate{}.der -outform DER'.format(dir, unique_id, dir, unique_id))
+    subprocess.call(cert_args)
+    key_args = shlex.split('openssl rsa -in {}SSL_key{}.pem -out {}SSL_key{}.der -outform DER'.format(dir, unique_id, dir, unique_id))
+    subprocess.call(key_args)
+
+    if args.tfkey:
+        print('Transfering RSA key and Certificates to the device...')
+        args.f = '{}/{}'.format(upydev.__path__[0], 'SSL_key{}.der'.format(unique_id))
+        put_f(ip, passwd, rst=False)
+        args.f = '{}/{}'.format(upydev.__path__[0], 'SSL_certificate{}.der'.format(unique_id))
+        put_f(ip, passwd, rst=args.rst)
+        print('Done!')
+
 
 helparg = '''Mode:
 - config : to save upy device settings (see -p, -t, -g),
@@ -3449,7 +3473,7 @@ def cryp_wrepl(ip, passwd, usr=None):
 
 def get_ssl_rsa_keycert(ip, passwd):
     print('Generating SSL RSA key and certificates...')
-    ssl_rsa_key_certgen(dir=upydev.__path__[0]+'/')
+    ssl_rsa_key_certgen(ip, passwd, dir=upydev.__path__[0]+'/')
     print('Done!')
 #############################################
 

@@ -5,6 +5,9 @@ import time
 import sys
 # import select
 import gc
+from ubinascii import hexlify
+from machine import unique_id
+from hashlib import sha256
 
 
 class SSL_socket_client_repl:
@@ -16,6 +19,14 @@ class SSL_socket_client_repl:
         self.cli_soc = None
         self.host = host
         self.port = port
+        self._key = 'SSL_key{}.der'.format(hexlify(unique_id()).decode())
+        self._cert = 'SSL_certificate{}.der'.format(hexlify(unique_id()).decode())
+        self.key = None
+        self.cert = None
+        with open(self._key, 'rb') as keyfile:
+            self.key = keyfile.read()
+        with open(self._cert, 'rb') as certfile:
+            self.cert = certfile.read()
         self.cli_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # self.cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.wrepl = None
@@ -28,11 +39,14 @@ class SSL_socket_client_repl:
             print('>>> ')
             time.sleep(2)
             self.connect_SOC()
+            self.key = None
+            self.cert = None
 
     def connect_SOC(self):
         self.cli_soc.connect(self.addr)
         # self.cli_soc.settimeout(1)
-        self.cli_soc = ssl.wrap_socket(self.cli_soc)
+        self.cli_soc = ssl.wrap_socket(self.cli_soc, key=self.key,
+                                       cert=self.cert)
         self.cli_soc.setblocking(False)
         # self.cli_soc.settimeout(1)
         print('>>> ')
@@ -213,3 +227,37 @@ def get_files_re(reg):
 
 def get_files_dir(filelist):
     return [file for file in get_files_cwd() if file in filelist]
+
+
+def load_key():
+    id = hexlify(unique_id()).decode()
+    buff_key = b''
+    with open('upy_pub_rsa{}.key'.format(id), 'rb') as keyfile:
+        while True:
+            try:
+                buff = keyfile.read(2000)
+                if buff != b'':
+                    buff_key += buff
+                else:
+                    break
+            except Exception as e:
+                print(e)
+    return buff_key
+
+
+def client_auth(rsa_key, token=None):
+    if sys.platform == 'esp8266':
+        raw_key_list = [line.encode() for line in rsa_key.decode().split('\n')[1:-2]]
+    else:
+        raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
+    raw_key = b''
+    for line in raw_key_list:
+        raw_key += line
+    random_token = token
+    for b in random_token:
+        raw_key += bytes(chr(raw_key[b]), 'utf-8')
+    key_hash = sha256()
+    key_hash.update(raw_key)
+    hashed_key = key_hash.digest()
+    gc.collect()
+    return hashed_key
