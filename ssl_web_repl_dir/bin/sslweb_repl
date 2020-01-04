@@ -259,14 +259,19 @@ class SSL_REPL_server:
 
         # self.context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
         # self.context.set_ciphers('EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:AES256+SHA256')
-        self.context.verify_mode = ssl.CERT_REQUIRED
-        self.context.load_verify_locations(cafile=self.cert)
-        self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
-        self.conn, self.addr_client = self.serv_soc.accept()
-        self.conn = self.context.wrap_socket(self.conn, server_side=True)
-        self.version = self.conn.version()
-        self.cipher = self.conn.cipher()
-        self.client_cert = self.conn.getpeercert()
+        try:
+            self.context.verify_mode = ssl.CERT_REQUIRED
+            self.context.load_verify_locations(cafile=self.cert)
+            self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
+            self.conn, self.addr_client = self.serv_soc.accept()
+            self.conn = self.context.wrap_socket(self.conn, server_side=True)
+            self.version = self.conn.version()
+            self.cipher = self.conn.cipher()
+            self.client_cert = self.conn.getpeercert()
+        except ssl.SSLError:
+            print('\033[91;1mWARNING: CERTIFICATE VERIFY FAILED\033[0m')
+            print('Please update the certificate\nwith command "upydev sslgen_rsakey -tfkey"')
+            sys.exit()
         if args.v:
             print('SSLWebREPL connection from: {}'.format(self.addr_client))
             print("SSL established. Peer: {}".format(self.client_cert))
@@ -672,17 +677,18 @@ unique_id = hexlify(espdev.output).decode()
 espdev.wr_cmd("import sys; sys.platform",
               silent=True)
 dev_platform = espdev.output
+espdev.platform = dev_platform
 if args.v:
     print('{}@{}'.format(dev_platform, unique_id))
-rk = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=False,
-                  id=unique_id)
-if rk is None:
-    sys.exit()
+# rk = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=False,
+#                   id=unique_id)
+# if rk is None:
+#     sys.exit()
 ssl_key = upydev.__path__[0]+'/'+'SSL_key{}.pem'.format(unique_id)
 ssl_cert = upydev.__path__[0]+'/'+'SSL_certificate{}.pem'.format(unique_id)
 if not args.nem:
     ssl_cp = SSL_REPL_server(dev=espdev, key=ssl_key, cert=ssl_cert,
-                             client_key=rk, dev_id=unique_id)
+                             client_key=None, dev_id=unique_id)
     ssl_htool = SSL_TOOL(ssl_repl=ssl_cp, key=ssl_key, cert=ssl_cert)
 # print('Done!')
 # if args.v:
@@ -799,6 +805,7 @@ Custom keybindings:
 - CTRL-e : paste mode in repl, (edit mode after 'edit' shell command)
 - CTRL-d : ends paste mode in repl, (ends edit mode after 'edit' shell command)
 - CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
+- CTRL-b : prints MicroPython version and sys platform
 - CTRL-r : to flush line buffer
 - CTRL-o : to list files in cwd (ls shorcut command)
 - CTRL-n : shows mem_info()
@@ -833,8 +840,8 @@ shell_commands_info = """
     * custom shell commands:
         - ls  : list device files in colored format (same as pressing tab on empty line)
         - tree : to print a tree version of filesystem
-        - run  : to run a 'script.py' (To access again to the shell do CTRL-C)
-        - df   : to see filesystem flash usage (or SD if already mounted as 'sd')
+        - run  : to run a 'script.py'
+        - df   : to see filesystem flash usage (and SD if already mounted)
         - meminfo: to see RAM info
         - whoami : to see user, system and machine info
         - datetime: to see device datetime (if not set, will display uptime)
@@ -851,8 +858,8 @@ shell_commands_info = """
         - edit   : to edit a file (e.g. edit my_script.py)
         - get    : to get a file from the device
         - put    : to upload a file to the device
-        - sync   : to get file (faster) from the device (use with > 10 KB files)
-        - d_sync: to recursively sync a local directory with the device filesystem
+        - sync   : to get file (faster) from the device (use with > 10 KB files) (no encrypted mode only)
+        - d_sync: to recursively sync a local directory with the device filesystem (no encrypted mode only)
         - wrepl  : to enter the original WebREPL terminal (no encryption mode)
         - reload : to delete a module from sys.path so it can be imported again.
         - flush_soc: to flush socket in case of wrong output
@@ -1724,14 +1731,21 @@ def custom_sh_cmd(cmd_inp):
         print('closing...')
         if encrypted_flag['sec']:
             # print('SHUTDOWN SSL')
-            ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
-            # time.sleep(0.5)
-        espdev.close_wconn()
-        time.sleep(0.5)
-        if reset_flag['R']:
-            print('Rebooting device...')
-            espdev.reset(output=False)
-            print('Done!')
+            if reset_flag['R']:
+                print('Rebooting device...')
+                ssl_cp.send_message("\x04")
+                print('Done!')
+            else:
+                ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
+                time.sleep(0.5)
+            espdev.close_wconn()
+        # time.sleep(0.5)
+        else:
+            espdev.close_wconn()
+            if reset_flag['R']:
+                print('Rebooting device...')
+                espdev.reset(output=False)
+                print('Done!')
         exit_flag['exit'] = True
 
 
@@ -1750,13 +1764,22 @@ def exitpress(event):
     else:
         print('\n>>> closing...')
     if encrypted_flag['sec']:
-        ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
-    espdev.close_wconn()
+        if reset_flag['R']:
+            print('Rebooting device...')
+            ssl_cp.send_message("\x04")
+            print('Done!')
+        else:
+            ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
+            time.sleep(0.5)
+        espdev.close_wconn()
     # time.sleep(0.5)
-    if reset_flag['R']:
-        print('Rebooting device...')
-        espdev.reset(output=False)
-        print('Done!')
+    else:
+        espdev.close_wconn()
+        time.sleep(0.5)
+        if reset_flag['R']:
+            print('Rebooting device...')
+            espdev.reset(output=False)
+            print('Done!')
     exit_flag['exit'] = True
     event.app.exit()
 
@@ -1872,11 +1895,6 @@ def autocomppress(event):
                 inp, frst_cmd = map_upysh(last_cmd)
                 if frst_cmd == 'run':
                     if not encrypted_flag['sec']:
-                        script_is_running['R'] = True
-                        script_is_running['script'] = inp.split(' ')[1]
-                        # print('Running {}...'.format(script_is_running['script']))
-                        # ssl_cp.enable_wrepl_io()
-                        # time.sleep(0.2)
                         espdev.wr_cmd(inp)
                     else:
                         try:
@@ -1997,39 +2015,22 @@ def toggle_shell_mode(event):
 def send_KBI(event):
     # def send_KBI():
     try:
-        if script_is_running['R']:
-            script_is_running['R'] = False
-            # print('KeyboardInterrupt')
-            # print('Stopping {}...'.format(script_is_running['script']))
-            # stop_by_pid(proc_name='web_repl_cmd_r')
-            # espdev.kbi(output=False)
-            # # time.sleep(1)
-            # espdev.open_wconn()
-            # # time.sleep(0.5)
-            # reload = "import sys;del(sys.modules['{}'])".format(
-            #     script_is_running['script'])
-            # espdev.wr_cmd(reload, silent=True)
-            # espdev.close_wconn()
-            # ssl_cp.enable_wrepl_io()
-            # print('Done!')
+        last_cmd = ''
+        if edit_mode['E']:
             prompt['p'] = shell_prompt['s']
+            event.app.current_buffer.reset()
         else:
-            last_cmd = ''
-            if edit_mode['E']:
-                prompt['p'] = shell_prompt['s']
-                event.app.current_buffer.reset()
+            if encrypted_flag['sec']:
+                ssl_cp.ssl_repl('\x03') # KBI
             else:
-                if encrypted_flag['sec']:
-                    ssl_cp.ssl_repl('\x03') # KBI
-                else:
-                    espdev.wr_cmd('C')
-                paste_flag['p'] = False
-                if not shell_mode['S']:
-                    prompt['p'] = d_prompt
-                    last_cmd = event.app.current_buffer.document.text
-                if shell_mode['S']:
-                    print('^C')
-                event.app.current_buffer.reset()
+                espdev.wr_cmd('C')
+            paste_flag['p'] = False
+            if not shell_mode['S']:
+                prompt['p'] = d_prompt
+                last_cmd = event.app.current_buffer.document.text
+            if shell_mode['S']:
+                print('^C')
+            event.app.current_buffer.reset()
     except Exception as e:
         pass
 
@@ -2072,6 +2073,8 @@ def paste_mode(event):
             if not encrypted_flag['sec']:
                 file_content = send_custom_sh_cmd(
                     "cat('{}')".format(edit_mode['File']), True)
+                if len(file_content) > 0:
+                    file_content = '\n'.join(file_content).replace('\r', '')
             else:
                 ssl_cp.ssl_repl("cat('{}')".format(edit_mode['File']))
                 # espdev.get_output()
@@ -2088,7 +2091,7 @@ def paste_mode(event):
                 # print(len(process_content))
             except Exception as e:
                 process_content = ' '
-            if file_content is not None:
+            if isinstance(file_content, str):
                 event.app.current_buffer.insert_text(process_content)
 
 
@@ -2138,8 +2141,9 @@ def paste_mode_exit(event):
                     #     print(espdev.output)
                     espdev.output = None
                     time.sleep(1)
-                    ssl_cp.flush_conn()
-                    ssl_cp.flush_conn()
+                    if encrypted_flag['sec']:
+                        ssl_cp.flush_conn()
+                        ssl_cp.flush_conn()
             # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
             event.app.current_buffer.reset()
             # print(buff_text)
@@ -2152,19 +2156,6 @@ def paste_mode_exit(event):
                 send_custom_sh_cmd(
                     "_file_to_edit = open('{}','w')".format(file_to_edit))
                 send_custom_sh_cmd("nl = '\\n'")
-                if encrypted_flag['sec']:
-                    pass
-                    # espdev.wr_cmd("cp.gbls = globals()", silent=True)
-                # if not encrypted_flag['sec']:
-                #     block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
-                #     # print(block_commad.splitlines())
-                #     espdev.wr_cmd(block_commad)
-                # else:
-                #     espdev.wr_cmd("cp.gbls = globals()", silent=True)
-                #     h_cp.crepl(buff_text)
-                #     if espdev.output is not None:
-                #         print(espdev.output)
-                # see if is too long, break in lines
                 print('Writing to file...')
                 lines_to_write = buff_text.split('\n')
                 for line in lines_to_write:
@@ -2177,8 +2168,9 @@ def paste_mode_exit(event):
                 send_custom_sh_cmd("_file_to_edit.close()")
                 send_custom_sh_cmd("gc.collect()")
                 time.sleep(0.5)
-                ssl_cp.flush_conn()
-                ssl_cp.flush_conn()
+                if encrypted_flag['sec']:
+                    ssl_cp.flush_conn()
+                    ssl_cp.flush_conn()
             # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
             event.app.current_buffer.reset()
             # print(buff_text)
@@ -2691,14 +2683,6 @@ while repl:
                         inp, frst_cmd = map_upysh(inp)
                         if frst_cmd == 'run':
                             if not encrypted_flag['sec']:
-                                script_is_running['R'] = True
-                                script_is_running['script'] = inp.split(' ')[1]
-                                # print('Running {}.py in Background...do CTRL-C to enable Shell again'.format(
-                                #     script_is_running['script']))
-                                # prompt['p'] = ""
-                                # ssl_cp.enable_wrepl_io()
-                                # time.sleep(0.2)
-                                # espdev.cmd_nb(inp)
 
                                 espdev.wr_cmd(inp)
                             else:

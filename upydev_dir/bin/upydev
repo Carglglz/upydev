@@ -1149,7 +1149,6 @@ def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
         put_f(ip, passwd, rst=False)
         args.f = '{}/{}'.format(upydev.__path__[0], 'SSL_certificate{}.der'.format(unique_id))
         put_f(ip, passwd, rst=args.rst)
-        print('Done!')
 
 
 helparg = '''Mode:
@@ -3474,7 +3473,6 @@ def cryp_wrepl(ip, passwd, usr=None):
 def get_ssl_rsa_keycert(ip, passwd):
     print('Generating SSL RSA key and certificates...')
     ssl_rsa_key_certgen(ip, passwd, dir=upydev.__path__[0]+'/')
-    print('Done!')
 #############################################
 
 def ssl_wrepl(ip, passwd, usr=None):
