@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 'upysh2.py' implements the 'tree' comand to print filesystem in a tree view
 - "ssl"-webrepl-shell mode (experimental) (see DOCS)
 - "ssl@[dev]" shorcut to "ssl"-webrepl-shell mode
-- Progress bar length and percentage fix
+- Progress bar length and percentage fix, and estimated time
 - put and get commands now works in SSL mode too
 ## [0.1.8] - 2019-12-29
 ### Added
