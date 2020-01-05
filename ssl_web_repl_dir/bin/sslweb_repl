@@ -14,6 +14,7 @@ import os
 import signal
 import netifaces
 import nmap
+import ast
 import select
 import subprocess
 import shlex
@@ -183,6 +184,7 @@ class SSL_REPL_server:
         self.addr = None
         self.b_buff = bytearray(buff)
         self.buff = b''
+        self.raw_buff = b''
         self.message = b''
         self.prompt = b'>>> '
         self.prompt_seen = True
@@ -346,9 +348,13 @@ class SSL_REPL_server:
 
     def ssl_repl(self, inp, just_recv=False, silent=True, follow=False, n=0,
                  traceback=False, debug=False, prevent_hang=False,
-                 banner=False):
-        self.dev.output = None
+                 banner=False, check_list=False, list_th=20,
+                 no_raw_buff=False):
+        if not check_list:
+            self.dev.output = None
         self.buff = b''
+        if not no_raw_buff:
+            self.raw_buff = b''
         self.flush_conn()
         if not just_recv:
             self.send_message(inp+'\r')
@@ -360,9 +366,13 @@ class SSL_REPL_server:
         while True:
             try:
                 self.message = self.conn.recv()
+                if not no_raw_buff:
+                    self.raw_buff += self.message
+                    # self.raw_buff += b'//:'
                 if traceback:
                     self.buff += self.message
                 # print('DATA RECEIVED: ', self.message)
+                # if '>>> '
                 break
             except KeyboardInterrupt:
                 if prevent_hang:
@@ -380,16 +390,35 @@ class SSL_REPL_server:
             try:
                 self.message = self.conn.recv(1024)
                 self.buff += self.message
+                if not no_raw_buff:
+                    self.raw_buff += self.message
+                    # self.raw_buff += b'*'
                 # print(self.buff)
                 if follow:
+                    # printed = False
                     msg = self.buff.decode().split('\n')[-1]
                     if msg == '':
                         msg = self.buff.decode().split('\n')[-2]
-                    if msg.endswith('\r'):
+                    if msg.endswith('\r'):  # repl command never ends without \r
                         if n >= 1:  # filter first \r of command
                             print(msg.replace('\r', ''))
                         else:
                             n += 1
+                    else:
+                        if n >= 1:
+                            try:
+                                if b'>>> ' in self.buff:  # parse last line of cat command
+                                    last_line = self.buff.decode().split('\n')[-1].replace('\r', '').replace('>>> ', '')
+                                    var = ast.literal_eval(last_line)
+                                    if isinstance(var, list) or isinstance(var, dict):
+                                        print(var)
+                            except Exception as e:
+                                if inp.split(';')[0].startswith('cat') and inp.split(';')[0].endswith(".txt')"):
+                                    if b'>>> ' in self.buff:
+                                        last_line = self.buff.decode().split('\n')[-1].replace('\r', '').replace('>>> ', '')
+                                        if last_line != '':
+                                            print(last_line)
+                                pass
                 if self.message == b'>>> ':
                     break
             # except KeyboardInterrupt:
@@ -409,6 +438,8 @@ class SSL_REPL_server:
             try:
                 self.message = self.conn.recv()
                 self.buff += self.message
+                if not no_raw_buff:
+                    self.raw_buff += self.message
                 if self.message == b'>>> ':
                     break
             except Exception as e:
@@ -421,9 +452,48 @@ class SSL_REPL_server:
                 pass
             self.output = '\n'.join([m.decode() for m in msg_b if m != b''])
             if self.output != '':
-                self.dev.output = None
-                self.dev.output = self.output
-                self.dev.response = self.output
+                if not check_list:
+                    self.dev.output = None
+                    self.dev.output = self.output
+                    self.dev.response = self.output
+                # check_list
+                if check_list:
+                    try:
+                        return ast.literal_eval(self.output)
+                    except Exception as e:
+                        # print(self.output)
+                        return None
+                if not follow:
+                    if self.output.startswith('[') and self.output.endswith(']') and "'" in self.output:
+                        try:
+                            recv_list = ast.literal_eval(self.output)
+                            if isinstance(recv_list, list):
+                                recv_len = len(recv_list)
+                                if recv_len > list_th:
+                                    time.sleep(0.3)
+                                    true_len = self.ssl_repl("len({})".format(inp.split(';')[0]),
+                                                             silent=True, check_list=True,
+                                                             no_raw_buff=True)
+                                    # print(true_len, recv_len)
+                                    if true_len == recv_len:
+                                        pass
+                                    else:
+                                        # print('MALFORMED LIST')
+                                        time.sleep(0.3)
+                                        self.ssl_repl(inp=inp, just_recv=just_recv,
+                                                      silent=True, follow=follow, n=n,
+                                                      traceback=False, debug=False,
+                                                      prevent_hang=False,
+                                                      banner=False)
+                        except Exception as e:
+                            # print('MALFORMED LIST')
+                            time.sleep(0.2)
+                            self.ssl_repl(inp=inp, just_recv=just_recv,
+                                          silent=True, follow=follow, n=n,
+                                          traceback=False, debug=False,
+                                          prevent_hang=prevent_hang,
+                                          banner=False)
+
                 if not silent:
                     print(self.output)
             if traceback:
@@ -768,7 +838,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'catl', 'l_micropython', 'ls', 'python', 'vim',
                     'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs', 'flush_soc',
-                    'getcert']
+                    'getcert', 'get_rawbuff']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -815,6 +885,7 @@ Custom keybindings:
 - CTRL-w : flush test_code from sys modules, so it can be run again
 - CTRL-a : set cursor position at the beggining
 - CTRL-f : toggle autosuggest mode (Fish shell like)
+- CTRL-g : To active listen for device output (Timer or hardware interrupts), CTRL-c to break
 - CRTL-s , ENTER : toggle shell mode to navigate filesystem (see shell commands)
 - CTRL-k : prints the custom keybindings (this list) (+ shell commands if in shell mode)
 >>> """
@@ -880,6 +951,7 @@ shell_commands_info = """
     - docs : to open MicroPython docs site in the default web browser, if a second term
             is passed e.g. 'docs machine' it will open the docs site and search for 'machine'
     - getcert: to print the client SSL Certificate
+    - get_rawbuff: to get the raw output of a command (for debugging purpose)
 
 
 """
@@ -889,11 +961,15 @@ shell_commands_info = """
 
 # from @The Data Scientician : https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
 def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
-                autocol_tab=False):
+                autocol_tab=False, sort=True, autowide=False, max_cols=4):
     '''Prints formatted data on columns of given width.'''
+    if sort:
+        data.sort()
     if format_SH:
         if autocols:
-            wide = max([len(namefile) for namefile in data]) + 2
+            wide_data = max([len(namefile) for namefile in data]) + 2
+            if wide_data > wide:
+                wide = wide_data
             columns, rows = os.get_terminal_size(0)
             cols = int(columns/(wide))
         data = ['{}{}{}{}'.format(ABLUE_bold, val, CEND, ' '*(wide-len(val)))
@@ -903,7 +979,15 @@ def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
         data = ['{}{}{}{}'.format(
             CGREEN, val, CEND, ' '*(wide-len(val))) if '.mpy' in val else val for val in data]
     if autocol_tab:
-        data = [namefile  if len(namefile) < wide else namefile+'\n' for namefile in data]
+        data = [namefile if len(namefile) < wide else namefile+'\n' for namefile in data]
+    if autowide:
+        wide_data = max([len(namefile) for namefile in data]) + 2
+        if wide_data > wide:
+            wide = wide_data
+        columns, rows = os.get_terminal_size(0)
+        cols = int(columns/(wide))
+        if max_cols < cols:
+            cols = max_cols
     n, r = divmod(len(data), cols)
     pat = '{{:{}}}'.format(wide)
     line = '\n'.join(pat * cols for _ in range(n))
@@ -1572,7 +1656,7 @@ def custom_sh_cmd(cmd_inp):
             pass
 
     if cmd_inp == 'ls':
-        dev_files = send_custom_sh_cmd('uos.listdir()')
+        dev_files = send_custom_sh_cmd('uos.listdir();gc.collect()')
         try:
             print_table(dev_files, wide=28, format_SH=True)
         except Exception as e:
@@ -1632,10 +1716,10 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp == 'tree':
         # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
         if encrypted_flag['sec']:
-            ssl_cp.ssl_repl('from upysh2 import tree;tree()', follow=True)
+            ssl_cp.ssl_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
             ssl_cp.flush_conn()
         else:
-            send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
+            send_custom_sh_cmd('from upysh2 import tree;tree();gc.collect()', sh_silent=False)
 
     if cmd_inp == 'l_ifconfig':
         ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]
@@ -1726,6 +1810,9 @@ def custom_sh_cmd(cmd_inp):
                         print("{}: {}".format(key.upper(), ssl_cp.client_cert[key]))
                 except Exception as e:
                     print("{}: {}".format(key.upper(), ssl_cp.client_cert[key]))
+
+    if cmd_inp == 'get_rawbuff':
+        print(ssl_cp.raw_buff)
 
     if cmd_inp == 'exit':
         print('closing...')
@@ -1819,9 +1906,9 @@ def cmd_ls(event):
         espdev.output = None
         print('>>> ls')
         if not encrypted_flag['sec']:
-            espdev.wr_cmd('ls')
+            espdev.wr_cmd('ls;gc.collect()')
         else:
-            ssl_cp.ssl_repl('ls()')
+            ssl_cp.ssl_repl('ls();gc.collect()')
         if espdev.output is not None:
             print(espdev.output)
 
@@ -1915,7 +2002,8 @@ def autocomppress(event):
                         espdev.wr_cmd(inp)
                     else:
                         if inp == 'ls()' or frst_cmd == 'tree' or frst_cmd == 'cat':
-                            ssl_cp.ssl_repl(inp, follow=True)
+                            ssl_cp.ssl_repl(inp+';gc.collect()', follow=True)
+                            # ssl_cp.send_message('gc.collect()\r')
                         else:
                             ssl_cp.ssl_repl(inp)
                             if espdev.output is not None:
@@ -2007,7 +2095,7 @@ def toggle_shell_mode(event):
         if not encrypted_flag['sec']:
             espdev.wr_cmd('from upysh import *', silent=True)
         else:
-            ssl_cp.ssl_repl('from upysh import *')
+            ssl_cp.ssl_repl('from upysh import *', no_raw_buff=True)
         espdev.output = None
 
 
@@ -2289,14 +2377,14 @@ def tab_press(event):
                         # print(espdev.output)
                         pass
                     else:
-                        if rest != '':
+                        if rest != '':  # print attributes
                             result = [
                                 val for val in espdev.output if val.startswith(rest)]
                             if len(result) > 1:
                                 comm_part = os.path.commonprefix(result)
                                 if comm_part == rest:
                                     print('>>> {}'.format(buff_text))
-                                    print_table(result)
+                                    print_table(result, autowide=True, sort=False)
                                 else:
                                     event.app.current_buffer.insert_text(
                                         comm_part[len(rest):])
@@ -2305,7 +2393,7 @@ def tab_press(event):
                                     result[0][len(rest):])
                         else:
                             if not glb:
-                                if shell_mode['S']:
+                                if shell_mode['S']:  # print dirs/files
                                     result = [val for val in espdev.output if val.startswith(
                                         buff_text.split('/')[-1])]
                                     if len(result) > 1:
@@ -2340,8 +2428,8 @@ def tab_press(event):
                                         event.app.current_buffer.insert_text(
                                             result[0][len(buff_text.split('/')[-1]):])
                                 else:
-                                    print('>>> {}'.format(buff_text))
-                                    print_table(espdev.output, wide=18, autocol_tab=True)
+                                    print('>>> {}'.format(buff_text))   # dir var
+                                    print_table(espdev.output, wide=16, autocol_tab=True, sort=False)
                             else:
                                 result = [
                                     val for val in espdev.output if val.startswith(buff_text)]
@@ -2371,8 +2459,8 @@ def tab_press(event):
                                             print_table(
                                                 result, wide=28, format_SH=True)
                                         else:
-                                            print('>>> {}'.format(buff_text))
-                                            print_table(result, wide=22, autocol_tab=True)
+                                            print('>>> {}'.format(buff_text))  # globals
+                                            print_table(result, wide=16, autowide=True)
                                     else:
                                         event.app.current_buffer.insert_text(
                                             comm_part[len(buff_text):])
@@ -2655,6 +2743,53 @@ def toggle_status_encryp_msg(event):
             status_encryp_msg['S'] = True
 
 
+@kb.add('c-g')
+def listen_SSL_WREPL(event):
+    "Echo SSL_WREPL --> Active listening for timer/hardware interrupts"
+    if encrypted_flag['sec']:
+        # espdev.wr_cmd("cp.gbls = globals()", silent=True)
+        def echo_ouput():
+            try:
+                buff_text = "import time\nwhile True:\n    time.sleep(1)"
+                ssl_cp.paste_buff(buff_text)
+                ssl_cp.ssl_repl("\x04", follow=True)
+            except KeyboardInterrupt:
+                time.sleep(0.2)
+                ssl_cp.ssl_repl('\x03', silent=True,
+                                traceback=True)  # KBI
+                time.sleep(0.2)
+                for i in range(1):
+                    ssl_cp.ssl_repl('\x0d', silent=True)
+                    ssl_cp.flush_conn()
+                pass
+            espdev.output = None
+            time.sleep(1)
+            if encrypted_flag['sec']:
+                ssl_cp.flush_conn()
+                ssl_cp.flush_conn()
+            event.app.current_buffer.reset()
+        run_in_terminal(echo_ouput)
+
+    if not encrypted_flag['sec']:
+        # block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
+        # espdev.wr_cmd(block_commad)
+        # print(block_commad.splitlines())
+        def echo_ouput_nem():
+            buff_text = "import time\nwhile True:\n    time.sleep(1)"
+            espdev._wconn.child.sendline('E')
+            time.sleep(0.2)
+            for line in buff_text.split('\n'):
+                espdev._wconn.child.sendline(line)
+                cmd_echo = espdev._wconn.child.readline()
+                # time.sleep(0.2)
+            # espdev._wconn.child.sendline('D')
+            try:
+                cmd_echo = espdev._wconn.child.read_nonblocking(2**16, 0.2)
+            except Exception as e:
+                pass
+            espdev.wr_cmd('D')
+        run_in_terminal(echo_ouput_nem)
+
 session_p = PromptSession()
 
 # REPL/SHELL LOOP
@@ -2710,7 +2845,7 @@ while repl:
                                     espdev.open_wconn()
                             else:
                                 if inp == 'ls()' or frst_cmd == 'cat' or frst_cmd == 'tree' or 'help' in frst_cmd:
-                                    ssl_cp.ssl_repl(inp, follow=True)
+                                    ssl_cp.ssl_repl(inp+';gc.collect()', follow=True)
                                     ssl_cp.flush_conn()
                                 else:
                                     ssl_cp.ssl_repl(inp)
