@@ -464,9 +464,15 @@ class SSL_REPL_server:
                         # print(self.output)
                         return None
                 if not follow:
+                    if self.output.endswith('\n>>> '):
+                        self.output = self.output.replace('\n>>> ', '')
+                        self.dev.output = self.output
+                        self.dev.response = self.output
+                    
                     if self.output.startswith('[') and self.output.endswith(']') and "'" in self.output:
                         try:
                             recv_list = ast.literal_eval(self.output)
+
                             if isinstance(recv_list, list):
                                 recv_len = len(recv_list)
                                 if recv_len > list_th:
@@ -476,6 +482,7 @@ class SSL_REPL_server:
                                                              no_raw_buff=True)
                                     # print(true_len, recv_len)
                                     if true_len == recv_len:
+                                        # print(True)
                                         pass
                                     else:
                                         # print('MALFORMED LIST')
@@ -1829,14 +1836,23 @@ def custom_sh_cmd(cmd_inp):
             pass
 
 
-    if cmd_inp == 'exit':
-        print('closing...')
+    if cmd_inp.split(' ')[0] == 'exit':
+        # print('closing...')
         if encrypted_flag['sec']:
-            # print('SHUTDOWN SSL')
+            # print('SHUTDOWN SSL') # make exit or exit -r
             if reset_flag['R']:
-                print('Rebooting device...')
-                ssl_cp.send_message("\x04")
-                print('Done!')
+                if len(cmd_inp.split(' ')) > 1:
+                    if cmd_inp.split(' ')[1] == '-nr':
+                        ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
+                        time.sleep(0.5)
+                    elif cmd_inp.split(' ')[1] == '-hr':
+                        print('Device Hard Reset...')
+                        ssl_cp.send_message("import machine;machine.reset()\r")
+                        print('Done!')
+                else:
+                    print('Rebooting device...')
+                    ssl_cp.send_message("\x04")
+                    print('Done!')
             else:
                 ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
                 time.sleep(0.5)

@@ -28,6 +28,7 @@ import getpass
 import secrets
 import signal
 import hashlib
+import locale
 from binascii import hexlify
 from pathlib import Path
 import multiprocessing
@@ -1095,6 +1096,21 @@ def upy_keygen(rsa_key):
     return (password_short, random_token + bytes(index_key))
 
 
+def get_cert_data():
+    # MAC ADDRES IF
+    try:
+        addrs = netifaces.ifaddresses('en0')[netifaces.AF_LINK][0]['addr']
+        USER = os.environ['USER']
+        HOST_NAME = socket.gethostname()
+        COUNTRY_CODE = locale.getlocale()[0].split('_')[1]
+        return {'addrs': addrs, 'USER': USER, 'HOST_NAME': HOST_NAME,
+                'COUNTRY_CODE': COUNTRY_CODE}
+    except Exception as e:
+        default_temp = {'addrs': 'xxxx', 'USER': 'xxxx', 'HOST_NAME': 'xxxx',
+                        'COUNTRY_CODE': 'XX'}
+        return default_temp
+
+
 def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
     # print('Generating RSA key and Cerficate...')
     print('Getting unique id...')
@@ -1104,6 +1120,9 @@ def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
                   silent=True, follow=False)
     unique_id = hexlify(espdev.output).decode()
     print('ID: {}'.format(unique_id))
+    espdev.wr_cmd("import sys; sys.platform",
+                  silent=True)
+    dev_platform = espdev.output
     espdev.close_wconn()
     key = rsa.generate_private_key(
         public_exponent=65537,
@@ -1117,12 +1136,13 @@ def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
     if store:
         with open(dir+'SSL_key{}.pem'.format(unique_id), 'wb') as keyfile:
             keyfile.write(pem)
-
-    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-                                  x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
-                                  x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
+    cert_data = get_cert_data()
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"{}".format(cert_data['COUNTRY_CODE'])),
+                                  x509.NameAttribute(NameOID.USER_ID, u"{}".format(cert_data['USER'])),
+                                  x509.NameAttribute(NameOID.SURNAME, u"{}".format(cert_data['HOST_NAME'])),
+                                  x509.NameAttribute(NameOID.STREET_ADDRESS, u"{}".format(cert_data['addrs'])),
                                   x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"MicroPython"),
-                                  x509.NameAttribute(NameOID.COMMON_NAME, u"mysite.com")])
+                                  x509.NameAttribute(NameOID.COMMON_NAME, u"{}@{}".format(dev_platform, unique_id))])
     host_ip = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
     cert = x509.CertificateBuilder().subject_name(
                 subject).issuer_name(issuer).public_key(key.public_key()
