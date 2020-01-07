@@ -169,7 +169,9 @@ Device shell commands:
     - wrepl  : to enter the original WebREPL terminal (no encryption mode)
     - reload : to delete a module from sys.path so it can be imported again.
     - flush_soc: to flush socket in case of wrong output
-    - exit   : to exit SSLWebREPL Terminal
+    - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
+                     to exit without reset do 'exit -nr'
+                     to exit and do hard reset 'exit -hr'
 
 * Local shell commands:
     - pwdl   : to see local path
