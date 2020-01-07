@@ -317,10 +317,7 @@ Example: Raw commands
 
 - **ssl_wrepl**: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal (SSL sockets);
              CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
-             To see more keybindings info do CTRL-k. By default resets after exit,
-             use -rkey option to refresh the WebREPL password with a new random password,
-             after exit.This passowrd will be stored in the working directory or in global directory with
-             -g option. (This mode needs upysecrets.py, ssl_socket_client_server.py, ssl_repl.py)
+             To see more keybindings info do CTRL-k. By default resets after exit. (This mode needs ssl_repl.py)
          
 - **ssl**: to acces ssl_wrepl in a 'ssh' style command to be used like e.g.:
       "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
