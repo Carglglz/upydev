@@ -65,7 +65,7 @@ esp32@esp_room1:~ $
 
 * **The HANDSHAKE**:
 
-  The host logs into the WebREPL and then starts the ssl_repl (this switch of WebREPL) 
+  The host logs into the WebREPL and then starts the ssl_repl (this switch the terminal IO from WebREPL to SSLREPL) 
 
   Then the handshake is done by SSL sockets 
 
