@@ -864,13 +864,13 @@ else:
     prompt['p'] = shell_prompt['s']
     shell_mode['S'] = True
     if encrypted_flag['sec']:
-        ssl_cp.ssl_repl('import gc;from upysh import *;gc.collect()', silent=True)
+        ssl_cp.ssl_repl('import gc;import uos;from upysh import *;gc.collect()', silent=True)
         time.sleep(1)
         ssl_cp.flush_conn()
         ssl_cp.flush_conn()
         espdev.output = None
     else:
-        espdev.wr_cmd('from upysh import *;gc.collect()', silent=True)
+        espdev.wr_cmd('import gc;import uos;from upysh import *;gc.collect()', silent=True)
     espdev.output = None
 
 # KEYBINDINGS INFO

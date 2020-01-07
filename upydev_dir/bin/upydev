@@ -1270,6 +1270,10 @@ helparg = '''Mode:
 
 - sslgen_rsakey: To generate RSA-2048 bit key and a self-signed certificate to enable SSL sockets
                This needs a passphrase, that will be required every time the key is loaded.
+               Use -tfkey to upload this key to the device
+               (use only if connected directly to the AP of the device or a
+               "secure" wifi e.g. local/home). If not connected to a "secure" wifi
+               upload the key (it is stored in upydev.__path__) by USB/Serial connection.
 
 - ssl_wrepl: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal (SSL sockets);
              CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
