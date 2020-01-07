@@ -306,6 +306,28 @@ Example: Raw commands
 
 * **upy:** to acces crypto_wrepl in a 'ssh' style command to be used like e.g.: "upydev upy@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass") The device can be accesed as "upydev upy@foo_device" or redirect any command as e.g. "upydev ping -@foo_device"
 
+* **sslgen_rsakey:** (This needs openssl available in $PATH)
+
+     To generate RSA-2048 bit key and a self-signed certificate to enable SSL sockets
+         This needs a passphrase, that will be required every time the key is loaded.
+         Use -tfkey to upload this key to the device
+         (use only if connected directly to the AP of the device or a
+         "secure" wifi e.g. local/home). If not connected to a "secure" wifi
+         upload the key (it is stored in upydev.\__path__) by USB/Serial connection.
+
+- **ssl_wrepl**: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal (SSL sockets);
+             CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
+             To see more keybindings info do CTRL-k. By default resets after exit,
+             use -rkey option to refresh the WebREPL password with a new random password,
+             after exit.This passowrd will be stored in the working directory or in global directory with
+             -g option. (This mode needs upysecrets.py, ssl_socket_client_server.py, ssl_repl.py)
+         
+- **ssl**: to acces ssl_wrepl in a 'ssh' style command to be used like e.g.:
+      "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
+       needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
+       The device can be accesed as "upydev ssl@foo_device" or redirect any command as e.g.
+       "upydev ping -@foo_device"
+  
 * **make_group**: to make a group of boards to send commands to. Use -f for the name of the group 
 
      and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)

@@ -1268,7 +1268,8 @@ helparg = '''Mode:
        The device can be accesed as "upydev upy@foo_device" or redirect any command as e.g.
        "upydev ping -@foo_device"
 
-- sslgen_rsakey: To generate RSA-2048 bit key and a self-signed certificate to enable SSL sockets
+- sslgen_rsakey: (This needs openssl available in $PATH)
+               To generate RSA-2048 bit key and a self-signed certificate to enable SSL sockets
                This needs a passphrase, that will be required every time the key is loaded.
                Use -tfkey to upload this key to the device
                (use only if connected directly to the AP of the device or a
