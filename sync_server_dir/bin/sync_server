@@ -54,8 +54,8 @@ def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l,
                                                                     wheel[index % 4],
                                                                     int((percentage)*100),
                                                                     nb_of_total, speed,
-                                                                    str(timedelta(seconds=time_e)).split('.')[0][3:],
-                                                                    str(timedelta(seconds=ett)).split('.')[0][3:]), end='\r')
+                                                                    str(timedelta(seconds=time_e)).split('.')[0][2:],
+                                                                    str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
     sys.stdout.flush()
 
 

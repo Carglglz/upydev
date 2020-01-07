@@ -389,7 +389,7 @@ def do_pg_bar(index, wheel, nb_of_total, speed, time_e,
     print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((bar_size+1) - len("█" *index + l_bloc)),
                                                                     wheel[index % 4],
                                                                     int((percentage)*100),
-                                                                    nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
+                                                                    nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][2:]), end='\r')
     sys.stdout.flush()
 
 

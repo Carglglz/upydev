@@ -468,7 +468,7 @@ class SSL_REPL_server:
                         self.output = self.output.replace('\n>>> ', '')
                         self.dev.output = self.output
                         self.dev.response = self.output
-                    
+
                     if self.output.startswith('[') and self.output.endswith(']') and "'" in self.output:
                         try:
                             recv_list = ast.literal_eval(self.output)
@@ -588,8 +588,8 @@ class SSL_TOOL:
                                                                         wheel[index % 4],
                                                                         int((percentage)*100),
                                                                         nb_of_total, speed,
-                                                                        str(timedelta(seconds=time_e)).split('.')[0][3:],
-                                                                        str(timedelta(seconds=ett)).split('.')[0][3:]), end='\r')
+                                                                        str(timedelta(seconds=time_e)).split('.')[0][2:],
+                                                                        str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
         sys.stdout.flush()
 
     def put(self, filetoput, chunk=(1024*8), chunk_rx=(4096*3)):
