@@ -548,6 +548,10 @@ class BASE_SERIAL_DEVICE:
         self.bytes_sent = self.serial.write(bytes(cmd+'\r', 'utf-8'))
         time.sleep(0.2)
         self.buff = self.serial.read_all()[self.bytes_sent+1:]
+        if self.buff == b'':
+            time.sleep(0.2)
+            self.buff = self.serial.read_all()
+        # print(self.buff)
         if decode:
             try:
                 return ast.literal_eval(self.buff.replace(b'\r\n',b'').replace(b'>>> ', b'').decode())
@@ -591,7 +595,10 @@ if args.v:
 time.sleep(0.2)
 kbi = basedev.cmd('\x03\r')
 uid = basedev.cmd("from machine import unique_id; unique_id()")
-unique_id = hexlify(uid).decode()
+try:
+    unique_id = hexlify(uid).decode()
+except Exception as e:
+    unique_id = uid
 devp = basedev.cmd("import sys; sys.platform")
 dev_platform = devp
 espdev.platform = dev_platform
@@ -896,13 +903,17 @@ def custom_sh_cmd(cmd_inp):
         total_mem = print_filesys_info(total_b)
         free_mem = print_filesys_info(size_info[0] * size_info[3])
         used_mem = print_filesys_info(used_b)
+
         print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
                                                                    'Size', 'Used',
                                                                    'Avail',
                                                                    'Use%', 'Mounted on']))
-        print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format('Flash', total_mem,
-                                                                used_mem, free_mem,
-                                                                "{:.1f} %".format((used_b/total_b)*100), ' ', '/'))
+        try:
+            print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format('Flash', total_mem,
+                                                                    used_mem, free_mem,
+                                                                    "{:.1f} %".format((used_b/total_b)*100), ' ', '/'))
+        except Exception as e:
+            pass
         vfs_resp = send_custom_sh_cmd("{dir:uos.statvfs(dir) for dir in uos.listdir() if uos.stat(dir)[0] & 0x4000}")
         for vfs in vfs_resp.keys():
             if vfs_resp[vfs] != resp:
