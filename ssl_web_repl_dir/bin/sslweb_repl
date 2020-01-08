@@ -1041,7 +1041,7 @@ def _ft_datetime(t_now):
     return([_dt_format(i) for i in t_now])
 
 
-def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True):
+def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True, collect=False):
     if not encrypted_flag['sec']:
         if not capture_output:
             espdev.wr_cmd(cmd, silent=sh_silent)
@@ -1055,6 +1055,9 @@ def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True):
         espdev.get_output()
         if not sh_silent:
             print(espdev.output)
+        if collect:
+            ssl_cp.send_message('gc.collect()'+'\r')
+            ssl_cp.flush_conn()
     return espdev.output
 
 
@@ -1140,8 +1143,12 @@ def custom_sh_cmd(cmd_inp):
             print('STA interface not connected')
 
     if cmd_inp == 'netscan':
-        enable_sta = send_custom_sh_cmd(
-            "network.WLAN(network.STA_IF).active(1)")
+        if espdev.platform == 'esp8266':
+            enable_sta = send_custom_sh_cmd(
+                "network.WLAN(network.STA_IF).active()")
+        else:
+            enable_sta = send_custom_sh_cmd(
+                "network.WLAN(network.STA_IF).active(1)")
         if enable_sta:
             scan = send_custom_sh_cmd("network.WLAN(network.STA_IF).scan()")
             print('=' * 110)
@@ -1200,8 +1207,12 @@ def custom_sh_cmd(cmd_inp):
             print('AP interface not connected')
 
     if cmd_inp == 'apscan':
-        enable_sta = send_custom_sh_cmd(
-            "network.WLAN(network.AP_IF).active(1)")
+        if espdev.platform == 'esp8266':
+            enable_sta = send_custom_sh_cmd(
+                "network.WLAN(network.AP_IF).active()")
+        else:
+            enable_sta = send_custom_sh_cmd(
+                "network.WLAN(network.AP_IF).active(1)")
         if enable_sta:
             scan = send_custom_sh_cmd(
                 "network.WLAN(network.AP_IF).status('stations')")

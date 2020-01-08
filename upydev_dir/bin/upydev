@@ -1286,7 +1286,12 @@ helparg = '''Mode:
       "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
        The device can be accesed as "upydev ssl@foo_device" or redirect any command as e.g.
-       "upydev ping -@foo_device"
+       "upydev ping -@foo_device". *(For esp8266 use the option -nem (no encryption mode))
+
+- shr: to acces the serial shell-repl in a 'ssh' style command to be used like e.g.:
+      "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this
+       needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
+       The device can be accesed as "upydev shr@foo_device"
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
@@ -1523,7 +1528,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
-                 'sslgen_rsakey','ssl_wrepl', 'ssl']
+                 'sslgen_rsakey', 'ssl_wrepl', 'ssl', 'shr']
 
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
@@ -1531,7 +1536,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = '0.1.9'
+parser.version = '0.2.0'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
@@ -3500,6 +3505,7 @@ def get_ssl_rsa_keycert(ip, passwd):
     ssl_rsa_key_certgen(ip, passwd, dir=upydev.__path__[0]+'/')
 #############################################
 
+
 def ssl_wrepl(ip, passwd, usr=None):
     if not args.rkey:
         if not args.nem:
@@ -3536,7 +3542,6 @@ def ssl_wrepl(ip, passwd, usr=None):
             except KeyboardInterrupt:
                 pass
 
-
     if args.rkey:
         if usr is not None:
             sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {}'.format(ip, passwd, usr)
@@ -3552,8 +3557,29 @@ def ssl_wrepl(ip, passwd, usr=None):
         refresh_wrkey(ip, passwd)
         sys.exit()
 
+#############################################
+
+
+def sh_srepl(baud, port, usr=None):
+        if usr is not None:
+            sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r -dev {}'.format(baud, port, usr)
+        else:
+            sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r'.format(baud, port)
+        sh_srepl_cmd = shlex.split(sh_srepl_cmd_str)
+
+        old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        def preexec_function(action=old_action):
+            signal.signal(signal.SIGINT, action)
+
+        try:
+            sh_srepl = subprocess.call(sh_srepl_cmd, preexec_fn=preexec_function)
+        except KeyboardInterrupt:
+            pass
+
 
 #############################################
+
 def address_entry_point(entry_point, group_file=''):
     if group_file == '':
         group_file = 'UPY_G'
@@ -3573,11 +3599,13 @@ def address_entry_point(entry_point, group_file=''):
         print('Device not configurated in global group: {}'.format(group_file))
         sys.exit()
 #############################################
+
+
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
           'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
           'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy'
-          'ssl']  # implemented till sync in GP
+          'ssl', 'shr']  # implemented till sync in GP
 # diagnose in G
 
 # UPYDEVICE CLASS
@@ -4530,6 +4558,40 @@ elif args.m == 'ssl':
             my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
             try:
                 ssl_wrepl(entry_point, my_p, usr=entry_point)
+            except Exception as e:
+                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
+
+elif args.m == 'shr':
+    group_file = 'UPY_G'
+    # print(group_file)
+    if '{}.config'.format(group_file) not in os.listdir() or args.g:
+        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
+    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+        devices = json.loads(group.read())
+        # print(devices)
+    devs = devices.keys()
+    # NAME ENTRY POINT
+    if entry_point in devs:
+        dev_baud = devices[entry_point][0]
+        dev_port = devices[entry_point][1]
+        try:
+            sh_srepl(dev_baud, dev_port, usr=entry_point)
+        except Exception as e:
+            print('PASSWORD INVALID or DEVICE NOT REACHABLE')
+    else:
+        pass
+        # get dev by ip
+        which_dev = [devices[dev][1] for dev in devs if devices[dev][0] == entry_point ]
+        if len(which_dev) > 0:
+            dev_port = entry_point
+            dev_baud = which_dev[0]
+            try:
+                sh_srepl(dev_baud, dev_port, usr=entry_point)
+            except Exception as e:
+                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
+        else:
+            try:
+                sh_srepl(115200, entry_point, usr=entry_point)
             except Exception as e:
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
 
