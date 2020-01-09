@@ -40,18 +40,6 @@ def get_cmd(raw):
     return output
 
 
-def stop_by_pid(raw='ps ax', proc_name='web_repl_cmd_r'):  # upydev log, web_repl_cmd_r
-    shcmd = shlex.split(raw)
-    output = subprocess.check_output(shcmd).decode()
-    pline = [line for line in output.split('\n') if proc_name in line]
-    if len(pline) > 0:
-        pid = pline[0].strip().split(' ')[0]
-        k = get_cmd('kill {}'.format(pid))
-        return 'Daemon process {} with PID: {} stopped'.format(proc_name, pid)
-    else:
-        return('NO DAEMON PROCESS FOUND')
-
-
 def get_rprompt():
     if status_encryp_msg['S']:
         if encrypted_flag['sec']:
@@ -212,12 +200,12 @@ class SERIAL_REPL_server:
         if self.SSL_MODE:
             self.SSL_MODE = False
             self.dev.close_wconn()
-            self.ssl_repl("ssl_client.switch_wrepl()")
+            self.sh_repl("ssl_client.switch_wrepl()")
             if not close_wbrepl:
                 self.dev.open_wconn()
         else:
             self.SSL_MODE = True
-            self.dev.wr_cmd("ssl_client.switch_ssl_repl()")
+            self.dev.wr_cmd("ssl_client.switch_sh_repl()")
             self.dev.close_wconn()
             self.flush_conn()
 
@@ -230,7 +218,7 @@ class SERIAL_REPL_server:
             self.dev.serial.open()
             # self.dev.open_wconn()
 
-    def ssl_repl(self, inp, just_recv=False, silent=True, follow=False, n=0,
+    def sh_repl(self, inp, just_recv=False, silent=True, follow=False, n=0,
                  traceback=False, debug=False, prevent_hang=False,
                  banner=False, check_list=False, list_th=20,
                  no_raw_buff=False, assert_len=True):
@@ -354,7 +342,7 @@ class SERIAL_REPL_server:
                                     recv_len = len(recv_list)
                                     if recv_len > list_th:
                                         time.sleep(0.3)
-                                        true_len = self.ssl_repl("len({})".format(inp.split(';')[0]),
+                                        true_len = self.sh_repl("len({})".format(inp.split(';')[0]),
                                                                  silent=True, check_list=True,
                                                                  no_raw_buff=True)
                                         # print(true_len, recv_len)
@@ -364,7 +352,7 @@ class SERIAL_REPL_server:
                                         else:
                                             # print('MALFORMED LIST')
                                             time.sleep(0.3)
-                                            self.ssl_repl(inp=inp, just_recv=just_recv,
+                                            self.sh_repl(inp=inp, just_recv=just_recv,
                                                           silent=True, follow=follow, n=n,
                                                           traceback=False, debug=False,
                                                           prevent_hang=False,
@@ -372,7 +360,7 @@ class SERIAL_REPL_server:
                             except Exception as e:
                                 # print('MALFORMED LIST')
                                 time.sleep(0.2)
-                                self.ssl_repl(inp=inp, just_recv=just_recv,
+                                self.sh_repl(inp=inp, just_recv=just_recv,
                                               silent=True, follow=follow, n=n,
                                               traceback=False, debug=False,
                                               prevent_hang=prevent_hang,
@@ -416,7 +404,7 @@ class SERIAL_TOOL:
         # self.conn.close()
         # self.serv_soc.close()
         # self.sh_srepl.dev.serial.open()
-        # self.sh_srepl.ssl_repl("\x03\x0d")
+        # self.sh_srepl.sh_repl("\x03\x0d")
         pass
 
     def get_pb(self):
@@ -447,19 +435,19 @@ class SERIAL_TOOL:
         cnt = 0
         t_start = time.time()
         # def_chunk = chunk
-        self.sh_srepl.ssl_repl("uos.stat('{}')[6]".format(src))
+        self.sh_srepl.sh_repl("uos.stat('{}')[6]".format(src))
         self.sh_srepl.dev.get_output()
         sz = self.sh_srepl.dev.output
         print("{}  [{:.2f} KB]".format(src, sz / 1024))
         self.sh_srepl.flush_conn()
         # self.start_SOC()
-        self.sh_srepl.ssl_repl("f=open('%s','rb');r=f.read" % src)
+        self.sh_srepl.sh_repl("f=open('%s','rb');r=f.read" % src)
         with open(src, 'wb') as f:
             pass
         with open(src, 'ab') as f:
             while True:
                 data = b''
-                self.sh_srepl.ssl_repl("print(r(%u))" % chunk_size, assert_len=False)
+                self.sh_srepl.sh_repl("print(r(%u))" % chunk_size, assert_len=False)
                 if self.sh_srepl.buff != b'':
                     msg_b = self.sh_srepl.buff.split(b'\n')[1:]
                     try:
@@ -490,7 +478,7 @@ class SERIAL_TOOL:
                                    nb_of_total, t_speed, t_elapsed,
                                    loop_index_l, percentage, ett)
         print('\n')
-        self.sh_srepl.ssl_repl("f.close()")
+        self.sh_srepl.sh_repl("f.close()")
 
     def put(self, src, chunk_size=256):
         self.get_pb()
@@ -498,7 +486,7 @@ class SERIAL_TOOL:
         cnt = 0
         t_start = time.time()
         print("{}  [{:.2f} KB]".format(src, sz / 1024))
-        self.sh_srepl.ssl_repl("f=open('%s','wb');w=f.write" % src)
+        self.sh_srepl.sh_repl("f=open('%s','wb');w=f.write" % src)
         with open(src, 'rb') as f:
             while True:
                 data = f.read(chunk_size)
@@ -508,7 +496,7 @@ class SERIAL_TOOL:
                 #     self.serv_soc.exec_('w(b' + repr(data) + ')')
                 # else:
                 #     self.serv_soc.exec_('w(' + repr(data) + ')')
-                self.sh_srepl.ssl_repl('w(' + repr(data) + ')', assert_len=False)
+                self.sh_srepl.sh_repl('w(' + repr(data) + ')', assert_len=False)
                 cnt += len(data)
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
@@ -523,7 +511,7 @@ class SERIAL_TOOL:
                                    nb_of_total, t_speed, t_elapsed,
                                    loop_index_l, percentage, ett)
         print('\n')
-        self.sh_srepl.ssl_repl("f.close()")
+        self.sh_srepl.sh_repl("f.close()")
 
 
 class WBREPL_IO:
@@ -604,11 +592,11 @@ dev_platform = devp
 espdev.platform = dev_platform
 if args.v:
     print('{}@{}'.format(dev_platform, unique_id))
-ssl_cp = SERIAL_REPL_server(dev=espdev, dev_id=unique_id)
-ssl_htool = SERIAL_TOOL(sh_srepl=ssl_cp)
+shr_cp = SERIAL_REPL_server(dev=espdev, dev_id=unique_id)
+shr_htool = SERIAL_TOOL(sh_srepl=shr_cp)
 print('SERIAL SHELL-REPL connected')
-ssl_cp.ssl_repl("\x02", banner=True)
-ssl_cp.flush_conn()
+shr_cp.sh_repl("\x02", banner=True)
+shr_cp.flush_conn()
 espdev.output = None
 print('Use CTRL-x to exit, Use CTRL-s,ENTER to toggle shell/repl mode\nUse CTRL-k to see more info')
 
@@ -664,7 +652,8 @@ edit_mode = {'E': False, 'File': ''}
 shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
-shell_commands = ['sz', 'cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd']
+shell_commands = ['sz', 'cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
+                  'run']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'apconfig', 'apconfig_t', 'meminfo', 'install',
                     'apscan', 'touch', 'edit', 'srepl',
@@ -681,8 +670,7 @@ MAGENTA_bold = '\u001b[35;1m'
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
 
-if args.nem:
-    encrypted_flag['sec'] = False
+
 # START IN SHELL MODE
 if shell_mode['S']:
     prompt['p'] = d_prompt
@@ -690,20 +678,17 @@ if shell_mode['S']:
 else:
     prompt['p'] = shell_prompt['s']
     shell_mode['S'] = True
-    if encrypted_flag['sec']:
-        ssl_cp.ssl_repl('import gc;import uos;from upysh import *;gc.collect()', silent=True)
-        time.sleep(1)
-        ssl_cp.flush_conn()
-        ssl_cp.flush_conn()
-        espdev.output = None
-    else:
-        espdev.wr_cmd('import gc;import uos;from upysh import *;gc.collect()', silent=True)
+    shr_cp.sh_repl('import gc;import uos;from upysh import *;gc.collect()', silent=True)
+    time.sleep(1)
+    shr_cp.flush_conn()
+    shr_cp.flush_conn()
     espdev.output = None
+
 
 # KEYBINDINGS INFO
 kb_info = """
 Custom keybindings:
-- CTRL-x : to exit SSLWebREPL Terminal
+- CTRL-x : to exit SHELL-REPL Terminal
 - CTRL-u : toggle encryption mode (on/off), this prints a right aligned status message
 - CTRL-p : toggle encryption right aligned status message
 - CTRL-e : paste mode in repl, (edit mode after 'edit' shell command)
@@ -863,19 +848,10 @@ def _ft_datetime(t_now):
 
 
 def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True):
-    if not encrypted_flag['sec']:
-        if not capture_output:
-            espdev.wr_cmd(cmd, silent=sh_silent)
-        else:
-            espdev.close_wconn()
-            espdev.cmd(cmd, silent=sh_silent, capture_output=True)
-            espdev.output = espdev.long_output
-            espdev.open_wconn()
-    else:
-        ssl_cp.ssl_repl(cmd)
-        espdev.get_output()
-        if not sh_silent:
-            print(espdev.output)
+    shr_cp.sh_repl(cmd)
+    espdev.get_output()
+    if not sh_silent:
+        print(espdev.output)
     return espdev.output
 
 
@@ -1041,14 +1017,9 @@ def custom_sh_cmd(cmd_inp):
             print("Can't enable AP interface")
 
     if cmd_inp == 'meminfo':
-        if encrypted_flag['sec']:
-            RAM = send_custom_sh_cmd(
-                'from micropython import mem_info;mem_info()')
-            mem_info = RAM.splitlines()[1]
-        else:
-            RAM = send_custom_sh_cmd(
-                'from micropython import mem_info;mem_info()', True)
-            mem_info = RAM[1].strip()
+        RAM = send_custom_sh_cmd(
+            'from micropython import mem_info;mem_info()')
+        mem_info = RAM.splitlines()[1]
         mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
                           1]) for elem in mem_info[4:].split(',')}
         print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memmory',
@@ -1095,9 +1066,9 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp.split(' ')[0] == 'srepl':
         print('<-- Device {} MicroPython -->'.format(dev_platform))
-        print('Use CTRL-x,CTRL-a to exit')
+        print('Use CTRL-a,CTRL-x to exit')
         try:
-            ssl_cp.enable_wrepl_io()
+            shr_cp.enable_wrepl_io()
         except Exception as e:
             pass
         serial_repl_cmd_str = 'picocom {} -b115200'.format(args.p)
@@ -1105,12 +1076,12 @@ def custom_sh_cmd(cmd_inp):
         try:
             serial_repl = subprocess.call(serial_repl_cmd)
             try:
-                ssl_cp.enable_wrepl_io()
+                shr_cp.enable_wrepl_io()
             except Exception as e:
                 pass
         except KeyboardInterrupt:
             try:
-                ssl_cp.enable_wrepl_io()
+                shr_cp.enable_wrepl_io()
             except Exception as e:
                 pass
             pass
@@ -1119,10 +1090,7 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp == 'whoami':
         print('DEVICE: {}, SERIAL PORT: {} , BAUDRATE: {},  ID: {}'.format(host_name, args.p, args.t, unique_id))
         sysinfo = send_custom_sh_cmd('uos.uname()', capture_output=True)
-        if encrypted_flag['sec']:
-            dev_info = sysinfo.split("'")
-        else:
-            dev_info = sysinfo[0].split("'")
+        dev_info = sysinfo.split("'")
         print('SYSTEM NAME: {}'.format(dev_info[1]))
         print('NODE NAME: {}'.format(dev_info[3]))
         print('RELEASE: {}'.format(dev_info[5]))
@@ -1166,114 +1134,71 @@ def custom_sh_cmd(cmd_inp):
             print_table(list_of_files, wide=28, format_SH=True)
 
     if cmd_inp.split(' ')[0] == 'get':
-        if not encrypted_flag['sec']:
-            print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-            try:
-                ssl_cp.enable_wrepl_io()
-            except Exception as e:
-                pass
-            if dev_path['p'] != ' ':
-                dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
-            else:
-                dev_dir = ''
-            try:
-                file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
-                if file == 'cwd':
-                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                        file, args.t, args.p, dev_dir)
-                elif '*' in file:
-                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                        file.replace('*', ''), args.t, args.p, dev_dir)
-                elif len(cmd_inp.split(' ')) > 2:
-                    file = ' '.join(cmd_inp.split(' ')[1:])
-                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                        file, args.t, args.p, dev_dir)
-                else:
-                    get_str = 'upydev get -f {} -t {} -p {} {}'.format(
-                        file, args.t, args.p, dev_dir)
-                get_cmd = shlex.split(get_str)
-                try:
-                    get_file = subprocess.call(get_cmd)
-                    try:
-                        ssl_cp.enable_wrepl_io()
-                    except Exception as e:
-                        pass
-                except KeyboardInterrupt:
-                    try:
-                        ssl_cp.enable_wrepl_io()
-                    except Exception as e:
-                        pass
-                    pass
-                    print('Operation aborted')
-            except Exception as e:
-                print('Indicate a file to get')
-
-        else:
-            try:
-                print('File/s to get:')
-                file = cmd_inp.split(' ')[1]
-                if file == 'cwd':
-                    ssl_cp.ssl_repl("[file for file in uos.listdir() if not uos.stat(file)[0] & 0x4000]")
-                    espdev.get_output()
-                    files_to_put = espdev.output
-                    for file in files_to_put:
-                        print('- {}'.format(file))
-                    ssl_htool.start_SOC()
-                    for file in files_to_put:
-                        ssl_htool.get(file)
-                        time.sleep(0.2)
-                    # ssl_cp.ssl_repl("print('Done!')")
-                    time.sleep(0.2)
-                    ssl_htool.stop_SOC()
-                elif '*' in file:
-                    ssl_cp.ssl_repl("[file for file in uos.listdir() if '{}' in file and not uos.stat(file)[0] & 0x4000]".format(file.replace('*', '')))
-                    espdev.get_output()
-                    files_to_put_re = espdev.output
-                    if files_to_put_re is None or files_to_put_re == []:
-                        print('No files found that match "{}"'.format(file))
-                    else:
-                        for file in files_to_put_re:
-                            print('- {}'.format(file))
-                        ssl_htool.start_SOC()
-                        for file in files_to_put_re:
-                            ssl_htool.get(file)
-                            time.sleep(0.2)
-                        # ssl_cp.ssl_repl("print('Done!')")
-                        time.sleep(0.2)
-                        ssl_htool.stop_SOC()
-                elif len(cmd_inp.split(' ')) > 2:
-                    files_to_put = cmd_inp.split(' ')[1:]
-                    # files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in files_to_put]
-                    ssl_cp.ssl_repl("[file for file in uos.listdir() if file in {} and not uos.stat(file)[0] & 0x4000]".format(files_to_put))
-                    espdev.get_output()
-                    files_to_put_dir = espdev.output
-                    if len(files_to_put_dir) != len(files_to_put):
-                        print('One or more files not found in cwd')
-                    else:
-                        for file in files_to_put_dir:
-                            print('- {}'.format(file))
-                        ssl_htool.start_SOC()
-                        for file in files_to_put_dir:
-                            ssl_htool.get(file)
-                            time.sleep(0.2)
-                        # ssl_cp.ssl_repl("print('Done!')")
-                        time.sleep(0.2)
-                        ssl_htool.stop_SOC()
-                else:
+        try:
+            print('File/s to get:')
+            file = cmd_inp.split(' ')[1]
+            if file == 'cwd':
+                shr_cp.sh_repl("[file for file in uos.listdir() if not uos.stat(file)[0] & 0x4000]")
+                espdev.get_output()
+                files_to_put = espdev.output
+                for file in files_to_put:
                     print('- {}'.format(file))
-                    # ssl_htool.start_SOC()
-                    ssl_htool.get(file)
-                    # ssl_cp.ssl_repl("print('Done!')")
+                shr_htool.start_SOC()
+                for file in files_to_put:
+                    shr_htool.get(file)
                     time.sleep(0.2)
-                    ssl_htool.stop_SOC()
-            except Exception as e:
-                print(e)
-                print('Indicate a file to put')
+                # shr_cp.sh_repl("print('Done!')")
+                time.sleep(0.2)
+                shr_htool.stop_SOC()
+            elif '*' in file:
+                shr_cp.sh_repl("[file for file in uos.listdir() if '{}' in file and not uos.stat(file)[0] & 0x4000]".format(file.replace('*', '')))
+                espdev.get_output()
+                files_to_put_re = espdev.output
+                if files_to_put_re is None or files_to_put_re == []:
+                    print('No files found that match "{}"'.format(file))
+                else:
+                    for file in files_to_put_re:
+                        print('- {}'.format(file))
+                    shr_htool.start_SOC()
+                    for file in files_to_put_re:
+                        shr_htool.get(file)
+                        time.sleep(0.2)
+                    # shr_cp.sh_repl("print('Done!')")
+                    time.sleep(0.2)
+                    shr_htool.stop_SOC()
+            elif len(cmd_inp.split(' ')) > 2:
+                files_to_put = cmd_inp.split(' ')[1:]
+                # files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in files_to_put]
+                shr_cp.sh_repl("[file for file in uos.listdir() if file in {} and not uos.stat(file)[0] & 0x4000]".format(files_to_put))
+                espdev.get_output()
+                files_to_put_dir = espdev.output
+                if len(files_to_put_dir) != len(files_to_put):
+                    print('One or more files not found in cwd')
+                else:
+                    for file in files_to_put_dir:
+                        print('- {}'.format(file))
+                    shr_htool.start_SOC()
+                    for file in files_to_put_dir:
+                        shr_htool.get(file)
+                        time.sleep(0.2)
+                    # shr_cp.sh_repl("print('Done!')")
+                    time.sleep(0.2)
+                    shr_htool.stop_SOC()
+            else:
+                print('- {}'.format(file))
+                # shr_htool.start_SOC()
+                shr_htool.get(file)
+                # shr_cp.sh_repl("print('Done!')")
+                time.sleep(0.2)
+                shr_htool.stop_SOC()
+        except Exception as e:
+            print(e)
+            print('Indicate a file to put')
 
     # if cmd_inp.split(' ')[0] == 'sync':
     #     print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
     #     try:
-    #         ssl_cp.enable_wrepl_io()
+    #         shr_cp.enable_wrepl_io()
     #     except Exception as e:
     #         pass
     #     if dev_path['p'] != ' ':
@@ -1300,12 +1225,12 @@ def custom_sh_cmd(cmd_inp):
     #         try:
     #             get_file = subprocess.call(sync_cmd)
     #             try:
-    #                 ssl_cp.enable_wrepl_io()
+    #                 shr_cp.enable_wrepl_io()
     #             except Exception as e:
     #                 pass
     #         except KeyboardInterrupt:
     #             try:
-    #                 ssl_cp.enable_wrepl_io()
+    #                 shr_cp.enable_wrepl_io()
     #             except Exception as e:
     #                 pass
     #             pass
@@ -1314,103 +1239,57 @@ def custom_sh_cmd(cmd_inp):
     #         print('Indicate a file to get')
 
     if cmd_inp.split(' ')[0] == 'put':
-        if not encrypted_flag['sec']:
-            print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-            try:
-                ssl_cp.enable_wrepl_io()
-            except Exception as e:
-                pass
-            if dev_path['p'] != ' ':
-                dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
-            else:
-                dev_dir = ''
-            try:
-                # file = cmd_inp.split(' ')[1]
-                # put_str = 'upydev put -f {} -t {} -p {} -rst f'.format(file, args.t, args.p)
-                # put_cmd = shlex.split(put_str)
-                file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
-                if file == 'cwd':
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                        file, args.t, args.p, dev_dir)
-                elif '*' in file:
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                        file.replace('*', ''), args.t, args.p, dev_dir)
-                elif len(cmd_inp.split(' ')) > 2:
-                    file = ' '.join(cmd_inp.split(' ')[1:])
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                        file, args.t, args.p, dev_dir)
-                else:
-                    put_str = 'upydev put -f {} -t {} -p {} {} -rst f'.format(
-                        file, args.t, args.p, dev_dir)
-                put_cmd = shlex.split(put_str)
-                try:
-                    put_file = subprocess.call(put_cmd)
-                    try:
-                        ssl_cp.enable_wrepl_io()
-                    except Exception as e:
-                        pass
-                except KeyboardInterrupt:
-                    try:
-                        ssl_cp.enable_wrepl_io()
-                    except Exception as e:
-                        pass
-                    pass
-                    print('Operation aborted')
-            except Exception as e:
-                # print(e)
-                print('Indicate a file to put')
-        else:
-            try:
-                print('File/s to put:')
-                file = cmd_inp.split(' ')[1]
-                if file == 'cwd':
-                    files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl)]
-                    for file in files_to_put:
-                        print('- {}'.format(file))
-                    ssl_htool.start_SOC()
-                    for file in files_to_put:
-                        ssl_htool.put(file)
-                        time.sleep(0.2)
-                    # ssl_cp.ssl_repl("print('Done!')")
-                    time.sleep(0.2)
-                    ssl_htool.stop_SOC()
-                elif '*' in file:
-                    files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl)]
-                    files_to_put_re = [fl for fl in files_to_put if file.replace('*', '') in fl]
-                    for file in files_to_put_re:
-                        print('- {}'.format(file))
-                    ssl_htool.start_SOC()
-                    for file in files_to_put_re:
-                        ssl_htool.put(file)
-                        time.sleep(0.2)
-                    # ssl_cp.ssl_repl("print('Done!')")
-                    time.sleep(0.2)
-                    ssl_htool.stop_SOC()
-                elif len(cmd_inp.split(' ')) > 2:
-                    files_to_put = cmd_inp.split(' ')[1:]
-                    files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in files_to_put]
-                    if len(files_to_put_dir) != len(files_to_put):
-                        print('One or more files not found in cwd')
-                    else:
-                        for file in files_to_put_dir:
-                            print('- {}'.format(file))
-                        ssl_htool.start_SOC()
-                        for file in files_to_put_dir:
-                            ssl_htool.put(file)
-                            time.sleep(0.2)
-                        # ssl_cp.ssl_repl("print('Done!')")
-                        time.sleep(0.2)
-                        ssl_htool.stop_SOC()
-                else:
+        try:
+            print('File/s to put:')
+            file = cmd_inp.split(' ')[1]
+            if file == 'cwd':
+                files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl)]
+                for file in files_to_put:
                     print('- {}'.format(file))
-                    # ssl_htool.start_SOC()
-                    ssl_htool.put(file)
-                    # ssl_cp.ssl_repl("print('Done!')")
+                shr_htool.start_SOC()
+                for file in files_to_put:
+                    shr_htool.put(file)
                     time.sleep(0.2)
-                    ssl_htool.stop_SOC()
-            except Exception as e:
-                # print(e)
-                print('Indicate a file to put')
+                # shr_cp.sh_repl("print('Done!')")
+                time.sleep(0.2)
+                shr_htool.stop_SOC()
+            elif '*' in file:
+                files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl)]
+                files_to_put_re = [fl for fl in files_to_put if file.replace('*', '') in fl]
+                for file in files_to_put_re:
+                    print('- {}'.format(file))
+                shr_htool.start_SOC()
+                for file in files_to_put_re:
+                    shr_htool.put(file)
+                    time.sleep(0.2)
+                # shr_cp.sh_repl("print('Done!')")
+                time.sleep(0.2)
+                shr_htool.stop_SOC()
+            elif len(cmd_inp.split(' ')) > 2:
+                files_to_put = cmd_inp.split(' ')[1:]
+                files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in files_to_put]
+                if len(files_to_put_dir) != len(files_to_put):
+                    print('One or more files not found in cwd')
+                else:
+                    for file in files_to_put_dir:
+                        print('- {}'.format(file))
+                    shr_htool.start_SOC()
+                    for file in files_to_put_dir:
+                        shr_htool.put(file)
+                        time.sleep(0.2)
+                    # shr_cp.sh_repl("print('Done!')")
+                    time.sleep(0.2)
+                    shr_htool.stop_SOC()
+            else:
+                print('- {}'.format(file))
+                # shr_htool.start_SOC()
+                shr_htool.put(file)
+                # shr_cp.sh_repl("print('Done!')")
+                time.sleep(0.2)
+                shr_htool.stop_SOC()
+        except Exception as e:
+            # print(e)
+            print('Indicate a file to put')
     if cmd_inp.split(' ')[0] == 'catl':
         try:
             file = cmd_inp.split(' ')[1]
@@ -1428,7 +1307,7 @@ def custom_sh_cmd(cmd_inp):
     # if cmd_inp.split(' ')[0] == 'd_sync':
     #     print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
     #     try:
-    #         ssl_cp.enable_wrepl_io()
+    #         shr_cp.enable_wrepl_io()
     #     except Exception as e:
     #         pass
     #     if dev_path['p'] != ' ':
@@ -1446,12 +1325,12 @@ def custom_sh_cmd(cmd_inp):
     #         try:
     #             dir_sync = subprocess.call(d_sync_cmd)
     #             try:
-    #                 ssl_cp.enable_wrepl_io()
+    #                 shr_cp.enable_wrepl_io()
     #             except Exception as e:
     #                 pass
     #         except KeyboardInterrupt:
     #             try:
-    #                 ssl_cp.enable_wrepl_io()
+    #                 shr_cp.enable_wrepl_io()
     #             except Exception as e:
     #                 pass
     #             pass
@@ -1538,11 +1417,8 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'tree':
         # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
-        if encrypted_flag['sec']:
-            ssl_cp.ssl_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
-            ssl_cp.flush_conn()
-        else:
-            send_custom_sh_cmd('from upysh2 import tree;tree();gc.collect()', sh_silent=False)
+        shr_cp.sh_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
+        shr_cp.flush_conn()
 
     if cmd_inp == 'l_ifconfig':
         ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]
@@ -1597,10 +1473,7 @@ def custom_sh_cmd(cmd_inp):
             print('Indicate a module to reload')
         espdev.output = None
         reload_cmd = "import sys;del(sys.modules['{}']);gc.collect()".format(module)
-        if not encrypted_flag['sec']:
-            espdev.wr_cmd(reload_cmd)
-        else:
-            ssl_cp.ssl_repl(reload_cmd)
+        shr_cp.sh_repl(reload_cmd)
         if espdev.output is not None:
             print(espdev.output)
 
@@ -1613,13 +1486,12 @@ def custom_sh_cmd(cmd_inp):
             webbrowser.open('http://docs.micropython.org/en/latest/')
 
     if cmd_inp == 'flush_soc':
-        if encrypted_flag['sec']:
-            ssl_cp.flush_conn()
+        shr_cp.flush_conn()
 
     # if cmd_inp == 'getcert':
     #     if encrypted_flag['sec']:
-    #         for key in ssl_cp.client_cert.keys():
-    #             value = ssl_cp.client_cert[key]
+    #         for key in shr_cp.client_cert.keys():
+    #             value = shr_cp.client_cert[key]
     #             try:
     #                 if not isinstance(value, str):
     #                     if len(value) > 1:
@@ -1630,12 +1502,12 @@ def custom_sh_cmd(cmd_inp):
     #                             else:
     #                                 print('- {} : {}'.format(*val))
     #                 else:
-    #                     print("{}: {}".format(key.upper(), ssl_cp.client_cert[key]))
+    #                     print("{}: {}".format(key.upper(), shr_cp.client_cert[key]))
     #             except Exception as e:
-    #                 print("{}: {}".format(key.upper(), ssl_cp.client_cert[key]))
+    #                 print("{}: {}".format(key.upper(), shr_cp.client_cert[key]))
 
     if cmd_inp == 'get_rawbuff':
-        print(ssl_cp.raw_buff)
+        print(shr_cp.raw_buff)
 
     if cmd_inp == 'l_tree':
         try:
@@ -1651,33 +1523,23 @@ def custom_sh_cmd(cmd_inp):
             pass
 
     if cmd_inp.split(' ')[0] == 'exit':
-        # print('closing...')
-        if encrypted_flag['sec']:
-            # print('SHUTDOWN SSL') # make exit or exit -r
-            if reset_flag['R']:
-                if len(cmd_inp.split(' ')) > 1:
-                    if cmd_inp.split(' ')[1] == '-nr':
-                        # ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
-                        time.sleep(0.5)
-                    elif cmd_inp.split(' ')[1] == '-hr':
-                        print('Device Hard Reset...')
-                        ssl_cp.send_message("import machine;machine.reset()\r")
-                        print('Done!')
-                else:
-                    print('Rebooting device...')
-                    ssl_cp.send_message("\x04")
+        if reset_flag['R']:
+            if len(cmd_inp.split(' ')) > 1:
+                if cmd_inp.split(' ')[1] == '-nr':
+                    # shr_cp.sh_repl("ssl_client.switch_wrepl()")
+                    time.sleep(0.5)
+                elif cmd_inp.split(' ')[1] == '-hr':
+                    print('Device Hard Reset...')
+                    shr_cp.send_message("import machine;machine.reset()\r")
                     print('Done!')
             else:
-                # ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
-                time.sleep(0.5)
-            espdev.serial.close()
-        # time.sleep(0.5)
-        else:
-            espdev.serial.close()
-            if reset_flag['R']:
                 print('Rebooting device...')
-                espdev.reset(output=False)
+                shr_cp.send_message("\x04")
                 print('Done!')
+        else:
+            # shr_cp.sh_repl("ssl_client.switch_wrepl()")
+            time.sleep(0.5)
+        espdev.serial.close()
         exit_flag['exit'] = True
 
 
@@ -1690,28 +1552,19 @@ def autosuggest_is_on():
 
 @kb.add('c-x')
 def exitpress(event):
-    " Exit SSLWebREPL terminal "
+    " Exit SHELL-REPL terminal "
     if shell_mode['S']:
         print('\nclosing...')
     else:
         print('\n>>> closing...')
-    if encrypted_flag['sec']:
-        if reset_flag['R']:
-            print('Rebooting device...')
-            ssl_cp.send_message("\x04")
-            print('Done!')
-        else:
-            ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
-            time.sleep(0.5)
-        espdev.serial.close()
-    # time.sleep(0.5)
+    if reset_flag['R']:
+        print('Rebooting device...')
+        shr_cp.send_message("\x04")
+        print('Done!')
     else:
-        espdev.serial.close()
+        shr_cp.sh_repl("ssl_client.switch_wrepl()")
         time.sleep(0.5)
-        if reset_flag['R']:
-            print('Rebooting device...')
-            espdev.reset(output=False)
-            print('Done!')
+    espdev.serial.close()
     exit_flag['exit'] = True
     event.app.exit()
 
@@ -1720,10 +1573,8 @@ def exitpress(event):
 def bannerpress(event):
     "Prints MicroPython sys version info"
     def upy_sysversion():
-        if encrypted_flag['sec']:
-            ssl_cp.ssl_repl("\x02", banner=True)
-        else:
-            espdev.wr_cmd('B')
+        shr_cp.sh_repl("\x02", banner=True)
+
     run_in_terminal(upy_sysversion)
 
 
@@ -1745,15 +1596,10 @@ def flush_line(event):
 
 @kb.add('c-o')
 def cmd_ls(event):
-    espdev.wr_cmd('from upysh import *', silent=True)
-
     def ls_out():
         espdev.output = None
         print('>>> ls')
-        if not encrypted_flag['sec']:
-            espdev.wr_cmd('ls;gc.collect()')
-        else:
-            ssl_cp.ssl_repl('ls();gc.collect()')
+        shr_cp.sh_repl('ls();gc.collect()')
         if espdev.output is not None:
             print(espdev.output)
 
@@ -1766,10 +1612,7 @@ def cmd_mem_info(event):
     def mem_info_out():
         espdev.output = None
         print('>>> mem_info()')
-        if not encrypted_flag['sec']:
-            espdev.wr_cmd('from micropython import mem_info; mem_info()')
-        else:
-            ssl_cp.ssl_repl('from micropython import mem_info; mem_info()')
+        shr_cp.sh_repl('from micropython import mem_info; mem_info()')
         if espdev.output is not None:
             print(espdev.output)
 
@@ -1782,10 +1625,7 @@ def cmd_gc_collect(event):
     def gc_collect_out():
         espdev.output = None
         print('>>> gc.collect()')
-        if not encrypted_flag['sec']:
-            espdev.wr_cmd('import gc;gc.collect()')
-        else:
-            ssl_cp.ssl_repl('import gc;gc.collect()')
+        shr_cp.sh_repl('import gc;gc.collect()')
         if espdev.output is not None:
             print(espdev.output)
 
@@ -1826,51 +1666,44 @@ def autocomppress(event):
             else:
                 inp, frst_cmd = map_upysh(last_cmd)
                 if frst_cmd == 'run':
-                    if not encrypted_flag['sec']:
-                        espdev.wr_cmd(inp)
-                    else:
-                        try:
-                            ssl_cp.ssl_repl(inp, follow=True)
-                            # if espdev.output is not None:
-                            #     print(espdev.output)
-                        except KeyboardInterrupt:
-                            time.sleep(0.2)
-                            ssl_cp.ssl_repl('\x03', silent=True,
-                                            traceback=True)  # KBI
-                            time.sleep(1)
-                            for i in range(3):
-                                ssl_cp.ssl_repl('\x0d', silent=True)
-                                ssl_cp.flush_conn()
-                            pass
+
+                    try:
+                        shr_cp.sh_repl(inp, follow=True)
+                        # if espdev.output is not None:
+                        #     print(espdev.output)
+                    except KeyboardInterrupt:
+                        time.sleep(0.2)
+                        shr_cp.sh_repl('\x03', silent=True,
+                                        traceback=True)  # KBI
+                        time.sleep(1)
+                        for i in range(3):
+                            shr_cp.sh_repl('\x0d', silent=True)
+                            shr_cp.flush_conn()
+                        pass
                 else:
-                    if not encrypted_flag['sec']:
-                        espdev.wr_cmd(inp)
+
+                    if inp == 'ls()' or frst_cmd == 'tree' or frst_cmd == 'cat':
+                        shr_cp.sh_repl(inp+';gc.collect()', follow=True)
+                        # shr_cp.send_message('gc.collect()\r')
                     else:
-                        if inp == 'ls()' or frst_cmd == 'tree' or frst_cmd == 'cat':
-                            ssl_cp.ssl_repl(inp+';gc.collect()', follow=True)
-                            # ssl_cp.send_message('gc.collect()\r')
-                        else:
-                            ssl_cp.ssl_repl(inp)
-                            if espdev.output is not None:
-                                print(espdev.output)
+                        shr_cp.sh_repl(inp)
+                        if espdev.output is not None:
+                            print(espdev.output)
         else:
             print('>>> {}'.format(last_cmd))
-            if not encrypted_flag['sec']:
-                espdev.wr_cmd(last_cmd)
-            else:
-                try:
-                    ssl_cp.ssl_repl(last_cmd, follow=True)
-                    # if espdev.output is not None:
-                    #     print(espdev.output)
-                except KeyboardInterrupt:
-                    time.sleep(0.2)
-                    ssl_cp.ssl_repl('\x03', silent=True,
-                                    traceback=True)  # KBI
-                    time.sleep(0.2)
-                    for i in range(1):
-                        ssl_cp.ssl_repl('\x0d', silent=True)
-                        ssl_cp.flush_conn()
-                    pass
+            try:
+                shr_cp.sh_repl(last_cmd, follow=True)
+                # if espdev.output is not None:
+                #     print(espdev.output)
+            except KeyboardInterrupt:
+                time.sleep(0.2)
+                shr_cp.sh_repl('\x03', silent=True,
+                                traceback=True)  # KBI
+                time.sleep(0.2)
+                for i in range(1):
+                    shr_cp.sh_repl('\x0d', silent=True)
+                    shr_cp.flush_conn()
+                pass
 
     run_in_terminal(print_last)
 
@@ -1882,22 +1715,19 @@ def testpress(event):
         espdev.output = None
         test_cmd = 'import test_code'
         print('>>> {}'.format(test_cmd))
-        if not encrypted_flag['sec']:
-            espdev.wr_cmd(test_cmd)
-        else:
-            try:
-                ssl_cp.ssl_repl(test_cmd, follow=True)
-                # if espdev.output is not None:
-                #     print(espdev.output)
-            except KeyboardInterrupt:
-                time.sleep(0.2)
-                ssl_cp.ssl_repl('\x03', silent=True,
-                                traceback=True)  # KBI
-                time.sleep(0.2)
-                for i in range(1):
-                    ssl_cp.ssl_repl('\x0d', silent=True)
-                    ssl_cp.flush_conn()
-                pass
+        try:
+            shr_cp.sh_repl(test_cmd, follow=True)
+            # if espdev.output is not None:
+            #     print(espdev.output)
+        except KeyboardInterrupt:
+            time.sleep(0.2)
+            shr_cp.sh_repl('\x03', silent=True,
+                            traceback=True)  # KBI
+            time.sleep(0.2)
+            for i in range(1):
+                shr_cp.sh_repl('\x0d', silent=True)
+                shr_cp.flush_conn()
+            pass
 
     run_in_terminal(test_code)
 
@@ -1909,10 +1739,8 @@ def reloadpress(event):
         espdev.output = None
         reload_cmd = "import sys;del(sys.modules['test_code']);gc.collect()"
         print('>>> {}'.format(reload_cmd))
-        if not encrypted_flag['sec']:
-            espdev.wr_cmd(reload_cmd)
-        else:
-            ssl_cp.ssl_repl(reload_cmd)
+
+        shr_cp.sh_repl(reload_cmd)
         if espdev.output is not None:
             print(espdev.output)
     if not edit_mode['E']:
@@ -1937,10 +1765,7 @@ def toggle_shell_mode(event):
     else:
         prompt['p'] = shell_prompt['s']
         shell_mode['S'] = True
-        if not encrypted_flag['sec']:
-            espdev.wr_cmd('from upysh import *', silent=True)
-        else:
-            ssl_cp.ssl_repl('from upysh import *', no_raw_buff=True)
+        shr_cp.sh_repl('from upysh import *', no_raw_buff=True)
         espdev.output = None
 
 
@@ -1953,10 +1778,9 @@ def send_KBI(event):
             prompt['p'] = shell_prompt['s']
             event.app.current_buffer.reset()
         else:
-            if encrypted_flag['sec']:
-                ssl_cp.ssl_repl('\x03') # KBI
-            else:
-                espdev.wr_cmd('C')
+
+            shr_cp.sh_repl('\x03') # KBI
+
             paste_flag['p'] = False
             if not shell_mode['S']:
                 prompt['p'] = d_prompt
@@ -2003,25 +1827,10 @@ def paste_mode(event):
             espdev.long_output = []
             espdev.output = None
             espdev.response = ''
-            if not encrypted_flag['sec']:
-                file_content = send_custom_sh_cmd(
-                    "cat('{}')".format(edit_mode['File']), True)
-                if len(file_content) > 0:
-                    file_content = '\n'.join(file_content).replace('\r', '')
-            else:
-                ssl_cp.ssl_repl("cat('{}')".format(edit_mode['File']))
-                # espdev.get_output()
-                # print(espdev.output.split('\n'))
-                file_content = espdev.output
-                # print(len(file_content))
-                # file_content = send_custom_sh_cmd("cat('{}')".format(edit_mode['File']))
-            # paste_flag['p'] = True
-            # event.app.current_buffer.insert_text(file_content)
-            # print(file_content)
+            shr_cp.sh_repl("cat('{}')".format(edit_mode['File']))
+            file_content = espdev.output
             try:
-                # process_content = ''.join(file_content).replace('\r', '\n')
                 process_content = file_content
-                # print(len(process_content))
             except Exception as e:
                 process_content = ' '
             if isinstance(file_content, str):
@@ -2037,49 +1846,25 @@ def paste_mode_exit(event):
             buff_text = '\n'.join(
                 buff_P + [event.app.current_buffer.document.text])
             if buff_text is not None and buff_text != '':
-                # espdev.wr_cmd("cp.gbls = globals()", silent=True)
-                if not encrypted_flag['sec']:
-                    # block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
-                    # espdev.wr_cmd(block_commad)
-                    # print(block_commad.splitlines())
-                    espdev._wconn.child.sendline('E')
+                try:
+                    shr_cp.paste_buff(buff_text)
+                    shr_cp.sh_repl("\x04", follow=True)
+                except KeyboardInterrupt:
                     time.sleep(0.2)
-                    for line in buff_text.split('\n'):
-                        espdev._wconn.child.sendline(line)
-                        cmd_echo = espdev._wconn.child.readline()
-                        # time.sleep(0.2)
-                    # espdev._wconn.child.sendline('D')
-                    try:
-                        cmd_echo = espdev._wconn.child.read_nonblocking(2**16, 0.2)
-                    except Exception as e:
-                        pass
-                    espdev.wr_cmd('D')
+                    shr_cp.sh_repl('\x03', silent=True,
+                                    traceback=True)  # KBI
+                    time.sleep(0.2)
+                    for i in range(1):
+                        shr_cp.sh_repl('\x0d', silent=True)
+                        shr_cp.flush_conn()
+                    pass
+                espdev.output = None
+                time.sleep(1)
+                shr_cp.flush_conn()
+                shr_cp.flush_conn()
 
-                else:
-                    # espdev.wr_cmd("cp.gbls = globals()", silent=True)
-                    try:
-                        ssl_cp.paste_buff(buff_text)
-                        ssl_cp.ssl_repl("\x04", follow=True)
-                    except KeyboardInterrupt:
-                        time.sleep(0.2)
-                        ssl_cp.ssl_repl('\x03', silent=True,
-                                        traceback=True)  # KBI
-                        time.sleep(0.2)
-                        for i in range(1):
-                            ssl_cp.ssl_repl('\x0d', silent=True)
-                            ssl_cp.flush_conn()
-                        pass
-                    # ssl_cp.ssl_repl('', just_recv=True, silent=False) blocking
-                    # if espdev.output is not None:
-                    #     print(espdev.output)
-                    espdev.output = None
-                    time.sleep(1)
-                    if encrypted_flag['sec']:
-                        ssl_cp.flush_conn()
-                        ssl_cp.flush_conn()
-            # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
             event.app.current_buffer.reset()
-            # print(buff_text)
+
             print(">>> ")
             prompt['p'] = ">>> "
 
@@ -2095,18 +1880,16 @@ def paste_mode_exit(event):
                     if line != ' ' and line != "" and line != '':
                         send_custom_sh_cmd(
                             '_file_to_edit.write("{}")'.format(line))
-                        # if not encrypted_flag['sec']:
+
                         send_custom_sh_cmd('_file_to_edit.write(nl)')
-                    # time.sleep(0.1)
+
                 send_custom_sh_cmd("_file_to_edit.close()")
                 send_custom_sh_cmd("gc.collect()")
                 time.sleep(0.5)
-                if encrypted_flag['sec']:
-                    ssl_cp.flush_conn()
-                    ssl_cp.flush_conn()
-            # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
+                shr_cp.flush_conn()
+                shr_cp.flush_conn()
             event.app.current_buffer.reset()
-            # print(buff_text)
+
             print("File {} edited succesfully!".format(file_to_edit))
             print('PRESS ESC, THEN ENTER TO EXIT EDIT MODE')
     if not shell_mode['S']:
@@ -2144,24 +1927,20 @@ def tab_press(event):
                     root_text = '.'.join(buff_text.split('.')[:-1])
                     rest = buff_text.split('.')[-1]
                     if rest != '':
-                        if encrypted_flag['sec']:
-                            ssl_cp.ssl_repl("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest))
-                            ssl_cp.flush_conn()
-                        else:
-                            espdev.wr_cmd("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest), silent=True)
-                    else:
-                        if encrypted_flag['sec']:
-                            try:
-                                ssl_cp.ssl_repl('dir({});gc.collect()'.format(root_text),
-                                                debug=False, prevent_hang=True)
-                            except KeyboardInterrupt:
-                                time.sleep(0.2)
-                                ssl_cp.ssl_repl('\x03', silent=True,
-                                                traceback=True)
+                        shr_cp.sh_repl("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest))
+                        shr_cp.flush_conn()
 
-                            ssl_cp.flush_conn()
-                        else:
-                            espdev.wr_cmd('dir({})'.format(root_text), silent=True)
+                    else:
+                        try:
+                            shr_cp.sh_repl('dir({});gc.collect()'.format(root_text),
+                                            debug=False, prevent_hang=True)
+                        except KeyboardInterrupt:
+                            time.sleep(0.2)
+                            shr_cp.sh_repl('\x03', silent=True,
+                                            traceback=True)
+
+                        shr_cp.flush_conn()
+
                 else:
                     rest = ''
                     glb = True
@@ -2186,31 +1965,26 @@ def tab_press(event):
                             cmd_ls_glb = 'uos.listdir()'
                             if buff_text != '':
                                 cmd_ls_glb = "[val for val in uos.listdir() if val.startswith('{}')]".format(buff_text)
-                    if encrypted_flag['sec']:
-                        try:
-                            ssl_cp.ssl_repl(cmd_ls_glb+';gc.collect()',
-                                            debug=False, prevent_hang=True)
-                        except KeyboardInterrupt:
-                            time.sleep(0.2)
-                            ssl_cp.ssl_repl('\x03', silent=True,
-                                            traceback=True)
-                        ssl_cp.flush_conn()
-                    else:
-                        espdev.wr_cmd(cmd_ls_glb, silent=True)
+
+                    try:
+                        shr_cp.sh_repl(cmd_ls_glb+';gc.collect()',
+                                        debug=False, prevent_hang=True)
+                    except KeyboardInterrupt:
+                        time.sleep(0.2)
+                        shr_cp.sh_repl('\x03', silent=True,
+                                        traceback=True)
+                    shr_cp.flush_conn()
 
             else:
                 root_text = buff_text.split('.')[0]
                 rest = buff_text.split('.')[1]
-                if encrypted_flag['sec']:
-                    try:
-                        ssl_cp.ssl_repl('dir({});gc.collect()'.format(root_text))
-                    except KeyboardInterrupt:
-                        time.sleep(0.2)
-                        ssl_cp.ssl_repl('\x03', silent=True,
-                                        traceback=True)
-                    ssl_cp.flush_conn()
-                else:
-                    espdev.wr_cmd('dir({})'.format(root_text), silent=True)
+                try:
+                    shr_cp.sh_repl('dir({});gc.collect()'.format(root_text))
+                except KeyboardInterrupt:
+                    time.sleep(0.2)
+                    shr_cp.sh_repl('\x03', silent=True,
+                                    traceback=True)
+                shr_cp.flush_conn()
         except Exception as e:
             pass
 
@@ -2376,19 +2150,8 @@ def autocomplete_locals(event):
                     glb = True
                     if shell_mode['S']:
                             cmd_ls_glb = os.listdir()
-                    # if encrypted_flag['sec']:
-                    #     h_cp.crepl(cmd_ls_glb)
-                    # else:
-                    #     espdev.wr_cmd(cmd_ls_glb, silent=True)
-
             else:
                 pass
-                # root_text = buff_text.split('.')[0]
-                # rest = buff_text.split('.')[1]
-                # if encrypted_flag['sec']:
-                #     h_cp.crepl('dir({})'.format(root_text))
-                # else:
-                #     espdev.wr_cmd('dir({})'.format(root_text), silent=True)
         except Exception as e:
             pass
 
@@ -2561,7 +2324,7 @@ def toggle_local_path(event):
 #         if encrypted_flag['sec']:
 #             encrypted_flag['sec'] = False
 #             espdev.output = None
-#             ssl_cp.sw_repl()
+#             shr_cp.sw_repl()
 #
 #             def warning_us():
 #                 print(CRED + 'WARNING: ENCRYPTION DISABLED' + CEND)
@@ -2569,7 +2332,7 @@ def toggle_local_path(event):
 #         else:
 #             encrypted_flag['sec'] = True
 #             espdev.output = None
-#             ssl_cp.sw_repl()
+#             shr_cp.sw_repl()
 #             espdev.output = None
 #
 #             def warning_sec():
@@ -2589,51 +2352,29 @@ def toggle_status_encryp_msg(event):
 
 
 @kb.add('c-g')
-def listen_SSL_WREPL(event):
-    "Echo SSL_WREPL --> Active listening for timer/hardware interrupts"
-    if encrypted_flag['sec']:
-        # espdev.wr_cmd("cp.gbls = globals()", silent=True)
-        def echo_ouput():
-            try:
-                buff_text = "import time\nwhile True:\n    time.sleep(1)"
-                ssl_cp.paste_buff(buff_text)
-                ssl_cp.ssl_repl("\x04", follow=True)
-            except KeyboardInterrupt:
-                time.sleep(0.2)
-                ssl_cp.ssl_repl('\x03', silent=True,
-                                traceback=True)  # KBI
-                time.sleep(0.2)
-                for i in range(1):
-                    ssl_cp.ssl_repl('\x0d', silent=True)
-                    ssl_cp.flush_conn()
-                pass
-            espdev.output = None
-            time.sleep(1)
-            if encrypted_flag['sec']:
-                ssl_cp.flush_conn()
-                ssl_cp.flush_conn()
-            event.app.current_buffer.reset()
-        run_in_terminal(echo_ouput)
-
-    if not encrypted_flag['sec']:
-        # block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
-        # espdev.wr_cmd(block_commad)
-        # print(block_commad.splitlines())
-        def echo_ouput_nem():
+def listen_SHELL_REPL(event):
+    "Echo SHELL_REPL --> Active listening for timer/hardware interrupts"
+    def echo_ouput():
+        try:
             buff_text = "import time\nwhile True:\n    time.sleep(1)"
-            espdev._wconn.child.sendline('E')
+            shr_cp.paste_buff(buff_text)
+            shr_cp.sh_repl("\x04", follow=True)
+        except KeyboardInterrupt:
             time.sleep(0.2)
-            for line in buff_text.split('\n'):
-                espdev._wconn.child.sendline(line)
-                cmd_echo = espdev._wconn.child.readline()
-                # time.sleep(0.2)
-            # espdev._wconn.child.sendline('D')
-            try:
-                cmd_echo = espdev._wconn.child.read_nonblocking(2**16, 0.2)
-            except Exception as e:
-                pass
-            espdev.wr_cmd('D')
-        run_in_terminal(echo_ouput_nem)
+            shr_cp.sh_repl('\x03', silent=True,
+                            traceback=True)  # KBI
+            time.sleep(0.2)
+            for i in range(1):
+                shr_cp.sh_repl('\x0d', silent=True)
+                shr_cp.flush_conn()
+            pass
+        espdev.output = None
+        time.sleep(1)
+        shr_cp.flush_conn()
+        shr_cp.flush_conn()
+        event.app.current_buffer.reset()
+    run_in_terminal(echo_ouput)
+
 
 session_p = PromptSession()
 
@@ -2662,47 +2403,31 @@ while repl:
                     else:
                         inp, frst_cmd = map_upysh(inp)
                         if frst_cmd == 'run':
-                            if not encrypted_flag['sec']:
-
-                                espdev.wr_cmd(inp)
-                            else:
-                                try:
-                                    ssl_cp.ssl_repl(inp, follow=True)
-                                    # if espdev.output is not None:
-                                    #     print(espdev.output)
-                                except KeyboardInterrupt:
-                                    time.sleep(0.2)
-                                    ssl_cp.ssl_repl('\x03', silent=True,
-                                                    traceback=True)  # KBI
-                                    time.sleep(0.2)
-                                    for i in range(1):
-                                        ssl_cp.ssl_repl('\x0d', silent=True)
-                                        ssl_cp.flush_conn()
-                                    pass
+                            try:
+                                shr_cp.sh_repl(inp, follow=True)
+                                # if espdev.output is not None:
+                                #     print(espdev.output)
+                            except KeyboardInterrupt:
+                                time.sleep(0.2)
+                                shr_cp.sh_repl('\x03', silent=True,
+                                                traceback=True)  # KBI
+                                time.sleep(0.2)
+                                for i in range(1):
+                                    shr_cp.sh_repl('\x0d', silent=True)
+                                    shr_cp.flush_conn()
+                                pass
 
                         else:
-                            if not encrypted_flag['sec']:
-                                if frst_cmd != 'cat':
-                                    espdev.wr_cmd(inp)
-                                else:
-                                    espdev.close_wconn()
-                                    espdev.cmd(inp)
-                                    espdev.open_wconn()
+                            if inp == 'ls()' or frst_cmd == 'cat' or frst_cmd == 'tree' or 'help' in frst_cmd:
+                                shr_cp.sh_repl(inp+';gc.collect()', follow=True)
+                                shr_cp.flush_conn()
                             else:
-                                if inp == 'ls()' or frst_cmd == 'cat' or frst_cmd == 'tree' or 'help' in frst_cmd:
-                                    ssl_cp.ssl_repl(inp+';gc.collect()', follow=True)
-                                    ssl_cp.flush_conn()
-                                else:
-                                    ssl_cp.ssl_repl(inp)
-                                    if espdev.output is not None:
-                                        print(espdev.output)
+                                shr_cp.sh_repl(inp)
+                                if espdev.output is not None:
+                                    print(espdev.output)
                         if frst_cmd == 'cd':
                             espdev.output = None
-                            if not encrypted_flag['sec']:
-                                espdev.wr_cmd('pwd', silent=True)
-                                espdev.output = espdev.response
-                            else:
-                                ssl_cp.ssl_repl('pwd')
+                            shr_cp.sh_repl('pwd')
                             if espdev.output is not None:
                                 # print(espdev.output)
                                 devpath = espdev.output
@@ -2722,22 +2447,19 @@ while repl:
                                 shell_prompt['s'] = shell_message
                                 prompt['p'] = shell_prompt['s']
                 else:  # REPL
-                    if not encrypted_flag['sec']:
-                        espdev.wr_cmd(inp)
-                    else:
-                        try:
-                            ssl_cp.ssl_repl(inp, follow=True)
-                            # if espdev.output is not None:
-                            #     print(espdev.output)
-                        except KeyboardInterrupt:
-                            time.sleep(0.2)
-                            ssl_cp.ssl_repl('\x03', silent=True,
-                                            traceback=True)  # KBI
-                            time.sleep(0.2)
-                            for i in range(1):
-                                ssl_cp.ssl_repl('\x0d', silent=True)
-                                ssl_cp.flush_conn()
-                            pass
+                    try:
+                        shr_cp.sh_repl(inp, follow=True)
+                        # if espdev.output is not None:
+                        #     print(espdev.output)
+                    except KeyboardInterrupt:
+                        time.sleep(0.2)
+                        shr_cp.sh_repl('\x03', silent=True,
+                                       traceback=True)  # KBI
+                        time.sleep(0.2)
+                        for i in range(1):
+                            shr_cp.sh_repl('\x0d', silent=True)
+                            shr_cp.flush_conn()
+                        pass
                 if inp != '':  # PASTE BUFFER
                     pass
                     # paste_buffer['B'].append(inp)
@@ -2746,12 +2468,9 @@ while repl:
         continue
     except KeyboardInterrupt:
         try:
-            # print('KBI_1!!')
-            # send_KBI()
-            if encrypted_flag['sec']:
-                ssl_cp.flush_conn()
-                if hasattr(SERIAL_TOOL, 'serv_soc'):
-                    ssl_htool.stop_SOC()
+            shr_cp.flush_conn()
+            if hasattr(SERIAL_TOOL, 'serv_soc'):
+                shr_htool.stop_SOC()
             continue
         except Exception as e:
             print(e)

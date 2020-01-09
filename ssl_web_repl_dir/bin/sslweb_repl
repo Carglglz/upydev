@@ -837,7 +837,8 @@ edit_mode = {'E': False, 'File': ''}
 shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
-shell_commands = ['sz', 'cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd']
+shell_commands = ['sz', 'cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
+                  'run']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'apconfig', 'apconfig_t', 'meminfo', 'install',
                     'apscan', 'touch', 'edit', 'wrepl',
