@@ -729,7 +729,7 @@ shell_commands_info = """
 
     * custom shell commands:
         - ls  : list device files in colored format (same as pressing tab on empty line)
-        - tree : to print a tree version of filesystem
+        - tree : to print a tree version of filesystem (to see also hidden files/dirs use 'tree -h')
         - run  : to run a 'script.py'
         - df   : to see filesystem flash usage (and SD if already mounted)
         - meminfo: to see RAM info
@@ -1415,9 +1415,13 @@ def custom_sh_cmd(cmd_inp):
         settime_cmd = rtc_cmd + utc_zone_cmd
         send_custom_sh_cmd(settime_cmd)
 
-    if cmd_inp == 'tree':
+    if cmd_inp.split(' ')[0] == 'tree':
+        if len(cmd_inp.split(' ')) > 1:
+            if cmd_inp.split(' ')[1] == '-h':
+                shr_cp.sh_repl('from upysh2 import tree;tree(hidden=True);gc.collect()', follow=True)
+        else:
         # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
-        shr_cp.sh_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
+            shr_cp.sh_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
         shr_cp.flush_conn()
 
     if cmd_inp == 'l_ifconfig':

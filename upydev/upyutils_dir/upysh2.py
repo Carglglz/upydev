@@ -41,9 +41,12 @@ class LTREE:
         return ""
 
     def __call__(self, path=".", level=0, is_last=False, is_root=True,
-                 carrier="    "):
-        l = os.listdir(path)
-        nf = len([file for file in os.listdir(path) if not os.stat(file)[0] & 0x4000])
+                 carrier="    ", hidden=False):
+        if hidden:
+            l = os.listdir(path)
+        else:
+            l = [f for f in os.listdir(path) if not f.startswith('.')]
+        nf = len([file for file in l if not os.stat(file)[0] & 0x4000])
         nd = len(l) - nf
         ns_f, ns_d = 0, 0
         l.sort()
@@ -64,7 +67,8 @@ class LTREE:
                     else:
                         carrier += "    │"
                 ns_f, ns_d = self.__call__(level=level, is_last=lf,
-                                           is_root=False, carrier=carrier)
+                                           is_root=False, carrier=carrier,
+                                           hidden=hidden)
                 if level > 1:
                     carrier = carrier[:-5]
                 os.chdir('..')
