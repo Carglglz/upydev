@@ -703,7 +703,7 @@ Custom keybindings:
 - CTRL-t : runs test_code.py if present
 - CTRL-w : flush test_code from sys modules, so it can be run again
 - CTRL-a : set cursor position at the beggining
-- CTRL-f : toggle autosuggest mode (Fish shell like)
+- CTRL-f : toggle autosuggest mode (Fish shell like)(use right arrow to complete)
 - CTRL-g : To active listen for device output (Timer or hardware interrupts), CTRL-c to break
 - CRTL-s , ENTER : toggle shell mode to navigate filesystem (see shell commands)
 - CTRL-k : prints the custom keybindings (this list) (+ shell commands if in shell mode)

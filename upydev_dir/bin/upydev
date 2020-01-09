@@ -1170,6 +1170,7 @@ def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
         args.f = '{}/{}'.format(upydev.__path__[0], 'SSL_certificate{}.der'.format(unique_id))
         put_f(ip, passwd, rst=args.rst)
 
+#############################################
 
 helparg = '''Mode:
 - config : to save upy device settings (see -p, -t, -g),
@@ -1281,14 +1282,24 @@ helparg = '''Mode:
              To see more keybindings info do CTRL-k. By default resets after exit,
              use -rkey option to refresh the WebREPL password with a new random password,
              after exit.This passowrd will be stored in the working directory or in global directory with
-             -g option. (This mode needs upysecrets.py, ssl_socket_client_server.py, ssl_repl.py)
+             -g option. (This mode needs ssl_repl.py, upysecrets.py for -rfkey)
+             *(Use -nem option to use without encryption (for esp8266))
 - ssl: to acces ssl_wrepl in a 'ssh' style command to be used like e.g.:
       "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
        The device can be accesed as "upydev ssl@foo_device" or redirect any command as e.g.
        "upydev ping -@foo_device". *(For esp8266 use the option -nem (no encryption mode))
 
-- shr: to acces the serial shell-repl in a 'ssh' style command to be used like e.g.:
+- sh_srepl: To enter the serial terminal SHELL-REPL; CTRL-x to exit,
+            To see more keybindings info do CTRL-k. By default resets after exit.
+            To configurate a serial device use -t for baudrate and -p for serial port
+            To acces without previous configuration: "sh_srepl -port [serial port] -b [baudrate]"
+            (default baudrate is 115200)
+            To acces with previous configuration:
+                - "sh_srepl" (if device configurated in current working directory)
+                - "sh_srepl -@ foo_device" (if foo_device is configurated in global group 'UPY_G')
+
+- shr: to acces the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.:
       "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this
        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
        The device can be accesed as "upydev shr@foo_device"
@@ -1528,7 +1539,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
-                 'sslgen_rsakey', 'ssl_wrepl', 'ssl', 'shr']
+                 'sslgen_rsakey', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr']
 
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
@@ -3561,6 +3572,8 @@ def ssl_wrepl(ip, passwd, usr=None):
 
 
 def sh_srepl(baud, port, usr=None):
+        if baud is None:
+            baud = 115200
         if usr is not None:
             sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r -dev {}'.format(baud, port, usr)
         else:
@@ -4481,7 +4494,21 @@ elif args.m == 'sslgen_rsakey':
 
 # SSL_WREPL
 elif args.m == 'ssl_wrepl':
-    ssl_wrepl(args.t, args.p)
+    if vars(args)['@'] is not None:
+        entryp = vars(args)['@']
+        ssl_wrepl(args.t, args.p, usr=entryp)
+    else:
+        ssl_wrepl(args.t, args.p)
+
+elif args.m == 'sh_srepl':
+    if vars(args)['@'] is not None:
+        entryp = vars(args)['@']
+        sh_srepl(args.t, args.p, usr=entryp)
+    else:
+        if args.port is not None:
+            sh_srepl(args.b, args.port)
+        else:
+            sh_srepl(args.t, args.p)
 
 # MAKE AN DIRECT ENTRY WITH @ FORMAT
 
@@ -4591,6 +4618,8 @@ elif args.m == 'shr':
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
         else:
             try:
+                if args.port is not None:
+                    entry_point = args.port
                 sh_srepl(115200, entry_point, usr=entry_point)
             except Exception as e:
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
