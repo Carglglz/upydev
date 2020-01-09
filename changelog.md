@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fix
 - ssl_wrepl netscan command for esp8266
 - Add help of latest upydev commands
+- see -c command help info text wraps at terminal length
 ## [0.1.9] - 2020-01-07
 ### Added
 - Mode to generate RSA key and self signed certificate ('sslgen_rsakey')

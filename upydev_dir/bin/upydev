@@ -29,6 +29,7 @@ import secrets
 import signal
 import hashlib
 import locale
+import textwrap
 from binascii import hexlify
 from pathlib import Path
 import multiprocessing
@@ -2403,7 +2404,8 @@ def see():
         help_file = '{}/help.config'.format(upydev.__path__[0])
         with open(help_file, 'r') as helpref:
             help_dict = json.loads(helpref.read())
-        print(help_dict[args.c])
+        columns, rows = os.get_terminal_size(0)
+        print('\n'.join(textwrap.wrap(help_dict[args.c], columns-3)))
     else:
         group_file = '{}.config'.format(args.G)
         if group_file not in os.listdir() or args.g:
