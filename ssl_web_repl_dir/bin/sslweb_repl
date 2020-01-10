@@ -15,6 +15,7 @@ import signal
 import netifaces
 import nmap
 import ast
+import textwrap
 import select
 import subprocess
 import shlex
@@ -26,6 +27,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 # from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import pygments
+from pygments.lexers.python import PythonLexer
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
@@ -34,6 +37,8 @@ from prompt_toolkit.filters import Condition
 from prompt_toolkit.application import run_in_terminal
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.formatted_text import PygmentsTokens
+from prompt_toolkit import print_formatted_text
 
 
 def get_cmd(raw):
@@ -311,6 +316,10 @@ class SSL_REPL_server:
                 print(self.buff.decode())
             pass
 
+    def colored(self, msg):
+        tokens = list(pygments.lex(msg, lexer=PythonLexer()))
+        print_formatted_text(PygmentsTokens(tokens), end='')
+
     def sw_repl(self, close_wbrepl=False):
         if self.SSL_MODE:
             self.SSL_MODE = False
@@ -349,7 +358,7 @@ class SSL_REPL_server:
     def ssl_repl(self, inp, just_recv=False, silent=True, follow=False, n=0,
                  traceback=False, debug=False, prevent_hang=False,
                  banner=False, check_list=False, list_th=20,
-                 no_raw_buff=False):
+                 no_raw_buff=False, dec=True, color=False):
         if not check_list:
             self.dev.output = None
         self.buff = b''
@@ -450,7 +459,8 @@ class SSL_REPL_server:
                 msg_b[-1] = msg_b[-1].replace(b'>>> ', b'')
             except Exception as e:
                 pass
-            self.output = '\n'.join([m.decode() for m in msg_b if m != b''])
+            if dec:
+                self.output = '\n'.join([m.decode() for m in msg_b if m != b''])
             if self.output != '':
                 if not check_list:
                     self.dev.output = None
@@ -502,7 +512,10 @@ class SSL_REPL_server:
                                           banner=False)
 
                 if not silent:
-                    print(self.output)
+                    if color:
+                        self.colored(b'\n'.join(self.raw_buff.splitlines()[1:-1]).decode())
+                    else:
+                        print(self.output)
             if traceback:
                 print(self.buff.decode())
             if banner:
@@ -846,7 +859,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'catl', 'l_micropython', 'ls', 'python', 'vim',
                     'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs', 'flush_soc',
-                    'getcert', 'get_rawbuff', 'l_tree']
+                    'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -918,7 +931,7 @@ shell_commands_info = """
 
     * custom shell commands:
         - ls  : list device files in colored format (same as pressing tab on empty line)
-        - tree : to print a tree version of filesystem (to see also hidden files/dirs use 'tree -h')
+        - tree : to print a tree version of filesystem (to see also hidden files/dirs use 'tree -a')
         - run  : to run a 'script.py'
         - df   : to see filesystem flash usage (and SD if already mounted)
         - meminfo: to see RAM info
@@ -942,6 +955,8 @@ shell_commands_info = """
         - wrepl  : to enter the original WebREPL terminal (no encryption mode)
         - reload : to delete a module from sys.path so it can be imported again.
         - flush_soc: to flush socket in case of wrong output
+        - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns)
+        - bat    : prints the content of a '.py' file with Python syntax hightlighting
         - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
                     to exit without reset do 'exit -nr'
                     to exit and do hard reset 'exit -hr'
@@ -1005,6 +1020,18 @@ def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
     print(line.format(*data))
     print(last_line.format(*data[n*cols:]))
 
+# PBM PREVIEW
+
+def read_pbm(fname):
+    fmt, banner, dims, data = fname.splitlines()[1:]
+    data = data.replace(b'>>> ', b'')
+    dimensions = [int(dim.decode()) for dim in dims.split(b' ')]
+    pixel_blocks = [bin(x).replace('0b', '0'*(8-len(bin(x)[2:]))) for x in data]
+    raw_bin_img = ''.join(pixel_blocks)
+    img_term = ["█" if int(x) > 0 else " " for x in raw_bin_img]
+    term_images = '\n'.join(textwrap.wrap(''.join(img_term[6:]), dimensions[0]*2)[:dimensions[0]])
+    img_1 = '\n'.join([line[:dimensions[0]] for line in term_images.split('\n')])
+    return dimensions, data, raw_bin_img, img_1
 
 # SHELL COMMANDS HANDLERS
 
@@ -1737,7 +1764,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp.split(' ')[0] == 'tree':
         if len(cmd_inp.split(' ')) > 1:
-            if cmd_inp.split(' ')[1] == '-h':
+            if cmd_inp.split(' ')[1] == '-a':
                 if encrypted_flag['sec']:
                     ssl_cp.ssl_repl('from upysh2 import tree;tree(hidden=True);gc.collect()', follow=True)
                     ssl_cp.flush_conn()
@@ -1857,6 +1884,29 @@ def custom_sh_cmd(cmd_inp):
             print(e)
             pass
 
+    if cmd_inp.split(' ')[0] == 'view':
+        try:
+            img_file = cmd_inp.split(' ')[1]
+            if img_file.endswith('.pbm'):
+                ssl_cp.ssl_repl("cat('{}')".format(img_file), dec=False)
+                dimensions, data, raw_bin_img, img_1 = read_pbm(ssl_cp.raw_buff)
+                print("{} dimensions: {}x{}".format(img_file, *dimensions))
+                print(img_1)
+            else:
+                print('Indicate a ".pbm" file to view')
+        except Exception as e:
+            print('Indicate a ".pbm" file to view')
+
+    if cmd_inp.split(' ')[0] == 'bat':
+        try:
+            color_file = cmd_inp.split(' ')[1]
+            if color_file.endswith('.py'):
+                ssl_cp.ssl_repl("cat('{}')".format(color_file), silent=False, color=True)
+            else:
+                print('Indicate a ".py" file to view')
+        except Exception as e:
+            print(e)
+            print('Indicate a ".py" file to view')
 
     if cmd_inp.split(' ')[0] == 'exit':
         # print('closing...')
