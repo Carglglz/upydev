@@ -1241,7 +1241,7 @@ helparg = '''Mode:
         directory, named after the name of the script. To follow an on going 'daemon'
         mode log, use -follow option and indicate the script with -f option.
 - update_upyutils: to update the last versions of sync_tool.py, upylog.py,
-                upynotify.py and upysecrets.py
+                upynotify.py, upysecrets.py, upysh2.py and ssl_repl.py.
 - debug: to execute a local script line by line in the target upydevice, use -f option
         to indicate the file. To enter next line press ENTER, to finish PRESS C
         then ENTER. To break a while loop do CTRL+C.
@@ -2415,7 +2415,11 @@ def see():
         print('GROUP NAME: {}'.format(args.G))
         print('# DEVICES: {}'.format(len(group_devs.keys())))
         for key in group_devs.keys():
-            print('DEVICE NAME: {}, IP: {}'.format(key, group_devs[key][0]))
+            dev_ip = group_devs[key][0]
+            if '.' in dev_ip:
+                print('DEVICE NAME: {}, IP: {}'.format(key, group_devs[key][0]))
+            else:
+                print('DEVICE NAME: {}, SERIAL PORT: {}'.format(key, group_devs[key][1]))
 
 
 def reset(ip, passwd):

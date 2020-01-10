@@ -428,6 +428,7 @@ class SSL_REPL_server:
                                         if last_line != '':
                                             print(last_line)
                                 pass
+
                 if self.message == b'>>> ':
                     break
             # except KeyboardInterrupt:
@@ -859,7 +860,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'catl', 'l_micropython', 'ls', 'python', 'vim',
                     'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs', 'flush_soc',
-                    'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat']
+                    'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -955,8 +956,9 @@ shell_commands_info = """
         - wrepl  : to enter the original WebREPL terminal (no encryption mode)
         - reload : to delete a module from sys.path so it can be imported again.
         - flush_soc: to flush socket in case of wrong output
-        - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns)
+        - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns) (encryption mode only)
         - bat    : prints the content of a '.py' file with Python syntax hightlighting
+        - rcat   : prints the raw content of a file (encryption mode only)
         - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
                     to exit without reset do 'exit -nr'
                     to exit and do hard reset 'exit -hr'
@@ -1869,7 +1871,8 @@ def custom_sh_cmd(cmd_inp):
                     print("{}: {}".format(key.upper(), ssl_cp.client_cert[key]))
 
     if cmd_inp == 'get_rawbuff':
-        print(ssl_cp.raw_buff)
+        if encrypted_flag['sec']:
+            print(ssl_cp.raw_buff)
 
     if cmd_inp == 'l_tree':
         try:
@@ -1901,12 +1904,25 @@ def custom_sh_cmd(cmd_inp):
         try:
             color_file = cmd_inp.split(' ')[1]
             if color_file.endswith('.py'):
-                ssl_cp.ssl_repl("cat('{}')".format(color_file), silent=False, color=True)
+                if encrypted_flag['sec']:
+                    ssl_cp.ssl_repl("cat('{}')".format(color_file), silent=False, color=True)
+                else:
+                    color_f = '\n'.join(send_custom_sh_cmd("cat('{}')".format(color_file), capture_output=True))
+                    tokens = list(pygments.lex(color_f, lexer=PythonLexer()))
+                    print_formatted_text(PygmentsTokens(tokens), end='')
             else:
                 print('Indicate a ".py" file to view')
         except Exception as e:
             print(e)
             print('Indicate a ".py" file to view')
+
+    if cmd_inp.split(' ')[0] == 'rcat':
+        try:
+            raw_file = cmd_inp.split(' ')[1]
+            ssl_cp.ssl_repl("cat('{}')".format(raw_file), dec=False)
+            print(b''.join(ssl_cp.raw_buff.splitlines()[1:-1]).replace(b'>>> ', b''))
+        except Exception as e:
+            print(e)
 
     if cmd_inp.split(' ')[0] == 'exit':
         # print('closing...')
@@ -2393,7 +2409,7 @@ def tab_press(event):
         try:
             buff_text_frst_cmd = event.app.current_buffer.document.text.split(' ')[
                                                                               0]
-            if buff_text_frst_cmd == 'import':
+            if buff_text_frst_cmd == 'import' or buff_text_frst_cmd == 'from':
                 import_cmd = True
             buff_text = event.app.current_buffer.document.text.split(' ')[-1]
             if isinstance(buff_text, str):

@@ -205,18 +205,18 @@ class SERIAL_REPL_server:
         tokens = list(pygments.lex(msg, lexer=PythonLexer()))
         print_formatted_text(PygmentsTokens(tokens), end='')
 
-    def sw_repl(self, close_wbrepl=False):
-        if self.SSL_MODE:
-            self.SSL_MODE = False
-            self.dev.close_wconn()
-            self.sh_repl("ssl_client.switch_wrepl()")
-            if not close_wbrepl:
-                self.dev.open_wconn()
-        else:
-            self.SSL_MODE = True
-            self.dev.wr_cmd("ssl_client.switch_sh_repl()")
-            self.dev.close_wconn()
-            self.flush_conn()
+    # def sw_repl(self, close_wbrepl=False):
+    #     if self.SSL_MODE:
+    #         self.SSL_MODE = False
+    #         self.dev.close_wconn()
+    #         self.sh_repl("ssl_client.switch_wrepl()")
+    #         if not close_wbrepl:
+    #             self.dev.open_wconn()
+    #     else:
+    #         self.SSL_MODE = True
+    #         self.dev.wr_cmd("ssl_client.switch_sh_repl()")
+    #         self.dev.close_wconn()
+    #         self.flush_conn()
 
     def enable_wrepl_io(self):
         if not self.IO:
@@ -448,7 +448,7 @@ class SERIAL_TOOL:
                                                                         str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
         sys.stdout.flush()
 
-    def get(self, src, chunk_size=256):
+    def get(self, src, chunk_size=256): # from Pyboard.py
         self.get_pb()
         cnt = 0
         t_start = time.time()
@@ -498,7 +498,7 @@ class SERIAL_TOOL:
         print('\n')
         self.sh_srepl.sh_repl("f.close()")
 
-    def put(self, src, chunk_size=256):
+    def put(self, src, chunk_size=256): # from Pyboard.py
         self.get_pb()
         sz = os.stat(src)[6]
         cnt = 0
@@ -679,7 +679,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'catl', 'l_micropython', 'ls', 'python', 'vim',
                     'set_localtime', 'tree', 'l_ifconfig',
                     'l_ifconfig_t', 'reload', 'docs', 'flush_soc',
-                    'get_rawbuff', 'l_tree', 'view', 'bat']
+                    'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -767,11 +767,12 @@ shell_commands_info = """
         - edit   : to edit a file (e.g. edit my_script.py)
         - get    : to get a file from the device
         - put    : to upload a file to the device
-        - srepl  : to enter the original WebREPL terminal (no encryption mode)
+        - srepl  : to enter the Serial Terminal (This needs Picocom)
         - reload : to delete a module from sys.path so it can be imported again.
         - flush_soc: to flush serial in case of wrong output
         - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns)
         - bat    : prints the content of a '.py' file with Python syntax hightlighting
+        - rcat   : prints the raw content of a file
         - exit   : to exit SHELL-REPL Terminal
 
 * Local shell commands:
@@ -1576,6 +1577,7 @@ def custom_sh_cmd(cmd_inp):
             else:
                 print('Indicate a ".pbm" file to view')
         except Exception as e:
+            print(e)
             print('Indicate a ".pbm" file to view')
 
     if cmd_inp.split(' ')[0] == 'bat':
@@ -1588,6 +1590,14 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print(e)
             print('Indicate a ".py" file to view')
+
+    if cmd_inp.split(' ')[0] == 'rcat':
+        try:
+            raw_file = cmd_inp.split(' ')[1]
+            shr_cp.sh_repl("cat('{}')".format(raw_file), dec=False)
+            print(b''.join(shr_cp.raw_buff.splitlines()[1:-1]).replace(b'>>> ', b''))
+        except Exception as e:
+            print(e)
 
     if cmd_inp.split(' ')[0] == 'exit':
         if reset_flag['R']:
@@ -1993,7 +2003,7 @@ def tab_press(event):
         try:
             buff_text_frst_cmd = event.app.current_buffer.document.text.split(' ')[
                                                                               0]
-            if buff_text_frst_cmd == 'import':
+            if buff_text_frst_cmd == 'import' or buff_text_frst_cmd == 'from':
                 import_cmd = True
             buff_text = event.app.current_buffer.document.text.split(' ')[-1]
             if isinstance(buff_text, str):

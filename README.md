@@ -63,6 +63,8 @@ Python modules (automatically installed using pip):
 
 [websocket-client](https://github.com/websocket-client/websocket-client)
 
+[Pygments]()
+
 [upydevice](https://github.com/Carglglz/upydevice)
 
 #### Tested on:
@@ -182,6 +184,10 @@ How to use it:
   `$ upydev ssl@esp_room1`  or `$ upydev ssl@192.168.1.42` 
   
   ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/SSLWebREPL_demo.gif)
+  
+  ***New in version 0.2.0: Mode 'sh_srepl', a Serial repl/shell ** (*experimental)
+  
+  See **uPydev Mode/Tools** : **sh_srepl** and **shr** modes.
 
 ------
 
@@ -294,7 +300,9 @@ Example: Raw commands
 
 * **log:** to log the output of a upydevice script, indicate script with -f option, and the sys.stdout log level and file log level with -dslev and -dflev (defaults are debug for sys.stdout and error for file). To log in background use -daemon option, then the log will be redirected to a file with level -dslev. To stop the 'daemon' log mode use -stopd and indicate script with -f option. 'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME directory, named after the name of the script. To follow an on going 'daemon' mode log, use -follow option and indicate the script with -f option.
 
-* **update_upyutils**: to update the last versions of sync_tool.py, upylog.py and upynotify.py (these are uploaded to the '/lib' folder of the upydevice)
+* **update_upyutils**: to update the last versions of sync_tool.py, upylog.py, upynotify.py, upysh2.py,
+
+     upysecrets.py, and ssl_repl.py (these are uploaded to the '/lib' folder of the upydevice)
 
 * **debug**: to execute a local script line by line in the target upydevice, use -f option to indicate the file. To enter next line press ENTER, to finish PRESS C then ENTER. To break a while loop do CTRL+C.
 
@@ -317,14 +325,22 @@ Example: Raw commands
 
 - **ssl_wrepl**: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal (SSL sockets);
              CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
-             To see more keybindings info do CTRL-k. By default resets after exit. (This mode needs ssl_repl.py)
-         
+          To see more keybindings info do CTRL-k. By default resets after exit. (This mode needs ssl_repl.py) use -rkey option to refresh the WebREPL password with a new random password, after exit. This passowrd will be stored in the working directory or in global directory with -g option. (This mode needs ssl_repl.py, upysecrets.py for -rfkey) *(Use -nem option to use without encryption (for esp8266))
 - **ssl**: to acces ssl_wrepl in a 'ssh' style command to be used like e.g.:
       "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
-       needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
-       The device can be accesed as "upydev ssl@foo_device" or redirect any command as e.g.
+       needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass) The device can be accesed as "upydev ssl@foo_device" or redirect any command as e.g.
        "upydev ping -@foo_device"
-  
+- **sh_srepl**: To enter the serial terminal SHELL-REPL; CTRL-x to exit,
+      To see more keybindings info do CTRL-k. By default resets after exit.
+      To configurate a serial device use -t for baudrate and -p for serial port
+      To acces without previous configuration: "sh_srepl -port [serial port] -b [baudrate]"
+      (default baudrate is 115200)
+      To acces with previous configuration:
+          - "sh_srepl" (if device configurated in current working directory)
+          - "sh_srepl -@ foo_device" (if foo_device is configurated in global group 'UPY_G')
+- **shr**: to acces the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.:
+      "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
+    The device can be accesed as "upydev shr@foo_device"
 * **make_group**: to make a group of boards to send commands to. Use -f for the name of the group 
 
      and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)

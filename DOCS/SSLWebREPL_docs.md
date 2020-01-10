@@ -145,7 +145,7 @@ Device shell commands:
 
 * custom shell commands:
     - ls  : list device files in colored format (same as pressing tab on empty line)
-    - tree : to print a tree version of filesystem
+    - tree : to print a tree version of filesystem (to see also hidden files/dirs use 'tree -a')
     - run  : to run a 'script.py'
     - df   : to see filesystem flash usage (and SD if already mounted)
     - meminfo: to see RAM info
@@ -169,10 +169,13 @@ Device shell commands:
     - wrepl  : to enter the original WebREPL terminal (no encryption mode)
     - reload : to delete a module from sys.path so it can be imported again.
     - flush_soc: to flush socket in case of wrong output
-    - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
+    - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns) (encryption mode only)
+    -  bat    : prints the content of a '.py' file with Python syntax hightlighting (named after https://github.com/sharkdp/bat)
+    - rcat   : prints the raw content of a file (encryption mode only)
+- exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
                      to exit without reset do 'exit -nr'
                      to exit and do hard reset 'exit -hr'
-
+    
 * Local shell commands:
     - pwdl   : to see local path
     - cdl    : to change local directory
