@@ -63,7 +63,7 @@ Python modules (automatically installed using pip):
 
 [websocket-client](https://github.com/websocket-client/websocket-client)
 
-[Pygments]()
+[Pygments](https://github.com/pygments/pygments)
 
 [upydevice](https://github.com/Carglglz/upydevice)
 
