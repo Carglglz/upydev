@@ -1079,9 +1079,14 @@ def print_filesys_info(filesize):
 
 def get_rprompt():
     if status_encryp_msg['S']:
-        RAM = send_custom_sh_cmd(
-            'from micropython import mem_info;mem_info()')
-        mem_info = RAM.splitlines()[1]
+        if encrypted_flag['sec']:
+            RAM = send_custom_sh_cmd(
+                'from micropython import mem_info;mem_info()')
+            mem_info = RAM.splitlines()[1]
+        else:
+            RAM = send_custom_sh_cmd(
+                'from micropython import mem_info;mem_info()', True)
+            mem_info = RAM[1].strip()
         mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
                           1]) for elem in mem_info[4:].split(',')}
         used_mem = mem['used']/1024
