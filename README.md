@@ -185,7 +185,7 @@ How to use it:
   
   ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/SSLWebREPL_demo.gif)
   
-  ***New in version 0.2.0: Mode 'sh_srepl', a Serial repl/shell ** (*experimental)
+  **New in version 0.2.0: Mode 'sh_srepl', a Serial repl/shell ** (*experimental)
   
   See **uPydev Mode/Tools** : **sh_srepl** and **shr** modes.
 

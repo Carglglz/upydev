@@ -40,35 +40,6 @@ from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.formatted_text import PygmentsTokens
 from prompt_toolkit import print_formatted_text
 
-
-def get_cmd(raw):
-    shcmd = shlex.split(raw)
-    output = subprocess.check_output(shcmd).decode()
-    return output
-
-
-def stop_by_pid(raw='ps ax', proc_name='web_repl_cmd_r'):  # upydev log, web_repl_cmd_r
-    shcmd = shlex.split(raw)
-    output = subprocess.check_output(shcmd).decode()
-    pline = [line for line in output.split('\n') if proc_name in line]
-    if len(pline) > 0:
-        pid = pline[0].strip().split(' ')[0]
-        k = get_cmd('kill {}'.format(pid))
-        return 'Daemon process {} with PID: {} stopped'.format(proc_name, pid)
-    else:
-        return('NO DAEMON PROCESS FOUND')
-
-
-def get_rprompt():
-    if status_encryp_msg['S']:
-        if encrypted_flag['sec']:
-            return HTML('<b><style fg="ansigreen"> INFO: </style></b><aaa fg="ansiblack" bg="ansiwhite"> ENCRYPTION </aaa><b><style fg="ansigreen"> ENABLED </style></b>')
-        else:
-            return HTML('<b><style fg="ansired"> WARNING: </style></b><aaa fg="ansiblack" bg="ansiwhite"> ENCRYPTION: </aaa><b><style fg="ansired"> DISABLED </style></b>')
-    else:
-        return HTML('<b><style fg="ansiblack"> {} </style></b>'.format(' '*10))
-
-
 # CRYPTO
 
 
@@ -729,6 +700,7 @@ class WBREPL_IO:
             self.dev.open_wconn()
             self.WBREPL_ON = True
 
+
 # ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", help='host password', required=True)
@@ -892,8 +864,7 @@ else:
 kb_info = """
 Custom keybindings:
 - CTRL-x : to exit SSLWebREPL Terminal
-- CTRL-u : toggle encryption mode (on/off), this prints a right aligned status message
-- CTRL-p : toggle encryption right aligned status message
+- CTRL-p : toggle RAM STATUS right aligned message (USED/FREE)
 - CTRL-e : paste mode in repl, (edit mode after 'edit' shell command)
 - CTRL-d : ends paste mode in repl, (ends edit mode after 'edit' shell command)
 - CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
@@ -1024,6 +995,7 @@ def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
 
 # PBM PREVIEW
 
+
 def read_pbm(fname):
     fmt, banner, dims, data = fname.splitlines()[1:]
     data = data.replace(b'>>> ', b'')
@@ -1036,6 +1008,7 @@ def read_pbm(fname):
     return dimensions, data, raw_bin_img, img_1
 
 # SHELL COMMANDS HANDLERS
+
 
 def map_upysh(cmd_inp):
     frst_cmd = cmd_inp.split(' ')[0]
@@ -1102,6 +1075,28 @@ def print_filesys_info(filesize):
     else:
         sizestr = "%0.1f GB" % (filesize / _kB**3)
     return sizestr
+
+
+def get_rprompt():
+    if status_encryp_msg['S']:
+        RAM = send_custom_sh_cmd(
+            'from micropython import mem_info;mem_info()')
+        mem_info = RAM.splitlines()[1]
+        mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
+                          1]) for elem in mem_info[4:].split(',')}
+        used_mem = mem['used']/1024
+        free_mem = mem['free']/1024
+        used_mem_s = "{:.3f} KB".format(used_mem)
+        free_mem_s = "{:.3f} KB".format(free_mem)
+        total_mem = mem['total']/1024
+        use_percent = round((used_mem/total_mem)*100, 2)
+
+        if use_percent < 85:
+            return HTML('<aaa fg="ansiblack" bg="ansiwhite"> RAM </aaa><b><style fg="ansigreen"> USED </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa><b><style fg="ansigreen"> FREE </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa>'.format(used_mem_s, free_mem_s))
+        else:
+            return HTML('<aaa fg="ansiblack" bg="ansiwhite"> RAM </aaa><b><style fg="ansired"> USED </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa><b><style fg="ansired"> FREE </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa>'.format(used_mem_s, free_mem_s))
+    else:
+        return HTML('<b><style fg="ansiblack"> {} </style></b>'.format(' '*10))
 
 
 def custom_sh_cmd(cmd_inp):
@@ -2443,9 +2438,16 @@ def tab_press(event):
                     if buff_text != '':
                         cmd_ls_glb = "[val for val in dir() if val.startswith('{}')]".format(buff_text)
                     if import_cmd:
-                        cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp]"
-                        if buff_text != '':
-                            cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
+                        fbuff_text = event.app.current_buffer.document.text.split()
+                        if 'import' in fbuff_text and 'from' in fbuff_text and len(fbuff_text) >= 3:
+                            if len(fbuff_text) == 3:
+                                cmd_ls_glb = "import {0};dir({0});del(sys.modules['{0}'])".format(fbuff_text[1])
+                            if len(fbuff_text) == 4:
+                                cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')];del(sys.modules['{0}'])".format(fbuff_text[1], fbuff_text[3])
+                        else:
+                            cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp]"
+                            if buff_text != '':
+                                cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
 
                     if shell_mode['S']:
 
@@ -2826,37 +2828,36 @@ def toggle_local_path(event):
             prompt['p'] = shell_prompt['s']
 
 
-@kb.add('c-u')
-def unsecure_mode(event):
-    "Toggle send unencrypted commands"
-    if not args.nem:
-        status_encryp_msg['S'] = True
-        status_encryp_msg['Toggle'] = False
-        if encrypted_flag['sec']:
-            encrypted_flag['sec'] = False
-            espdev.output = None
-            ssl_cp.sw_repl()
-
-            def warning_us():
-                print(CRED + 'WARNING: ENCRYPTION DISABLED' + CEND)
-            # run_in_terminal(warning_us)
-        else:
-            encrypted_flag['sec'] = True
-            espdev.output = None
-            ssl_cp.sw_repl()
-            espdev.output = None
-
-            def warning_sec():
-                print(CGREEN + 'INFO: ENCRYPTION ENABLED' + CEND)
+# @kb.add('c-u')
+# def unsecure_mode(event):
+#     "Toggle send unencrypted commands"
+#     if not args.nem:
+#         status_encryp_msg['S'] = True
+#         status_encryp_msg['Toggle'] = False
+#         if encrypted_flag['sec']:
+#             encrypted_flag['sec'] = False
+#             espdev.output = None
+#             ssl_cp.sw_repl()
+#
+#             def warning_us():
+#                 print(CRED + 'WARNING: ENCRYPTION DISABLED' + CEND)
+#             # run_in_terminal(warning_us)
+#         else:
+#             encrypted_flag['sec'] = True
+#             espdev.output = None
+#             ssl_cp.sw_repl()
+#             espdev.output = None
+#
+#             def warning_sec():
+#                 print(CGREEN + 'INFO: ENCRYPTION ENABLED' + CEND)
         # run_in_terminal(warning_sec)
 
 
 @kb.add('c-p')
-def toggle_status_encryp_msg(event):
-    "Toggle Right Encryption status"
+def toggle_status_ram_msg(event):
+    "Toggle Right RAM status"
     if status_encryp_msg['Toggle']:
         if status_encryp_msg['S']:
-            pass
             status_encryp_msg['S'] = False
         else:
             status_encryp_msg['S'] = True

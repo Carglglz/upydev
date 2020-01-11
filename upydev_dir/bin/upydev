@@ -3836,8 +3836,12 @@ if args.G is not None:
                 print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
                 print('# DEVICES ADDED: {}'.format(len(group_dict.keys())))
                 for key in group_dict.keys():
-                    print('DEVICE NAME: {}, IP: {}'.format(
-                        key, group_dict[key][0]))
+                    if '.' in group_dict[key][0]:
+                        print('DEVICE NAME: {}, IP: {}'.format(
+                            key, group_dict[key][0]))
+                    else:
+                        print('DEVICE NAME: {}, SERIAL PORT: {}'.format(
+                            key, group_dict[key][1]))
             elif args.rm is not None:
                 group_dict_rm = args.rm
                 removed_devs = {}
