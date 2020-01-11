@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match
 - CTRL-u deprecated (no encryption toggle), CTRL-p now shows RAM STATUS (used/free)
+- CTRL-e in SHELLS (SSL/SERIAL) moves cursor to end of the line (if not in edit mode)
+- 'batl' command for SHELLS(SSL/SERIAL) to print local file with python sintax hightlighting
 ## [0.2.0] - 2020-01-10
 ### Added
 - serial terminal SHELL-REPL mode (same style as SSLWebREPL) "sh_srepl"

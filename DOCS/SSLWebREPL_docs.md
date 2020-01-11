@@ -107,14 +107,13 @@ The repl mode has two limitations:
 
 Custom keybindings:
 - CTRL-x : to exit SSLWebREPL Terminal
-- CTRL-u : toggle encryption mode (on/off), this prints a right aligned status message
-- CTRL-p : toggle encryption right aligned status message
-- CTRL-e : paste mode in repl, (edit mode after 'edit' shell command)
+- CTRL-p : toggle RAM STATUS right aligned message (USED/FREE)
+- CTRL-e : paste mode in repl, (in shell mode set cursor position at the end)/(edit mode after 'edit' shell command)
 - CTRL-d : ends paste mode in repl, (ends edit mode after 'edit' shell command)
 - CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
 - CTRL-b : prints MicroPython version and sys platform
 - CTRL-r : to flush line buffer
-- CTRL-o : to list files in cwd (ls shorcut command)
+- CTRL-o : to list files in cwd (sz shorcut command)
 - CTRL-n : shows mem_info()
 - CTRL-y : gc.collect() shortcut command
 - CTRL-space : repeats last command
@@ -175,12 +174,13 @@ Device shell commands:
 - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
                      to exit without reset do 'exit -nr'
                      to exit and do hard reset 'exit -hr'
-    
+
 * Local shell commands:
     - pwdl   : to see local path
     - cdl    : to change local directory
     - lsl    : to list local directory
     - catl   : to print the contents of a local file
+    - batl   : prints the content of a local '.py' file with Python syntax hightlighting
     - l_micropython: if "micropython" local machine version available in $PATH, runs it.
     - python : switch to local python3 repl
     - vim    : to edit a local file with vim  (e.g. vim script.py)

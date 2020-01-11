@@ -672,7 +672,8 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'catl', 'l_micropython', 'ls', 'python', 'vim',
                     'set_localtime', 'tree', 'l_ifconfig',
                     'l_ifconfig_t', 'reload', 'docs', 'flush_soc',
-                    'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat']
+                    'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
+                    'batl']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -700,15 +701,14 @@ else:
 kb_info = """
 Custom keybindings:
 - CTRL-x : to exit SHELL-REPL Terminal
-- CTRL-u : toggle encryption mode (on/off), this prints a right aligned status message
-- CTRL-p : toggle encryption right aligned status message
-- CTRL-e : paste mode in repl, (edit mode after 'edit' shell command)
+- CTRL-p : toggle RAM status right aligned message (USED/FREE)
+- CTRL-e : paste mode in repl,(in shell mode set cursor position at the end)/ (edit mode after 'edit' shell command)
 - CTRL-d : ends paste mode in repl, (ends edit mode after 'edit' shell command)
           (or soft-reset in repl, CTRL-C to start repl again)
 - CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
 - CTRL-b : prints MicroPython version and sys platform
 - CTRL-r : to flush line buffer
-- CTRL-o : to list files in cwd (ls shorcut command)
+- CTRL-o : to list files in cwd (sz shorcut command)
 - CTRL-n : shows mem_info()
 - CTRL-y : gc.collect() shortcut command
 - CTRL-space : repeats last command
@@ -773,6 +773,7 @@ shell_commands_info = """
     - cdl    : to change local directory
     - lsl    : to list local directory
     - catl   : to print the contents of a local file
+    - batl   : prints the content of a local '.py' file with Python syntax hightlighting
     - l_micropython: if "micropython" local machine version available in $PATH, runs it.
     - python : switch to local python3 repl
     - vim    : to edit a local file with vim  (e.g. vim script.py)
@@ -1606,6 +1607,22 @@ def custom_sh_cmd(cmd_inp):
             print(e)
             print('Indicate a ".py" file to view')
 
+    if cmd_inp.split(' ')[0] == 'batl':
+        try:
+            color_file = cmd_inp.split(' ')[1]
+            if color_file.endswith('.py'):
+                try:
+                    with open(color_file, 'r') as catfile:
+                        content = catfile.read()
+                        tokens = list(pygments.lex(content, lexer=PythonLexer()))
+                        print_formatted_text(PygmentsTokens(tokens), end='')
+                except Exception as e:
+                    print(e)
+                    pass
+
+        except Exception as e:
+            print('Indicate a ".py" file to view')
+
     if cmd_inp.split(' ')[0] == 'rcat':
         try:
             raw_file = cmd_inp.split(' ')[1]
@@ -1927,8 +1944,11 @@ def paste_mode(event):
                 process_content = ' '
             if isinstance(file_content, str):
                 event.app.current_buffer.insert_text(process_content)
-
-
+        else:
+            # "Move cursor to final position"
+            buff_text = event.app.current_buffer.document.text
+            event.app.current_buffer.reset()
+            event.app.current_buffer.insert_text(buff_text, move_cursor=True)
 @kb.add('c-d')
 def paste_mode_exit(event):
     "PASTE MODE exit in REPL, EDIT MODE exit in SHELL"
