@@ -459,7 +459,10 @@ class SSL_REPL_server:
                                 recv_len = len(recv_list)
                                 if recv_len > list_th:
                                     time.sleep(0.3)
-                                    true_len = self.ssl_repl("len({})".format(inp.split(';')[0]),
+                                    get_list = inp.split(';')[0]
+                                    if 'import' in get_list:
+                                        get_list = inp.split(';')[1]
+                                    true_len = self.ssl_repl("len({})".format(get_list),
                                                              silent=True, check_list=True,
                                                              no_raw_buff=True)
                                     # print(true_len, recv_len)
@@ -819,6 +822,7 @@ paste_buffer = {'B': []}
 reset_flag = {'R': args.r}
 autosuggest = {'A': False}
 shell_mode = {'S': False}
+frozen_modules = {'FM': [], 'SUB': []}
 edit_mode = {'E': False, 'File': ''}
 shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
@@ -857,8 +861,16 @@ else:
         ssl_cp.flush_conn()
         ssl_cp.flush_conn()
         espdev.output = None
+        ssl_cp.ssl_repl("help('modules')", silent=True)
+        frozen_modules['FM'] = espdev.output.split()[:-6]
+        ssl_cp.flush_conn()
+        ssl_cp.flush_conn()
+        espdev.output = None
     else:
         espdev.wr_cmd('import gc;import uos;from upysh import *;gc.collect()', silent=True)
+        espdev.wr_cmd("help('modules')", silent=True)
+        espdev.get_output()
+        frozen_modules['FM'] = espdev.output.split()[:-6]
     espdev.output = None
 
 # KEYBINDINGS INFO
@@ -2468,14 +2480,23 @@ def tab_press(event):
                     if import_cmd:
                         fbuff_text = event.app.current_buffer.document.text.split()
                         if 'import' in fbuff_text and 'from' in fbuff_text and len(fbuff_text) >= 3:
-                            if len(fbuff_text) == 3:
-                                cmd_ls_glb = "import {0};dir({0});del(sys.modules['{0}'])".format(fbuff_text[1])
-                            if len(fbuff_text) == 4:
-                                cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')];del(sys.modules['{0}'])".format(fbuff_text[1], fbuff_text[3])
+                            if fbuff_text[1] not in frozen_modules['FM']:
+                                if len(fbuff_text) == 3:
+                                    cmd_ls_glb = "import {0};dir({0});del(sys.modules['{0}'])".format(fbuff_text[1])
+                                if len(fbuff_text) == 4:
+                                    cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')];del(sys.modules['{0}'])".format(fbuff_text[1], fbuff_text[3])
+                            else:
+                                if len(fbuff_text) == 3:
+                                    cmd_ls_glb = "import {0};dir({0})".format(fbuff_text[1])
+                                if len(fbuff_text) == 4:
+                                    cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')]".format(fbuff_text[1], fbuff_text[3])
+
                         else:
                             cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp]"
+                            frozen_modules['SUB'] = frozen_modules['FM']
                             if buff_text != '':
                                 cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
+                                frozen_modules['SUB'] = [mod for mod in frozen_modules['FM'] if mod.startswith(buff_text)]
 
                     if shell_mode['S']:
 
@@ -2522,6 +2543,11 @@ def tab_press(event):
             try:
                 if espdev.output is not None:
                     espdev.get_output()
+                    if glb:
+                        kw_line_buff = event.app.current_buffer.document.text.split()
+                        if len(kw_line_buff) > 0 and len(kw_line_buff) <= 2:
+                            if 'import' == kw_line_buff[0] or 'from' == kw_line_buff[0]:
+                                espdev.output = espdev.output + frozen_modules['SUB']
                     if isinstance(espdev.output, str):
                         # print(espdev.output)
                         pass

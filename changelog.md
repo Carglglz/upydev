@@ -4,7 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.1] Unreleased [Github Repo]
+## [0.2.2] Unreleased [Github Repo]
+### Added
+- Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match for frozen modules too.
+### Fix
+- Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match (bug fix)
+## [0.2.1] 2020-01-12
 ### Added
 - Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match
 - CTRL-u deprecated (no encryption toggle), CTRL-p now shows RAM STATUS (used/free)
