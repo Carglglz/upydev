@@ -1548,7 +1548,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = '0.2.2'
+parser.version = '0.2.3'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
@@ -4349,41 +4349,30 @@ elif args.m == 'fw':
                         print('- {}'.format(v))
             else:
                 print('- {}'.format(fw_v_latest[0]))
-            fw_v_latest = fw_v_latest[0]
-            print('Firmware selected: {}'.format(fw_v_latest))
-            fw_v_latest_link = fw_v[0][fw_v_latest]
-            print('Downloading {} ...'.format(fw_v_latest))
-            curl_cmd_str = "curl -O '{}'".format(fw_v_latest_link)
-            curl_cmd = shlex.split(curl_cmd_str)
-            try:
-                proc = subprocess.Popen(
-                    curl_cmd, stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT)
-                while proc.poll() is None:
-                    print(proc.stdout.readline()[:-1].decode())
-                print('Done!')
-            except KeyboardInterrupt:
-                time.sleep(1)
-                result = proc.stdout.readlines()
-                for message in result:
-                    print(message[:-1].decode())
+            if len(fw_v_latest) >= 1:
+                fw_v_latest = fw_v_latest[0]
+                print('Firmware selected: {}'.format(fw_v_latest))
+                fw_v_latest_link = fw_v[0][fw_v_latest]
+                print('Downloading {} ...'.format(fw_v_latest))
+                curl_cmd_str = "curl -O '{}'".format(fw_v_latest_link)
+                curl_cmd = shlex.split(curl_cmd_str)
+                try:
+                    proc = subprocess.call(curl_cmd)
+                    print('Done!')
+                except KeyboardInterrupt:
+                    print('Operation cancelled')
+            else:
+                print('No firmware available that match {}'.format(args.n))
         else:
             fw_v_link = get_fw_versions(args.md[1])[0][args.md[1]]
             print('Downloading {} ...'.format(args.md[1]))
             curl_cmd_str = "curl -O '{}'".format(fw_v_link)
             curl_cmd = shlex.split(curl_cmd_str)
             try:
-                proc = subprocess.Popen(
-                    curl_cmd, stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT)
-                while proc.poll() is None:
-                    print(proc.stdout.readline()[:-1].decode())
+                proc = subprocess.call(curl_cmd)
                 print('Done!')
             except KeyboardInterrupt:
-                time.sleep(1)
-                result = proc.stdout.readlines()
-                for message in result:
-                    print(message[:-1].decode())
+                print('Operation cancelled')
 
 elif args.m == 'flash':
     if 'esp32' in args.f:
@@ -4392,33 +4381,19 @@ elif args.m == 'flash':
             args.port, args.f)
         esptool_cmd = shlex.split(esptool_cmd_str)
         try:
-            proc = subprocess.Popen(
-                esptool_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            while proc.poll() is None:
-                print(proc.stdout.readline()[:-1].decode())
+            proc = subprocess.call(esptool_cmd)
             print('Done!')
         except KeyboardInterrupt:
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
+            print('Operation cancelled')
     elif 'esp8266' in args.f:
         esptool_cmd_str = "esptool.py --port {} --baud 460800 write_flash --flash_size=detect 0 {}".format(
             args.port, args.f)
         esptool_cmd = shlex.split(esptool_cmd_str)
         try:
-            proc = subprocess.Popen(
-                esptool_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            while proc.poll() is None:
-                print(proc.stdout.readline()[:-1].decode())
+            proc = subprocess.call(esptool_cmd)
             print('Done!')
         except KeyboardInterrupt:
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
+            print('Operation cancelled')
     sys.exit()
 
 # SEE

@@ -677,7 +677,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'set_localtime', 'tree', 'l_ifconfig',
                     'l_ifconfig_t', 'reload', 'docs', 'flush_soc',
                     'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
-                    'batl']
+                    'batl', 'fw', 'flash', 'du']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -733,7 +733,7 @@ Custom keybindings:
 shell_commands_info = """
 * Autocompletion commands:
      - tab to autocomplete device file / dirs names / raw micropython (repl commands)
-     - shift-tab to autocomplete shell comands
+     - shift-tab to autocomplete shell commands
      - shift-right to autocomplete local file / dirs names
      - shift-left,ENTER to toggle local path in prompt
 
@@ -753,6 +753,7 @@ shell_commands_info = """
         - tree : to print a tree version of filesystem (to see also hidden files/dirs use 'tree -a')
         - run  : to run a 'script.py'
         - df   : to see filesystem flash usage (and SD if already mounted)
+        - du   : display disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
         - meminfo: to see RAM info
         - whoami : to see user, system and machine info
         - datetime: to see device datetime (if not set, will display uptime)
@@ -776,6 +777,8 @@ shell_commands_info = """
         - bat    : prints the content of a '.py' file with Python syntax hightlighting
         - rcat   : prints the raw content of a file
         - exit   : to exit SHELL-REPL Terminal
+                   to exit without reset do 'exit -nr'
+                   to exit and do hard reset 'exit -hr'
 
 * Local shell commands:
     - pwdl   : to see local path
@@ -792,6 +795,9 @@ shell_commands_info = """
     - docs : to open MicroPython docs site in the default web browser, if a second term
             is passed e.g. 'docs machine' it will open the docs site and search for 'machine'
     - get_rawbuff: to get the raw output of a command (for debugging purpose)
+    - fw   : + list/get/update/latest firmware e.g (fw list latest, fw get latest) (use option -n [expresion to match])
+            e.g. (fw get latest -n spiram, or fw get esp32-idf3-20200114-v1.12-63-g1c849d63a.bin)
+    - flash : to flash a firmware file, e.g 'flash esp32-idf3-20200114-v1.12-63-g1c849d63a.bin'
 
 
 """
@@ -883,6 +889,9 @@ def _dt_format(number):
 def _ft_datetime(t_now):
     return([_dt_format(i) for i in t_now])
 
+def sortSecond(val):
+    return val[1]
+
 
 def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True):
     shr_cp.sh_repl(cmd)
@@ -928,7 +937,7 @@ def get_rprompt():
 
 
 def custom_sh_cmd(cmd_inp):
-    # map cmd_inp to comand string
+    # map cmd_inp to command string
     if cmd_inp == 'df':
         resp = send_custom_sh_cmd("os.statvfs('')")
         # resp_sd = send_custom_sh_cmd("os.statvfs('sd')")
@@ -962,6 +971,61 @@ def custom_sh_cmd(cmd_inp):
                 print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(vfs, total_mem_sd,
                                                                         used_mem_sd, free_mem_sd,
                                                                         "{:.1f} %".format((used_b_sd/total_b_sd)*100), ' ', '/{}'.format(vfs)))
+
+    if cmd_inp.split()[0] == 'du':
+        if len(cmd_inp.split()) == 1:
+            shr_cp.sh_repl('from upysh2 import du;du();gc.collect()', follow=True)
+            shr_cp.flush_conn()
+
+        elif len(cmd_inp.split()) == 2:
+            if cmd_inp.split()[1] != '-o':
+                file = cmd_inp.split()[1]
+                shr_cp.sh_repl("from upysh2 import du;du(path='./{}');gc.collect()".format(file), follow=True)
+                shr_cp.flush_conn()
+
+            elif cmd_inp.split()[1] == '-o':
+                resp = send_custom_sh_cmd("{dir:uos.stat(dir)[6] for dir in uos.listdir()}")
+                is_dir = {}
+                for dir in resp.keys():
+                    if resp[dir] != 0:
+                        pass
+                        is_dir[dir] = 0
+                        # print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
+                    else:
+                        # print('{:9} ./{}'.format('<dir>', dir))
+                        resp_dir = send_custom_sh_cmd("sum([uos.stat('{0}/'+dir)[6] for dir in uos.listdir('{0}')])".format(dir))
+                        # print('{:9} ./{} <dir>'.format(print_filesys_info(resp_dir), dir))
+                        resp[dir] = resp_dir
+                        is_dir[dir] = 1
+
+                du_sorted_list = [(dir, resp[dir], is_dir[dir]) for dir in resp.keys()]
+                du_sorted_list.sort(key=sortSecond, reverse=True)
+
+                for val in du_sorted_list:
+                    if val[2] == 0:
+                        print('{:9} ./{}'.format(print_filesys_info(val[1]), val[0]))
+                    else:
+                        print('{:9} ./{} <dir>'.format(print_filesys_info(val[1]), val[0]))
+        elif len(cmd_inp.split()) == 3:
+            if cmd_inp.split()[1] == '-d':
+                try:
+                    dlev = cmd_inp.split()[2]
+                    shr_cp.sh_repl("from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), follow=True)
+                    shr_cp.flush_conn()
+
+                except Exception as e:
+                    print(e)
+
+        elif len(cmd_inp.split()) == 4:
+            if cmd_inp.split()[2] == '-d':
+                try:
+                    file = cmd_inp.split()[1]
+                    dlev = cmd_inp.split()[3]
+                    shr_cp.sh_repl("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), follow=True)
+                    shr_cp.flush_conn()
+
+                except Exception as e:
+                    print(e)
 
     if cmd_inp == 'datetime':
         send_custom_sh_cmd("import time;tnow=time.localtime()")
@@ -1484,6 +1548,19 @@ def custom_sh_cmd(cmd_inp):
         if len(cmd_inp.split(' ')) > 1:
             if cmd_inp.split(' ')[1] == '-a':
                 shr_cp.sh_repl('from upysh2 import tree;tree(hidden=True);gc.collect()', follow=True)
+
+            else:
+                if len(cmd_inp.split(' ')) == 2:
+                    dir = cmd_inp.split(' ')[1]
+                    shr_cp.sh_repl("from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), follow=True)
+                    shr_cp.flush_conn()
+
+                else:
+                    if cmd_inp.split(' ')[2] == '-a':
+                        dir = cmd_inp.split(' ')[1]
+                        shr_cp.sh_repl("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), follow=True)
+                        shr_cp.flush_conn()
+
         else:
         # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
             shr_cp.sh_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
@@ -1639,6 +1716,186 @@ def custom_sh_cmd(cmd_inp):
             print(b''.join(shr_cp.raw_buff.splitlines()[1:-1]).replace(b'>>> ', b''))
         except Exception as e:
             print(e)
+
+    if cmd_inp.split()[0] == 'fw':
+        dev_p = dev_platform
+        if dev_p == 'pyboard':
+            dev_p = 'pyb'
+        kw_cmd = cmd_inp.split()
+        if len(kw_cmd) < 2:
+            print('Indicate an operation: list/get/update')
+        else:
+            if 'get' in kw_cmd and len(kw_cmd) < 3:
+                print("Indicate a firmware file to get or 'latest'")
+            else:
+                if 'update' in cmd_inp:
+                    cmd_inp = cmd_inp.replace('latest', '')
+                    kw_cmd = cmd_inp.replace('update', 'get latest').split()
+                    print('Updating device firmware...')
+                md = ' '.join(kw_cmd[1:])
+                fw_cmd = 'fw -md {} -b {}'.format(md, dev_p)
+                upy_fw_cmd = 'upydev ' + fw_cmd
+                # print(upy_fw_cmd)
+                get_fw_cmd = shlex.split(upy_fw_cmd)
+                try:
+                    fw_req = subprocess.call(get_fw_cmd)
+                    if 'update' in cmd_inp:
+                        kw_cmd = cmd_inp.replace('update', 'list').split()
+                        md = ' '.join(kw_cmd[1:])
+                        fw_cmd = 'fw -md {} -b {}'.format(md, dev_p)
+                        upy_fw_cmd = 'upydev ' + fw_cmd
+                        # print(upy_fw_cmd)
+                        get_fw_cmd = shlex.split(upy_fw_cmd)
+                        fw_req = subprocess.check_output(get_fw_cmd)
+                        # print(fw_req.decode())
+                        resp = fw_req.decode()
+                        if len(resp.splitlines()) == 1:
+                            pass
+                        else:
+                            fw_file = fw_req.decode().splitlines()[1][2:]
+
+                            try:
+                                print('File to flash: {}'.format(fw_file))
+                                resp = input('Do yo wish to continue? (y/n): ')
+                                if dev_platform != 'pyboard':
+                                    if resp == 'y':
+                                        bin_file = fw_file
+                                        shr_cp.enable_wrepl_io()
+                                        upy_fw_cmd = 'upydev flash -port {} -f {}'.format(args.p, bin_file)
+                                        # print(upy_fw_cmd)
+                                        flash_fw_cmd = shlex.split(upy_fw_cmd)
+
+                                        try:
+                                            fw_flash = subprocess.call(flash_fw_cmd)
+                                        except Exception as e:
+                                            # shr_cp.enable_wrepl_io()
+                                            print(e)
+                                        time.sleep(0.2)
+                                        shr_cp.enable_wrepl_io()
+                                        shr_cp.flush_conn()
+                                        shr_cp.flush_conn()
+                                        time.sleep(1)
+                                        shr_cp.sh_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
+                                        shr_cp.flush_conn()
+                                    else:
+                                        print('Operation cancelled')
+                                elif dev_platform == 'pyboard':
+                                    if resp == 'y':
+                                        bin_file = fw_file
+                                        shr_cp.enable_wrepl_io()
+                                        print('Warning: Unmount the pyboard first')
+                                        dfu_mode = input('Put the pyboard in DFU mode, need help? (y/n): ')
+                                        if dfu_mode == 'y':
+                                            webbrowser.open('https://github.com/micropython/micropython/wiki/Pyboard-Firmware-Update')
+                                        else:
+                                            pass
+                                        flash_tool = input('Select a tool to flash pydfu.py/dfu-util: (0/1) ')
+                                        if flash_tool == '0':
+                                            print('Using pydfu.py...')
+                                            pydfu_fw_cmd = 'pydfu -u {}'.format(bin_file)
+                                            # print(upy_fw_cmd)
+                                            flash_fw_cmd = shlex.split(pydfu_fw_cmd)
+
+                                            try:
+                                                fw_flash = subprocess.call(flash_fw_cmd)
+                                            except Exception as e:
+                                                # shr_cp.enable_wrepl_io()
+                                                print(e)
+                                            print('Flashing firmware finished, remove the jumper between the DFU and the 3.3v ports.')
+                                            time.sleep(1)
+                                            resp = input('Press any key to continue')
+                                        else:
+                                            print('Using dfu-util...')
+                                            dfu_fw_cmd = 'sudo dfu-util --alt 0 -D {}'.format(bin_file)
+                                            # print(upy_fw_cmd)
+                                            flash_fw_cmd = shlex.split(dfu_fw_cmd)
+
+                                            try:
+                                                fw_flash = subprocess.call(flash_fw_cmd)
+                                            except Exception as e:
+                                                # shr_cp.enable_wrepl_io()
+                                                print(e)
+                                            print('Flashing firmware finished, disconnect the pyboard from USB and remove the jumper between the DFU and the 3.3v ports.')
+                                            time.sleep(1)
+                                            resp = input('Connect again the pyboard, press any key to continue')
+
+                                        time.sleep(0.2)
+                                        shr_cp.enable_wrepl_io()
+                                        shr_cp.flush_conn()
+                                        shr_cp.flush_conn()
+                                        time.sleep(1)
+                                        shr_cp.sh_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
+                                        shr_cp.flush_conn()
+                                    else:
+                                        print('Operation cancelled')
+
+                            except Exception as e:
+                                print(e)
+                                print('Operation cancelled')
+
+                    # print(fw_req.decode())
+                except Exception as e:
+                    print(e)
+
+    if cmd_inp.split()[0] == 'flash':
+        kw_cmd = cmd_inp.split()
+        bin_file = kw_cmd[1]
+        shr_cp.enable_wrepl_io()
+        if dev_platform != 'pyboard':
+            upy_fw_cmd = 'upydev flash -port {} -f {}'.format(args.p, bin_file)
+            # print(upy_fw_cmd)
+            flash_fw_cmd = shlex.split(upy_fw_cmd)
+
+            try:
+                fw_flash = subprocess.call(flash_fw_cmd)
+            except Exception as e:
+                # shr_cp.enable_wrepl_io()
+                print(e)
+        elif dev_platform == 'pyboard':
+            bin_file = fw_file
+            shr_cp.enable_wrepl_io()
+            print('Warning: Unmount the pyboard first')
+            dfu_mode = input('Put the pyboard in DFU mode, need help? (y/n): ')
+            if dfu_mode == 'y':
+                webbrowser.open('https://github.com/micropython/micropython/wiki/Pyboard-Firmware-Update')
+            else:
+                pass
+            flash_tool = input('Select a tool to flash pydfu.py/dfu-util: (0/1) ')
+            if flash_tool == '0':
+                print('Using pydfu.py...')
+                pydfu_fw_cmd = 'pydfu -u {}'.format(bin_file)
+                # print(upy_fw_cmd)
+                flash_fw_cmd = shlex.split(pydfu_fw_cmd)
+
+                try:
+                    fw_flash = subprocess.call(flash_fw_cmd)
+                except Exception as e:
+                    # shr_cp.enable_wrepl_io()
+                    print(e)
+                print('Flashing firmware finished, remove the jumper between the DFU and the 3.3v ports.')
+                time.sleep(1)
+                resp = input('Press any key to continue')
+            else:
+                print('Using dfu-util...')
+                dfu_fw_cmd = 'sudo dfu-util --alt 0 -D {}'.format(bin_file)
+                # print(upy_fw_cmd)
+                flash_fw_cmd = shlex.split(dfu_fw_cmd)
+
+                try:
+                    fw_flash = subprocess.call(flash_fw_cmd)
+                except Exception as e:
+                    # shr_cp.enable_wrepl_io()
+                    print(e)
+                print('Flashing firmware finished, disconnect the pyboard from USB and remove the jumper between the DFU and the 3.3v ports.')
+                time.sleep(1)
+                resp = input('Connect again the pyboard, press any key to continue')
+        time.sleep(0.2)
+        shr_cp.enable_wrepl_io()
+        shr_cp.flush_conn()
+        shr_cp.flush_conn()
+        time.sleep(1)
+        shr_cp.sh_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
+        shr_cp.flush_conn()
 
     if cmd_inp.split(' ')[0] == 'exit':
         if reset_flag['R']:
@@ -1958,6 +2215,7 @@ def paste_mode(event):
             buff_text = event.app.current_buffer.document.text
             event.app.current_buffer.reset()
             event.app.current_buffer.insert_text(buff_text, move_cursor=True)
+
 @kb.add('c-d')
 def paste_mode_exit(event):
     "PASTE MODE exit in REPL, EDIT MODE exit in SHELL"
@@ -2250,6 +2508,15 @@ def shif_tab(event):
             buff_text = event.app.current_buffer.document.text
             result = [sh_cmd for sh_cmd in shell_commands +
                       custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
+            if 'fw' in buff_text.split():
+                # print('Here: {}'.format(buff_text.split()))
+                if len(buff_text.split()) > 1:
+                    result = [sh_cmd for sh_cmd in ['list', 'get', 'latest', 'update'] if sh_cmd.startswith(buff_text.split()[-1])]
+                    # print(result)
+                    buff_text = buff_text.split()[-1]
+                else:
+                    result = ['list', 'get', 'latest']
+                    buff_text = ''
             if len(result) > 1:
                 comm_part = os.path.commonprefix(result)
                 if comm_part == buff_text:

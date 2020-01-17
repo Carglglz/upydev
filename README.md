@@ -6,11 +6,11 @@
 
 # uPydev
 
-### Command line tool for wireless Micropython devices
+### Command line tool for wireless MicroPython devices
 
-**uPydev** is an acronym of '**Micropy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running Micropython.
+**uPydev** is an acronym of '**MicroPy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running MicroPython.
 
- It is a command line tool for 'wireless Micropython devices' since it make use of the [WebREPL protocol](https://github.com/micropython/webrepl)  to provide communication with and control of the device.
+ It is a command line tool for 'wireless MicroPython devices' since it make use of the [WebREPL protocol](https://github.com/micropython/webrepl)  to provide communication with and control of the device.
 
 *uPydev is built on top of other tools/scripts which are:
 
@@ -24,11 +24,13 @@ Other tools are:
 
 'mpy-cross'  to compile .py scripts into .mpy files.
 
+'pydfu.py'
+
 ***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything***
 
 ### Features:
 
-* Command line wireless communication/control of micropython devices.
+* Command line wireless communication/control of MicroPython devices.
 * Terminal WebREPL protocol
 * Custom commands to automate communication/control
 * Command line autocompletion
@@ -375,7 +377,7 @@ To target specific devices within a group add -devs option as `-devs [DEV_1 NAME
 
 uPy commands are organized in:
 
-* **General**: These commands should work 'out of the box' in any Micropython running board with WebREPL daemon enabled.
+* **General**: These commands should work 'out of the box' in any MicroPython running board with WebREPL daemon enabled.
 * **Wifi utils** : This commands make easier to save/load wifi configuration (STA and AP ) and connect to an access point or enable its own (needs wifiutils.py in upydevice, see [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)
 * **SD:** These commands need *sdcard.py* in the upy device, and a sd module/shield at least.
 * **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)

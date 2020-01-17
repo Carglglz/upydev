@@ -169,7 +169,7 @@ Custom keybindings:
   
 * Autocompletion commands:
      - tab to autocomplete device file / dirs names / raw micropython (repl commands)
-     - shift-tab to autocomplete shell comands
+     - shift-tab to autocomplete shell commands
      - shift-right to autocomplete local file / dirs names
      - shift-left,ENTER to toggle local path in prompt
 

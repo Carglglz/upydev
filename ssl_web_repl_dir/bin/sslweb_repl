@@ -838,7 +838,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs', 'flush_soc',
                     'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
-                    'batl']
+                    'batl', 'du']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -902,7 +902,7 @@ Custom keybindings:
 shell_commands_info = """
 * Autocompletion commands:
      - tab to autocomplete device file / dirs names / raw micropython (repl commands)
-     - shift-tab to autocomplete shell comands
+     - shift-tab to autocomplete shell commands
      - shift-right to autocomplete local file / dirs names
      - shift-left,ENTER to toggle local path in prompt
 
@@ -922,6 +922,7 @@ shell_commands_info = """
         - tree : to print a tree version of filesystem (to see also hidden files/dirs use 'tree -a')
         - run  : to run a 'script.py'
         - df   : to see filesystem flash usage (and SD if already mounted)
+        - du   : display disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
         - meminfo: to see RAM info
         - whoami : to see user, system and machine info
         - datetime: to see device datetime (if not set, will display uptime)
@@ -1061,6 +1062,33 @@ def _ft_datetime(t_now):
     return([_dt_format(i) for i in t_now])
 
 
+def sortSecond(val):
+    return val[1]
+
+
+def get_size_cwd(cwd=''):
+    try:
+        if cwd != '':
+            resp = send_custom_sh_cmd("[('{0}/'+dir, uos.stat('{0}/'+dir)[6]) for dir in uos.listdir('{0}')]".format(cwd), collect=True)
+            resp = {val[0]: val[1] for val in resp}
+        else:
+            resp = send_custom_sh_cmd("{dir:uos.stat(dir)[6] for dir in uos.listdir()}")
+        for dir in resp.keys():
+            if resp[dir] != 0:
+                print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
+            else:
+                # print('{:9} ./{}'.format('<dir>', dir))
+                # resp_dir = send_custom_sh_cmd("sum([uos.stat('{0}/'+dir)[6] for dir in uos.listdir('{0}')])".format(dir))
+                # print('{:9} ./{} <dir>'.format(print_filesys_info(resp_dir), dir))
+                # print(dir)
+                if '.' in dir:
+                    print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
+                else:
+                    get_size_cwd(cwd=dir)
+    except Exception as e:
+        print(e)
+
+
 def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True, collect=False):
     if not encrypted_flag['sec']:
         if not capture_output:
@@ -1122,7 +1150,7 @@ def get_rprompt():
 
 
 def custom_sh_cmd(cmd_inp):
-    # map cmd_inp to comand string
+    # map cmd_inp to command string
     if cmd_inp == 'df':
         resp = send_custom_sh_cmd("uos.statvfs('')")
         # resp_sd = send_custom_sh_cmd("uos.statvfs('sd')")
@@ -1152,6 +1180,77 @@ def custom_sh_cmd(cmd_inp):
                 print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(vfs, total_mem_sd,
                                                                         used_mem_sd, free_mem_sd,
                                                                         "{:.1f} %".format((used_b_sd/total_b_sd)*100), ' ', '/{}'.format(vfs)))
+
+    if cmd_inp.split()[0] == 'du':
+        if len(cmd_inp.split()) == 1:
+            # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
+            if encrypted_flag['sec']:
+                ssl_cp.ssl_repl('from upysh2 import du;du();gc.collect()', follow=True)
+                ssl_cp.flush_conn()
+            else:
+                send_custom_sh_cmd('from upysh2 import du;du();gc.collect()', sh_silent=False)
+
+        elif len(cmd_inp.split()) == 2:
+            if cmd_inp.split()[1] != '-o':
+                file = cmd_inp.split()[1]
+                if encrypted_flag['sec']:
+                    ssl_cp.ssl_repl("from upysh2 import du;du(path='./{}');gc.collect()".format(file), follow=True)
+                    ssl_cp.flush_conn()
+                else:
+                    send_custom_sh_cmd("from upysh2 import du;du(path='./{}');gc.collect()".format(file), sh_silent=False)
+
+            elif cmd_inp.split()[1] == '-o':
+                resp = send_custom_sh_cmd("{dir:uos.stat(dir)[6] for dir in uos.listdir()}")
+                is_dir = {}
+                for dir in resp.keys():
+                    if resp[dir] != 0:
+                        pass
+                        is_dir[dir] = 0
+                        # print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
+                    else:
+                        # print('{:9} ./{}'.format('<dir>', dir))
+                        resp_dir = send_custom_sh_cmd("sum([uos.stat('{0}/'+dir)[6] for dir in uos.listdir('{0}')])".format(dir))
+                        # print('{:9} ./{} <dir>'.format(print_filesys_info(resp_dir), dir))
+                        resp[dir] = resp_dir
+                        is_dir[dir] = 1
+
+                du_sorted_list = [(dir, resp[dir], is_dir[dir]) for dir in resp.keys()]
+                du_sorted_list.sort(key=sortSecond, reverse=True)
+
+                for val in du_sorted_list:
+                    if val[2] == 0:
+                        print('{:9} ./{}'.format(print_filesys_info(val[1]), val[0]))
+                    else:
+                        print('{:9} ./{} <dir>'.format(print_filesys_info(val[1]), val[0]))
+        elif len(cmd_inp.split()) == 3:
+            if cmd_inp.split()[1] == '-d':
+                try:
+                    dlev = cmd_inp.split()[2]
+                    if encrypted_flag['sec']:
+                        ssl_cp.ssl_repl("from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), follow=True)
+                        ssl_cp.flush_conn()
+                    else:
+                        send_custom_sh_cmd("from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), sh_silent=False)
+
+                except Exception as e:
+                    print(e)
+
+        elif len(cmd_inp.split()) == 4:
+            if cmd_inp.split()[2] == '-d':
+                try:
+                    file = cmd_inp.split()[1]
+                    dlev = cmd_inp.split()[3]
+                    if encrypted_flag['sec']:
+                        ssl_cp.ssl_repl("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), follow=True)
+                        ssl_cp.flush_conn()
+                    else:
+                        send_custom_sh_cmd("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), sh_silent=False)
+
+                except Exception as e:
+                    print(e)
+
+
+
 
     if cmd_inp == 'datetime':
         send_custom_sh_cmd("import time;tnow=time.localtime()")
@@ -1789,6 +1888,23 @@ def custom_sh_cmd(cmd_inp):
                     ssl_cp.flush_conn()
                 else:
                     send_custom_sh_cmd('from upysh2 import tree;tree(hidden=True);gc.collect()', sh_silent=False)
+            else:
+                if len(cmd_inp.split(' ')) == 2:
+                    dir = cmd_inp.split(' ')[1]
+                    if encrypted_flag['sec']:
+                        ssl_cp.ssl_repl("from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), follow=True)
+                        ssl_cp.flush_conn()
+                    else:
+                        send_custom_sh_cmd("from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), sh_silent=False)
+                else:
+                    if cmd_inp.split(' ')[2] == '-a':
+                        dir = cmd_inp.split(' ')[1]
+                        if encrypted_flag['sec']:
+                            ssl_cp.ssl_repl("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), follow=True)
+                            ssl_cp.flush_conn()
+                        else:
+                            send_custom_sh_cmd("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), sh_silent=False)
+
         else:
             # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
             if encrypted_flag['sec']:

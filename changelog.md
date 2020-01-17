@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.2.3] Unreleased [Github Repo]
+### Added
+- fw , flash (and fw update which is 'fw get' + 'flash') commands for SERIAL SHELL
+- 'du' command for disk usage statistics (unix like) (SSL/SERIAL SHELLS)
+### Fix
+- fw and flash commands of upydev
 ## [0.2.2] 2020-01-13
 ### Added
 - Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match for frozen modules too.
@@ -29,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Mode to generate RSA key and self signed certificate ('sslgen_rsakey')
 - 'ssl_socket_client_server.py' and 'ssl_repl.py' added to the scripts that are updated with 'update_upyutils' mode
-- 'upysh2.py' implements the 'tree' comand to print filesystem in a tree view
+- 'upysh2.py' implements the 'tree' command to print filesystem in a tree view
 - SSLWebREPL shell terminal mode (experimental) (see DOCS)
 - "ssl@[dev]" shorcut to "ssl_wrepl" mode
 - Progress bar length and percentage fix, and estimated time
@@ -51,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  (this needs upysecrets.py in the device, more info in DOCS/help) ('rf_wrkey')
  This can be automatically after a wrepl session using '-rkey' option (e.g. upydev wrepl -rkey)
 - 'upysecrets.py' added to the scripts that are updated with 'update_upyutils' mode
-- 'upysh2.py' implements the 'tree' comand to print filesystem in a tree view
+- 'upysh2.py' implements the 'tree' command to print filesystem in a tree view
 - "crypto"-webrepl-shell mode (experimental) (see DOCS)
 - New option '-@' to redirect a command to a specific device saved in global
   Group 'UPY_G' (this needs to be created with the 'make_group' command )

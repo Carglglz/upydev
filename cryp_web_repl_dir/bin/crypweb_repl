@@ -417,7 +417,7 @@ Custom keybindings:
 shell_commands_info = """
 * Autocompletion commands:
      - tab to autocomplete device file / dirs names / raw micropython (repl commands)
-     - shift-tab to autocomplete shell comands
+     - shift-tab to autocomplete shell commands
      - shift-right to autocomplete local file / dirs names
      - shift-left,ENTER to toggle local path in prompt
 
@@ -572,7 +572,7 @@ def print_filesys_info(filesize):
 
 
 def custom_sh_cmd(cmd_inp):
-    # map cmd_inp to comand string
+    # map cmd_inp to command string
     if cmd_inp == 'df':
         resp = send_custom_sh_cmd("uos.statvfs('')")
         # resp_sd = send_custom_sh_cmd("uos.statvfs('sd')")

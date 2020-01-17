@@ -12,7 +12,7 @@ from hashlib import sha256
 
 class SSL_socket_client_repl:
     """
-    Socket client simple class repl
+    SSL Socket client simple class repl
     """
 
     def __init__(self, host, port=8443, buff=1024, init=True):
