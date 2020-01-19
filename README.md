@@ -1,6 +1,6 @@
 
 
-<img align="right" width="100" height="100" src="uPydevlogo.png">
+<img align="right" width="100" height="100" src="https://raw.githubusercontent.com/Carglglz/upydev/master/uPydevlogo.png">
 
 # uPydev
 
