@@ -58,5 +58,5 @@
 
 **ssl_socket_client_server.py**: a tiny wrapper to test clients/servers with SSL wrapped tcp sockets
 
-**uping.py**: to make the device send ICMP ECHO_REQUEST packets to network hosts, (this adds statistics and continuous ping) (original [uping.py](https://gist.github.com/shawwwn/91cc8979e33e82af6d99ec34c38195fb) from [@shawwwn](https://github.com/shawwwn))
+**uping.py**: to make the device send ICMP ECHO_REQUEST packets to network hosts, (this adds statistics, continuous ping, and esp8266 compatibility) (original [uping.py](https://gist.github.com/shawwwn/91cc8979e33e82af6d99ec34c38195fb) from [@shawwwn](https://github.com/shawwwn))
 

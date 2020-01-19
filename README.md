@@ -26,7 +26,7 @@ Other tools are:
 
 'pydfu.py' to flash firmware to a pyboard (from [MicroPython](https://github.com/micropython/micropython/blob/master/tools/pydfu.py) tools repo)
 
-'upy_host.py' to install libraries via serial connection (partial port from [upip.py](https://github.com/micropython/micropython/blob/master/tools/upip.py))
+'upip_host.py' to install libraries via serial connection (partial port from [upip.py](https://github.com/micropython/micropython/blob/master/tools/upip.py))
 
 ***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything***
 
