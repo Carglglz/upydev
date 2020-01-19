@@ -69,6 +69,8 @@ Python modules (automatically installed using pip):
 
 [Pygments](https://github.com/pygments/pygments)
 
+[pyusb](https://github.com/pyusb/pyusb)
+
 [upydevice](https://github.com/Carglglz/upydevice)
 
 #### Tested on:
