@@ -194,6 +194,8 @@ How to use it:
   **New in version 0.2.0: Mode 'sh_srepl', a Serial repl/shell ** (*experimental)
   
   See **uPydev Mode/Tools** : **sh_srepl** and **shr** modes.
+  
+  See [changelog](https://github.com/Carglglz/upydev/blob/master/changelog.md) for new commands
 
 ------
 
