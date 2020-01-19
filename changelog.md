@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - fw , flash (and fw update which is 'fw get' + 'flash') commands for SERIAL SHELL
 - 'du' command for disk usage statistics (unix like) (SSL/SERIAL SHELLS)
+- 'd_sync' command to recursively sync directories for (SSL/SERIAL SHELLS)
+- 'uping' and 'lping' commands for device and host pings commands (SSL/SERIAL SHELLS)
+- wildcard "\*" or [dir] for 'ls' and 'lsl' command e.g. "ls \*.py" or "ls my_dir" (SSL/SERIAL SHELLS)
+- install available for pyboard too (experimental) (SERIAL SHELL)
+- 'pkg_info' command to see the PGK-INFO file of a module if available (SSL/SERIAL SHELLS)
+- 'upipl' to list packages availables at pypi.org or micropython.org/pi
+e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
+- 'update_upytils' command for SERIAL SHELL
 ### Fix
 - fw and flash commands of upydev
 ## [0.2.2] 2020-01-13

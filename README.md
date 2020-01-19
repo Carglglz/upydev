@@ -2,9 +2,9 @@
 
 <img align="right" width="100" height="100" src="uPydevlogo.png">
 
-
-
 # uPydev
+
+[![PyPI version](https://badge.fury.io/py/upydev.svg)](https://badge.fury.io/py/upydev)[![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
 
 ### Command line tool for wireless MicroPython devices
 
@@ -24,7 +24,9 @@ Other tools are:
 
 'mpy-cross'  to compile .py scripts into .mpy files.
 
-'pydfu.py'
+'pydfu.py' to flash firmware to a pyboard (from [MicroPython](https://github.com/micropython/micropython/blob/master/tools/pydfu.py) tools repo)
+
+'upy_host.py' to install libraries via serial connection (partial port from [upip.py](https://github.com/micropython/micropython/blob/master/tools/upip.py))
 
 ***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything***
 

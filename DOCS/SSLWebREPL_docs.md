@@ -11,9 +11,10 @@
    * sync_tool.py
    * upylog.py
    * upynotify.py
-   * upysecrets.py (this enable random WebREPL passwords generation)
-   * upysh2.py (this enable 'tree' command)
-   * ssl_repl.py (this enable SSLWebREPL)
+   * uping.py
+   * upysecrets.py (to enable random WebREPL passwords generation)
+   * upysh2.py (to enable 'tree'  and 'du' command)
+   * ssl_repl.py (to enable SSLWebREPL)
 
 2. **Generate RSA-2048 bits private key and self-signed certificate**  then **upload it to the device**:
 
@@ -143,10 +144,11 @@ Device shell commands:
     - rmdir: to remove a directory
 
 * custom shell commands:
-    - ls  : list device files in colored format (same as pressing tab on empty line)
+    - ls  : list device files in colored format (same as pressing tab on empty line)(allows "*" wildcard or directories)
     - tree : to print a tree version of filesystem (to see also hidden files/dirs use 'tree -a')
     - run  : to run a 'script.py'
     - df   : to see filesystem flash usage (and SD if already mounted)
+    - du   : display disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
     - meminfo: to see RAM info
     - whoami : to see user, system and machine info
     - datetime: to see device datetime (if not set, will display uptime)
@@ -154,27 +156,27 @@ Device shell commands:
     - ifconfig: to see STATION interface configuration (IP, SUBNET, GATEAWAY, DNS)
     - ifconfig_t: to see STATION interface configuration in table format
                   (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
-    - netscan: to scan WLAN's available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
+    - netscan: to scan WLANs available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
+    - uping : to make the device send ICMP ECHO_REQUEST packets to network hosts (do 'uping host' to ping local machine)
     - apconfig: to see ACCESS POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
     - apconfig_t: to see ACCESS POINT (AP) interface configuration in table format
                  (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)
     - install: to install a library into the device with upip.
     - touch  : to create a new file (e.g. touch test.txt)
     - edit   : to edit a file (e.g. edit my_script.py)
-    - get    : to get a file from the device
-    - put    : to upload a file to the device
+    - get    : to get a file from the device (also allows "*" wildcard, 'cwd' or multiple files)
+    - put    : to upload a file to the device (also allows "*" wildcard, 'cwd' or multiple files)
     - sync   : to get file (faster) from the device (use with > 10 KB files) (no encrypted mode only)
-    - d_sync: to recursively sync a local directory with the device filesystem (no encrypted mode only)
+    - d_sync: to recursively sync a local directory with the device filesystem
     - wrepl  : to enter the original WebREPL terminal (no encryption mode)
     - reload : to delete a module from sys.path so it can be imported again.
     - flush_soc: to flush socket in case of wrong output
     - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns) (encryption mode only)
     -  bat    : prints the content of a '.py' file with Python syntax hightlighting (named after https://github.com/sharkdp/bat)
     - rcat   : prints the raw content of a file (encryption mode only)
-- exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
-                     to exit without reset do 'exit -nr'
-                     to exit and do hard reset 'exit -hr'
-
+    - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
+             to exit without reset do 'exit -nr'
+             to exit and do hard reset 'exit -hr'
 * Local shell commands:
     - pwdl   : to see local path
     - cdl    : to change local directory
@@ -192,6 +194,10 @@ Device shell commands:
             is passed e.g. 'docs machine' it will open the docs site and search for 'machine'
     - getcert: to print the client SSL Certificate
     - get_rawbuff: to get the raw output of a command (for debugging purpose)
+    - ldu  : display local path disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
+    - upipl : (usage 'upipl' or 'upipl [module]' display available micropython packages that can be installed with install command
+    - pkg_info: to see the PGK-INFO file of a module if available at pypi.org or micropython.org/pi
+    - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
 
 Some examples of these commands:
 

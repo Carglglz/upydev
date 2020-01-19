@@ -11,8 +11,8 @@
    * sync_tool.py
    * upylog.py
    * upynotify.py
-   * upysecrets.py (this enable encryption)
-   * upysh2.py (this enable 'tree' command)
+   * upysecrets.py (to enable encryption)
+   * upysh2.py (to enable 'tree' command)
 
 2. **Generate RSA-2048 bits private key** and **upload it to the device**:
 
@@ -196,7 +196,7 @@ Custom keybindings:
         - ifconfig: to see STATION interface configuration (IP, SUBNET, GATEAWAY, DNS)
         - ifconfig_t: to see STATION interface configuration in table format
                       (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
-        - netscan: to scan WLAN's available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
+        - netscan: to scan WLANs available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
         - apconfig: to see ACCESS POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
         - apconfig_t: to see ACCESS POINT (AP) interface configuration in table format
                      (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)

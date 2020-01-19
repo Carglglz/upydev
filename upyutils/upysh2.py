@@ -3,40 +3,6 @@ import os
 import gc
 
 
-class LS:
-
-    def __repr__(self):
-        self.__call__()
-        return ""
-
-    def __call__(self, path="."):
-        l = os.listdir(path)
-        l.sort()
-        for f in l:
-            st = os.stat("%s/%s" % (path, f))
-            if st[0] & 0x4000:  # stat.S_IFDIR
-                print("   <dir> %s" % f)
-            else:
-                print("% 8d %s" % (st[6], f))
-
-
-class PWD:
-
-    def __repr__(self):
-        return os.getcwd()
-
-    def __call__(self):
-        return self.__repr__()
-
-
-class CLEAR:
-    def __repr__(self):
-        return "\x1b[2J\x1b[H"
-
-    def __call__(self):
-        return self.__repr__()
-
-
 class LTREE:
 
     def __repr__(self):

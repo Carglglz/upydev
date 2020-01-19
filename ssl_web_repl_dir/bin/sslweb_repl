@@ -21,6 +21,7 @@ import subprocess
 import shlex
 import webbrowser
 import argparse
+from upydev import upip_host
 from datetime import datetime, date, timedelta
 from sys import platform as _platform
 from cryptography.hazmat.backends import default_backend
@@ -838,7 +839,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs', 'flush_soc',
                     'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
-                    'batl', 'du']
+                    'batl', 'du', 'ldu', 'upipl', 'pkg_info', 'uping', 'lping']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -857,7 +858,7 @@ else:
     prompt['p'] = shell_prompt['s']
     shell_mode['S'] = True
     if encrypted_flag['sec']:
-        ssl_cp.ssl_repl('import gc;import uos;from upysh import *;gc.collect()', silent=True)
+        ssl_cp.ssl_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
         time.sleep(0.2)
         ssl_cp.flush_conn()
         ssl_cp.flush_conn()
@@ -868,7 +869,7 @@ else:
         ssl_cp.flush_conn()
         espdev.output = None
     else:
-        espdev.wr_cmd('import gc;import uos;from upysh import *;gc.collect()', silent=True)
+        espdev.wr_cmd('import gc;import os;from upysh import *;gc.collect()', silent=True)
         espdev.close_wconn()
         espdev.cmd("help('modules')", silent=True, capture_output=True)
         espdev.open_wconn()
@@ -918,7 +919,7 @@ shell_commands_info = """
         - rmdir: to remove a directory
 
     * custom shell commands:
-        - ls  : list device files in colored format (same as pressing tab on empty line)
+        - ls  : list device files in colored format (same as pressing tab on empty line) (allows "*" wildcard or directories)
         - tree : to print a tree version of filesystem (to see also hidden files/dirs use 'tree -a')
         - run  : to run a 'script.py'
         - df   : to see filesystem flash usage (and SD if already mounted)
@@ -930,17 +931,18 @@ shell_commands_info = """
         - ifconfig: to see STATION interface configuration (IP, SUBNET, GATEAWAY, DNS)
         - ifconfig_t: to see STATION interface configuration in table format
                       (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
-        - netscan: to scan WLAN's available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
+        - netscan: to scan WLANs available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
+        - uping : to make the device send ICMP ECHO_REQUEST packets to network hosts (do 'uping host' to ping local machine)
         - apconfig: to see ACCESS POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
         - apconfig_t: to see ACCESS POINT (AP) interface configuration in table format
                      (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)
         - install: to install a library into the device with upip.
         - touch  : to create a new file (e.g. touch test.txt)
         - edit   : to edit a file (e.g. edit my_script.py)
-        - get    : to get a file from the device
-        - put    : to upload a file to the device
+        - get    : to get a file from the device (also allows "*" wildcard, 'cwd' or multiple files)
+        - put    : to upload a file to the device (also allows "*" wildcard, 'cwd' or multiple files)
         - sync   : to get file (faster) from the device (use with > 10 KB files) (no encrypted mode only)
-        - d_sync: to recursively sync a local directory with the device filesystem (no encrypted mode only)
+        - d_sync : to recursively sync a local directory with the device filesystem
         - wrepl  : to enter the original WebREPL terminal (no encryption mode)
         - reload : to delete a module from sys.path so it can be imported again.
         - flush_soc: to flush socket in case of wrong output
@@ -968,6 +970,10 @@ shell_commands_info = """
             is passed e.g. 'docs machine' it will open the docs site and search for 'machine'
     - getcert: to print the client SSL Certificate
     - get_rawbuff: to get the raw output of a command (for debugging purpose)
+    - ldu  : display local path disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
+    - upipl : (usage 'upipl' or 'upipl [module]' display available micropython packages that can be installed with install command
+    - pkg_info: to see the PGK-INFO file of a module if available at pypi.org or micropython.org/pi
+    - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
 
 
 """
@@ -1065,28 +1071,255 @@ def _ft_datetime(t_now):
 def sortSecond(val):
     return val[1]
 
+class LTREE:
 
-def get_size_cwd(cwd=''):
-    try:
-        if cwd != '':
-            resp = send_custom_sh_cmd("[('{0}/'+dir, uos.stat('{0}/'+dir)[6]) for dir in uos.listdir('{0}')]".format(cwd), collect=True)
-            resp = {val[0]: val[1] for val in resp}
+    def __repr__(self):
+        self.__call__()
+        return ""
+
+    def __call__(self, path=".", level=0, is_last=False, is_root=True,
+                 carrier="    ", hidden=False):
+        os.chdir(path)
+        r_path = path
+        path = "."
+        if hidden:
+            l = os.listdir(path)
         else:
-            resp = send_custom_sh_cmd("{dir:uos.stat(dir)[6] for dir in uos.listdir()}")
-        for dir in resp.keys():
-            if resp[dir] != 0:
-                print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
+            l = [f for f in os.listdir(path) if not f.startswith('.')]
+        nf = len([file for file in l if not os.stat("%s/%s" % (path, file))[0] & 0x4000])
+        nd = len(l) - nf
+        ns_f, ns_d = 0, 0
+        l.sort()
+        if len(l) > 0:
+            last_file = l[-1]
+        else:
+            last_file = ''
+        for f in l:
+            st = os.stat("%s/%s" % (path, f))
+            if st[0] & 0x4000:  # stat.S_IFDIR
+                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s <dir>" % f)
+                os.chdir(f)
+                level += 1
+                lf = last_file == f
+                if level > 1:
+                    if lf:
+                        carrier += "     "
+                    else:
+                        carrier += "    │"
+                ns_f, ns_d = self.__call__(level=level, is_last=lf,
+                                           is_root=False, carrier=carrier,
+                                           hidden=hidden)
+                if level > 1:
+                    carrier = carrier[:-5]
+                os.chdir('..')
+                level += (-1)
+                nf += ns_f
+                nd += ns_d
             else:
-                # print('{:9} ./{}'.format('<dir>', dir))
-                # resp_dir = send_custom_sh_cmd("sum([uos.stat('{0}/'+dir)[6] for dir in uos.listdir('{0}')])".format(dir))
-                # print('{:9} ./{} <dir>'.format(print_filesys_info(resp_dir), dir))
-                # print(dir)
-                if '.' in dir:
-                    print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
+                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s" % (f))
+        if is_root:
+            print('{} directories, {} files'.format(nd, nf))
+            if r_path != ".":
+                os.chdir('..')
+        else:
+            return (nf, nd)
+
+    def _treeindent(self, lev, f, lastfile, is_last=False, carrier=None):
+        if lev == 0:
+            return ""
+        else:
+            if f != lastfile:
+                return carrier + "    ├────"
+            else:
+                return carrier + "    └────"
+
+tree = LTREE()
+
+class DISK_USAGE:
+
+    def __repr__(self):
+        self.__call__()
+        return ""
+
+    def __call__(self, path=".", dlev=0, max_dlev=0, hidden=False, absp=True):
+        if path != ".":
+                if not os.stat(path)[0] & 0x4000:
+                    print('{:9} {}'.format(self.print_filesys_info(os.stat(path)[6]), path))
                 else:
-                    get_size_cwd(cwd=dir)
-    except Exception as e:
-        print(e)
+                    if hidden:
+                        resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
+                    else:
+                        resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                    for dir in resp.keys():
+
+                        if not os.stat(dir)[0] & 0x4000:
+                            if absp:
+                                print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir))
+                            else:
+                                print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir.split('/')[-1]))
+
+                        else:
+                            if dlev < max_dlev:
+                                dlev += 1
+                                self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
+                                dlev += (-1)
+                            else:
+                                if absp:
+                                    print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir, '<dir>'))
+                                else:
+                                    print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir.split('/')[-1], '<dir>'))
+
+
+        else:
+            if hidden:
+                resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
+            else:
+                resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+            for dir in resp.keys():
+
+                if not os.stat(dir)[0] & 0x4000:
+                    print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir))
+
+                else:
+                    if dlev < max_dlev:
+                        dlev += 1
+                        self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
+                        dlev += (-1)
+                    else:
+                        print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir, '<dir>'))
+
+
+
+    def print_filesys_info(self, filesize):
+        _kB = 1024
+        if filesize < _kB:
+            sizestr = str(filesize) + " by"
+        elif filesize < _kB**2:
+            sizestr = "%0.1f KB" % (filesize / _kB)
+        elif filesize < _kB**3:
+            sizestr = "%0.1f MB" % (filesize / _kB**2)
+        else:
+            sizestr = "%0.1f GB" % (filesize / _kB**3)
+        return sizestr
+
+    def get_dir_size_recursive(self, dir):
+        return sum([os.stat(dir+'/'+f)[6] if not os.stat(dir+'/'+f)[0] & 0x4000 else self.get_dir_size_recursive(dir+'/'+f) for f in os.listdir(dir)])
+
+
+du = DISK_USAGE()
+
+
+def get_dir_size_recursive(dir):
+    return sum([os.stat(dir+'/'+f)[6] if not os.stat(dir+'/'+f)[0] & 0x4000 else get_dir_size_recursive(dir+'/'+f) for f in os.listdir(dir)])
+
+
+def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
+                     show_tree=False):
+    t0 = time.time()
+    type_file_dict = {True:'<f>', False:'<d>'}
+    if folder == root_sync_folder:
+        print('DIRECTORY TO SYNC: {}'.format(folder))
+        print('DIRECTORY SIZE: {}'.format(print_filesys_info(get_dir_size_recursive(folder))))
+        ssl_htool.start_SOC()
+    if show_tree:
+        print('DIRECTORY TREE STRUCTURE:\n')
+        tree(path=folder)
+    time.sleep(1)
+    print('\n')
+    print('***** {} *****'.format(folder))
+    print('\n')
+    directory = folder
+    file_list = None
+    file_list_abs_path = []
+    dir_list_abs_path = []
+    current_dir = directory
+    # get directory structure:
+    print('ROOT DIRECTORY: {}'.format(rootdir))
+    print('DIRECTORY TO SYNC: {}'.format(directory))
+    print('\n')
+    print('CHECKING IF DIRECTORY {} IN: {}'.format(
+        directory.split('/')[-1], rootdir))
+    if directory.split('/')[-1] in os.listdir(rootdir):
+        print('DIRECTORY {} FOUND'.format(directory))
+        print('\n')
+        print('FILES/DIRS IN DIRECTORY {}:'.format(directory))
+        du(path='./{}'.format(directory), absp=False, hidden=True)
+        # for file in os.listdir(directory):
+        #     print('- {} {} [{}]'.format(type_file_dict[os.path.isfile(os.path.join(current_dir, file))],
+        #                            file, print_filesys_info(os.stat(os.path.join(current_dir, file))[6])))
+        file_list = os.listdir(directory)
+        print('\n')
+        for file in file_list:
+            if os.path.isfile(os.path.join(current_dir, file)):
+                file_list_abs_path.append(os.path.join(current_dir, file))
+            elif os.path.isdir(os.path.join(current_dir, file)):
+                dir_list_abs_path.append(os.path.join(current_dir, file))
+    print('LIST OF FILES TO UPLOAD:')
+    for file in file_list_abs_path:
+        print('- {}'.format(file.split('/')[-1]))
+    print('\n')
+    print('LIST OF SUBDIRS TO CREATE:')
+    for subdir in dir_list_abs_path:
+        print('- {}'.format(subdir.split('/')[-1]))
+    print('\n')
+    # Now create the root sync dir:
+    if './' == rootdir:
+        rootdir = ''
+    dev_root_list = send_custom_sh_cmd("os.listdir('{}')".format(rootdir))
+    if current_dir.split('/')[-1] not in dev_root_list:
+        print('\n')
+        print('MAKING DIR: {}'.format(current_dir))
+        print('\n')
+        dev_mkdir = ssl_cp.ssl_repl("os.mkdir('{}')".format(current_dir))
+        print('\n')
+    print('UPLOADING FILES TO {}'.format(current_dir))
+    if len(file_list_abs_path) > 1:
+        for file in file_list_abs_path:
+            print('- {}'.format(file))
+        # ssl_htool.start_SOC()
+        for file in file_list_abs_path:
+            ssl_htool.put(file)
+            time.sleep(0.2)
+        # ssl_cp.ssl_repl("print('Done!')")
+        time.sleep(0.2)
+        # ssl_htool.stop_SOC()
+    elif len(file_list_abs_path) == 1:
+        file_to_put = file_list_abs_path[0]
+        print('- {}'.format(file_to_put))
+        # ssl_htool.start_SOC()
+        ssl_htool.put(file_to_put)
+        # ssl_cp.ssl_repl("print('Done!')")
+        time.sleep(0.2)
+        # ssl_htool.stop_SOC()
+    else:
+        print('NO FILES IN DIR TO UPLOAD')
+    # Now create subdirs:
+    print('\n')
+    print('MAKING SUBDIRS NOW...')
+    for dir_ in dir_list_abs_path:
+        print('\n')
+        current_dir = dir_
+        # Now create the root sync dir:
+        try:
+            dir_to_sync = directory
+            dev_directory = send_custom_sh_cmd("os.listdir('{}')".format(dir_to_sync))
+        except Exception as e:
+            pass
+        if not current_dir.split('/')[-1] in dev_directory:
+            print('Creating dir: {}'.format(current_dir))
+            # print(f'os.mkdir("{current_dir}")')
+            dev_mkdir = ssl_cp.ssl_repl("os.mkdir('{}')".format(current_dir))
+        else:
+            print('DIRECTORY {} ALREADY EXISTS'.format(current_dir.split('/')[-1]))
+    if len(dir_list_abs_path) == 0:
+        print('NO MORE SUBDIRS')
+    root = directory
+    for dir_ in dir_list_abs_path:
+        d_sync_recursive(dir_, dev, root)
+
+    if directory == root_sync_folder:
+        ssl_htool.stop_SOC()
+        print('Done in : {:.2f} seconds'.format(time.time()-t0))
 
 
 def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True, collect=False):
@@ -1152,8 +1385,8 @@ def get_rprompt():
 def custom_sh_cmd(cmd_inp):
     # map cmd_inp to command string
     if cmd_inp == 'df':
-        resp = send_custom_sh_cmd("uos.statvfs('')")
-        # resp_sd = send_custom_sh_cmd("uos.statvfs('sd')")
+        resp = send_custom_sh_cmd("os.statvfs('')")
+        # resp_sd = send_custom_sh_cmd("os.statvfs('sd')")
         size_info = resp
         total_b = size_info[0] * size_info[2]
         used_b = (size_info[0] * size_info[2]) - (size_info[0] * size_info[3])
@@ -1167,7 +1400,7 @@ def custom_sh_cmd(cmd_inp):
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format('Flash', total_mem,
                                                                 used_mem, free_mem,
                                                                 "{:.1f} %".format((used_b/total_b)*100), ' ', '/'))
-        vfs_resp = send_custom_sh_cmd("{dir:uos.statvfs(dir) for dir in uos.listdir() if uos.stat(dir)[0] & 0x4000}")
+        vfs_resp = send_custom_sh_cmd("{dir:os.statvfs(dir) for dir in os.listdir() if os.stat(dir)[0] & 0x4000}")
         for vfs in vfs_resp.keys():
             if vfs_resp[vfs] != resp:
                 size_info_sd = vfs_resp[vfs]
@@ -1180,6 +1413,57 @@ def custom_sh_cmd(cmd_inp):
                 print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(vfs, total_mem_sd,
                                                                         used_mem_sd, free_mem_sd,
                                                                         "{:.1f} %".format((used_b_sd/total_b_sd)*100), ' ', '/{}'.format(vfs)))
+
+    if cmd_inp.split()[0] == 'ldu':
+        if len(cmd_inp.split()) == 1:
+            du()
+
+        elif len(cmd_inp.split()) == 2:
+            if cmd_inp.split()[1] != '-o':
+                file = cmd_inp.split()[1]
+                du(path='./{}'.format(file))
+
+            elif cmd_inp.split()[1] == '-o':
+                resp = {dir:os.stat(dir)[6] for dir in os.listdir()}
+                is_dir = {}
+                for dir in resp.keys():
+                    if resp[dir] != 0:
+                        pass
+                        is_dir[dir] = 0
+                        # print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
+                    else:
+                        # print('{:9} ./{}'.format('<dir>', dir))
+                        resp_dir = sum([os.stat(dir+sdir)[6] for sdir in os.listdir(dir)])
+                        # print('{:9} ./{} <dir>'.format(print_filesys_info(resp_dir), dir))
+                        resp[dir] = resp_dir
+                        is_dir[dir] = 1
+
+                du_sorted_list = [(dir, resp[dir], is_dir[dir]) for dir in resp.keys()]
+                du_sorted_list.sort(key=sortSecond, reverse=True)
+
+                for val in du_sorted_list:
+                    if val[2] == 0:
+                        print('{:9} ./{}'.format(print_filesys_info(val[1]), val[0]))
+                    else:
+                        print('{:9} ./{} <dir>'.format(print_filesys_info(val[1]), val[0]))
+        elif len(cmd_inp.split()) == 3:
+            if cmd_inp.split()[1] == '-d':
+                try:
+                    dlevmx = int(cmd_inp.split()[2])
+                    du(max_dlev=dlevmx)
+
+                except Exception as e:
+                    print(e)
+
+        elif len(cmd_inp.split()) == 4:
+            if cmd_inp.split()[2] == '-d':
+                try:
+                    file = cmd_inp.split()[1]
+                    dlevmx = int(cmd_inp.split()[3])
+                    du(path='./{}'.format(file), max_dlev=dlevmx)
+
+                except Exception as e:
+                    print(e)
 
     if cmd_inp.split()[0] == 'du':
         if len(cmd_inp.split()) == 1:
@@ -1200,7 +1484,7 @@ def custom_sh_cmd(cmd_inp):
                     send_custom_sh_cmd("from upysh2 import du;du(path='./{}');gc.collect()".format(file), sh_silent=False)
 
             elif cmd_inp.split()[1] == '-o':
-                resp = send_custom_sh_cmd("{dir:uos.stat(dir)[6] for dir in uos.listdir()}")
+                resp = send_custom_sh_cmd("{dir:os.stat(dir)[6] for dir in os.listdir()}")
                 is_dir = {}
                 for dir in resp.keys():
                     if resp[dir] != 0:
@@ -1209,7 +1493,7 @@ def custom_sh_cmd(cmd_inp):
                         # print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
                     else:
                         # print('{:9} ./{}'.format('<dir>', dir))
-                        resp_dir = send_custom_sh_cmd("sum([uos.stat('{0}/'+dir)[6] for dir in uos.listdir('{0}')])".format(dir))
+                        resp_dir = send_custom_sh_cmd("sum([os.stat('{0}/'+dir)[6] for dir in os.listdir('{0}')])".format(dir))
                         # print('{:9} ./{} <dir>'.format(print_filesys_info(resp_dir), dir))
                         resp[dir] = resp_dir
                         is_dir[dir] = 1
@@ -1259,7 +1543,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'ifconfig':
         sta_isconnected = send_custom_sh_cmd(
-            "network.WLAN(network.STA_IF).isconnected()")
+            "import netwok;network.WLAN(network.STA_IF).isconnected()")
         if sta_isconnected:
             ifconf = send_custom_sh_cmd(
                 "network.WLAN(network.STA_IF).ifconfig()")
@@ -1270,7 +1554,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'ifconfig_t':
         sta_isconnected = send_custom_sh_cmd(
-            "network.WLAN(network.STA_IF).isconnected()")
+            "import netwok;network.WLAN(network.STA_IF).isconnected()")
         if sta_isconnected:
             ifconf = send_custom_sh_cmd(
                 "network.WLAN(network.STA_IF).ifconfig()")
@@ -1291,10 +1575,10 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp == 'netscan':
         if espdev.platform == 'esp8266':
             enable_sta = send_custom_sh_cmd(
-                "network.WLAN(network.STA_IF).active()")
+                "import netwok;network.WLAN(network.STA_IF).active()")
         else:
             enable_sta = send_custom_sh_cmd(
-                "network.WLAN(network.STA_IF).active(1)")
+                "import netwok;network.WLAN(network.STA_IF).active(1)")
         if enable_sta:
             scan = send_custom_sh_cmd("network.WLAN(network.STA_IF).scan()")
             print('=' * 110)
@@ -1314,7 +1598,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'apconfig':
         ap_isconnected = send_custom_sh_cmd(
-            "network.WLAN(network.AP_IF).active()")
+            "import netwok;network.WLAN(network.AP_IF).active()")
         if ap_isconnected:
             apconf = send_custom_sh_cmd(
                 "network.WLAN(network.AP_IF).ifconfig()")
@@ -1325,7 +1609,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'apconfig_t':
         ap_isconnected = send_custom_sh_cmd(
-            "network.WLAN(network.AP_IF).active()")
+            "import netwok;network.WLAN(network.AP_IF).active()")
         if ap_isconnected:
             apconf = send_custom_sh_cmd(
                 "network.WLAN(network.AP_IF).ifconfig()")
@@ -1355,10 +1639,10 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp == 'apscan':
         if espdev.platform == 'esp8266':
             enable_sta = send_custom_sh_cmd(
-                "network.WLAN(network.AP_IF).active()")
+                "import netwok;network.WLAN(network.AP_IF).active()")
         else:
             enable_sta = send_custom_sh_cmd(
-                "network.WLAN(network.AP_IF).active(1)")
+                "import netwok;network.WLAN(network.AP_IF).active(1)")
         if enable_sta:
             scan = send_custom_sh_cmd(
                 "network.WLAN(network.AP_IF).status('stations')")
@@ -1401,22 +1685,35 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp.split(' ')[0] == 'install':
         try:
             lib = cmd_inp.split(' ')[1]
-            install_resp = send_custom_sh_cmd(
+            if not encrypted_flag['sec']:
+                install_resp = send_custom_sh_cmd(
                 "import upip;upip.install('{}')".format(lib), sh_silent=False)
+            else:
+                ssl_cp.ssl_repl("import upip;upip.install('{}')".format(lib), follow=True)
         except Exception as e:
             print('Please indicate a library to install')
 
-    # if cmd_inp.split(' ')[0] == 'crypto_buffsize':
-    #     try:
-    #         if len(cmd_inp.split(' ')) > 1:  # SET BUFFERSIZE
-    #             new_size = cmd_inp.split(' ')[1]
-    #             send_custom_sh_cmd("cp.buff_size = {}".format(new_size))
-    #             print('Crypto Buffer size set to: {} bytes'.format(new_size))
-    #         else:  # GET BUFFERSIZE
-    #             buffsize = send_custom_sh_cmd("cp.buff_size")
-    #             print('Current Crypto Buffer size: {} bytes'.format(buffsize))
-    #     except Exception as e:
-    #         print(e)
+    if cmd_inp.split(' ')[0] == 'pkg_info':
+        try:
+            lib = cmd_inp.split(' ')[1]
+            upip_host.install_pkg(lib, ".", read_pkg_info=True)
+
+        except Exception as e:
+            print('Please indicate a library to see PKG-INFO')
+
+    if cmd_inp.split(' ')[0] == 'upipl':
+        try:
+            if len(cmd_inp.split()) == 1:
+                print('Available MicroPython libs (just a random subset):')
+                list_upylibs = shlex.split('pip search micropython')
+                result = subprocess.call(list_upylibs)
+            elif len(cmd_inp.split()) == 2:
+                lib = cmd_inp.split()[1]
+                print("Available MicroPython libs that match {}:".format(lib))
+                list_upylibs = shlex.split("pip search {}".format(lib))
+                result = subprocess.call(list_upylibs)
+        except Exception as e:
+            print(e)
 
     if cmd_inp.split(' ')[0] == 'touch':
         try:
@@ -1462,7 +1759,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'whoami':
         print('DEVICE: {}, IP: {} , ID: {}'.format(host_name, args.t, unique_id))
-        sysinfo = send_custom_sh_cmd('uos.uname()', capture_output=True)
+        sysinfo = send_custom_sh_cmd('os.uname()', capture_output=True)
         if encrypted_flag['sec']:
             dev_info = sysinfo.split("'")
         else:
@@ -1504,8 +1801,15 @@ def custom_sh_cmd(cmd_inp):
         shell_prompt['s'] = shell_message
         prompt['p'] = shell_prompt['s']
 
-    if cmd_inp == 'lsl':
-        list_of_files = os.listdir()
+    if cmd_inp.split()[0] == 'lsl':
+        if len(cmd_inp.split()) == 1:
+            list_of_files = os.listdir()
+        elif len(cmd_inp.split()) > 1:
+            if '*' in cmd_inp.split()[1]: # re to match
+                r_e = cmd_inp.split()[1].replace('*', '')
+                list_of_files = [f for f in os.listdir() if r_e in f]
+            else:
+                list_of_files = os.listdir(cmd_inp.split()[1])
         if list_of_files != []:
             print_table(list_of_files, wide=28, format_SH=True)
 
@@ -1770,38 +2074,50 @@ def custom_sh_cmd(cmd_inp):
             print('Indicate a file to show')
 
     if cmd_inp.split(' ')[0] == 'd_sync':
-        print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-        try:
-            ssl_cp.enable_wrepl_io()
-        except Exception as e:
-            pass
-        if dev_path['p'] != ' ':
-            dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
-        else:
-            dev_dir = ''
-        try:
-            dir_to_sync = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
-
-            d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
-                                                                       args.p,
-                                                                       dir_to_sync)
-
-            d_sync_cmd = shlex.split(d_sync_str)
+        if not encrypted_flag['sec']:
+            print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
             try:
-                dir_sync = subprocess.call(d_sync_cmd)
-                try:
-                    ssl_cp.enable_wrepl_io()
-                except Exception as e:
-                    pass
-            except KeyboardInterrupt:
-                try:
-                    ssl_cp.enable_wrepl_io()
-                except Exception as e:
-                    pass
+                ssl_cp.enable_wrepl_io()
+            except Exception as e:
                 pass
-                print('Operation aborted')
-        except Exception as e:
-            print('Indicate a file to get')
+            if dev_path['p'] != ' ':
+                dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
+            else:
+                dev_dir = ''
+            try:
+                dir_to_sync = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
+
+                d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
+                                                                           args.p,
+                                                                           dir_to_sync)
+
+                d_sync_cmd = shlex.split(d_sync_str)
+                try:
+                    dir_sync = subprocess.call(d_sync_cmd)
+                    try:
+                        ssl_cp.enable_wrepl_io()
+                    except Exception as e:
+                        pass
+                except KeyboardInterrupt:
+                    try:
+                        ssl_cp.enable_wrepl_io()
+                    except Exception as e:
+                        pass
+                    pass
+                    print('Operation aborted')
+            except Exception as e:
+                print('Indicate a file to get')
+        else:
+            if len(cmd_inp.split()) == 1: # root_dir
+                dir_to_sync = os.getcwd().split('/')[-1]
+                # print('Directory to sync: {}'.format(dir_to_sync))
+                os.chdir('..')
+                d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
+                os.chdir(dir_to_sync)
+            elif len(cmd_inp.split()) == 2:
+                dir_to_sync = cmd_inp.split()[-1]
+                # print('Directory to sync: {}'.format(dir_to_sync))
+                d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
 
     if cmd_inp.split(' ')[0] == 'l_micropython':
         print('<-- Local machine MicroPython -->')
@@ -1822,8 +2138,15 @@ def custom_sh_cmd(cmd_inp):
             print(e)
             pass
 
-    if cmd_inp == 'ls':
-        dev_files = send_custom_sh_cmd('uos.listdir();gc.collect()')
+    if cmd_inp.split()[0] == 'ls':
+        if len(cmd_inp.split()) == 1:
+            dev_files = send_custom_sh_cmd('os.listdir();gc.collect()')
+        elif len(cmd_inp.split()) > 1:
+            if '*' in cmd_inp.split()[1]: # re to match
+                r_e = cmd_inp.split()[1].replace('*', '')
+                dev_files = send_custom_sh_cmd("[f for f in os.listdir() if '{}' in f];gc.collect()".format(r_e))
+            else:
+                dev_files = send_custom_sh_cmd("os.listdir('{}');gc.collect()".format(cmd_inp.split()[1]))
         try:
             print_table(dev_files, wide=28, format_SH=True)
         except Exception as e:
@@ -2009,13 +2332,19 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'l_tree':
         try:
-            l_tree_cmd = 'tree'
-            lt_cmd = shlex.split(l_tree_cmd)
-            try:
-                l_t = subprocess.call(lt_cmd)
-            except Exception as e:
-                print(e)
-                pass
+            if len(cmd_inp.split(' ')) > 1:
+                if cmd_inp.split(' ')[1] == '-a':
+                    tree(hidden=True)
+                else:
+                    if len(cmd_inp.split(' ')) == 2:
+                        dir = cmd_inp.split(' ')[1]
+                        tree(path=dir)
+                    else:
+                        if cmd_inp.split(' ')[2] == '-a':
+                            dir = cmd_inp.split(' ')[1]
+                            tree(path=dir, hidden=True)
+            else:
+                tree()
         except Exception as e:
             print(e)
             pass
@@ -2073,6 +2402,49 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print(e)
 
+    if cmd_inp.split(' ')[0] == 'uping':
+        try:
+            ping_dir = cmd_inp.split(' ')[1]
+            if ping_dir == 'host':
+                ping_dir = ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
+            inp = "import uping;uping.ping('{}', loop=True, rtn=False)".format(ping_dir)
+            if not encrypted_flag['sec']:
+                espdev.wr_cmd(inp)
+            else:
+                try:
+                    ssl_cp.ssl_repl(inp, follow=True)
+                    # if espdev.output is not None:
+                    #     print(espdev.output)
+                except KeyboardInterrupt:
+                    time.sleep(0.2)
+                    ssl_cp.ssl_repl('\x03', silent=True,
+                                    traceback=True)  # KBI
+                    time.sleep(0.2)
+                    for i in range(1):
+                        ssl_cp.ssl_repl('\x0d', silent=True)
+                        ssl_cp.flush_conn()
+        except Exception as e:
+            print("Indicate a host to ping, e.g google.com")
+
+    if cmd_inp.split(' ')[0] == 'lping':
+        try:
+            ping_dir = cmd_inp.split(' ')[1]
+            if ping_dir == 'dev':
+                ping_dir = args.t
+            ping_cmd_str = 'ping {}'.format(ping_dir)
+            ping_cmd = shlex.split(ping_cmd_str)
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+            try:
+                do_ping = subprocess.call(ping_cmd, preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+        except Exception as e:
+            print("Indicate a host to ping, e.g google.com")
+
     if cmd_inp.split(' ')[0] == 'exit':
         # print('closing...')
         if encrypted_flag['sec']:
@@ -2097,6 +2469,15 @@ def custom_sh_cmd(cmd_inp):
         # time.sleep(0.5)
         else:
             espdev.close_wconn()
+            if len(cmd_inp.split(' ')) > 1:
+                if cmd_inp.split(' ')[1] == '-r':
+                    print('Rebooting device...')
+                    espdev.reset(output=False)
+                    print('Done!')
+                elif cmd_inp.split(' ')[1] == '-hr':
+                    print('Device Hard Reset...')
+                    espdev.cmd_nb("import machine;machine.reset()", block_dev=False)
+                    print('Done!')
             if reset_flag['R']:
                 print('Rebooting device...')
                 espdev.reset(output=False)
@@ -2611,10 +2992,10 @@ def tab_press(event):
                                     cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')]".format(fbuff_text[1], fbuff_text[3])
 
                         else:
-                            cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp]"
+                            cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('/lib') if '.py' in scp]"
                             frozen_modules['SUB'] = frozen_modules['FM']
                             if buff_text != '':
-                                cmd_ls_glb = "[scp.split('.')[0] for scp in uos.listdir()+uos.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
+                                cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
                                 frozen_modules['SUB'] = [mod for mod in frozen_modules['FM'] if mod.startswith(buff_text)]
 
                     if shell_mode['S']:
@@ -2622,14 +3003,14 @@ def tab_press(event):
                         if '/' in buff_text:
                             glb = False
                             dir_to_list = '/'.join(buff_text.split('/')[:-1])
-                            cmd_ls_glb = "uos.listdir('{}')".format(dir_to_list)
+                            cmd_ls_glb = "os.listdir('{}')".format(dir_to_list)
                             if buff_text.split('/')[-1] != '':
-                                cmd_ls_glb = "[val for val in uos.listdir('{}') if val.startswith('{}')]".format(dir_to_list, buff_text.split('/')[-1])
+                                cmd_ls_glb = "[val for val in os.listdir('{}') if val.startswith('{}')]".format(dir_to_list, buff_text.split('/')[-1])
 
                         else:
-                            cmd_ls_glb = 'uos.listdir()'
+                            cmd_ls_glb = 'os.listdir()'
                             if buff_text != '':
-                                cmd_ls_glb = "[val for val in uos.listdir() if val.startswith('{}')]".format(buff_text)
+                                cmd_ls_glb = "[val for val in os.listdir() if val.startswith('{}')]".format(buff_text)
                     if encrypted_flag['sec']:
                         try:
                             ssl_cp.ssl_repl(cmd_ls_glb+';gc.collect()',
