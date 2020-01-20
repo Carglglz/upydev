@@ -516,7 +516,7 @@ For more info see [upyutils_docs](https://github.com/Carglglz/upydev/blob/master
 
   ##### *RECOMMENDATION:
 
-  **Since upydev is based in a wireless protocol connection, in order to succes sending upydev commands make sure that there is a reliable connection* between the host and the device** **and that the wifi signal strength (rssi) in the device is above -80 ** *(below -80 performance could be inconsistent*)
+  **Since upydev is based in a wireless protocol connection, in order to succeed sending upydev commands make sure that there is a reliable connection* between the host and the device** **and that the wifi signal strength (rssi) in the device is above -80 ** *(below -80 performance could be inconsistent*)
 
   **A 'Reliable' connection** **means that there is no packet loss**  (use ping or  `upydev ping` command to check)
 
