@@ -720,6 +720,7 @@ parser.add_argument("-r", help='reset on exit',
 parser.add_argument("-nem",
                     help='No encryption mode, this bypass handshake and does not allow encryption afterwards',
                     default=False, action='store_true')
+
 args = parser.parse_args()
 
 # HANDSHAKE
@@ -2946,7 +2947,10 @@ def tab_press(event):
                                                                               0]
             if buff_text_frst_cmd == 'import' or buff_text_frst_cmd == 'from':
                 import_cmd = True
-            buff_text = event.app.current_buffer.document.text.split(' ')[-1]
+            if ').' not in event.app.current_buffer.document.text:
+                buff_text = event.app.current_buffer.document.text.replace('=', ' ').replace('(', ' ').split(' ')[-1]
+            else:
+                buff_text = event.app.current_buffer.document.text.replace('=', ' ').split(' ')[-1]
             if isinstance(buff_text, str):
                 if '.' in buff_text and not shell_mode['S']:
 

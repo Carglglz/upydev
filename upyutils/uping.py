@@ -122,7 +122,7 @@ def ping(host, count=4, timeout=5000, interval=10, quiet=False, size=64,
                                 t_elapsed = (utime.ticks_us()-h2.timestamp) / 1000
                                 ttl = ustruct.unpack('!B', resp_mv[8:9])[0]  # time-to-live
                                 n_recv += 1
-                                not quiet and print("%u bytes from %s: icmp_seq=%u ttl=%u time=%f ms" % (
+                                not quiet and print("{} bytes from {}: icmp_seq={} ttl={} time={:.3f} ms".format(
                                     len(resp), addr, seq_loop, ttl, t_elapsed))
                                 time_data.append(t_elapsed)
                                 seqs.remove(seq)
@@ -177,7 +177,7 @@ def ping(host, count=4, timeout=5000, interval=10, quiet=False, size=64,
                             t_elapsed = (utime.ticks_us()-h2.timestamp) / 1000
                             ttl = ustruct.unpack('!B', resp_mv[8:9])[0]  # time-to-live
                             n_recv += 1
-                            not quiet and print("%u bytes from %s: icmp_seq=%u ttl=%u time=%f ms" % (
+                            not quiet and print("{} bytes from {}: icmp_seq={} ttl={} time={:.3f} ms".format(
                                 len(resp), addr, seq, ttl, t_elapsed))
                             time_data.append(t_elapsed)
                             seqs.remove(seq)

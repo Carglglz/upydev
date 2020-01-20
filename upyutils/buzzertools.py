@@ -7,6 +7,7 @@
 
 from machine import Timer, PWM, Pin
 import time
+import urandom
 
 
 class BUZZER:
@@ -134,4 +135,28 @@ class BUZZER:
     def beep_interrupt(self):
         self.irq_busy = False
         self.tim2.init(period=1, mode=Timer.ONE_SHOT,
-                      callback=self.buzz_beep_callback)
+                       callback=self.buzz_beep_callback)
+
+    def sound_effect_up_down(self, fi, ff, fst, ts):
+        fq_range = [i for i in range(fi, ff, fst)]
+        self.buzz.init()
+        for f in fq_range:
+            self.buzz.freq(f)
+            time.sleep_ms(ts)
+        fq_range.reverse()
+        for f in fq_range:
+            self.buzz.freq(f)
+            time.sleep_ms(ts)
+        self.buzz.deinit()
+
+    def sound_effect_random(self, fi, ff, fst, ts):
+        fq_range = [urandom.randint(fi, ff) for i in range(fi, ff, fst)]
+        self.buzz.init()
+        for f in fq_range:
+            self.buzz.freq(f)
+            time.sleep_ms(ts)
+        fq_range.reverse()
+        for f in fq_range:
+            self.buzz.freq(f)
+            time.sleep_ms(ts)
+        self.buzz.deinit()

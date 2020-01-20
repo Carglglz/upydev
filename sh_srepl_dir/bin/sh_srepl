@@ -685,7 +685,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'l_ifconfig_t', 'reload', 'docs', 'flush_soc',
                     'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
-                    'uping', 'lping', 'pkg_info', 'update_upytils']
+                    'uping', 'lping', 'pkg_info', 'update_upyutils']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -812,7 +812,7 @@ shell_commands_info = """
     - upipl : (usage 'upipl' or 'upipl [module]' display available micropython packages that can be installed with install command
     - pkg_info: to see the PGK-INFO file of a module if available at pypi.org or micropython.org/pi
     - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
-    - update_upytils: to install 'upydev update_upytils' scripts in the device
+    - update_upyutils: to install 'upydev update_upyutils' scripts in the device
 
 
 """
@@ -1935,7 +1935,7 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp == 'flush_soc':
         shr_cp.flush_conn()
 
-    if cmd_inp == 'update_upytils':
+    if cmd_inp == 'update_upyutils':
         print('Updating device upyutils...')
         # upylog.py
         upylog = '{}/upylog.py'.format(upydev.__path__[0]+'/upyutils_dir')
@@ -2105,13 +2105,17 @@ def custom_sh_cmd(cmd_inp):
                                 elif dev_platform == 'pyboard':
                                     if resp == 'y':
                                         bin_file = fw_file
+                                        # shr_cp.enable_wrepl_io()
+                                        # print('Warning: Unmount the pyboard first')
+                                        # dfu_mode = input('Put the pyboard in DFU mode, need help? (y/n): ')
+                                        # if dfu_mode == 'y':
+                                        #     webbrowser.open('https://github.com/micropython/micropython/wiki/Pyboard-Firmware-Update')
+                                        # else:
+                                        #     pass
+                                        dfu_mode = input('Warning: Unmount the pyboard first if mounted (but DO NOT DISCONNECT), press any key to continue.')
+                                        print('Enabling DFU mode in pyboard, DO NOT DISCONNECT...')
+                                        shr_cp.send_message('import pyb;pyb.bootloader()\r')
                                         shr_cp.enable_wrepl_io()
-                                        print('Warning: Unmount the pyboard first')
-                                        dfu_mode = input('Put the pyboard in DFU mode, need help? (y/n): ')
-                                        if dfu_mode == 'y':
-                                            webbrowser.open('https://github.com/micropython/micropython/wiki/Pyboard-Firmware-Update')
-                                        else:
-                                            pass
                                         flash_tool = input('Select a tool to flash pydfu.py/dfu-util: (0/1) ')
                                         if flash_tool == '0':
                                             print('Using pydfu.py...')
@@ -2124,7 +2128,7 @@ def custom_sh_cmd(cmd_inp):
                                             except Exception as e:
                                                 # shr_cp.enable_wrepl_io()
                                                 print(e)
-                                            print('Flashing firmware finished, remove the jumper between the DFU and the 3.3v ports.')
+                                            print('Flashing firmware finished succesfully!')
                                             time.sleep(1)
                                             resp = input('Press any key to continue')
                                         else:
@@ -2138,9 +2142,9 @@ def custom_sh_cmd(cmd_inp):
                                             except Exception as e:
                                                 # shr_cp.enable_wrepl_io()
                                                 print(e)
-                                            print('Flashing firmware finished, disconnect the pyboard from USB and remove the jumper between the DFU and the 3.3v ports.')
+                                            print('Flashing firmware finished succesfully, RESET the pyboard now')
                                             time.sleep(1)
-                                            resp = input('Connect again the pyboard, press any key to continue')
+                                            resp = input('Press any key to continue')
 
                                         time.sleep(0.2)
                                         shr_cp.enable_wrepl_io()
@@ -2163,8 +2167,9 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp.split()[0] == 'flash':
         kw_cmd = cmd_inp.split()
         bin_file = kw_cmd[1]
-        shr_cp.enable_wrepl_io()
+        # shr_cp.enable_wrepl_io()
         if dev_platform != 'pyboard':
+            shr_cp.enable_wrepl_io()
             upy_fw_cmd = 'upydev flash -port {} -f {}'.format(args.p, bin_file)
             # print(upy_fw_cmd)
             flash_fw_cmd = shlex.split(upy_fw_cmd)
@@ -2175,14 +2180,17 @@ def custom_sh_cmd(cmd_inp):
                 # shr_cp.enable_wrepl_io()
                 print(e)
         elif dev_platform == 'pyboard':
-            bin_file = fw_file
+            # shr_cp.enable_wrepl_io()
+            # print('Warning: Unmount the pyboard first if mounted, ready? (y/n)')
+            dfu_mode = input('Warning: Unmount the pyboard first if mounted (but DO NOT DISCONNECT), press any key to continue.')
+            print('Enabling DFU mode in pyboard, DO NOT DISCONNECT...')
+            shr_cp.send_message('import pyb;pyb.bootloader()\r')
             shr_cp.enable_wrepl_io()
-            print('Warning: Unmount the pyboard first')
-            dfu_mode = input('Put the pyboard in DFU mode, need help? (y/n): ')
-            if dfu_mode == 'y':
-                webbrowser.open('https://github.com/micropython/micropython/wiki/Pyboard-Firmware-Update')
-            else:
-                pass
+            # dfu_mode = input('Put the pyboard in DFU mode, need help? (y/n): ')
+            # if dfu_mode == 'y':
+            #     webbrowser.open('https://github.com/micropython/micropython/wiki/Pyboard-Firmware-Update')
+            # else:
+            #     pass
             flash_tool = input('Select a tool to flash pydfu.py/dfu-util: (0/1) ')
             if flash_tool == '0':
                 print('Using pydfu.py...')
@@ -2195,7 +2203,7 @@ def custom_sh_cmd(cmd_inp):
                 except Exception as e:
                     # shr_cp.enable_wrepl_io()
                     print(e)
-                print('Flashing firmware finished, remove the jumper between the DFU and the 3.3v ports.')
+                print('Flashing firmware finished succesfully!')
                 time.sleep(1)
                 resp = input('Press any key to continue')
             else:
@@ -2209,9 +2217,9 @@ def custom_sh_cmd(cmd_inp):
                 except Exception as e:
                     # shr_cp.enable_wrepl_io()
                     print(e)
-                print('Flashing firmware finished, disconnect the pyboard from USB and remove the jumper between the DFU and the 3.3v ports.')
+                print('Flashing firmware finished succesfully, RESET the pyboard now.')
                 time.sleep(1)
-                resp = input('Connect again the pyboard, press any key to continue')
+                resp = input('Press any key to continue')
         time.sleep(0.2)
         shr_cp.enable_wrepl_io()
         shr_cp.flush_conn()
@@ -2675,7 +2683,10 @@ def tab_press(event):
                                                                               0]
             if buff_text_frst_cmd == 'import' or buff_text_frst_cmd == 'from':
                 import_cmd = True
-            buff_text = event.app.current_buffer.document.text.split(' ')[-1]
+            if ').' not in event.app.current_buffer.document.text:
+                buff_text = event.app.current_buffer.document.text.replace('=', ' ').replace('(', ' ').split(' ')[-1]
+            else:
+                buff_text = event.app.current_buffer.document.text.replace('=', ' ').split(' ')[-1]
             if isinstance(buff_text, str):
                 if '.' in buff_text and not shell_mode['S']:
 
