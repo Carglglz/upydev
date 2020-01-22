@@ -312,15 +312,6 @@ class HOST_SSL_socket_server:
         print(self.addr_client)
         self.conn.settimeout(0)
 
-    # def start_SOC_AP(self):
-    #     self.serv_soc.bind((self.host_ap, self.port))
-    #     self.serv_soc.listen(1)
-    #     print('Server listening...')
-    #     self.conn, self.addr_client = self.serv_soc.accept()
-    #     print('Connection received...')
-    #     print(self.addr_client)
-    #     self.conn.settimeout(1)
-
     def flush(self):
         flushed = 0
         while flushed == 0:

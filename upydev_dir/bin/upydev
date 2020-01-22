@@ -1241,7 +1241,7 @@ helparg = '''Mode:
         directory, named after the name of the script. To follow an on going 'daemon'
         mode log, use -follow option and indicate the script with -f option.
 - update_upyutils: to update the last versions of sync_tool.py, upylog.py,
-                upynotify.py, upysecrets.py, upysh2.py, ssl_repl.py and uping.py.
+                upynotify.py, upysecrets.py, upysh2.py, ssl_repl.py, uping.py and time_it.py.
 - debug: to execute a local script line by line in the target upydevice, use -f option
         to indicate the file. To enter next line press ENTER, to finish PRESS C
         then ENTER. To break a while loop do CTRL+C.
@@ -3373,8 +3373,10 @@ def update_upyutils(ip, passwd):
     ssl_repl = '{}/ssl_repl.py'.format(upydev.__path__[0]+'/upyutils_dir')
     # uping.py
     uping = '{}/uping.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    # time_it.py
+    time_it = '{}/time_it.py'.format(upydev.__path__[0]+'/upyutils_dir')
     args.fre = [sync_tool, upylog, upynotify, upysecrets, upysh2,
-                ssl_repl, uping]
+                ssl_repl, uping, time_it]
     args.dir = 'lib'
     put_multiple_f(ip=ip, passwd=passwd)
 

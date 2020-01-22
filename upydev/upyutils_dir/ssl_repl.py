@@ -15,10 +15,11 @@ class SSL_socket_client_repl:
     SSL Socket client simple class repl
     """
 
-    def __init__(self, host, port=8443, buff=1024, init=True):
+    def __init__(self, host, port=8443, buff=1024, init=True, auth=True):
         self.cli_soc = None
         self.host = host
         self.port = port
+        self.auth = auth
         self._key = 'SSL_key{}.der'.format(hexlify(unique_id()).decode())
         self._cert = 'SSL_certificate{}.der'.format(hexlify(unique_id()).decode())
         self.key = None
@@ -45,8 +46,13 @@ class SSL_socket_client_repl:
     def connect_SOC(self):
         self.cli_soc.connect(self.addr)
         # self.cli_soc.settimeout(1)
-        self.cli_soc = ssl.wrap_socket(self.cli_soc, key=self.key,
-                                       cert=self.cert)
+        if self.auth:
+            self.cli_soc = ssl.wrap_socket(self.cli_soc, key=self.key,
+                                           cert=self.cert)
+        # self.cli_soc = ssl.wrap_socket(self.cli_soc)
+        else:
+            self.cli_soc = ssl.wrap_socket(self.cli_soc)
+
         self.cli_soc.setblocking(False)
         # self.cli_soc.settimeout(1)
         print('>>> ')
@@ -213,8 +219,8 @@ class SSL_socket_client_tool:
             # gc.collect()
 
 
-def start(host, port):
-    ssl_repl_serv = SSL_socket_client_repl(host, port=port)
+def start(host, port, auth=True):
+    ssl_repl_serv = SSL_socket_client_repl(host, port=port, auth=auth)
     return ssl_repl_serv
 
 

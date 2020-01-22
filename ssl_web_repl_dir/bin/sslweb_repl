@@ -241,6 +241,7 @@ class SSL_REPL_server:
         try:
             self.context.verify_mode = ssl.CERT_REQUIRED
             self.context.load_verify_locations(cafile=self.cert)
+            # self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {}, auth=False)".format(self.host, self.port))
             self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
             self.conn, self.addr_client = self.serv_soc.accept()
             self.conn = self.context.wrap_socket(self.conn, server_side=True)
@@ -840,7 +841,8 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs', 'flush_soc',
                     'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
-                    'batl', 'du', 'ldu', 'upipl', 'pkg_info', 'uping', 'lping']
+                    'batl', 'du', 'ldu', 'upipl', 'pkg_info', 'uping', 'lping',
+                    'timeit', 'i2c']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -859,6 +861,7 @@ else:
     prompt['p'] = shell_prompt['s']
     shell_mode['S'] = True
     if encrypted_flag['sec']:
+        # time.sleep(0.2)
         ssl_cp.ssl_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
         time.sleep(0.2)
         ssl_cp.flush_conn()
@@ -950,6 +953,8 @@ shell_commands_info = """
         - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns) (encryption mode only)
         - bat    : prints the content of a '.py' file with Python syntax hightlighting
         - rcat   : prints the raw content of a file (encryption mode only)
+        - timeit : to measure execution time of a script/command
+        - i2c    : config/scan (config must be used first, i2c config -scl [SCL] -sda [SDA])
         - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
                     to exit without reset do 'exit -nr'
                     to exit and do hard reset 'exit -hr'
@@ -2445,6 +2450,64 @@ def custom_sh_cmd(cmd_inp):
                 print(e)
         except Exception as e:
             print("Indicate a host to ping, e.g google.com")
+
+    if cmd_inp.split(' ')[0] == 'timeit':
+        try:
+            script_to_time = cmd_inp.split(' ')[1]
+            if script_to_time.endswith('.py') or script_to_time.endswith('.mpy'):
+                print('Timing script: {}'.format(script_to_time))
+                script_to_time = script_to_time.replace('.py', '').replace('.mpy', '')
+                inp = "from time_it import tzero, tdiff, result;t_0 = tzero();import {0};diff=tdiff(t_0);result('{0}',diff);".format(script_to_time)
+            else:
+                cmd_to_time = ' '.join(cmd_inp.split()[1:])
+                inp = "from time_it import tzero, tdiff, result;t_0 = tzero();{0};diff=tdiff(t_0);result('{0}',diff, cmd=True);".format(cmd_to_time)
+            if not encrypted_flag['sec']:
+                espdev.wr_cmd(inp)
+            else:
+                try:
+                    ssl_cp.ssl_repl(inp, follow=True)
+                    # if espdev.output is not None:
+                    #     print(espdev.output)
+                except KeyboardInterrupt:
+                    time.sleep(0.2)
+                    ssl_cp.ssl_repl('\x03', silent=True,
+                                    traceback=True)  # KBI
+                    time.sleep(0.2)
+                    for i in range(1):
+                        ssl_cp.ssl_repl('\x0d', silent=True)
+                        ssl_cp.flush_conn()
+        except Exception as e:
+            # print(e)
+            print("Indicate a script/command to measure execution time")
+
+    if cmd_inp.split()[0] == 'i2c':
+        try:
+            i2c_mode = cmd_inp.split()[1]
+            if i2c_mode == 'config':
+                if dev_platform == 'pyboard':
+                    scl = cmd_inp.split()[3]
+                    sda = cmd_inp.split()[5]
+                    if not encrypted_flag['sec']:
+                        espdev.wr_cmd(inp)
+                    else:
+                        ssl_cp.ssl_repl("from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl,sda))
+                else:
+                    scl = cmd_inp.split()[3]
+                    sda = cmd_inp.split()[5]
+                    if not encrypted_flag['sec']:
+                        espdev.wr_cmd(inp)
+                    else:
+                        ssl_cp.ssl_repl("from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl,sda))
+            elif i2c_mode == 'scan':
+                i2c_devs = send_custom_sh_cmd("i2c.scan()")
+                if len(i2c_devs) > 0:
+                    print('Found {} devices/addrs:'.format(len(i2c_devs)))
+                    print('int:', i2c_devs)
+                    print('Hex:', [hex(dev) for dev in i2c_devs])
+                else:
+                    print('No device found')
+        except Exception as e:
+            print('Indicate i2c mode (config/scan)')
 
     if cmd_inp.split(' ')[0] == 'exit':
         # print('closing...')
