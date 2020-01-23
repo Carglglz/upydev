@@ -1549,7 +1549,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'ifconfig':
         sta_isconnected = send_custom_sh_cmd(
-            "import netwok;network.WLAN(network.STA_IF).isconnected()")
+            "import network;network.WLAN(network.STA_IF).isconnected()")
         if sta_isconnected:
             ifconf = send_custom_sh_cmd(
                 "network.WLAN(network.STA_IF).ifconfig()")
@@ -1560,7 +1560,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'ifconfig_t':
         sta_isconnected = send_custom_sh_cmd(
-            "import netwok;network.WLAN(network.STA_IF).isconnected()")
+            "import network;network.WLAN(network.STA_IF).isconnected()")
         if sta_isconnected:
             ifconf = send_custom_sh_cmd(
                 "network.WLAN(network.STA_IF).ifconfig()")
@@ -1581,10 +1581,10 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp == 'netscan':
         if espdev.platform == 'esp8266':
             enable_sta = send_custom_sh_cmd(
-                "import netwok;network.WLAN(network.STA_IF).active()")
+                "import network;network.WLAN(network.STA_IF).active()")
         else:
             enable_sta = send_custom_sh_cmd(
-                "import netwok;network.WLAN(network.STA_IF).active(1)")
+                "import network;network.WLAN(network.STA_IF).active(1)")
         if enable_sta:
             scan = send_custom_sh_cmd("network.WLAN(network.STA_IF).scan()")
             print('=' * 110)
@@ -1604,7 +1604,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'apconfig':
         ap_isconnected = send_custom_sh_cmd(
-            "import netwok;network.WLAN(network.AP_IF).active()")
+            "import network;network.WLAN(network.AP_IF).active()")
         if ap_isconnected:
             apconf = send_custom_sh_cmd(
                 "network.WLAN(network.AP_IF).ifconfig()")
@@ -1615,7 +1615,7 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp == 'apconfig_t':
         ap_isconnected = send_custom_sh_cmd(
-            "import netwok;network.WLAN(network.AP_IF).active()")
+            "import network;network.WLAN(network.AP_IF).active()")
         if ap_isconnected:
             apconf = send_custom_sh_cmd(
                 "network.WLAN(network.AP_IF).ifconfig()")
@@ -1645,10 +1645,10 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp == 'apscan':
         if espdev.platform == 'esp8266':
             enable_sta = send_custom_sh_cmd(
-                "import netwok;network.WLAN(network.AP_IF).active()")
+                "import network;network.WLAN(network.AP_IF).active()")
         else:
             enable_sta = send_custom_sh_cmd(
-                "import netwok;network.WLAN(network.AP_IF).active(1)")
+                "import network;network.WLAN(network.AP_IF).active(1)")
         if enable_sta:
             scan = send_custom_sh_cmd(
                 "network.WLAN(network.AP_IF).status('stations')")

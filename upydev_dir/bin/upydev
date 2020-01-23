@@ -1127,7 +1127,7 @@ def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
     espdev.close_wconn()
     key = rsa.generate_private_key(
         public_exponent=65537,
-        key_size=2048,
+        key_size=args.key_size,
         backend=default_backend())
     my_p = getpass.getpass(prompt='Passphrase: ', stream=None)
     pem = key.private_bytes(encoding=serialization.Encoding.PEM,
@@ -1641,6 +1641,8 @@ parser.add_argument('-show_key', help='show RSA key',
                     required=False, default=False, action='store_true')
 parser.add_argument('-tfkey', help='transfer RSA key, this should be done only if connected to the AP of the device',
                     required=False, default=False, action='store_true')
+parser.add_argument('-key_size', help='Indicate RSA key length in bits for SSL key',
+                    required=False, default=2048, type=int)
 parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection',
                     required=False, default=False, action='store_true')
 parser.add_argument('-localkey_id', help='To refresh password manually of a current WebREPL connection',
