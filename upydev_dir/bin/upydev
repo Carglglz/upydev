@@ -40,12 +40,11 @@ from argcomplete.completers import ChoicesCompleter
 from upydevice import W_UPYDEVICE
 from upydevice.phantom import UOS
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import rsa, ec
 from cryptography.hazmat.primitives import serialization
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
-
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
@@ -1045,7 +1044,7 @@ def lognow(filename, sensor):
 def rsa_keygen(dir='', store=True, show_key=False, id='00'):
     private_key = rsa.generate_private_key(
         public_exponent=65537,
-        key_size=2048,
+        key_size=args.key_size,
         backend=default_backend())
     my_p = getpass.getpass(prompt='Password: ', stream=None)
     pem = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
@@ -1112,7 +1111,7 @@ def get_cert_data():
         return default_temp
 
 
-def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
+def ssl_ECDSA_key_certgen(ip, passwd, dir='', store=True):
     # print('Generating RSA key and Cerficate...')
     print('Getting unique id...')
     espdev = W_UPYDEVICE(ip, passwd)
@@ -1125,10 +1124,14 @@ def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
                   silent=True)
     dev_platform = espdev.output
     espdev.close_wconn()
-    key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=args.key_size,
+    # key = rsa.generate_private_key(
+    #     public_exponent=65537,
+    #     key_size=args.key_size,
+    #     backend=default_backend())
+    key = ec.generate_private_key(
+        ec.SECP384R1(),
         backend=default_backend())
+
     my_p = getpass.getpass(prompt='Passphrase: ', stream=None)
     pem = key.private_bytes(encoding=serialization.Encoding.PEM,
                             format=serialization.PrivateFormat.TraditionalOpenSSL,
@@ -1161,11 +1164,11 @@ def ssl_rsa_key_certgen(ip, passwd, dir='', store=True):
     # CONVERT TO DER FORMAT
     cert_args = shlex.split('openssl x509 -in {}SSL_certificate{}.pem -out {}SSL_certificate{}.der -outform DER'.format(dir, unique_id, dir, unique_id))
     subprocess.call(cert_args)
-    key_args = shlex.split('openssl rsa -in {}SSL_key{}.pem -out {}SSL_key{}.der -outform DER'.format(dir, unique_id, dir, unique_id))
+    key_args = shlex.split('openssl ec -in {}SSL_key{}.pem -out {}SSL_key{}.der -outform DER'.format(dir, unique_id, dir, unique_id))
     subprocess.call(key_args)
 
     if args.tfkey:
-        print('Transfering RSA key and Certificates to the device...')
+        print('Transfering ECDSA key and Certificates to the device...')
         args.f = '{}/{}'.format(upydev.__path__[0], 'SSL_key{}.der'.format(unique_id))
         put_f(ip, passwd, rst=False)
         args.f = '{}/{}'.format(upydev.__path__[0], 'SSL_certificate{}.der'.format(unique_id))
@@ -1270,8 +1273,8 @@ helparg = '''Mode:
        The device can be accesed as "upydev upy@foo_device" or redirect any command as e.g.
        "upydev ping -@foo_device"
 
-- sslgen_rsakey: (This needs openssl available in $PATH)
-               To generate RSA-2048 bit key and a self-signed certificate to enable SSL sockets
+- sslgen_key: (This needs openssl available in $PATH)
+               To generate ECDSA key and a self-signed certificate to enable SSL sockets
                This needs a passphrase, that will be required every time the key is loaded.
                Use -tfkey to upload this key to the device
                (use only if connected directly to the AP of the device or a
@@ -1540,7 +1543,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
-                 'sslgen_rsakey', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr']
+                 'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr']
 
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
@@ -1548,7 +1551,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = '0.2.4'
+parser.version = 'upydev: 0.2.4'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
@@ -3523,9 +3526,9 @@ def cryp_wrepl(ip, passwd, usr=None):
 
 #############################################
 
-def get_ssl_rsa_keycert(ip, passwd):
-    print('Generating SSL RSA key and certificates...')
-    ssl_rsa_key_certgen(ip, passwd, dir=upydev.__path__[0]+'/')
+def get_ssl_keycert(ip, passwd):
+    print('Generating SSL ECDSA key and certificates...')
+    ssl_ECDSA_key_certgen(ip, passwd, dir=upydev.__path__[0]+'/')
 #############################################
 
 
@@ -4477,10 +4480,10 @@ elif args.m == 'rf_wrkey':
 elif args.m == 'crypto_wrepl':
     cryp_wrepl(args.t, args.p)
 
-# SSLGEN_RSAKEY
+# SSLGEN_KEY
 
-elif args.m == 'sslgen_rsakey':
-    get_ssl_rsa_keycert(args.t, args.p)
+elif args.m == 'sslgen_key':
+    get_ssl_keycert(args.t, args.p)
     sys.exit()
 
 # SSL_WREPL

@@ -514,7 +514,9 @@ class SERIAL_TOOL:
                 #     self.serv_soc.exec_('w(b' + repr(data) + ')')
                 # else:
                 #     self.serv_soc.exec_('w(' + repr(data) + ')')
-                self.sh_srepl.sh_repl('w(' + repr(data) + ')', assert_len=False)
+                # self.sh_srepl.sh_repl('w(' + repr(data) + ')', assert_len=False)
+                self.sh_srepl.send_message('w(' + repr(data) + ')'+'\r')
+                time.sleep(0.05)
                 cnt += len(data)
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
@@ -530,6 +532,7 @@ class SERIAL_TOOL:
                                    loop_index_l, percentage, ett)
         print('\n')
         self.sh_srepl.sh_repl("f.close()")
+        self.sh_srepl.flush_conn()
 
 
 class WBREPL_IO:
@@ -686,7 +689,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
-                    'timeit', 'i2c']
+                    'timeit', 'i2c', 'dump_mem']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -764,6 +767,7 @@ shell_commands_info = """
         - df   : to see filesystem flash usage (and SD if already mounted)
         - du   : display disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
         - meminfo: to see RAM info
+        - dump_mem: to do a memory dump
         - whoami : to see user, system and machine info
         - datetime: to see device datetime (if not set, will display uptime)
         - set_localtime : to set the device datetime from the local machine time
@@ -1478,6 +1482,11 @@ def custom_sh_cmd(cmd_inp):
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
                                                           used_mem_s, free_mem_s,
                                                           "{:.1f} %".format((used_mem/total_mem)*100)))
+
+    if cmd_inp == 'dump_mem':
+        RAM_dump = send_custom_sh_cmd(
+            'from micropython import mem_info;mem_info(1)')
+        print(RAM_dump)
 
     if cmd_inp.split(' ')[0] == 'install':
         if dev_platform != 'pyboard':

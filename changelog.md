@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fix
 - Autocompletion in REPLS improved
 - pyboard firmware improved (automatically enables DFU mode, jumper doesn't needed)
+- Changed upydev 'sslgen_rsakey' to 'sslgen_key' key now is a ECDSA key (SECP384R1 method)
+- Cipher suite is now TLSv1.2 @ ECDHE-ECDSA-AES128-CCM8 - 128 bits which is recommended for constrained devices / IOT (This requires a recent version of python-ssl)
+- put method (faster) in SERIAL SHELL
 ## [0.2.3] - 2020-01-19
 ### Added
 - fw , flash (and fw update which is 'fw get' + 'flash') commands for SERIAL SHELL

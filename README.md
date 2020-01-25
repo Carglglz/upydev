@@ -175,7 +175,9 @@ How to use it:
 
   `$ upydev ssl_wrepl -nem`
 
-* With **Encryption mode**: This needs some configuration before (which is basically generate an RSA private key and pass it to the device). Follow [this instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/SSLWebREPL_docs.md) to do this.
+* With **Encryption mode**: This needs some configuration before (which is basically generate an ECDSA* private key and pass it to the device). Follow [this instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/SSLWebREPL_docs.md) to do this.
+
+  *it was RSA before, changed due to memory constrains
 
   **Encryption mode works only with esp32. Esp8266 seems to be to slow for SSL repl*
 
@@ -186,7 +188,7 @@ How to use it:
   Or if there is already a global "UPY_G" named group, any device can be accessed with this mode using:
 
   e.g.:
-
+  
   `$ upydev ssl@esp_room1`  or `$ upydev ssl@192.168.1.42` 
   
   ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/SSLWebREPL_demo.gif)

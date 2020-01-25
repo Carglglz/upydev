@@ -225,6 +225,10 @@ class SSL_REPL_server:
                 self.port += 1
         self.serv_soc.listen(1)
         self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        # self.context = ssl.create_default_context()
+        self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
+        # for c in self.context.get_ciphers():
+        #     print(c['name'])
         while True:
             try:
                 my_p = getpass.getpass(prompt="Enter passphrase for key 'SSL_key{}.pem':".format(self.dev_id), stream=None)
@@ -234,6 +238,7 @@ class SSL_REPL_server:
                                              password=my_p)
                 break
             except ssl.SSLError as e:
+                # print(e)
                 print('Passphrase incorrect, try again...')
 
         # self.context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
@@ -241,6 +246,8 @@ class SSL_REPL_server:
         try:
             self.context.verify_mode = ssl.CERT_REQUIRED
             self.context.load_verify_locations(cafile=self.cert)
+            # for c in self.context.get_ciphers():
+            #     print(c['name'])
             # self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {}, auth=False)".format(self.host, self.port))
             self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
             self.conn, self.addr_client = self.serv_soc.accept()
@@ -248,7 +255,8 @@ class SSL_REPL_server:
             self.version = self.conn.version()
             self.cipher = self.conn.cipher()
             self.client_cert = self.conn.getpeercert()
-        except ssl.SSLError:
+        except ssl.SSLError as e:
+            print(e)
             print('\033[91;1mWARNING: CERTIFICATE VERIFY FAILED\033[0m')
             print('Please update the certificate\nwith command "upydev sslgen_rsakey -tfkey"')
             sys.exit()
@@ -544,6 +552,7 @@ class SSL_TOOL:
 
         # self.context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
         # self.context.set_ciphers('EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:AES256+SHA256')
+        self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
         self.context.verify_mode = ssl.CERT_REQUIRED
         self.context.load_verify_locations(cafile=self.cert)
         self.ssl_repl.ssl_repl("ssl_tool=ssl_repl.SSL_socket_client_tool('{}', {})".format(self.host, self.port))
@@ -842,7 +851,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs', 'flush_soc',
                     'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'du', 'ldu', 'upipl', 'pkg_info', 'uping', 'lping',
-                    'timeit', 'i2c']
+                    'timeit', 'i2c', 'dump_mem']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -929,6 +938,7 @@ shell_commands_info = """
         - df   : to see filesystem flash usage (and SD if already mounted)
         - du   : display disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
         - meminfo: to see RAM info
+        - dump_mem: to do a memory dump
         - whoami : to see user, system and machine info
         - datetime: to see device datetime (if not set, will display uptime)
         - set_localtime : to set the device datetime from the local machine time
@@ -1687,6 +1697,16 @@ def custom_sh_cmd(cmd_inp):
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
                                                           used_mem_s, free_mem_s,
                                                           "{:.1f} %".format((used_mem/total_mem)*100)))
+
+    if cmd_inp == 'dump_mem':
+        if encrypted_flag['sec']:
+            RAM_dump = send_custom_sh_cmd(
+                'from micropython import mem_info;mem_info(1)')
+            print(RAM_dump)
+        else:
+            RAM_dump = send_custom_sh_cmd(
+                'from micropython import mem_info;mem_info(1)', True)
+            print('\n'.join([line.replace('\r', '') for line in RAM_dump]))
 
     if cmd_inp.split(' ')[0] == 'install':
         try:
@@ -2516,7 +2536,7 @@ def custom_sh_cmd(cmd_inp):
             if reset_flag['R']:
                 if len(cmd_inp.split(' ')) > 1:
                     if cmd_inp.split(' ')[1] == '-nr':
-                        ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
+                        ssl_cp.ssl_repl("ssl_client.switch_wrepl();gc.collect()")
                         time.sleep(0.5)
                     elif cmd_inp.split(' ')[1] == '-hr':
                         print('Device Hard Reset...')
@@ -2524,10 +2544,10 @@ def custom_sh_cmd(cmd_inp):
                         print('Done!')
                 else:
                     print('Rebooting device...')
-                    ssl_cp.send_message("\x04")
+                    ssl_cp.send_message("ssl_client.switch_wrepl();gc.collect()\r\x04")
                     print('Done!')
             else:
-                ssl_cp.ssl_repl("ssl_client.switch_wrepl()")
+                ssl_cp.ssl_repl("ssl_client.switch_wrepl();gc.collect()")
                 time.sleep(0.5)
             espdev.close_wconn()
         # time.sleep(0.5)

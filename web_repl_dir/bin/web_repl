@@ -20,6 +20,7 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.filters import Condition
+import asyncio
 
 
 # KEYPRESS EVENTS
@@ -474,7 +475,11 @@ def on_close(ws):
     sys.exit(1)
 
 
+# loop = asyncio.new_event_loop()
+
+
 def on_open(ws):
+    # asyncio.set_event_loop(loop)
     def run(*args):
         global input
         global inp
@@ -509,10 +514,13 @@ def on_open(ws):
                     # WS ON_MESSAGE CALLBACK DOES THE PRINTING WORK
                     # ConditionalAutoSuggest(AutoSuggestFromHistory(), autosuggest_is_on)
                     # AutoSuggestFromHistory()
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
                     inp = session_p.prompt(
                         prompt,
                         auto_suggest=ConditionalAutoSuggest(AutoSuggestFromHistory(),
                                                             autosuggest_is_on), key_bindings=kb)
+
                 try:
                     if len(inp) != 1 or inp[0] < 'A' or inp[0] > 'E':
                         inp += "\r\n"
