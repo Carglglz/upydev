@@ -150,6 +150,7 @@ Device shell commands:
     - df   : to see filesystem flash usage (and SD if already mounted)
     - du   : display disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
     - meminfo: to see RAM info
+    - dump_mem: to do a memory dump
     - whoami : to see user, system and machine info
     - datetime: to see device datetime (if not set, will display uptime)
     - set_localtime : to set the device datetime from the local machine time
@@ -174,6 +175,8 @@ Device shell commands:
     - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns) (encryption mode only)
     -  bat    : prints the content of a '.py' file with Python syntax hightlighting (named after https://github.com/sharkdp/bat)
     - rcat   : prints the raw content of a file (encryption mode only)
+    - timeit : to measure execution time of a script/command
+    - i2c    : config/scan (config must be used first, i2c config -scl [SCL] -sda [SDA]
     - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
              to exit without reset do 'exit -nr'
              to exit and do hard reset 'exit -hr'
@@ -186,6 +189,7 @@ Device shell commands:
     - l_micropython: if "micropython" local machine version available in $PATH, runs it.
     - python : switch to local python3 repl
     - vim    : to edit a local file with vim  (e.g. vim script.py)
+    - emacs  : to edit a local file with emacs (e.g. emacs script.py)
     - l_ifconfig: to see local machine STATION interface configuration (IP, SUBNET, GATEAWAY, DNS)
     - l_ifconfig_t: to see local machine STATION interface configuration in table format
                   (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
@@ -198,6 +202,12 @@ Device shell commands:
     - upipl : (usage 'upipl' or 'upipl [module]' display available micropython packages that can be installed with install command
     - pkg_info: to see the PGK-INFO file of a module if available at pypi.org or micropython.org/pi
     - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
+    - git : to call git commands and integrate the git workflow into a project (needs 'git' available in $PATH)
+            Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device.
+            Use 'git log dev' to see the latest commit pushed to the device ('git log dev -a' to see all commits)
+            Use 'git log host' to see the latest commit in the local repo
+            Use 'git clone_dev' to clone the local repo into the device
+            Any other git command will be echoed directly to git
 
 Some examples of these commands:
 

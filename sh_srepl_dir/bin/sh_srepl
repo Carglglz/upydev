@@ -728,7 +728,7 @@ Custom keybindings:
 - CTRL-e : paste mode in repl,(in shell mode set cursor position at the end)/ (edit mode after 'edit' shell command)
 - CTRL-d : ends paste mode in repl, (ends edit mode after 'edit' shell command)
           (or soft-reset in repl, CTRL-C to start repl again)
-- CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
+- CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste or edit mode
 - CTRL-b : prints MicroPython version and sys platform
 - CTRL-r : to flush line buffer
 - CTRL-o : to list files in cwd (sz shorcut command)

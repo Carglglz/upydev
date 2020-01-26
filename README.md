@@ -100,6 +100,12 @@ Esp8266 Huzzah feather
 
 `$ pip install upydev`
 
+or
+
+``$ pip install --upgrade upydev`` 
+
+to update to the last version available
+
 #### Quick Reference:
 
 ##### Help:
@@ -193,11 +199,13 @@ How to use it:
   
   ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/SSLWebREPL_demo.gif)
   
-  **New in version 0.2.0: Mode 'sh_srepl', a Serial repl/shell ** (*experimental)
+  **New in version 0.2.0: Mode 'sh_srepl', a Serial shell/repl ** (*experimental)
+  
+  See [SERIAL SHELL-REPL](instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/SERIAL_SHELL_REPL_docs.md)) for detailed info or
   
   See **uPydev Mode/Tools** : **sh_srepl** and **shr** modes.
   
-  See [changelog](https://github.com/Carglglz/upydev/blob/master/changelog.md) for new commands
+  See [changelog](https://github.com/Carglglz/upydev/blob/master/changelog.md) for new commands in both SSLWebREPL and SERIAL SHELL-REPL.
 
 ------
 
