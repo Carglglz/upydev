@@ -201,7 +201,7 @@ How to use it:
   
   **New in version 0.2.0: Mode 'sh_srepl', a Serial shell/repl ** (*experimental)
   
-  See [SERIAL SHELL-REPL](instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/SERIAL_SHELL_REPL_docs.md)) for detailed info or
+  See [SERIAL SHELL-REPL instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/SERIAL_SHELL_REPL_docs.md) for detailed info or
   
   See **uPydev Mode/Tools** : **sh_srepl** and **shr** modes.
   
