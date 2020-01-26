@@ -1814,7 +1814,7 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             pass
 
-    if 'python' in cmd_inp.split(' ')[0]:
+    if cmd_inp.split(' ')[0].startswith('python'):
         print('<-- Local machine Python -->')
         print('Use Ctrl-D to exit')
         try:
@@ -2613,7 +2613,7 @@ def autocomppress(event):
                 color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
                     "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
                 print(color_p)
-            if last_cmd in custom_sh_cmd_kw:
+            if last_cmd.split()[0] in custom_sh_cmd_kw:
                 custom_sh_cmd(last_cmd)
             else:
                 inp, frst_cmd = map_upysh(last_cmd)

@@ -2187,7 +2187,7 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             pass
 
-    if 'python' in cmd_inp.split(' ')[0]:
+    if cmd_inp.split(' ')[0].startswith('python'):
         print('<-- Local machine Python -->')
         print('Use Ctrl-D to exit')
         try:
@@ -2611,18 +2611,43 @@ def custom_sh_cmd(cmd_inp):
                                 send_custom_sh_cmd("os.mkdir('{}')".format(_dir[1]))
                     # for _dir in order_dirs:
                     #     send_custom_sh_cmd("os.mkdir('{}')".format(_dir[1]))
+                if not encrypted_flag['sec']:
+                    if len(files_to_put_dir) > 0:
+                        print('Files to push:')
+                        try:
+                            ssl_cp.enable_wrepl_io()
+                        except Exception as e:
+                            pass
+                        file = ' '.join(files_to_put_dir)
+                        put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
+                            file, args.t, args.p, '')
 
-                if len(files_to_put_dir) > 0:
-                    print('Files to push:')
-                for file in files_to_put_dir:
-                    print('- {}'.format(file))
-                ssl_htool.start_SOC()
-                for file in files_to_put_dir:
-                    ssl_htool.put(file)
+                        put_cmd = shlex.split(put_str)
+                        try:
+                            put_file = subprocess.call(put_cmd)
+                            try:
+                                ssl_cp.enable_wrepl_io()
+                            except Exception as e:
+                                pass
+                        except KeyboardInterrupt:
+                            try:
+                                ssl_cp.enable_wrepl_io()
+                            except Exception as e:
+                                pass
+                            pass
+                            print('Operation aborted')
+                else:
+                    if len(files_to_put_dir) > 0:
+                        print('Files to push:')
+                    for file in files_to_put_dir:
+                        print('- {}'.format(file))
+                    ssl_htool.start_SOC()
+                    for file in files_to_put_dir:
+                        ssl_htool.put(file)
+                        time.sleep(0.2)
+                    # shr_cp.sh_repl("print('Done!')")
                     time.sleep(0.2)
-                # shr_cp.sh_repl("print('Done!')")
-                time.sleep(0.2)
-                ssl_htool.stop_SOC()
+                    ssl_htool.stop_SOC()
                 # Save commit log in dev
                 log_to_dev += b'---'*10+b'\n'
                 send_custom_sh_cmd("gitlog = open('.gitlog', 'ab+');gitlog.seek(0);gl=gitlog.read();gitlog.seek(0)")
@@ -2646,11 +2671,20 @@ def custom_sh_cmd(cmd_inp):
 
         elif 'log' in cmd_git and 'dev' in cmd_git:
             if '-a' in cmd_git:
-                ssl_cp.ssl_repl("cat('.gitlog')"+';gc.collect()', follow=True)
+                if not encrypted_flag['sec']:
+                    espdev.close_wconn()
+                    espdev.cmd("cat('.gitlog')"+';gc.collect()')
+                    espdev.open_wconn()
+                else:
+                    ssl_cp.ssl_repl("cat('.gitlog')"+';gc.collect()', follow=True)
             else:
-                log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
-                # print(log_dev_head)
-                log_info_list = log_dev_head.split('---'*10)[0].split('\n')
+                if not encrypted_flag['sec']:
+                    log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()', True)
+                    log_info_list = [line.replace('\r','') for line in log_dev_head[:6] if line.replace('\r', '') != '']
+                else:
+                    log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
+                    # print(log_dev_head)
+                    log_info_list = log_dev_head.split('---'*10)[0].split('\n')
                 head_dev = ' ({}HEAD -> {}{}'.format(BCYAN, CGREEN, dev_platform+CEND+YELLOW)
                 commit = "{}{}){}".format(YELLOW, log_info_list[0] + head_dev, CEND)
                 print(commit)
@@ -2850,7 +2884,7 @@ def autocomppress(event):
                 color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
                     "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
                 print(color_p)
-            if last_cmd in custom_sh_cmd_kw:
+            if last_cmd.split()[0] in custom_sh_cmd_kw:
                 custom_sh_cmd(last_cmd)
             else:
                 inp, frst_cmd = map_upysh(last_cmd)
