@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - 'timeit' command to measure execution time of a script/command (for SSL/SERIAL SHELLS)
 - 'i2c' +'config/scan' to configurate i2c and scan to find i2c devices (for SSL/SERIAL SHELLS)
+- 'git' commands integration + 'git push dev', 'git log dev [-a]' to integrate git workflow into a project (for SSL/SERIAL SHELLS)
 ### Fix
 - Autocompletion in REPLS improved
 - pyboard firmware improved (automatically enables DFU mode, jumper doesn't needed)
