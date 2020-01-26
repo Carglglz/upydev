@@ -827,6 +827,7 @@ shell_commands_info = """
             Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device.
             Use 'git log dev' to see the latest commit pushed to the device ('git log dev -a' to see all commits)
             Use 'git log host' to see the latest commit in the local repo
+            Use 'git clone_dev' to clone the local repo into the device
             Any other git command will be echoed directly to git
 
 
@@ -2447,6 +2448,28 @@ def custom_sh_cmd(cmd_inp):
             git_pull_diff_cmd = shlex.split('git show --name-only --oneline FETCH_HEAD')
             files_to_pushdev = [file for file in subprocess.check_output(git_pull_diff_cmd).decode().split('\n')[1:] if file != '']
             git_diff_files['diff'] = files_to_pushdev
+
+        elif 'clone_dev' in cmd_git:
+            print('File/s to put:')
+            file = 'cwd'
+            if file == 'cwd':
+                files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl) and not fl.startswith('.')]
+                for file in files_to_put:
+                    print('- {}'.format(file))
+                shr_htool.start_SOC()
+                for file in files_to_put:
+                    shr_htool.put(file)
+                    time.sleep(0.2)
+                # ssl_cp.ssl_repl("print('Done!')")
+                time.sleep(0.2)
+                shr_htool.stop_SOC()
+
+            dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
+            print('Dir/s to sync:')
+            for _dir in dirs_to_sync:
+                print('- {}'.format(_dir))
+                # print('Directory to sync: {}'.format(dir_to_sync))
+                d_sync_recursive(_dir, show_tree=True, root_sync_folder=_dir)
 
         elif 'log' in cmd_git and 'dev' in cmd_git:
             if '-a' in cmd_git:
