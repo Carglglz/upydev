@@ -247,11 +247,12 @@ Device shell commands:
   - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
   - update_upyutils: to install 'upydev update_upyutils' scripts in the device
   - git : to call git commands and integrate the git workflow into a project (needs 'git' available in $PATH)
-        Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device.
-        Use 'git log dev' to see the latest commit pushed to the device ('git log dev -a' to see all commits)
-        Use 'git log host' to see the latest commit in the local repo
-        Use 'git clone_dev' to clone the local repo into the device
-        Any other git command will be echoed directly to git
+    - Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device.
+    - Use 'git log dev' to see the latest commit pushed to the device ('git log dev -a' to see all commits)
+    - Use 'git log host' to see the latest commit in the local repo
+    - Use 'git status dev' to see if the local repo is ahead of the device repo and track these changes
+    - Use 'git clone_dev' to clone the local repo into the device
+    - Any other git command will be echoed directly to git
 
 Some examples of these commands:
 

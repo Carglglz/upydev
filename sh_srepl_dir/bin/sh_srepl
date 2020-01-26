@@ -824,9 +824,10 @@ shell_commands_info = """
     - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
     - update_upyutils: to install 'upydev update_upyutils' scripts in the device
     - git : to call git commands and integrate the git workflow into a project (needs 'git' available in $PATH)
-            Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device.
+            Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device. (Just the latest commit)
             Use 'git log dev' to see the latest commit pushed to the device ('git log dev -a' to see all commits)
             Use 'git log host' to see the latest commit in the local repo
+            Use 'git status dev' to see if the local repo is ahead of the device repo and track these changes
             Use 'git clone_dev' to clone the local repo into the device
             Any other git command will be echoed directly to git
 
@@ -2381,7 +2382,7 @@ def custom_sh_cmd(cmd_inp):
             #     print(e)
             files_to_push = git_diff_files['diff']
             if len(files_to_push) == 0:
-                print('On branch master\nnothing to push to {}, working tree clean'.format(dev_platform))
+                print('Everything up-to-date with {}'.format(dev_platform))
             else:
                 # Parse changed files
                 print('Changes to push:')
@@ -2478,7 +2479,7 @@ def custom_sh_cmd(cmd_inp):
                 log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
                 # print(log_dev_head)
                 log_info_list = log_dev_head.split('---'*10)[0].split('\n')
-                head_dev = ' ({}HEAD -> {}{}'.format(BCYAN, CGREEN, dev_platform+CEND+YELLOW)
+                head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN,CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
                 commit = "{}{}){}".format(YELLOW, log_info_list[0] + head_dev, CEND)
                 print(commit)
                 print(log_info_list[1])
@@ -2488,6 +2489,24 @@ def custom_sh_cmd(cmd_inp):
         elif 'log' in cmd_git and 'host' in cmd_git:
             cmd_git = shlex.split('git log -1')
             subprocess.call(cmd_git)
+
+        elif 'status' in cmd_git and 'dev' in cmd_git:
+            cmd_git = shlex.split('git log -1')
+            local_gitlog = subprocess.check_output(cmd_git).decode().split()[1]
+            log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
+            # print(log_dev_head)
+            log_info_list = log_dev_head.split('---'*10)[0].split('\n')
+            if local_gitlog == log_info_list[0].split()[1]:
+                status_msg = "On branch master\nYour branch is up to date with '{}'.\n\nnothing to commit, working tree clean".format(dev_platform)
+            else:
+                if len(git_diff_files['diff']) > 0:
+                    status_msg = "On branch master\nYour branch is ahead of '{0}' by 1 commit.\n (use 'git push dev' to push your local commits to {0})\n\nnothing to commit, working tree clean".format(dev_platform)
+                else:
+                    cmd_git_l = shlex.split('git log -1 -p --name-only')
+                    localgitlog_latest_commit =[fl for fl in subprocess.check_output(cmd_git_l).decode().split('\n') if fl != ''][4:]
+                    git_diff_files['diff'] = localgitlog_latest_commit
+                    status_msg = "On branch master\nYour branch is ahead of '{0}' by X commits not tracked by upydev.\n (use 'git push dev' to push last commit changes to {0})\n\nnothing to commit, working tree clean".format(dev_platform)
+            print(status_msg)
 
         elif 'repo' in cmd_git:
             remote_repo_cmd = shlex.split('git remote -v')
