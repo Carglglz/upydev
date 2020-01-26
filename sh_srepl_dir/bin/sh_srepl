@@ -683,13 +683,13 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'apconfig', 'apconfig_t', 'meminfo', 'install',
                     'apscan', 'touch', 'edit', 'srepl',
                     'whoami', 'exit', 'pwdl', 'lsl', 'cdl', 'put', 'get',
-                    'catl', 'l_micropython', 'ls', 'python', 'python3' ,'vim',
+                    'catl', 'l_micropython', 'ls', 'python', 'python3', 'vim',
                     'set_localtime', 'tree', 'l_ifconfig',
                     'l_ifconfig_t', 'reload', 'docs', 'flush_soc',
                     'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
-                    'timeit', 'i2c', 'dump_mem', 'git']
+                    'timeit', 'i2c', 'dump_mem', 'git', 'emacs']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -808,6 +808,7 @@ shell_commands_info = """
     - l_micropython: if "micropython" local machine version available in $PATH, runs it.
     - python : switch to local python3 repl
     - vim    : to edit a local file with vim  (e.g. vim script.py)
+    - emacs  : to edit a local file with emacs (e.g. emacs script.py)
     - l_ifconfig: to see local machine STATION interface configuration (IP, SUBNET, GATEAWAY, DNS)
     - l_ifconfig_t: to see local machine STATION interface configuration in table format
                   (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
@@ -1836,7 +1837,7 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp.split(' ')[0] == 'vim':
         print('<-- Vim editor -->')
         print('Use I to insert; (ESC , :w) to write; (ESC ,:q) to exit')
-        time.sleep(2)
+        time.sleep(1)
         try:
             file_to_edit = cmd_inp.split(' ')[1]
             lvim = 'vim {}'.format(file_to_edit)
@@ -1848,6 +1849,28 @@ def custom_sh_cmd(cmd_inp):
                 print('Vim editor not found')
         except Exception as e:
             print('Indicate a file to edit')
+            pass
+
+    if 'emacs' in cmd_inp.split(' ')[0]:
+        print('<-- Emacs editor -->')
+        print('Use Ctrl-x-Ctrl-s to Save,  Ctrl-x-Ctrl-c to exit')
+        time.sleep(1)
+        try:
+            file_to_edit = cmd_inp.split(' ')[1]
+            lemacs = 'emacs {}'.format(file_to_edit)
+            lemacs_cmd = shlex.split(lemacs)
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+            try:
+                l_emacs = subprocess.call(lemacs_cmd, preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+                print('Local Emacs not found')
+        except Exception as e:
+            print(e)
             pass
 
     if cmd_inp == 'set_localtime':
