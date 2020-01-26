@@ -683,22 +683,24 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'apconfig', 'apconfig_t', 'meminfo', 'install',
                     'apscan', 'touch', 'edit', 'srepl',
                     'whoami', 'exit', 'pwdl', 'lsl', 'cdl', 'put', 'get',
-                    'catl', 'l_micropython', 'ls', 'python', 'vim',
+                    'catl', 'l_micropython', 'ls', 'python', 'python3' ,'vim',
                     'set_localtime', 'tree', 'l_ifconfig',
                     'l_ifconfig_t', 'reload', 'docs', 'flush_soc',
                     'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
-                    'timeit', 'i2c', 'dump_mem']
+                    'timeit', 'i2c', 'dump_mem', 'git']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
+YELLOW = '\u001b[33m'
+BCYAN = '\u001b[36;1m'
 ABLUE_bold = '\u001b[34;1m'
 MAGENTA_bold = '\u001b[35;1m'
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
 
-
+git_diff_files = {'diff': [], 'commit': ''}
 # START IN SHELL MODE
 if shell_mode['S']:
     prompt['p'] = d_prompt
@@ -820,6 +822,11 @@ shell_commands_info = """
     - pkg_info: to see the PGK-INFO file of a module if available at pypi.org or micropython.org/pi
     - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
     - update_upyutils: to install 'upydev update_upyutils' scripts in the device
+    - git : to call git commands and integrate the git workflow into a project (needs 'git' available in $PATH)
+            Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device.
+            Use 'git log dev' to see the latest commit pushed to the device ('git log dev -a' to see all commits)
+            Use 'git log host' to see the latest commit in the local repo
+            Any other git command will be echoed directly to git
 
 
 """
@@ -1806,11 +1813,11 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             pass
 
-    if cmd_inp.split(' ')[0] == 'python':
+    if 'python' in cmd_inp.split(' ')[0]:
         print('<-- Local machine Python -->')
         print('Use Ctrl-D to exit')
         try:
-            lpy = 'python'
+            lpy = cmd_inp.split(' ')[0]
             lpy_cmd = shlex.split(lpy)
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -1986,7 +1993,7 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp == 'get_rawbuff':
         print(shr_cp.raw_buff)
 
-    if cmd_inp == 'l_tree':
+    if cmd_inp.split()[0] == 'l_tree':
         try:
             if len(cmd_inp.split(' ')) > 1:
                 if cmd_inp.split(' ')[1] == '-a':
@@ -2336,6 +2343,113 @@ def custom_sh_cmd(cmd_inp):
                     print('No device found')
         except Exception as e:
             print('Indicate i2c mode (config/scan)')
+
+    if cmd_inp.split()[0] == 'git':
+        cmd_git = shlex.split(cmd_inp)
+        if 'push' in cmd_git and 'dev' in cmd_git:  # push changes to "dev repo"
+            # Parse changed files
+            # try:
+            #     latest_commit = shlex.split('git show --name-only --oneline HEAD')
+            #     commit_sha = subprocess.check_output(latest_commit).decode().split()[0]
+            #     files_diff = shlex.split('git ls-tree --name-only -r {}'.format(commit_sha))
+            #     files_to_push = subprocess.check_output(files_diff).decode().splitlines()
+            # except Exception as e:
+            #     print(e)
+            files_to_push = git_diff_files['diff']
+            if len(files_to_push) == 0:
+                print('On branch master\nnothing to push to {}, working tree clean'.format(dev_platform))
+            else:
+                # Parse changed files
+                print('Changes to push:')
+                latest_commit = shlex.split('git show --name-only --oneline HEAD')
+                subprocess.call(latest_commit)
+                files_to_put_dir = [fl for fl in files_to_push if os.path.isfile(fl)]
+                dirs_to_put_dir = ['/'.join(dir.split('/')[:-1]) for dir in files_to_put_dir]
+                # dirs_to_put_dir = [fl for fl in os.listdir() if not os.path.isfile(fl) and fl in files_to_push]
+                # print(files_to_put_dir)
+                # print(dirs_to_put_dir)
+                log_cmd = shlex.split('git log -1')
+                log_to_dev = subprocess.check_output(log_cmd)
+
+                cwd_now = send_custom_sh_cmd("os.getcwd()")
+                if len(files_to_put_dir) > 0:
+                    if dev_platform == 'pyboard':
+                        send_custom_sh_cmd("cd('/')")
+                        send_custom_sh_cmd("cd('/flash')")
+                    else:
+                        send_custom_sh_cmd("cd('/')")
+                if len(dirs_to_put_dir) > 0:
+                    print('New directories to make:')
+                    order_dirs = [(len(dir.split('/')), dir) for dir in dirs_to_put_dir if dir != '']
+                    order_dirs.sort()
+                    # check if already in dev:
+                    for _dir in order_dirs:
+                        if '/' in _dir[1]:
+                            dir_in_dev = send_custom_sh_cmd("os.listdir('{}')".format('/'+'/'.join(_dir[1].split('/')[:-1])))
+                        else:
+                            dir_in_dev = send_custom_sh_cmd("os.listdir()")
+                        if _dir[1].split('/')[-1] not in dir_in_dev:
+                            if _dir[1] != '':
+                                print('- {}'.format(_dir[1]))
+                                send_custom_sh_cmd("os.mkdir('{}')".format(_dir[1]))
+                    # for _dir in order_dirs:
+                    #     send_custom_sh_cmd("os.mkdir('{}')".format(_dir[1]))
+
+                if len(files_to_put_dir) > 0:
+                    print('Files to push:')
+                for file in files_to_put_dir:
+                    print('- {}'.format(file))
+                shr_htool.start_SOC()
+                for file in files_to_put_dir:
+                    shr_htool.put(file)
+                    time.sleep(0.2)
+                # shr_cp.sh_repl("print('Done!')")
+                time.sleep(0.2)
+                shr_htool.stop_SOC()
+                # Save commit log in dev
+                log_to_dev += b'---'*10+b'\n'
+                send_custom_sh_cmd("gitlog = open('.gitlog', 'ab+');gitlog.seek(0);gl=gitlog.read();gitlog.seek(0);gitlog.write({});gitlog.write(gl);gitlog.close()".format(log_to_dev))
+                send_custom_sh_cmd("cd('{}')".format(cwd_now))
+                git_diff_files['diff'] = []
+        elif 'commit' in cmd_git:
+            status_cmd = shlex.split('git status -s')
+            files_to_push = [file for file in subprocess.check_output(status_cmd).decode().split('\n') if file != '']
+            files_to_pushdev = [file.split()[1] for file in files_to_push if file.split()[0] == 'M' or file.split()[0] == 'A']
+            git_diff_files['diff'] = files_to_pushdev
+            # print(git_diff_files)
+            subprocess.call(cmd_git)
+
+        elif 'pull' in cmd_git:
+            subprocess.call(cmd_git)
+            git_pull_diff_cmd = shlex.split('git show --name-only --oneline FETCH_HEAD')
+            files_to_pushdev = [file for file in subprocess.check_output(git_pull_diff_cmd).decode().split('\n')[1:] if file != '']
+            git_diff_files['diff'] = files_to_pushdev
+
+        elif 'log' in cmd_git and 'dev' in cmd_git:
+            if '-a' in cmd_git:
+                shr_cp.sh_repl("cat('.gitlog')"+';gc.collect()', follow=True)
+            else:
+                log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
+                # print(log_dev_head)
+                log_info_list = log_dev_head.split('---'*10)[0].split('\n')
+                head_dev = ' ({}HEAD -> {}{}'.format(BCYAN, CGREEN, dev_platform+CEND+YELLOW)
+                commit = "{}{}){}".format(YELLOW, log_info_list[0] + head_dev, CEND)
+                print(commit)
+                print(log_info_list[1])
+                print(log_info_list[2])
+                print('')
+                print(log_info_list[3])
+        elif 'log' in cmd_git and 'host' in cmd_git:
+            cmd_git = shlex.split('git log -1')
+            subprocess.call(cmd_git)
+
+        elif 'repo' in cmd_git:
+            remote_repo_cmd = shlex.split('git remote -v')
+            git_repo = subprocess.check_output(remote_repo_cmd)
+            webbrowser.open(git_repo.split()[1].decode())
+
+        else:
+            subprocess.call(cmd_git)
 
     if cmd_inp.split(' ')[0] == 'exit':
         if reset_flag['R']:
