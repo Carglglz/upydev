@@ -403,7 +403,7 @@ class SSL_REPL_server:
                                     if isinstance(var, list) or isinstance(var, dict):
                                         print(var)
                             except Exception as e:
-                                if inp.split(';')[0].startswith('cat') and inp.split(';')[0].endswith(".txt')"):
+                                if inp.split(';')[0].startswith('cat') and (inp.split(';')[0].endswith(".txt')") or inp.split(';')[0].endswith(".py')")):
                                     if b'>>> ' in self.buff:
                                         last_line = self.buff.decode().split('\n')[-1].replace('\r', '').replace('>>> ', '')
                                         if last_line != '':
@@ -498,7 +498,7 @@ class SSL_REPL_server:
 
                 if not silent:
                     if color:
-                        self.colored(b'\n'.join(self.raw_buff.splitlines()[1:-1]).decode())
+                        self.colored(b'\n'.join(self.raw_buff.splitlines()[1:-1]+[self.raw_buff.splitlines()[-1].replace(b'>>> ', b'')]).decode())
                     else:
                         print(self.output)
             if traceback:
