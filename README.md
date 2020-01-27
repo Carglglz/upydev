@@ -114,9 +114,9 @@ In CLI do :
 
 `$ upydev -h`
 
-##### Configurate uPy Device:
+##### Configure uPy Device:
 
-1st step: Configurate upy device target and password:
+1st step: Configure upy device target and password:
 
 - To save configuration in working directory:
 
@@ -350,12 +350,12 @@ Example: Raw commands
        "upydev ping -@foo_device"
 - **sh_srepl**: To enter the serial terminal SHELL-REPL; CTRL-x to exit,
       To see more keybindings info do CTRL-k. By default resets after exit.
-      To configurate a serial device use -t for baudrate and -p for serial port
+      To configure a serial device use -t for baudrate and -p for serial port
       To acces without previous configuration: "sh_srepl -port [serial port] -b [baudrate]"
       (default baudrate is 115200)
       To acces with previous configuration:
-          - "sh_srepl" (if device configurated in current working directory)
-          - "sh_srepl -@ foo_device" (if foo_device is configurated in global group 'UPY_G')
+  - "sh_srepl" (if device configured in current working directory)
+  - "sh_srepl -@ foo_device" (if foo_device is configured in global group 'UPY_G')
 - **shr**: to acces the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.:
       "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
     The device can be accesed as "upydev shr@foo_device"

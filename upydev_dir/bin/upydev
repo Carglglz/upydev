@@ -1296,12 +1296,12 @@ helparg = '''Mode:
 
 - sh_srepl: To enter the serial terminal SHELL-REPL; CTRL-x to exit,
             To see more keybindings info do CTRL-k. By default resets after exit.
-            To configurate a serial device use -t for baudrate and -p for serial port
+            To configure a serial device use -t for baudrate and -p for serial port
             To access without previous configuration: "sh_srepl -port [serial port] -b [baudrate]"
             (default baudrate is 115200)
             To access with previous configuration:
-                - "sh_srepl" (if device configurated in current working directory)
-                - "sh_srepl -@ foo_device" (if foo_device is configurated in global group 'UPY_G')
+                - "sh_srepl" (if device configured in current working directory)
+                - "sh_srepl -@ foo_device" (if foo_device is configured in global group 'UPY_G')
 
 - shr: to access the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.:
       "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this
@@ -1353,9 +1353,9 @@ upy Commands:
 - apconfig : AP configuration of essid and password with authmode WPA/WPA2/PSK,
             (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
 - apscan : scan devices connected to AP; returns number of devices and mac address
-- i2c_config : to configurate the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
+- i2c_config : to configure the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
 - i2c_scan : to scan i2c devices (must config i2c pins first)
-- spi_config: to configurate the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
+- spi_config: to configure the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
 - set_localtime: to pass host localtime and set upy device rtc
 - set_ntptime: to set rtc from server, (see -utc for time zone)
 - get_datetime: to get date and time (must be set first, see above commands)
@@ -1364,13 +1364,13 @@ upy Commands:
 - wlan_init: Initiates wlan util (call this before the following commands)
 - wsta_config: Saves a "netowrk STA" configuration json file in upydevice, use with -wp option as -wp 'ssid' 'password'
 - wap_config: Saves a "netowrk AP" configuration json file in upydevice, use with -ap option as -ap 'ssid' 'password'
-- wsta_conn: Connects to the wlan configurated with the command wsta_config
-- wap_conn: Enables the upydevice AP configurated with the command wap_config
+- wsta_conn: Connects to the wlan configured with the command wsta_config
+- wap_conn: Enables the upydevice AP configured with the command wap_config
 
 > SD
 - sd_enable: to enable/disable the LDO 3.3V regulator that powers the SD module
              use -po option to indicate the Pin.
-- sd_init: to initialize the sd card; (spi must be configurated first)
+- sd_init: to initialize the sd card; (spi must be configured first)
            create sd object and mounts as a filesystem, needs sdcard.py see
            https://github.com/Carglglz/upydev/blob/master/DOCS/Documentation.md#sd_init
 - sd_deinit: to unmount sd card
@@ -1384,12 +1384,12 @@ Sensors:
     * ADC:
         ^ON BOARD ADCS:
         - adc_config : to config analog pin to read from (see pinout, -po and -att)
-        - aread : to read from an analog pin previously configurated
+        - aread : to read from an analog pin previously configured
 
         ^EXTERNAL ADC: (I2C) ADS1115 ***
-        - ads_init : to initialize and configurate ADS1115 and the channel to
+        - ads_init : to initialize and configure ADS1115 and the channel to
                     read from (see -ads, -ch)
-        - ads_read : to read from analog pin previously configurated
+        - ads_read : to read from analog pin previously configured
                 (see -tm option for stream mode, and -f for logging*)
                 * for one shot read, logging is also available with -f and
                     -n option (for tagging)
@@ -1457,10 +1457,10 @@ Sensors:
                         use -to option as -to ['R' or 'L'] [VELOCITY] (60-512)
         - dcmotor_stop: to stop the DC motor
     * SERVO:
-        - servo_config: to configurate the servo pin with -po option
+        - servo_config: to configure the servo pin with -po option
         - servo_angle: to move the servo an angle indicated by -opt option
     * STEPPER MOTOR:
-        - stepper_config: to configurate the step and direction pin with -po option
+        - stepper_config: to configure the step and direction pin with -po option
                             *( -po [DIR_PIN] [STEP_PIN])
         - stepper_move: to move the stepper to right or left, at a velocity and
                        a numbers of steps indicated with -to option: [R or L] [velocity] [# steps]
@@ -3624,7 +3624,7 @@ def address_entry_point(entry_point, group_file=''):
         dev_pass = devices[entry_point][1]
         return (dev_ip, dev_pass)
     else:
-        print('Device not configurated in global group: {}'.format(group_file))
+        print('Device not configured in global group: {}'.format(group_file))
         sys.exit()
 #############################################
 
@@ -4536,7 +4536,7 @@ elif args.m == 'upy':
             except Exception as e:
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
         else:
-            print('Device Not configurated PASSWORD NEEDED')
+            print('Device Not configured PASSWORD NEEDED')
             my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
             try:
                 cryp_wrepl(entry_point, my_p, usr=entry_point)
@@ -4575,7 +4575,7 @@ elif args.m == 'ssl':
             except Exception as e:
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
         else:
-            print('Device Not configurated PASSWORD NEEDED')
+            print('Device Not configured PASSWORD NEEDED')
             my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
             try:
                 ssl_wrepl(entry_point, my_p, usr=entry_point)
@@ -5768,7 +5768,7 @@ elif args.m == 'adc_config':
                         else:
                             print(e)
                             pass
-            print('Pin {} configurated as Analog Input with {} attenuation'.format(
+            print('Pin {} configured as Analog Input with {} attenuation'.format(
                 adc_pin, ATTEN_DICT[int(args.att)][4:]))
         sys.exit()
 
@@ -6634,7 +6634,7 @@ elif args.m == 'dac_config':
                     else:
                         print(e)
                         pass
-        print('Pin {} configurated as Analog Output'.format(
+        print('Pin {} configured as Analog Output'.format(
             dac_pin))
     sys.exit()
 
@@ -6693,7 +6693,7 @@ elif args.m == 'dac_sig':
                     else:
                         print(e)
                         pass
-        print('Signal type {} with Amplitude {} V and fq {} Hz configurated'.format(
+        print('Signal type {} with Amplitude {} V and fq {} Hz configured'.format(
             *args.sig))
     elif args.sig[0] == cmds[0]:
         signal_cmd = "sig.start()"
@@ -6794,7 +6794,7 @@ elif args.m == 'buzz_config':
                 else:
                     print(e)
                     pass
-    print('Pin {} configurated as PWM to drive the buzzer'.format(
+    print('Pin {} configured as PWM to drive the buzzer'.format(
         BUZZ_pin))
     sys.exit()
 
@@ -6913,7 +6913,7 @@ elif args.m == 'servo_config':
                 else:
                     print(e)
                     pass
-    print('Pin {} configurated as PWM to drive the Servo motor'.format(
+    print('Pin {} configured as PWM to drive the Servo motor'.format(
         servo_pin))
     sys.exit()
 
@@ -6974,7 +6974,7 @@ elif args.m == 'dcmotor_config':
                 else:
                     print(e)
                     pass
-    print('DC motor configurated: Direction Pin:{}, Opposite direction Pin: {}'.format(
+    print('DC motor configured: Direction Pin:{}, Opposite direction Pin: {}'.format(
         dir_pin, oppo_pin))
     sys.exit()
 
@@ -7060,7 +7060,7 @@ elif args.m == 'stepper_config':
                 else:
                     print(e)
                     pass
-    print('Stepper motor configurated: Direction Pin:{}, Step Pin: {}'.format(
+    print('Stepper motor configured: Direction Pin:{}, Step Pin: {}'.format(
         dir_pin, step_pin))
     sys.exit()
 
@@ -7133,7 +7133,7 @@ elif args.m == 'mqtt_config':
                 else:
                     print(e)
                     pass
-    print('MQTT Client configurated: ID: {}, BROKER: {}'.format(
+    print('MQTT Client configured: ID: {}, BROKER: {}'.format(
         id, b_addr))
     sys.exit()
 
