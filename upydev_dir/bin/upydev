@@ -1243,7 +1243,7 @@ helparg = '''Mode:
         'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME
         directory, named after the name of the script. To follow an on going 'daemon'
         mode log, use -follow option and indicate the script with -f option.
-- update_upyutils: to update the last versions of sync_tool.py, upylog.py,
+- update_upyutils: to update the latest versions of sync_tool.py, upylog.py,
                 upynotify.py, upysecrets.py, upysh2.py, ssl_repl.py, uping.py and time_it.py.
 - debug: to execute a local script line by line in the target upydevice, use -f option
         to indicate the file. To enter next line press ENTER, to finish PRESS C

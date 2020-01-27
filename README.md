@@ -324,9 +324,9 @@ Example: Raw commands
 
 * **log:** to log the output of a upydevice script, indicate script with -f option, and the sys.stdout log level and file log level with -dslev and -dflev (defaults are debug for sys.stdout and error for file). To log in background use -daemon option, then the log will be redirected to a file with level -dslev. To stop the 'daemon' log mode use -stopd and indicate script with -f option. 'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME directory, named after the name of the script. To follow an on going 'daemon' mode log, use -follow option and indicate the script with -f option.
 
-* **update_upyutils**: to update the last versions of sync_tool.py, upylog.py, upynotify.py, upysh2.py,
+* **update_upyutils**: to update the latest versions of sync_tool.py, upylog.py, upynotify.py, upysh2.py,
 
-     upysecrets.py, and ssl_repl.py (these are uploaded to the '/lib' folder of the upydevice)
+     upysecrets.py, ssl_repl.py, uping.py and time_it.py (these are uploaded to the '/lib' folder of the upydevice)
 
 * **debug**: to execute a local script line by line in the target upydevice, use -f option to indicate the file. To enter next line press ENTER, to finish PRESS C then ENTER. To break a while loop do CTRL+C.
 
