@@ -821,7 +821,7 @@ shell_commands_info = """
     - fw   : + list/get/update/latest firmware e.g (fw list latest, fw get latest) (use option -n [expresion to match])
             e.g. (fw get latest -n spiram, or fw get esp32-idf3-20200114-v1.12-63-g1c849d63a.bin)
     - flash : to flash a firmware file, e.g 'flash esp32-idf3-20200114-v1.12-63-g1c849d63a.bin'
-    - ldu   : display local path disk usage statistics (usage: "du", "du [dir or file]" + '-d' deep level option)
+    - ldu   : display local path disk usage statistics (usage: "ldu", "ldu [dir or file]" + '-d' deep level option)
     - upipl : (usage 'upipl' or 'upipl [module]' display available micropython packages that can be installed with install command
     - pkg_info: to see the PGK-INFO file of a module if available at pypi.org or micropython.org/pi
     - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
