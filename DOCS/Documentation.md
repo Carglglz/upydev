@@ -25,7 +25,7 @@
 	- [log](#log)
 	- [update_upyutils](#update_upyutils)
 	- [debug](#debug)
-	
+
 	- [make_group](#make_group)
 	- [mg_group](#mg_group)
 - [GROUP COMMAND MODE](#group-command-mode)
@@ -424,7 +424,7 @@ Done in 5.55 seconds
 
 ## d_sync
 
-to recursively sync a folder in upydevice filesystem use -dir to indicate the folder (must be in cwd), use 
+to recursively sync a folder in upydevice filesystem use -dir to indicate the folder (must be in cwd), use
 
 '-tree' to see dir structure or '-s sd' to sync to an Sd card mounted as 'sd'
 
@@ -710,7 +710,7 @@ To see more keybinding info do CTRL-k
 
 **To dedent an indented block or line use shif+tab*
 
-Custom keybindings:	
+Custom keybindings:
 
 - CTRL-x: to exit WebREPL
 - CTRL-e : Enters paste mode
@@ -749,7 +749,7 @@ $
 
 ## srepl
 
-to enter the terminal serial repl using picocom, indicate serial port by -port option 
+to enter the terminal serial repl using picocom, indicate serial port by -port option
 
 (to exit do CTRL-a, CTRL-x)
 (see: [Picocom](https://github.com/npat-efault/picocom) for more information)
@@ -795,7 +795,7 @@ Thanks for using picocom
 
 ## ping
 
-pings the target to see if it is reachable, CTRL-C to stop 
+pings the target to see if it is reachable, CTRL-C to stop
 
 ```
 $ upydev ping
@@ -1043,7 +1043,7 @@ to make a diagnostic test of the device (sends useful to commands to get device 
 
 to save report to file see -rep, use -n to save the report with a custom name (automatic name is "upyd_ID_DATETIME.txt"). Use -apmd option if connected to esp AP.
 
-List of test: 
+List of test:
 
 * PING
 * NMAP
@@ -1054,7 +1054,7 @@ List of test:
 * FLASH MEMORY + SD MEMORY (if any)
 * FILES IN FLASH (ordered by size)
 * FROZEN MODULES
-* MODULES IN LIB 
+* MODULES IN LIB
 * SCRIPTS IN ROOT DIRECTORY ('/')
 * I2C SCAN
 * RTC DATETIME CHECK
@@ -1113,7 +1113,7 @@ TOTAL TIME: 50.61 s
 
 To test download speed (from device to host). Default test is 10 MB of random bytes are
 
-sent in chunks of 20 kB and received in chunks of 32 kB. To change test parameters use -chunk_tx , 
+sent in chunks of 20 kB and received in chunks of 32 kB. To change test parameters use -chunk_tx ,
 
 chunk_rx, and -total_size. To use in 'AP' mode (connected to the AP of the device) use -apmd option.
 
@@ -1409,15 +1409,15 @@ DEVICE NAME: esp_room3, IP: 192.168.1.51
 
 
 
-## GROUP COMMAND MODE 
+## GROUP COMMAND MODE
 
 ### (-G option)
 
-To send a command to multiple devices in a group (made with make_group  command) use -G option 
+To send a command to multiple devices in a group (made with make_group  command) use -G option
 
 Usage:  `upydev [command] -G [GROUP NAME]`
 
-To target specific devices within a group use -devs option 
+To target specific devices within a group use -devs option
 
 Usage: `upydev [command] -G [GROUP NAME] -devs [DEV1 NAME] [DEV2 NAME] ... `
 
@@ -1459,17 +1459,17 @@ Device IP: 192.168.1.49
 Sending command led.on() ...
 ```
 
-## GROUP COMMAND PARALLEL MODE 
+## GROUP COMMAND PARALLEL MODE
 
 ### (-GP option)
 
-To send a command **at the same time** to multiple devices in a group (made with make_group  command) use -GP option 
+To send a command **at the same time** to multiple devices in a group (made with make_group  command) use -GP option
 
 ***Be aware that not all the commands are suitable for parallel execution (wrepl for example)*
 
 Usage:  `upydev [command] -GP [GROUP NAME]`
 
-To target specific devices within a group use -devs option 
+To target specific devices within a group use -devs option
 
 Usage: `upydev [command] -GP [GROUP NAME] -devs [DEV1 NAME] [DEV2 NAME] ... `
 
@@ -1984,7 +1984,7 @@ Saves a "netowrk STA" configuration json file in upydevice, use with -wp option 
 
 ```
 $ upydev wsta_config -wp TP-Link_DD98 mypass9123912
-DEFAULT WLAN: TP-Link_DD98 configurated
+DEFAULT WLAN: TP-Link_DD98 configured
 ```
 
 ### wap_config
@@ -1993,12 +1993,12 @@ Saves a "netowrk AP" configuration json file in upydevice, use with -ap option a
 
 ```
 $ upydev wap_config -ap ESP_32 u123pass_esp32
-AP: ESP_32 configurated
+AP: ESP_32 configured
 ```
 
 ### wsta_conn
 
-Connects to the wlan configurated with the command wsta_config
+Connects to the wlan configured with the command wsta_config
 
 ```
 $ upydev wsta_conn
@@ -2008,11 +2008,11 @@ Network Config: ('192.168.1.49', '255.255.255.0', '192.168.1.1', '84.28.51.220')
 
 ### wap_conn
 
-Enables the upydevice AP configurated with the command wap_config
+Enables the upydevice AP configured with the command wap_config
 
 ```
 $ upydev wap_conn
-Acces point configurated: ESP_32
+Acces point configured: ESP_32
 ('192.168.4.1', '255.255.255.0', '192.168.4.1', '0.0.0.0')
 ```
 
@@ -2037,7 +2037,7 @@ SD ENABLED
 
 ### sd_init
 
-to initialize the sd card; (spi must be configurated first)
+to initialize the sd card; (spi must be configured first)
 create sd object and mounts as a filesystem, needs sdcard.py from upytuils directory
 
 *Prints os.listdir('/') to see sd succesfully mounted*
@@ -2099,12 +2099,12 @@ to config analog pin to read from (see pinout, -po and -att)
 ```
 $ upydev adc_config -po 39 -att 3
 
-Pin 39 configurated as Analog Input with ATTN_11DB attenuation
+Pin 39 configured as Analog Input with ATTN_11DB attenuation
 ```
 
 #### aread  
 
-to read from an analog pin previously configurated
+to read from an analog pin previously configured
 
 ```
 $ upydev aread
@@ -2115,7 +2115,7 @@ Volts: 3.6
 
 
 
-### EXTERNAL ADC 
+### EXTERNAL ADC
 
 *This needs  the Module/sensor ADS1115, the library sensor 'ads1115.py' and the 'init_ADS.py' script in upyutils directory to be uploaded to the upy device*
 
@@ -2133,7 +2133,7 @@ Channel: A0 | Voltage Range: +/- 4.096 V | Gain: x1 V/V
 
 #### ads_read
 
-to read from an analog pin previously configurated
+to read from an analog pin previously configured
 (see -tm option for stream mode, and -f for logging*)
 
 for one shot read, logging is also available with -f and
@@ -2141,7 +2141,7 @@ for one shot read, logging is also available with -f and
 
 use '-f now' for automatic 'log_mode_datetime.txt' name.
 
-for stream mode profiling use -tm [ms] -ads test 
+for stream mode profiling use -tm [ms] -ads test
 
 ***One shot read:***
 
@@ -2175,7 +2175,7 @@ $ cat my_ads_log.txt
 {"V": 3.58, "TS": "my_test_point"}
 ```
 
-***Stream mode*** 
+***Stream mode***
 
 ```
 $ upydev ads_read -tm [TIMEOUT IN MILLISECONDS]
@@ -2278,7 +2278,7 @@ DATA TRANSFER RATE: 5.12109375 KB/s
 
 log the imuacc data to the sd (must be mounted)  (***just for stream mode***)
 
-with the file format 'log_mode_datetime.txt', (***rtc must be configurated first, see [set_localtime](#set_localtime) or [set_ntptime](#set_ntptime)***)
+with the file format 'log_mode_datetime.txt', (***rtc must be configured first, see [set_localtime](#set_localtime) or [set_ntptime](#set_ntptime)***)
 
 Needs -tm option
 
@@ -2509,7 +2509,7 @@ to config analog pin to write to (use -po option)
 ```
 $ upydev dac_config -po 26
 
-Pin 26 configurated as Analog Output
+Pin 26 configured as Analog Output
 ```
 
 #### dac_write
@@ -2526,7 +2526,7 @@ $ upydev dac_write -sig 0.5
 
 to write a signal use -sig for different options:
 
-To configurate signal do: 
+To configurate signal do:
 
 `upydev dac_sig -sig [type] [Amp] [frequency]`
 
@@ -2535,7 +2535,7 @@ To configurate signal do:
 ```
 $ upydev dac_sig -sig sin 1 20
 
-Signal type sin with Amplitude 1 V and fq 20 Hz configurated
+Signal type sin with Amplitude 1 V and fq 20 Hz configured
 ```
 
 To start signal generation
@@ -2550,7 +2550,7 @@ Signal started!
 
 
 
-To stop signal 
+To stop signal
 
 ```
 $ upydev dac_sig -sig stop
@@ -2579,7 +2579,7 @@ to config PWM pin to drive the buzzer (use -po option)
 ```
 $ upydev buzz_config -po 25
 
-Pin 25 configurated as PWM to drive the buzzer
+Pin 25 configured as PWM to drive the buzzer
 ```
 
 #### buzz_set_alarm
@@ -2631,7 +2631,7 @@ Beep! Beep! Beep!
 
 ### DC MOTOR
 
-*This needs  the 'dcmotor.py' script in upyutils directory to be uploaded to the upy device, a dc motor and the appropriate  dc motor driver (PWM)* 
+*This needs  the 'dcmotor.py' script in upyutils directory to be uploaded to the upy device, a dc motor and the appropriate  dc motor driver (PWM)*
 
 #### dcmotor_config
 
@@ -2640,7 +2640,7 @@ to config PWM pins to drive a DC motor (use -po option as -po [DIR1] [DIR2])
 ```
 $ upydev dcmotor_config -po 5 18
 
-DC motor configurated: Direction Pin:5, Opposite direction Pin: 18
+DC motor configured: Direction Pin:5, Opposite direction Pin: 18
 ```
 
 
@@ -2689,7 +2689,7 @@ to configurate the servo pin with -po option
 ```
 $ upydev servo_config -po 5
 
-Pin 5 configurated as PWM to drive the Servo motor
+Pin 5 configured as PWM to drive the Servo motor
 ```
 
 
@@ -2717,18 +2717,18 @@ to configurate the stepper direction and step pin with -po option *( -po [DIR_PI
 ```
 $ upydev stepper_config -po 18 5
 
-Stepper motor configurated: Direction Pin:18, Step Pin: 5
+Stepper motor configured: Direction Pin:18, Step Pin: 5
 ```
 
 #### stepper_move
 
 to move the stepper to right or left, at a velocity and a numbers of steps indicated with -to option:
 
-usage: `upydev stepper_move -to  [DIR]  [velocity] [# steps]` 
+usage: `upydev stepper_move -to  [DIR]  [velocity] [# steps]`
 
-DIR: R: right, L:left, 
+DIR: R: right, L:left,
 
-velocity (1000-20000) (smaller is faster) 
+velocity (1000-20000) (smaller is faster)
 
   \# steps (int): where 200 steps means a complete lap
 
@@ -2758,7 +2758,7 @@ to set id, broker address, user and password, use with -client option
 ```
 $ upydev mqtt_config -client myesp32id test.mosquitto.org
 
-MQTT Client configurated: ID: myesp32id, BROKER: test.mosquitto.org
+MQTT Client configured: ID: myesp32id, BROKER: test.mosquitto.org
 ```
 
 
@@ -3125,7 +3125,7 @@ $ upydev specs -b esp32h
 
 #### pin_status
 
-to see pin state, to request a specific set use -po option 
+to see pin state, to request a specific set use -po option
 
 ```
 $ upydev pin_status
