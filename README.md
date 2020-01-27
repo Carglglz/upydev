@@ -36,6 +36,8 @@ Other tools are:
 * Terminal WebREPL protocol
 * Custom commands to automate communication/control
 * Command line autocompletion
+* SSLWebREPL (a Terminal SHELL/REPL over SSL)
+* SERIAL SHELL-REPL (a Terminal SHELL/REPL over USB)
 
 ### Getting Started
 
@@ -75,6 +77,8 @@ Python modules (automatically installed using pip):
 
 #### Tested on:
 
+##### Os:
+
 MacOS X (Mojave 10.14.5-6)
 
 Raspbian GNU/Linux 9 (stretch) *(through ssh session)*
@@ -90,11 +94,13 @@ $ sudo pip3 install . --no-deps -r rpy_rqmnts.txt
 
 Then to install upydevice see instructions in [upydevice repo](https://github.com/Carglglz/upydevice)
 
-upy Boards:
+##### upy Boards tested:
 
-Esp32 Huzzah feather
+* Esp32 Huzzah feather
 
-Esp8266 Huzzah feather
+* Esp8266 Huzzah feather
+* Pyboard Lite (SERIAL SHELL-REPL only)
+* Pyboard V1.1 (SERIAL SHELL-REPL only)
 
 #### Installing using pip:
 
