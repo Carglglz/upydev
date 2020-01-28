@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.6] Unreleased [Github Repo]
 ### Fix
 - cat, bat in SSLWebREPL if last line does not end with new line ('\\n')
+- ECDSA key (SECP256R1_SHA256 method to meet IETF recommendations)
 ## [0.2.5] 2020-01-26
 ### Fix
 - put method in SERIAL SHELL for esp32/8266

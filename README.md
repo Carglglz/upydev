@@ -338,9 +338,9 @@ Example: Raw commands
 
 * **upy:** to acces crypto_wrepl in a 'ssh' style command to be used like e.g.: "upydev upy@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass") The device can be accesed as "upydev upy@foo_device" or redirect any command as e.g. "upydev ping -@foo_device"
 
-* **sslgen_rsakey:** (This needs openssl available in $PATH)
+* **sslgen_key:** (This needs openssl available in $PATH)
 
-     To generate RSA-2048 bit key and a self-signed certificate to enable SSL sockets
+     To generate ECDSA key and a self-signed certificate to enable SSL sockets
          This needs a passphrase, that will be required every time the key is loaded.
          Use -tfkey to upload this key to the device
          (use only if connected directly to the AP of the device or a
