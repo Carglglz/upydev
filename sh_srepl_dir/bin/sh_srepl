@@ -727,7 +727,7 @@ PYGM_SYNTAX = list(get_all_styles()) + ['one_dark']
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
 
-git_diff_files = {'diff': [], 'commit': ''}
+git_diff_files = {'diff': [], 'commit': '', 'n_commits': 0}
 # START IN SHELL MODE
 if shell_mode['S']:
     prompt['p'] = d_prompt
@@ -2441,15 +2441,17 @@ def custom_sh_cmd(cmd_inp):
             else:
                 # Parse changed files
                 print('Changes to push:')
-                latest_commit = shlex.split('git show --name-only --oneline HEAD')
+                latest_commit = shlex.split('git show -{} --name-only --oneline HEAD'.format(git_diff_files['n_commits']))
                 subprocess.call(latest_commit)
                 files_to_put_dir = [fl for fl in files_to_push if os.path.isfile(fl)]
                 dirs_to_put_dir = ['/'.join(dir.split('/')[:-1]) for dir in files_to_put_dir]
                 # dirs_to_put_dir = [fl for fl in os.listdir() if not os.path.isfile(fl) and fl in files_to_push]
                 # print(files_to_put_dir)
                 # print(dirs_to_put_dir)
-                log_cmd = shlex.split('git log -1')
+                log_cmd = shlex.split('git log -{}'.format(git_diff_files['n_commits']))
                 log_to_dev = subprocess.check_output(log_cmd)
+                hash_cmd = shlex.split('git log -{} --pretty=format:"%H"'.format(git_diff_files['n_commits']))
+                hash_to_dev = subprocess.check_output(hash_cmd)
 
                 cwd_now = send_custom_sh_cmd("os.getcwd()")
                 if len(files_to_put_dir) > 0:
@@ -2487,15 +2489,25 @@ def custom_sh_cmd(cmd_inp):
                 time.sleep(0.2)
                 shr_htool.stop_SOC()
                 # Save commit log in dev
-                log_to_dev += b'---'*10+b'\n'
+                # log_to_dev += b'---'*10+b'\n'
                 send_custom_sh_cmd("gitlog = open('.gitlog', 'ab+');gitlog.seek(0);gl=gitlog.read();gitlog.seek(0);gitlog.write({});gitlog.write(gl);gitlog.close()".format(log_to_dev))
+                time.sleep(0.1)
+                send_custom_sh_cmd("gitlog = open('.githash', 'ab+');gitlog.seek(0);gl=gitlog.read();gitlog.seek(0);gitlog.write({});gitlog.write(gl);gitlog.close()".format(hash_to_dev+b'\n'))
                 send_custom_sh_cmd("cd('{}')".format(cwd_now))
                 git_diff_files['diff'] = []
+                git_diff_files['n_commits'] = 0
         elif 'commit' in cmd_git:
             status_cmd = shlex.split('git status -s')
             files_to_push = [file for file in subprocess.check_output(status_cmd).decode().split('\n') if file != '']
             files_to_pushdev = [file.split()[1] for file in files_to_push if file.split()[0] == 'M' or file.split()[0] == 'A']
-            git_diff_files['diff'] = files_to_pushdev
+            if len(git_diff_files['diff']) == 0:
+                git_diff_files['diff'] = files_to_pushdev
+                if len(files_to_pushdev) > 0:
+                    git_diff_files['n_commits'] = 1
+            else:
+                git_diff_files['diff'] = git_diff_files['diff'] + [file for file in files_to_pushdev if file not in git_diff_files['diff']]
+                if len(files_to_pushdev) > 0:
+                    git_diff_files['n_commits'] += 1
             # print(git_diff_files)
             subprocess.call(cmd_git)
 
@@ -2546,27 +2558,34 @@ def custom_sh_cmd(cmd_inp):
             subprocess.call(cmd_git)
 
         elif 'status' in cmd_git and 'dev' in cmd_git:
-            cmd_git = shlex.split('git log -1')
-            local_gitlog = subprocess.check_output(cmd_git).decode().split()[1]
-            log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
+            cmd_git = shlex.split('git log --pretty=format:"%H"')
+            local_gitlog = subprocess.check_output(cmd_git).decode().split()
+            log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()')
             # print(log_dev_head)
-            log_info_list = log_dev_head.split('---'*10)[0].split('\n')
-            if local_gitlog == log_info_list[0].split()[1]:
+            log_info_list = log_dev_head.split()
+            if local_gitlog == log_info_list:
                 status_msg = "On branch master\nYour branch is up to date with '{}'.\n\nnothing to commit, working tree clean".format(dev_platform)
             else:
-                if len(git_diff_files['diff']) > 0:
-                    status_msg = "On branch master\nYour branch is ahead of '{0}' by 1 commit.\n (use 'git push dev' to push your local commits to {0})\n\nnothing to commit, working tree clean".format(dev_platform)
-                else:
-                    cmd_git_l = shlex.split('git log -1 -p --name-only')
-                    localgitlog_latest_commit =[fl for fl in subprocess.check_output(cmd_git_l).decode().split('\n') if fl != ''][4:]
-                    git_diff_files['diff'] = localgitlog_latest_commit
-                    status_msg = "On branch master\nYour branch is ahead of '{0}' by X commits not tracked by upydev.\n (use 'git push dev' to push last commit changes to {0})\n\nnothing to commit, working tree clean".format(dev_platform)
+                if len(git_diff_files['diff']) > 0:  # tracked changes
+                    status_msg = "On branch master\nYour branch is ahead of '{0}' by {1} commit{2}.\n (use 'git push dev' to push your local commits to {0})\n\nnothing to commit, working tree clean".format(dev_platform, git_diff_files['n_commits'], ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
+                else:  # untracked changes (outside shell)
+                    cmd_git_l = shlex.split('git log --name-status  --pretty=format:"%H"')
+                    local_gitlog = subprocess.check_output(cmd_git_l).decode()
+                    commit_dict = {c.split('\n')[0] : [s for s in c.replace('\t', '\n').split()[1:]] for c in local_gitlog.split('\n\n')}
+                    for commit in commit_dict.keys():
+                        if commit not in log_info_list:
+                            git_diff_files['diff'] += commit_dict[commit][1::2]
+                            git_diff_files['n_commits'] += 1
+                    status_msg = "On branch master\nYour branch is ahead of '{0}' by {1} commit{2} not tracked by upydev.\n (use 'git push dev' to push last commit changes to {0})\n\nnothing to commit, working tree clean".format(dev_platform, git_diff_files['n_commits'], ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
             print(status_msg)
 
         elif 'repo' in cmd_git:
             remote_repo_cmd = shlex.split('git remote -v')
             git_repo = subprocess.check_output(remote_repo_cmd)
-            webbrowser.open(git_repo.split()[1].decode())
+            if git_repo != b'':
+                webbrowser.open(git_repo.split()[1].decode())
+            else:
+                print('git repository does not have a remote')
 
         else:
             subprocess.call(cmd_git)

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.6] Unreleased [Github Repo]
 ### Added
 - 'bat' command output style configurable and line numbers (inspired by https://github.com/willmcgugan/rich)
-- 'batstyle' command to configure 'bat' and 'batl' syntax highlight, 'batstyle -a' list all the themes available (from pygments)
+- 'batstyle' command to configure 'bat' and 'batl' syntax highlight, 'batstyle -a' list all the themes available (from pygments), default is 'monokai'
 ### Fix
 - cat, bat in SSLWebREPL if last line does not end with new line ('\\n')
 - ECDSA key (SECP256R1_SHA256 method to meet IETF recommendations)
