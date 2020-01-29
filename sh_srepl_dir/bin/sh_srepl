@@ -21,7 +21,7 @@ import webbrowser
 import argparse
 import shutil
 from upydev import upip_host
-from upydev.style_monokaidark import Monokai_darkStyle
+from upydev.style_customs import one_darkStyle
 from datetime import datetime, date, timedelta
 from sys import platform as _platform
 from cryptography.hazmat.backends import default_backend
@@ -30,6 +30,7 @@ from cryptography.hazmat.primitives import serialization
 # from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import pygments
 from pygments.lexers.python import PythonLexer
+from pygments.styles import get_style_by_name, get_all_styles
 from pygments import highlight
 from pygments.style import Style
 from pygments.token import Token
@@ -173,6 +174,7 @@ class SERIAL_REPL_server:
         self.prompt = b'>>> '
         self.output = None
         self.IO = False
+        self.color_style = 'monokai'
 
     def flush_conn(self):
         flushed = 0
@@ -199,17 +201,21 @@ class SERIAL_REPL_server:
                 print(self.buff.decode())
             pass
 
-    def colored(self, msg, style='monokai_dark'):
-        if style == 'monokai_dark':
-            result = highlight(msg, Python3Lexer(), Terminal256Formatter(style=Monokai_darkStyle))
+    def colored(self, msg):
+        if self.color_style == 'one_dark':
+            result = highlight(msg, Python3Lexer(), Terminal256Formatter(style=one_darkStyle))
             lines = result.split('\n')
-            lines_numbered = ["{}{:4}{} {}".format(WHITE_, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+            lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
             my_code_numb = '\n'.join(lines_numbered)
             print(my_code_numb)
 
-        elif style == 'classic':
-            tokens = list(pygments.lex(msg, lexer=PythonLexer()))
-            print_formatted_text(PygmentsTokens(tokens), end='')
+        else:
+            pygm_style = get_style_by_name(self.color_style)
+            result = highlight(msg, Python3Lexer(), Terminal256Formatter(style=pygm_style))
+            lines = result.split('\n')
+            lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+            my_code_numb = '\n'.join(lines_numbered)
+            print(my_code_numb)
 
     # def sw_repl(self, close_wbrepl=False):
     #     if self.SSL_MODE:
@@ -706,7 +712,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
-                    'timeit', 'i2c', 'dump_mem', 'git', 'emacs']
+                    'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -715,6 +721,9 @@ BCYAN = '\u001b[36;1m'
 ABLUE_bold = '\u001b[34;1m'
 MAGENTA_bold = '\u001b[35;1m'
 WHITE_ = '\u001b[37m'
+LIGHT_GRAY = "\033[0;37m"
+DARK_GRAY = "\033[1;30m"
+PYGM_SYNTAX = list(get_all_styles()) + ['one_dark']
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
 
@@ -810,6 +819,7 @@ shell_commands_info = """
         - flush_soc: to flush serial in case of wrong output
         - view   : to preview '.pbm' binary image files (image need to be centered and rows = columns)
         - bat    : prints the content of a '.py' file with Python syntax hightlighting
+        - batstyle: 'bat' output style; to set: 'batstyle [style]', to see: 'batstyle': current style / 'batstyle -a': all styles
         - rcat   : prints the raw content of a file
         - timeit : to measure execution time of a script/command
         - i2c    : config/scan (config must be used first, i2c config -scl [SCL] -sda [SDA])
@@ -2069,6 +2079,21 @@ def custom_sh_cmd(cmd_inp):
             print(e)
             print('Indicate a ".pbm" file to view')
 
+    if cmd_inp.split(' ')[0] == 'batstyle':
+        if len(cmd_inp.split()) == 1:
+            print('Current Color Syntax Style: {}'.format(shr_cp.color_style))
+        elif len(cmd_inp.split()) == 2:
+            if cmd_inp.split()[1] == '-a':
+                print('Styles availables:')
+                print_table(PYGM_SYNTAX)
+            else:
+                style_to_set = cmd_inp.split()[1]
+                if style_to_set in PYGM_SYNTAX:
+                    shr_cp.color_style = style_to_set
+                    print('Style {} configured'.format(style_to_set))
+                else:
+                    print('Style not available')
+
     if cmd_inp.split(' ')[0] == 'bat':
         try:
             color_file = cmd_inp.split(' ')[1]
@@ -2087,8 +2112,20 @@ def custom_sh_cmd(cmd_inp):
                 try:
                     with open(color_file, 'r') as catfile:
                         content = catfile.read()
-                        tokens = list(pygments.lex(content, lexer=PythonLexer()))
-                        print_formatted_text(PygmentsTokens(tokens), end='')
+                        if shr_cp.color_style == 'one_dark':
+                            result = highlight(content, Python3Lexer(), Terminal256Formatter(style=one_darkStyle))
+                            lines = result.split('\n')
+                            lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+                            my_code_numb = '\n'.join(lines_numbered)
+                            print(my_code_numb)
+
+                        else:
+                            pygm_style = get_style_by_name(shr_cp.color_style)
+                            result = highlight(content, Python3Lexer(), Terminal256Formatter(style=pygm_style))
+                            lines = result.split('\n')
+                            lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+                            my_code_numb = '\n'.join(lines_numbered)
+                            print(my_code_numb)
                 except Exception as e:
                     print(e)
                     pass
