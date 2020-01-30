@@ -3108,7 +3108,6 @@ def flush_line(event):
 
 @kb.add('c-o')
 def cmd_ls(event):
-    espdev.wr_cmd('from upysh import *', silent=True)
 
     def ls_out():
         espdev.output = None
