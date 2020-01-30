@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from upydevice import W_UPYDEVICE
+from upydevice import W_UPYDEVICE, BASE_WS_DEVICE
 from binascii import hexlify
 import getpass
 import socket
@@ -755,6 +755,8 @@ args = parser.parse_args()
 
 # HANDSHAKE
 espdev = W_UPYDEVICE(args.t, args.p)
+ws_upydevice = BASE_WS_DEVICE(args.t, args.p)
+base_ws = True
 if args.ping:
     if espdev.is_reachable():
         pass
@@ -767,15 +769,30 @@ if not args.nem:
     if args.v:
         print('Initiating SECURE HANDSHAKE...')
 # espdev.kbi(output=False)
-espdev.open_wconn()
-espdev.wr_cmd('C')
-espdev.wr_cmd("from machine import unique_id; unique_id()",
-              silent=True)
-unique_id = hexlify(espdev.output).decode()
-espdev.wr_cmd("import sys; sys.platform",
-              silent=True)
-dev_platform = espdev.output
-espdev.platform = dev_platform
+if base_ws:
+    ws_upydevice.open_wconn()
+    ws_upydevice.wr_cmd(ws_upydevice._kbi)
+    # espdev.wr_cmd("from machine import unique_id; unique_id()",
+    #               silent=True)
+    ws_upydevice.wr_cmd("from machine import unique_id; unique_id()", silent=True)
+    # unique_id = hexlify(espdev.output).decode()
+    unique_id = hexlify(ws_upydevice.output).decode()
+    # espdev.wr_cmd("import sys; sys.platform",
+    #               silent=True)
+    ws_upydevice.wr_cmd("import sys; sys.platform", silent=True)
+    # dev_platform = espdev.output
+    dev_platform = ws_upydevice.output
+    espdev.platform = dev_platform
+else:
+    espdev.open_wconn()
+    espdev.wr_cmd('C')
+    espdev.wr_cmd("from machine import unique_id; unique_id()",
+                  silent=True)
+    unique_id = hexlify(espdev.output).decode()
+    espdev.wr_cmd("import sys; sys.platform",
+                  silent=True)
+    dev_platform = espdev.output
+    espdev.platform = dev_platform
 if args.v:
     print('{}@{}'.format(dev_platform, unique_id))
 # rk = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=False,
@@ -785,6 +802,8 @@ if args.v:
 ssl_key = upydev.__path__[0]+'/'+'SSL_key{}.pem'.format(unique_id)
 ssl_cert = upydev.__path__[0]+'/'+'SSL_certificate{}.pem'.format(unique_id)
 if not args.nem:
+    if base_ws:
+        espdev = ws_upydevice
     ssl_cp = SSL_REPL_server(dev=espdev, key=ssl_key, cert=ssl_cert,
                              client_key=None, dev_id=unique_id)
     ssl_htool = SSL_TOOL(ssl_repl=ssl_cp, key=ssl_key, cert=ssl_cert)
@@ -792,6 +811,9 @@ if not args.nem:
 # if args.v:
 #     print('SSLWebREPL connected')
 if args.nem:
+    if base_ws:
+        ws_upydevice.close_wconn()
+        espdev.open_wconn()
     ssl_cp = WBREPL_IO(dev=espdev)
     print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
     print('')
