@@ -266,7 +266,7 @@ class SSL_REPL_server:
         except ssl.SSLError as e:
             print(e)
             print('\033[91;1mWARNING: CERTIFICATE VERIFY FAILED\033[0m')
-            print('Please update the certificate\nwith command "upydev sslgen_rsakey -tfkey"')
+            print('Please update the certificate\nwith command "upydev sslgen_key -tfkey"')
             sys.exit()
         if args.v:
             print('SSLWebREPL connection from: {}'.format(self.addr_client))
@@ -783,6 +783,7 @@ if base_ws:
     # dev_platform = espdev.output
     dev_platform = ws_upydevice.output
     espdev.platform = dev_platform
+    ws_upydevice.platform = dev_platform
 else:
     espdev.open_wconn()
     espdev.wr_cmd('C')
