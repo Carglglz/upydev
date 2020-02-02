@@ -10,7 +10,9 @@
 
 **uPydev** is an acronym of '**MicroPy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running MicroPython.
 
- It is a command line tool for 'wireless MicroPython devices' since it make use of the [WebREPL protocol](https://github.com/micropython/webrepl)  to provide communication with and control of the device.
+ It is a command line tool for 'wireless MicroPython devices' since it make use of the [WebREPL protocol](https://github.com/micropython/webrepl)  to provide communication with and control of the device. 
+
+(See upydev [gitbook](https://carlosgilglez.gitbook.io/upydev/) for the most up-to-date info)
 
 *uPydev is built on top of other tools/scripts which are:
 
