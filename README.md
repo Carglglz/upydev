@@ -14,7 +14,7 @@
 
 *uPydev is built on top of other tools/scripts which are:
 
-The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl) as seen in this [WebREPL pull request](https://github.com/micropython/webrepl/pull/37) by [@Hermann-SW](https://github.com/Hermann-SW)
+The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl)  by [@Hermann-SW](https://github.com/Hermann-SW)
 
 Other tools are:
 
@@ -187,9 +187,7 @@ How to use it:
 
   `$ upydev ssl_wrepl -nem`
 
-* With **Encryption mode**: This needs some configuration before (which is basically generate an ECDSA* private key and pass it to the device). Follow [this instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/SSLWebREPL_docs.md) to do this.
-
-  *it was RSA before, changed due to memory constrains
+* With **Encryption mode**: This needs some configuration before (which is basically generate an ECDSA private key and pass it to the device). Follow [this instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/SSLWebREPL_docs.md) to do this.
 
   **Encryption mode works only with esp32. Esp8266 seems to be to slow for SSL repl*
 
@@ -200,7 +198,7 @@ How to use it:
   Or if there is already a global "UPY_G" named group, any device can be accessed with this mode using:
 
   e.g.:
-  
+
   `$ upydev ssl@esp_room1`  or `$ upydev ssl@192.168.1.42` 
   
   ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/SSLWebREPL_demo.gif)
@@ -211,7 +209,11 @@ How to use it:
   
   See **uPydev Mode/Tools** : **sh_srepl** and **shr** modes.
   
-  See [changelog](https://github.com/Carglglz/upydev/blob/master/changelog.md) for new commands in both SSLWebREPL and SERIAL SHELL-REPL.
+  **New in version 0.2.6: 'git' integration in SHELLS (SSL/Web/SERIAL)**: (This needs 'git' available in path, see [Git](https://git-scm.com))
+  
+  ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/ssl_git.gif)
+  
+  See [changelog](https://github.com/Carglglz/upydev/blob/master/changelog.md) for new commands in both SSLWeb SHELL-REPL and SERIAL SHELL-REPL.
 
 ------
 

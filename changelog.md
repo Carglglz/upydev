@@ -8,16 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - 'bat' command output style configurable and line numbers (inspired by https://github.com/willmcgugan/rich)
 - 'batstyle' command to configure 'bat' and 'batl' syntax highlight, 'batstyle -a' list all the themes available (from pygments), default is 'monokai'
+- 'upy-config' command for shells, to configure network (connect to a WLAN or set an AP) and configure Interfaces (just I2C by now) through interactive dialogs
 ### Fix
 - cat, bat in SSLWebREPL if last line does not end with new line ('\\n')
 - ECDSA key (SECP256R1_SHA256 method to meet IETF recommendations)
+- 'git status dev' now tracks all commits (inside or outside the shell)
 ## [0.2.5] 2020-01-26
 ### Fix
 - put method in SERIAL SHELL for esp32/8266
 ## [0.2.4] - 2020-01-26
 ### Added
 - 'timeit' command to measure execution time of a script/command (for SSL/SERIAL SHELLS)
-- 'i2c' +'config/scan' to configurate i2c and scan to find i2c devices (for SSL/SERIAL SHELLS)
+- 'i2c' +'config/scan' to configure i2c and scan to find i2c devices (for SSL/SERIAL SHELLS)
 - 'git' commands integration + 'git push dev', 'git log dev [-a]', 'git clone_dev' and 'git status dev' to integrate git workflow into a project (for SSL/SERIAL SHELLS) ('git' needs to be available in $PATH)
 - 'emacs' to edit a file/script with emacs ('emacs' need to be available in $PATH)
 ### Fix
@@ -35,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - wildcard "\*" or [dir] for 'ls' and 'lsl' command e.g. "ls \*.py" or "ls my_dir" (SSL/SERIAL SHELLS)
 - install available for pyboard too (experimental) (SERIAL SHELL)
 - 'pkg_info' command to see the PGK-INFO file of a module if available (SSL/SERIAL SHELLS)
-- 'upipl' to list packages availables at pypi.org or micropython.org/pi
+- 'upipl' to list available packages at pypi.org or micropython.org/pi
 e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - 'update_upytils' command for SERIAL SHELL
 ### Fix
@@ -50,7 +52,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match
 - CTRL-u deprecated (no encryption toggle), CTRL-p now shows RAM STATUS (used/free)
 - CTRL-e in SHELLS (SSL/SERIAL) moves cursor to end of the line (if not in edit mode)
-- 'batl' command for SHELLS(SSL/SERIAL) to print local file with python sintax hightlighting
+- 'batl' command for SHELLS(SSL/SERIAL) to print local file with python syntax highlighting
 ## [0.2.0] - 2020-01-10
 ### Added
 - serial terminal SHELL-REPL mode (same style as SSLWebREPL) "sh_srepl"
@@ -66,7 +68,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - 'ssl_socket_client_server.py' and 'ssl_repl.py' added to the scripts that are updated with 'update_upyutils' mode
 - 'upysh2.py' implements the 'tree' command to print filesystem in a tree view
 - SSLWebREPL shell terminal mode (experimental) (see DOCS)
-- "ssl@[dev]" shorcut to "ssl_wrepl" mode
+- "ssl@[dev]" shortcut to "ssl_wrepl" mode
 - Progress bar length and percentage fix, and estimated time
 - put and get commands now works in SSL mode too
 ## [0.1.8] - 2019-12-29

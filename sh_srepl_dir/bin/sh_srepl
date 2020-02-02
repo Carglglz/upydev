@@ -28,12 +28,9 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 # from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-import pygments
-from pygments.lexers.python import PythonLexer
 from pygments.styles import get_style_by_name, get_all_styles
 from pygments import highlight
-from pygments.style import Style
-from pygments.token import Token
+# from pygments.style import Style
 from pygments.lexers import Python3Lexer
 from pygments.formatters import Terminal256Formatter
 from prompt_toolkit import PromptSession
@@ -44,8 +41,9 @@ from prompt_toolkit.filters import Condition
 from prompt_toolkit.application import run_in_terminal
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
-from prompt_toolkit.formatted_text import PygmentsTokens
 from prompt_toolkit import print_formatted_text
+from prompt_toolkit.shortcuts import (radiolist_dialog, message_dialog,
+                                      input_dialog, yes_no_dialog)
 
 
 def get_cmd(raw):
@@ -712,7 +710,8 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
-                    'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle']
+                    'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle',
+                    'upy-config']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -823,6 +822,7 @@ shell_commands_info = """
         - rcat   : prints the raw content of a file
         - timeit : to measure execution time of a script/command
         - i2c    : config/scan (config must be used first, i2c config -scl [SCL] -sda [SDA])
+        - upy-config: interactive dialog to configure Network (connect to a WLAN or set an AP) or Interafaces (I2C)
         - exit   : to exit SHELL-REPL Terminal
                    to exit without reset do 'exit -nr'
                    to exit and do hard reset 'exit -hr'
@@ -852,11 +852,12 @@ shell_commands_info = """
     - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
     - update_upyutils: to install 'upydev update_upyutils' scripts in the device
     - git : to call git commands and integrate the git workflow into a project (needs 'git' available in $PATH)
-            Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device. (Just the latest commit)
+            Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device.
             Use 'git log dev' to see the latest commit pushed to the device ('git log dev -a' to see all commits)
             Use 'git log host' to see the latest commit in the local repo
             Use 'git status dev' to see if the local repo is ahead of the device repo and track these changes
             Use 'git clone_dev' to clone the local repo into the device
+            Use 'git repo' to open the remote repo in the web browser if remote repo exists
             Any other git command will be echoed directly to git
 
 
@@ -2615,7 +2616,10 @@ def custom_sh_cmd(cmd_inp):
                             if any([file not in git_diff_files['diff'] for file in commit_dict[commit][1::2]]):
                                 git_diff_files['diff'] += [file for file in commit_dict[commit][1::2] if file not in git_diff_files['diff']]
                     git_diff_files['n_commits'] = int(len(local_gitlog) - len(log_info_list))
-                    status_msg = "On branch master\nYour branch is ahead of '{0}' by {1} commit{2}.\n (use 'git push dev' to push your local commits to {0})\n\nnothing to commit, working tree clean".format(dev_platform, git_diff_files['n_commits'], ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
+
+                    status_msg = "On branch master\nYour branch is ahead of '{0}' by {1} commit{2}.\n (use 'git push dev' to push your local commits to {0})\n\nnothing to commit, working tree clean".format(dev_platform, git_diff_files['n_commits'],
+                                ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
+
                 else:  # untracked changes (outside shell)
                     cmd_git_l = shlex.split('git log --name-status  --pretty=format:"%H"')
                     local_gitlog = subprocess.check_output(cmd_git_l).decode()
@@ -2624,7 +2628,9 @@ def custom_sh_cmd(cmd_inp):
                         if commit not in log_info_list:
                             git_diff_files['diff'] += commit_dict[commit][1::2]
                             git_diff_files['n_commits'] += 1
-                    status_msg = "On branch master\nYour branch is ahead of '{0}' by {1} commit{2} not tracked by upydev.\n (use 'git push dev' to push last commit changes to {0})\n\nnothing to commit, working tree clean".format(dev_platform, git_diff_files['n_commits'], ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
+
+                    status_msg = "On branch master\nYour branch is ahead of '{0}' by {1} commit{2} not tracked by upydev.\n (use 'git push dev' to push last commit changes to {0})\n\nnothing to commit, working tree clean".format(dev_platform, git_diff_files['n_commits'],
+                                ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
             print(status_msg)
 
         elif 'repo' in cmd_git:
@@ -2637,6 +2643,210 @@ def custom_sh_cmd(cmd_inp):
 
         else:
             subprocess.call(cmd_git)
+
+    if cmd_inp == 'upy-config':
+        results_array = radiolist_dialog(
+                title="Upydev {} Configuration Tool".format(dev_platform),
+                text="Select an option and press Select (Use tab to change focus)",
+                ok_text="Select",
+                cancel_text="Finish",
+                values=[
+                    ("network", "{:25}{}".format("1 Network Options",
+                                                 "Configure network settings")),
+                    ("interface", "{:25}{}".format("2 Interfacing Options",
+                                                   "Configure connections to peripherals"))
+                ]
+            ).run()
+        if results_array is not None:
+            # print('Configure dialog: {}'.format(results_array))
+            if results_array == 'network':
+                results_array = radiolist_dialog(
+                        title="Upydev {} Configuration Tool".format(
+                            dev_platform),
+                        text="Select an option and press Select (Use tab to change focus)",
+                        ok_text="Select",
+                        cancel_text="Finish",
+                        values=[
+                            ("STA", "{:10}{}".format("1 STA:",
+                                                     "Configure network SSID and PASSWORD to connect to a WLAN")),
+                            ("AP", "{:10}{}".format("2 AP:",
+                                                    "Configure SSID and PASSWORD to enable {} Acces Point".format(dev_platform)))
+                        ]
+                    ).run()
+                if results_array == 'STA':
+                    print('Scanning WLANs...')
+                    enable_sta = send_custom_sh_cmd(
+                        "import network;network.WLAN(network.STA_IF).active(1)")
+                    if enable_sta:
+                        scan = send_custom_sh_cmd(
+                            "network.WLAN(network.STA_IF).scan()")
+                        if 'event' in espdev.response:
+                            # print(espdev.response)
+                            try:
+                                scan = ast.literal_eval(
+                                    espdev.response.splitlines()[-1])
+                            except Exception as e:
+                                scan = []
+                            # print(scan)
+                        if len(scan) == 0:
+                            message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
+                                           text="No WLAN available").run()
+                        else:
+                            scan_list = []
+                            for netscan in scan:
+                                auth = AUTHMODE_DICT[netscan[4]]
+                                vals = hexlify(netscan[1]).decode()
+                                bssid = ':'.join([vals[i:i+2]
+                                                  for i in range(0, len(vals), 2)])
+                                scan_list.append((netscan[0].decode(), '{0:20}[{1}] RSSI:{2} AUTH: {3}'.format(
+                                    netscan[0].decode(), bssid, netscan[3],
+                                    auth)))
+
+                            results_array = radiolist_dialog(
+                                    title="Upydev {} Configuration Tool".format(
+                                        dev_platform),
+                                    text="Select an option and press Select (Use tab to change focus)",
+                                    ok_text="Select",
+                                    cancel_text="Finish",
+                                    values=scan_list
+                                ).run()
+                            if results_array is not None:
+                                ssid = results_array
+                                passwd = input_dialog(
+                                        title="Upydev {} Configuration Tool".format(
+                                            dev_platform),
+                                        text='Please type {} Password:'.format(ssid)).run()
+                                connect_to = "network.WLAN(network.STA_IF).connect('{}', '{}')".format(
+                                    ssid, passwd)
+                                if passwd is not None:
+                                    print('Connecting to {}...'.format(ssid))
+                                    disconn_cmd = "network.WLAN(network.STA_IF).disconnect()\r"
+                                    conn_cmd = "{};gc.collect()\r".format(connect_to)
+                                    dconn_sta = shr_cp.send_message(
+                                        disconn_cmd)
+                                    # send_custom_sh_cmd('\r\r')
+                                    time.sleep(1)
+                                    shr_cp.send_message('\r\r')
+                                    is_connected = False
+                                    conn_sta = shr_cp.send_message(conn_cmd)
+                                    time.sleep(1)
+                                    shr_cp.send_message('\r\r')
+                                    while not is_connected:
+                                        is_connected = send_custom_sh_cmd(
+                                            "network.WLAN(network.STA_IF).isconnected()")
+                                        time.sleep(1)
+
+                                    saveconfig = yes_no_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
+                                                               text="{} connected succesfully to {}\n Do you want to save configuration?".format(dev_platform, ssid)).run()
+
+                                    if saveconfig:
+                                        saveconfig_cmd = "import json;sta_config=open('wifi_.config', 'w');sta_config.write(json.dumps(dict(ssid='{}', password='{}')));sta_config.close()".format(
+                                            ssid, passwd)
+                                        send_custom_sh_cmd(saveconfig_cmd)
+                                        message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
+                                                       text="{} Configuration saved succesfully as 'wifi_.config'".format(ssid)).run()
+
+                    else:
+                        message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
+                                       text="Can't enable STA interface").run()
+
+                elif results_array == 'AP':
+                    ssid = input_dialog(
+                            title="Upydev {} Configuration Tool".format(
+                                dev_platform),
+                            text='Please set {} SSID:'.format(dev_platform)).run()
+                    passwd = input_dialog(
+                            title="Upydev {} Configuration Tool".format(
+                                dev_platform),
+                            text='Please set {} Password:'.format(ssid)).run()
+                    if ssid is not None and passwd is not None:
+                        ap_enbale = shr_cp.send_message(
+                            "import network;network.WLAN(network.AP_IF).active(0)\r")
+                        time.sleep(0.5)
+                        ap_enbale = shr_cp.send_message(
+                            "import network;network.WLAN(network.AP_IF).active(1)\r")
+                        print('Configuring {} AP...'.format(ssid))
+                        time.sleep(0.5)
+                        ap_config = "import network;network.WLAN(network.AP_IF).config(essid='{}',authmode=network.AUTH_WPA_WPA2_PSK, password='{}')".format(
+                            ssid, passwd)
+                        resp = shr_cp.send_message(ap_config+'\r')
+                        time.sleep(1)
+                        saveconfig = yes_no_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
+                                                   text="{} AP:{} enabled succesfully\n Do you want to save configuration?".format(dev_platform, ssid)).run()
+
+                        if saveconfig:
+                            saveconfig_cmd = "import json;sta_config=open('ap_.config', 'w');sta_config.write(json.dumps(dict(ssid='{}', password='{}')));sta_config.close()".format(
+                                ssid, passwd)
+                            send_custom_sh_cmd(saveconfig_cmd)
+                            message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
+                                           text="{} Configuration saved succesfully as 'ap_.config'".format(ssid)).run()
+
+            elif results_array == 'interface':
+                results_array = radiolist_dialog(
+                        title="Upydev {} Configuration Tool".format(
+                            dev_platform),
+                        text="Select an option and press Select (Use tab to change focus)",
+                        ok_text="Select",
+                        cancel_text="Finish",
+                        values=[
+                            ("I2C", "{:10}{}".format("1 I2C:",
+                                                     "Configure I2C interface"))
+                        ]
+                    ).run()
+
+                if results_array == 'I2C':
+                    if dev_platform == 'esp32':
+                        default = 'I2C: SCL = 22 , SDA = 23, FREQ = 100000'
+                        scl = 22
+                        sda = 23
+                    elif dev_platform == 'esp8266':
+                        default = 'I2C: SCL = 5 , SDA = 4, FREQ = 100000'
+                        scl = 5
+                        sda = 4
+                    elif dev_platform == 'pyboard':
+                        default = 'I2C: SCL = X9 , SDA = X10, FREQ = 100000'
+                        scl = 'X9'
+                        sda = 'X10'
+                    results_array = radiolist_dialog(
+                            title="Upydev {} Configuration Tool".format(
+                                dev_platform),
+                            text="Select an option and press Select (Use tab to change focus)",
+                            ok_text="Select",
+                            cancel_text="Finish",
+                            values=[
+                                ("I2C_DEF", "{:10}{}".format("1 I2C DEFAULT:",
+                                                         default)),
+                                ("I2C_CUSTOM", "{:10}{}".format("2 I2C CUSTOM:",
+                                                         "SET SCL, SDA and FREQ"))
+                            ]
+                        ).run()
+                    if results_array == 'I2C_DEF':
+                        if dev_platform == 'pyboard':
+                            shr_cp.sh_repl("from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl,sda))
+                        else:
+                            shr_cp.sh_repl("from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl,sda))
+
+                        message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
+                                       text="I2C Default configuration enabled succesfully as 'i2c'").run()
+                    elif results_array == 'I2C_CUSTOM':
+                        custom_i2c = input_dialog(
+                                title="Upydev {} Configuration Tool".format(
+                                    dev_platform),
+                                text='Please set SCL SDA and FREQ separated by space, e.g. : 22 23 100000:'.format(dev_platform)).run()
+                        if custom_i2c is None or custom_i2c == '':
+                            freq = 100000
+                            custom_i2c = "{} {} {}".format(scl, sda, freq)
+                        else:
+                            scl = custom_i2c.split()[0]
+                            sda = custom_i2c.split()[1]
+                            freq = custom_i2c.split()[2]
+                        if dev_platform == 'pyboard':
+                            shr_cp.sh_repl("from machine import I2C;i2c_custom = I2C(scl='{}', sda='{}', freq={})".format(scl, sda, freq))
+                        else:
+                            shr_cp.sh_repl("from machine import Pin, I2C;i2c_custom = I2C(scl=Pin({}), sda=Pin({}), freq={})".format(scl, sda, freq))
+
+                        message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
+                                       text="I2C Custom configuration enabled succesfully as 'i2c_custom'").run()
 
     if cmd_inp.split(' ')[0] == 'exit':
         if reset_flag['R']:

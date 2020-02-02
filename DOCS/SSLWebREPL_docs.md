@@ -177,6 +177,7 @@ Device shell commands:
     - rcat   : prints the raw content of a file (encryption mode only)
     - timeit : to measure execution time of a script/command
     - i2c    : config/scan (config must be used first, i2c config -scl [SCL] -sda [SDA]
+    - upy-config: interactive dialog to configure Network (connect to a WLAN or set an AP) or Interafaces (I2C)
     - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
              to exit without reset do 'exit -nr'
              to exit and do hard reset 'exit -hr'
@@ -208,6 +209,7 @@ Device shell commands:
         - Use 'git log host' to see the latest commit in the local repo
         - Use 'git status dev' to see if the local repo is ahead of the device repo and track these changes
         - Use 'git clone_dev' to clone the local repo into the device
+        - Use 'git repo' to open the remote repo in the web browser if remote repo exists
         - Any other git command will be echoed directly to git
 
 Some examples of these commands:
