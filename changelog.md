@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.6] Unreleased [Github Repo]
+## [0.2.7] Unreleased [Github Repo]
+## [0.2.6] 2020-02-02
 ### Added
 - 'bat' command output style configurable and line numbers (inspired by https://github.com/willmcgugan/rich)
 - 'batstyle' command to configure 'bat' and 'batl' syntax highlight, 'batstyle -a' list all the themes available (from pygments), default is 'monokai'

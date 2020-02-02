@@ -211,7 +211,7 @@ How to use it:
   
   **New in version 0.2.6: 'git' integration in SHELLS (SSL/Web/SERIAL)**: (This needs 'git' available in path, see [Git](https://git-scm.com))
   
-  ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/ssl_git.gif)
+  ![](https://github.com/Carglglz/upydev/blob/master/DOCS/ssl_git.gif?raw=true)
   
   See [changelog](https://github.com/Carglglz/upydev/blob/master/changelog.md) for new commands in both SSLWeb SHELL-REPL and SERIAL SHELL-REPL.
 
