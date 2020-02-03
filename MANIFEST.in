@@ -9,3 +9,5 @@ include upydev/upyutils_dir/ssl_repl.py
 include upydev/upyutils_dir/upysh2.py
 include upydev/upyutils_dir/uping.py
 include upydev/upyutils_dir/time_it.py
+include upydev/upyutils_dir/wss_repl.py
+include upydev/upyutils_dir/wss_helper.py

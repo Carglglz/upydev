@@ -315,10 +315,12 @@ def main():
         print("op:%s, host:%s, port:%d, passwd:%s." %
               (op, host, port, '*'*len(passwd)))
         print(src_file, "->", dst_file)
-        dev = W_UPYDEVICE(host, passwd)
+        dev = W_UPYDEVICE(host, passwd) # switch to BASE_WS_DEVICE
         if op == 'get':
             dev.cmd("import uos; uos.stat('{}')[6]".format(src_file), silent=True)
             size_file_to_get = dev.output
+
+    # HERE CATCH -wss and do handshake
 
     s = socket.socket()
 

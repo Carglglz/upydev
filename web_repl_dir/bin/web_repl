@@ -21,6 +21,7 @@ from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.filters import Condition
 import asyncio
+import ssl
 
 
 # KEYPRESS EVENTS
@@ -386,6 +387,7 @@ sync_mode = False
 override_async = False
 received = False
 autosuggest_mode = False
+websec = False
 
 for i in range(len(sys.argv)):
     if sys.argv[i] == '-p':
@@ -397,6 +399,12 @@ for i in range(len(sys.argv)):
     if sys.argv[i] == '-dbg':
         sys.argv.pop(i)
         debug = True
+        break
+
+for i in range(len(sys.argv)):
+    if sys.argv[i] == '-wss':
+        sys.argv.pop(i)
+        websec = True
         break
 
 for i in range(len(sys.argv)):
@@ -563,9 +571,17 @@ def on_open(ws):
 
 if __name__ == "__main__":
     websocket.enableTrace(False)
-    ws = websocket.WebSocketApp("ws://"+sys.argv[1]+":8266",
-                                on_message=on_message,
-                                on_error=on_error,
-                                on_close=on_close)
-    ws.on_open = on_open
-    ws.run_forever()
+    if websec:
+        ws = websocket.WebSocketApp("wss://"+sys.argv[1]+":8833",
+                                    on_message=on_message,
+                                    on_error=on_error,
+                                    on_close=on_close)
+        ws.on_open = on_open
+        ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE, "check_hostname": False})
+    else:
+        ws = websocket.WebSocketApp("ws://"+sys.argv[1]+":8266",
+                                    on_message=on_message,
+                                    on_error=on_error,
+                                    on_close=on_close)
+        ws.on_open = on_open
+        ws.run_forever()

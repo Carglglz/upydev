@@ -1154,7 +1154,9 @@ def ssl_ECDSA_key_certgen(ip, passwd, dir='', store=True):
                 ).not_valid_before(datetime.utcnow()
                 ).not_valid_after(datetime.utcnow() + timedelta(days=365)
                 ).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
-                                                            x509.DNSName(u"{}".format(host_ip))]),
+                                                            x509.DNSName(u"{}".format(host_ip)),
+                                                            x509.DNSName(u"wss://{}:8833".format(args.t)),
+                                                            x509.DNSName(u"wss://192.168.4.1:8833")]),
                                                             critical=False
                 ).sign(key, hashes.SHA256(), default_backend())
     if store:
@@ -1197,6 +1199,9 @@ helparg = '''Mode:
         To see more keybindings info do CTRL-k
         (Added custom keybindings and autocompletion on tab to the previous work
         see: https://github.com/Hermann-SW/webrepl for the original work)
+- wssrepl : to enter the terminal WebSecureREPL; CTRL-x to exit, CTRL-d to do soft reset
+        To see more keybindings info do CTRL-k. REPL over WebSecureSockets (This needs use of
+        'sslgen_key -tfkey' and enable WebSecureREPL in the device "import wss_repl;wss_repl.start(ssl=True)")
 - srepl : to enter the terminal serial repl using picocom, indicate port by -port option
         (to exit do CTRL-a, CTRL-x)
 - ping : pings the target to see if it is reachable, CTRL-C to stop \n
@@ -1307,6 +1312,12 @@ helparg = '''Mode:
       "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this
        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
        The device can be accessed as "upydev shr@foo_device"
+
+- wssl: to access ssl_wrepl if WebSecureREPL is enabled in a 'ssh' style command to be used like e.g.:
+      "upydev wssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
+       needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
+       The device can be accessed as "upydev wssl@foo_device"
+- set_wss: To toggle between WebSecureREPL and WebREPL, to enable WebSecureREPL do 'set_wss', to disable 'set_wss -wss'
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
@@ -1543,7 +1554,8 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
-                 'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr']
+                 'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
+                 'wssl', 'wssrepl', 'set_wss']
 
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
@@ -1551,7 +1563,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = 'upydev: 0.2.6'
+parser.version = 'upydev: 0.2.7'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
@@ -1623,6 +1635,9 @@ parser.add_argument(
     "-n",
     help='tag a log shot from a sensor or adc',
     required=False)
+parser.add_argument("-wss",
+                    help='Use WebSocket Secure (not available for all commands), this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
+                    default=False, action='store_true')
 parser.add_argument('-v', action='version')
 parser.add_argument('-start', help='To start a script with sysctl; use as -start [SCRIPT_NAME]',
                     required=False)
@@ -2452,6 +2467,18 @@ def kbi(ip, passwd):
 
 def wrepl(ip, passwd):
     web_repl_cmd_str = 'web_repl {} -p {}'.format(ip, passwd)
+    web_repl_cmd = shlex.split(web_repl_cmd_str)
+    try:
+        web_repl = subprocess.call(web_repl_cmd)
+    except KeyboardInterrupt:
+        pass
+        print('')
+    if args.rkey:
+        refresh_wrkey(ip, passwd)
+        sys.exit()
+
+def wssrepl(ip, passwd):
+    web_repl_cmd_str = 'web_repl {} -p {} -wss'.format(ip, passwd)
     web_repl_cmd = shlex.split(web_repl_cmd_str)
     try:
         web_repl = subprocess.call(web_repl_cmd)
@@ -3383,8 +3410,12 @@ def update_upyutils(ip, passwd):
     uping = '{}/uping.py'.format(upydev.__path__[0]+'/upyutils_dir')
     # time_it.py
     time_it = '{}/time_it.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    # wss_repl.py
+    wss_repl = '{}/wss_repl.py'.format(upydev.__path__[0]+'/upyutils_dir')
+    # wss_helper.py
+    wss_helper = '{}/wss_helper.py'.format(upydev.__path__[0]+'/upyutils_dir')
     args.fre = [sync_tool, upylog, upynotify, upysecrets, upysh2,
-                ssl_repl, uping, time_it]
+                ssl_repl, uping, time_it, wss_repl, wss_helper]
     args.dir = 'lib'
     put_multiple_f(ip=ip, passwd=passwd)
 
@@ -3535,13 +3566,19 @@ def get_ssl_keycert(ip, passwd):
 #############################################
 
 
-def ssl_wrepl(ip, passwd, usr=None):
+def ssl_wrepl(ip, passwd, usr=None, wss=False):
     if not args.rkey:
         if not args.nem:
             if usr is not None:
-                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {}'.format(ip, passwd, usr)
+                if wss:
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss'.format(ip, passwd, usr)
+                else:
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {}'.format(ip, passwd, usr)
             else:
-                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r'.format(ip, passwd)
+                if wss:
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -wss'.format(ip, passwd)
+                else:
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r'.format(ip, passwd)
             sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
 
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -3636,7 +3673,7 @@ def address_entry_point(entry_point, group_file=''):
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
           'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
           'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy'
-          'ssl', 'shr']  # implemented till sync in GP
+          'ssl', 'shr', 'wssl', 'wssrepl']  # implemented till sync in GP
 # diagnose in G
 
 # UPYDEVICE CLASS
@@ -4253,6 +4290,11 @@ elif args.m == 'cmd':
 elif args.m == 'wrepl':
     wrepl(args.t, args.p)
 
+# WEB SECURE REPL :
+
+elif args.m == 'wssrepl':
+    wssrepl(args.t, args.p)
+
 # SERIAL REPL:
 
 elif args.m == 'srepl':
@@ -4590,6 +4632,65 @@ elif args.m == 'ssl':
             except Exception as e:
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
 
+elif args.m == 'wssl':
+    group_file = 'UPY_G'
+    # print(group_file)
+    if '{}.config'.format(group_file) not in os.listdir() or args.g:
+        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
+    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+        devices = json.loads(group.read())
+        # print(devices)
+    devs = devices.keys()
+    # NAME ENTRY POINT
+    if entry_point in devs:
+        dev_ip = devices[entry_point][0]
+        if args.apmd:
+            dev_ip = '192.168.4.1'
+        dev_pass = devices[entry_point][1]
+        try:
+            ssl_wrepl(dev_ip, dev_pass, usr=entry_point, wss=True)
+        except Exception as e:
+            print('PASSWORD INVALID or DEVICE NOT REACHABLE')
+    else:
+        # get dev by ip
+        which_dev = [devices[dev][1] for dev in devs if devices[dev][0] == entry_point ]
+        if len(which_dev) > 0:
+            dev_ip = entry_point
+            dev_pass = which_dev[0]
+            try:
+                ssl_wrepl(dev_ip, dev_pass, usr=entry_point, wss=True)
+            except Exception as e:
+                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
+        else:
+            print('Device Not configured PASSWORD NEEDED')
+            my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
+            try:
+                ssl_wrepl(entry_point, my_p, usr=entry_point, wss=True)
+            except Exception as e:
+                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
+
+elif args.m == 'set_wss':
+    if not args.wss:
+        print('Enabling WebSecureREPL...')
+        wss_repl_cmd = 'import wss_repl;wss_repl.stop();wss_repl.start(ssl=True);wss_repl.set_ssl(True)\r'
+        if '.' in args.t:
+            wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            bytes_sent = wsdevice.write(wss_repl_cmd)
+            wsdevice.close_wconn()
+            print('\rWebSecureREPL enabled!')
+        else:
+            pass
+    else:
+        print('Switching to WebREPL...')
+        wrepl_cmd = 'import wss_repl;wss_repl.stop();wss_repl.start(ssl=False);wss_repl.set_ssl(False)\r'
+        if '.' in args.t:
+            wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            bytes_sent = wsdevice.write(wrepl_cmd)
+            wsdevice.close_wconn()
+            print('\rWebREPL enabled!, WebSecureREPL disabled!')
+        else:
+            pass
+
 elif args.m == 'shr':
     group_file = 'UPY_G'
     # print(group_file)
@@ -4654,7 +4755,7 @@ elif args.m == 'make_group':
 elif args.m == 'info':
     info_cmd = 'import uos;uos.uname();gc.collect()'
     if '.' in args.t:
-        wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
+        wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         upyinfo = wsdevice.wr_cmd(info_cmd,
                                   silent=True, rtn_resp=True)
         wsdevice.close_wconn()

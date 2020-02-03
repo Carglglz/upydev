@@ -11,6 +11,8 @@ import ssl
 import os
 import sys
 import time
+from ubinascii import hexlify
+from machine import unique_id
 try:
     import network
 except Exception as e:
@@ -166,11 +168,18 @@ class SSL_socket_server:
         self.serv_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.addr = None
         self.buff = bytearray(buff)
+        self.buff_size = buff
         self.conn = None
         self.addr_client = None
         self._ssl = ssl
-        self.key = key
-        self.cert = cert
+        self._key = 'SSL_key{}.der'.format(hexlify(unique_id()).decode())
+        self._cert = 'SSL_certificate{}.der'.format(hexlify(unique_id()).decode())
+        self.key = None
+        self.cert = None
+        with open(self._key, 'rb') as keyfile:
+            self.key = keyfile.read()
+        with open(self._cert, 'rb') as certfile:
+            self.cert = certfile.read()
 
     def find_localip(self):
         ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -189,7 +198,7 @@ class SSL_socket_server:
         if self._ssl:
             self.conn = ssl.wrap_socket(self.conn, server_side=True,
                                         key=self.key, cert=self.cert)
-        self.conn.settimeout(1)
+        self.conn.setblocking(False)
 
     def start_SOC_AP(self):
         self.serv_soc.bind((self.host_ap, self.port))
@@ -198,7 +207,7 @@ class SSL_socket_server:
         self.conn, self.addr_client = self.serv_soc.accept()
         print('Connection received...')
         print(self.addr_client)
-        self.conn.settimeout(1)
+        self.conn.setblocking(False)
 
     def flush(self):
         flushed = 0
@@ -210,11 +219,14 @@ class SSL_socket_server:
                 print('flushed!')
 
     def send_message(self, message):
-        self.conn.sendall(bytes(message, 'utf-8'))
+        self.conn.write(bytes(message, 'utf-8'))
 
     def recv_message(self):
-        self.buff[:] = self.conn.recv(len(self.buff))
-        print(self.buff.decode())
+        try:
+            self.buff[:] = self.conn.read(self.buff_size)
+            print(self.buff.decode())
+        except Exception as e:
+            pass
 
 
 class HOST_SSL_socket_client:
