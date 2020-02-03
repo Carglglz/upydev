@@ -60,3 +60,7 @@
 
 **uping.py**: to make the device send ICMP ECHO_REQUEST packets to network hosts, (this adds statistics, continuous ping, and esp8266 compatibility) (original [uping.py](https://gist.github.com/shawwwn/91cc8979e33e82af6d99ec34c38195fb) from [@shawwwn](https://github.com/shawwwn))
 
+**wss_repl.py**: tiny wrapper of webrepl.py module to enable WebSecureREPL
+
+**wss_helper.py**: to enable WebSecureREPL (server and client handshakes)
+

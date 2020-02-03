@@ -72,10 +72,23 @@ Upgrade: websocket\r
 Sec-WebSocket-Key: foo\r
 \r
 """)
-    l = cl.readline()
-#    print(l)
-    while 1:
+    if not ssl:
         l = cl.readline()
-        if l == b"\r\n":
-            break
+    #    print(l)
+        while 1:
+            l = cl.readline()
+            if l == b"\r\n":
+                break
+    else:
+        line = b''
+        while b'\n' not in line:
+            line += cl.recv(1)
+    #    print(l)
+
+        while 1:
+            line = b''
+            while b'\n' not in line:
+                line += cl.recv(1)
+            if line == b"\r\n":
+                break
 #        sys.stdout.write(l)

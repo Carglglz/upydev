@@ -15,6 +15,8 @@
    * upysecrets.py (to enable random WebREPL passwords generation)
    * upysh2.py (to enable 'tree'  and 'du' command)
    * ssl_repl.py (to enable SSLWebREPL)
+   * wss_repl.py (to enable WebSecureREPL)
+   * wss_helper.py (to embale WebSecureREPL)
 
 2. **Generate ECDSA private key and self-signed certificate**  then **upload it to the device**:
 
@@ -178,6 +180,7 @@ Device shell commands:
     - timeit : to measure execution time of a script/command
     - i2c    : config/scan (config must be used first, i2c config -scl [SCL] -sda [SDA]
     - upy-config: interactive dialog to configure Network (connect to a WLAN or set an AP) or Interafaces (I2C)
+    - wss: on/off; to enable WebSecureREPL for initial handshake (this sets ssl_flag.SSL to True or False)
     - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
              to exit without reset do 'exit -nr'
              to exit and do hard reset 'exit -hr'

@@ -35,7 +35,7 @@ Other tools are:
 ### Features:
 
 * Command line wireless communication/control of MicroPython devices.
-* Terminal WebREPL protocol
+* Terminal WebREPL and WebSecureREPL protocol
 * Custom commands to automate communication/control
 * Command line autocompletion
 * SSLWebREPL (a Terminal SHELL/REPL over SSL)
@@ -205,7 +205,15 @@ How to use it:
   
   ![](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/SSLWebREPL_demo.gif)
   
-  **New in version 0.2.0: Mode 'sh_srepl', a Serial shell/repl ** (*experimental)
+  **New in version 0.2.7: Mode 'wssrepl' and 'wssl': (This needs WebSecureREPL enabled):**
+  
+  - For **WebSecureREPL:** `$ upydev wssrepl`
+  - For **WebSecureREPL + SSL REPL-SHELL:** 
+    - `$ upydev wssl@esp_room1` or `$ upydev wssl@192.168.1.42`
+  
+  
+  
+  **New in version 0.2.0: Mode 'sh_srepl', a Serial shell/repl** ** (*experimental)
   
   See [SERIAL SHELL-REPL instructions](https://github.com/Carglglz/upydev/blob/master/DOCS/SERIAL_SHELL_REPL_docs.md) for detailed info or
   
@@ -282,6 +290,10 @@ Example: Raw commands
  (Added custom keybindings and autocompletion on tab to the previous work
      see: [Terminal WebREPL](https://github.com/Hermann-SW/webrepl) for the original work)
     
+- **wssrepl** : to enter the terminal WebSecureREPL; CTRL-x to exit, CTRL-d to do soft reset
+        To see more keybindings info do CTRL-k. REPL over WebSecureSockets (This needs use of
+    'sslgen_key -tfkey', 'update_upyutils' and enable WebSecureREPL in the device "import wss_repl;wss_repl.start(ssl=True)")
+    
 - **srepl** : to enter the terminal serial repl using picocom, indicate port by -port option
             (to exit do CTRL-a, CTRL-x) (see: [Picocom](https://github.com/npat-efault/picocom) for more information)
 
@@ -330,7 +342,7 @@ Example: Raw commands
 
 * **update_upyutils**: to update the latest versions of sync_tool.py, upylog.py, upynotify.py, upysh2.py,
 
-     upysecrets.py, ssl_repl.py, uping.py and time_it.py (these are uploaded to the '/lib' folder of the upydevice)
+     upysecrets.py, ssl_repl.py, uping.py, time_it.py, wss_repl.py and wss_helper.py (these are uploaded to the '/lib' folder of the upydevice)
 
 * **debug**: to execute a local script line by line in the target upydevice, use -f option to indicate the file. To enter next line press ENTER, to finish PRESS C then ENTER. To break a while loop do CTRL+C.
 
@@ -369,6 +381,10 @@ Example: Raw commands
 - **shr**: to acces the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.:
       "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
     The device can be accesed as "upydev shr@foo_device"
+- **wssl**: to access ssl_wrepl if WebSecureREPL is enabled in a 'ssh' style command to be used like e.g.:
+      "upydev wssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
+       needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass") then the device can be accessed as "upydev wssl@foo_device".
+- **set_wss**: To toggle between WebSecureREPL and WebREPL, to enable WebSecureREPL do 'set_wss', to disable 'set_wss -wss'
 * **make_group**: to make a group of boards to send commands to. Use -f for the name of the group 
 
      and -devs option to indicate a name, ip and the password of each board. (To store the group settings globally use -g option)

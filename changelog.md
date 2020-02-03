@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.2.7] Unreleased [Github Repo]
+### Added
+- To be able to use this new commands update the SSL key and cert with 'upydev sslgen_key -tfkey' and do 'upydev update_upyutils'
+- 'wss_repl.py' and 'wss_helper.py' to enable WebSecureREPL in the device
+- 'wssl' command e.g. 'upydev wssl@esp_room1' or 'upydev wssl@192.168.1.42' for a E2E encryption Terminal (WebSecureREPL + SSL SHELL-REPL)
+- 'wss on/off' command in SSL REPL to enable/disable WebSecureREPL
+- 'set_wss' upydev command to switch WebREPL to WebSecureREPL and
+'set_wss -wss' to switch back to WebREPL
+- if WebSecureREPL enabled, upydev 'put' and 'get' commands support WebSecureREPL file transfer using '-wss' option e.g. 'upydev put -f foo.py -wss'
 ## [0.2.6] 2020-02-02
 ### Added
 - 'bat' command output style configurable and line numbers (inspired by https://github.com/willmcgugan/rich)
@@ -40,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 'pkg_info' command to see the PGK-INFO file of a module if available (SSL/SERIAL SHELLS)
 - 'upipl' to list available packages at pypi.org or micropython.org/pi
 e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
-- 'update_upytils' command for SERIAL SHELL
+- 'update_upyutils' command for SERIAL SHELL
 ### Fix
 - fw and flash commands of upydev
 ## [0.2.2] 2020-01-13

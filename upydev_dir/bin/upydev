@@ -1201,7 +1201,7 @@ helparg = '''Mode:
         see: https://github.com/Hermann-SW/webrepl for the original work)
 - wssrepl : to enter the terminal WebSecureREPL; CTRL-x to exit, CTRL-d to do soft reset
         To see more keybindings info do CTRL-k. REPL over WebSecureSockets (This needs use of
-        'sslgen_key -tfkey' and enable WebSecureREPL in the device "import wss_repl;wss_repl.start(ssl=True)")
+        'sslgen_key -tfkey', 'update_upyutils' and enable WebSecureREPL in the device "import wss_repl;wss_repl.start(ssl=True)")
 - srepl : to enter the terminal serial repl using picocom, indicate port by -port option
         (to exit do CTRL-a, CTRL-x)
 - ping : pings the target to see if it is reachable, CTRL-C to stop \n
@@ -1249,7 +1249,8 @@ helparg = '''Mode:
         directory, named after the name of the script. To follow an on going 'daemon'
         mode log, use -follow option and indicate the script with -f option.
 - update_upyutils: to update the latest versions of sync_tool.py, upylog.py,
-                upynotify.py, upysecrets.py, upysh2.py, ssl_repl.py, uping.py and time_it.py.
+                upynotify.py, upysecrets.py, upysh2.py, ssl_repl.py, uping.py, time_it.py,
+                wss_repl.py and wss_helper.py.
 - debug: to execute a local script line by line in the target upydevice, use -f option
         to indicate the file. To enter next line press ENTER, to finish PRESS C
         then ENTER. To break a while loop do CTRL+C.
@@ -1316,7 +1317,7 @@ helparg = '''Mode:
 - wssl: to access ssl_wrepl if WebSecureREPL is enabled in a 'ssh' style command to be used like e.g.:
       "upydev wssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
-       The device can be accessed as "upydev wssl@foo_device"
+       then the device can be accessed as "upydev wssl@foo_device"
 - set_wss: To toggle between WebSecureREPL and WebREPL, to enable WebSecureREPL do 'set_wss', to disable 'set_wss -wss'
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
@@ -1731,8 +1732,13 @@ def put_f(ip, passwd, rst=None, abs_path=False):
         file_in_upy = file
     host = ip
     print('Uploading file {}...'.format(file_in_upy))
-    copyfile_str = 'upytool {} {}:/{}{} -p {}'.format(
-        file, host, source, file_in_upy, passwd)
+    if not args.wss:
+        copyfile_str = 'upytool {} {}:/{}{} -p {}'.format(
+            file, host, source, file_in_upy, passwd)
+    else:
+        dev = BASE_WS_DEVICE(ip, passwd)
+        copyfile_str = 'upytool {} {}:/{}{} -p {} -wss'.format(
+            file, host, source, file_in_upy, passwd)
     # reset_str = 'upycmd -c "{}" -t {} -p {}'.format('D', host, passwd)
     subprocess.call(shlex.split(copyfile_str))
 
@@ -1740,7 +1746,10 @@ def put_f(ip, passwd, rst=None, abs_path=False):
     time.sleep(3)
     if rst is None:
         print('Rebooting upy device...')
-        dev.reset(output=False)
+        if not args.wss:
+            dev.reset(output=False)
+        else:
+            dev.reset(silent=True, ssl=True)
         print('Done!')
     else:
         pass
@@ -1821,6 +1830,8 @@ def get_f(ip, passwd, id_file='', check_file=True):
             pass
 
     try:
+        if args.wss:
+            check_file = False
         if args.f in resp or check_file is False:
             print('Getting file {}...'.format(args.f))
             file_to_get = args.f
@@ -1830,8 +1841,12 @@ def get_f(ip, passwd, id_file='', check_file=True):
                 file_to_get = '/{}/{}'.format(args.dir, args.f)
             passwd = passwd
             target = ip
-            copyfile_str = 'upytool -p {} {}:{} .{}'.format(
-                passwd, target, file_to_get, id_file)
+            if not args.wss:
+                copyfile_str = 'upytool -p {} {}:{} .{}'.format(
+                    passwd, target, file_to_get, id_file)
+            else:
+                copyfile_str = 'upytool -wss -p {} {}:{} .{}'.format(
+                    passwd, target, file_to_get, id_file)
 
             subprocess.call(shlex.split(copyfile_str))
             print('Done!')

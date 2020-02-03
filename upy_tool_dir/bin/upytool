@@ -10,13 +10,15 @@ import sys
 import os
 import struct
 import time
-from upydevice import W_UPYDEVICE
+import ssl
+from upydevice import BASE_WS_DEVICE
 from datetime import timedelta
 try:
     import usocket as socket
 except ImportError:
     import socket
 import upydev as websocket_helper
+from upydev import wss_helper_host
 
 # Define to 1 to use builtin "uwebsocket" module of MicroPython
 USE_BUILTIN_UWEBSOCKET = 0
@@ -265,11 +267,13 @@ def error(msg):
     sys.exit(1)
 
 
-def parse_remote(remote):
+def parse_remote(remote, ssl=False):
     host, fname = remote.rsplit(":", 1)
     if fname == "":
         fname = "/"
     port = 8266
+    if ssl:
+        port = 8833
     if ":" in host:
         host, port = host.split(":")
         port = int(port)
@@ -277,14 +281,22 @@ def parse_remote(remote):
 
 
 def main():
-    if len(sys.argv) not in (3, 5):
+    if len(sys.argv) not in (3, 5, 6):
         help(1)
 
     passwd = None
+    websec = False
+
     for i in range(len(sys.argv)):
         if sys.argv[i] == '-p':
             sys.argv.pop(i)
             passwd = sys.argv.pop(i)
+            break
+
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == '-wss':
+            sys.argv.pop(i)
+            websec = True
             break
 
     if not passwd:
@@ -298,14 +310,20 @@ def main():
 
     if ":" in sys.argv[1]:
         op = "get"
-        host, port, src_file = parse_remote(sys.argv[1])
+        if not websec:
+            host, port, src_file = parse_remote(sys.argv[1])
+        else:
+            host, port, src_file = parse_remote(sys.argv[1], ssl=True)
         dst_file = sys.argv[2]
         if os.path.isdir(dst_file):
             basename = src_file.rsplit("/", 1)[-1]
             dst_file += "/" + basename
     else:
         op = "put"
-        host, port, dst_file = parse_remote(sys.argv[2])
+        if not websec:
+            host, port, dst_file = parse_remote(sys.argv[2])
+        else:
+            host, port, dst_file = parse_remote(sys.argv[2], ssl=True)
         src_file = sys.argv[1]
         if dst_file[-1] == "/":
             basename = src_file.rsplit("/", 1)[-1]
@@ -315,10 +333,16 @@ def main():
         print("op:%s, host:%s, port:%d, passwd:%s." %
               (op, host, port, '*'*len(passwd)))
         print(src_file, "->", dst_file)
-        dev = W_UPYDEVICE(host, passwd) # switch to BASE_WS_DEVICE
-        if op == 'get':
-            dev.cmd("import uos; uos.stat('{}')[6]".format(src_file), silent=True)
-            size_file_to_get = dev.output
+        if not websec:
+            dev = BASE_WS_DEVICE(host, passwd)
+            if op == 'get':
+                dev.cmd("import uos; uos.stat('{}')[6]".format(src_file), silent=True)
+                size_file_to_get = dev.output
+        else:
+            dev = BASE_WS_DEVICE(host, passwd)
+            if op == 'get':
+                dev.cmd("import uos; uos.stat('{}')[6]".format(src_file), silent=True, ssl=True)
+                size_file_to_get = dev.output
 
     # HERE CATCH -wss and do handshake
 
@@ -326,10 +350,19 @@ def main():
 
     ai = socket.getaddrinfo(host, port)
     addr = ai[0][4]
-
-    s.connect(addr)
+    if websec:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
+        # sock = context.wrap_socket(sock, server_hostname=hostname)
+        s = context.wrap_socket(s)
+        s.connect(addr)
+        wss_helper_host.client_handshake(s, ssl=True)
+    else:
+        s.connect(addr)
     # s = s.makefile("rwb")
-    websocket_helper.client_handshake(s)
+        websocket_helper.client_handshake(s)
 
     ws = websocket(s)
 
