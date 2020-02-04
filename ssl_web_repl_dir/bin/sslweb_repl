@@ -779,7 +779,12 @@ if base_ws:
     #               silent=True)
     ws_upydevice.wr_cmd("from machine import unique_id; unique_id()", silent=True)
     # unique_id = hexlify(espdev.output).decode()
-    unique_id = hexlify(ws_upydevice.output).decode()
+    try:
+        unique_id = hexlify(ws_upydevice.output).decode()
+    except TypeError:
+        time.sleep(0.5)
+        ws_upydevice.wr_cmd("from machine import unique_id; unique_id()", silent=True)
+        unique_id = hexlify(ws_upydevice.output).decode()
     # espdev.wr_cmd("import sys; sys.platform",
     #               silent=True)
     ws_upydevice.wr_cmd("import sys; sys.platform", silent=True)
