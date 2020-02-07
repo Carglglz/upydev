@@ -7625,28 +7625,15 @@ elif args.m == 'rget_text':
 
 elif args.m == 'battery':
     batt_cmd = "from machine import ADC;bat = ADC(Pin(35));bat.atten(ADC.ATTN_11DB);((bat.read()*2)/4095)*3.6;gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        batt_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    batlev = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    batlev.append(line[4:])
-                else:
-                    batlev.append(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    if len(batlev) > 0:
-        volts = ast.literal_eval(batlev[0])
+    info_cmd = 'import uos;uos.uname();gc.collect()'
+
+    wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True, ssl=args.wss,
+                              auth=args.wss)
+    batlev = wsdevice.wr_cmd(batt_cmd, silent=True, rtn_resp=True)
+    wsdevice.close_wconn()
+
+    if batlev > 0:
+        volts = batlev
         percentage = round((volts - 3.3) / (4.23 - 3.3) * 100, 1)
         print('Battery Voltage : {} V; Level:{} %'.format(
             round(volts, 2), percentage))

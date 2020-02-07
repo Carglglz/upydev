@@ -936,7 +936,14 @@ else:
         ssl_cp.flush_conn()
         ssl_cp.flush_conn()
         espdev.output = None
-        ssl_cp.ssl_repl("help('modules')", silent=True)
+        try:
+            ssl_cp.ssl_repl("help('modules')", silent=True)
+        except KeyboardInterrupt:
+            try:
+                ssl_cp.flush_conn()
+                ssl_cp.ssl_repl("help('modules')", silent=True)
+            except Exception as e:
+                pass
         frozen_modules['FM'] = espdev.output.split()[:-6]
         ssl_cp.flush_conn()
         ssl_cp.flush_conn()
@@ -1488,7 +1495,7 @@ def custom_sh_cmd(cmd_inp):
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format('Flash', total_mem,
                                                                 used_mem, free_mem,
                                                                 "{:.1f} %".format((used_b/total_b)*100), ' ', '/'))
-        vfs_resp = send_custom_sh_cmd("{dir:os.statvfs(dir) for dir in os.listdir() if os.stat(dir)[0] & 0x4000}")
+        vfs_resp = send_custom_sh_cmd("{dir:os.statvfs(dir) for dir in os.listdir() if os.stat(dir)[0] & 0x4000 and os.statvfs('') != os.statvfs(dir)}")
         for vfs in vfs_resp.keys():
             if vfs_resp[vfs] != resp:
                 size_info_sd = vfs_resp[vfs]

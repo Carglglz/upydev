@@ -1263,7 +1263,7 @@ def custom_sh_cmd(cmd_inp):
                                                                     "{:.1f} %".format((used_b/total_b)*100), ' ', '/'))
         except Exception as e:
             pass
-        vfs_resp = send_custom_sh_cmd("{dir:os.statvfs(dir) for dir in os.listdir() if os.stat(dir)[0] & 0x4000}")
+        vfs_resp = send_custom_sh_cmd("{dir:os.statvfs(dir) for dir in os.listdir() if os.stat(dir)[0] & 0x4000 and os.statvfs('') != os.statvfs(dir)}")
         for vfs in vfs_resp.keys():
             if vfs_resp[vfs] != resp:
                 size_info_sd = vfs_resp[vfs]
