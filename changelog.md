@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.7] Unreleased [Github Repo]
+## [0.2.8] Unreleased [Github Repo]
+## [0.2.7] - 2020-02-08
 ### Added
 - To be able to use this new commands update the SSL key and cert with 'upydev sslgen_key -tfkey' and do 'upydev update_upyutils'
 - 'wss_repl.py' and 'wss_helper.py' to enable WebSecureREPL in the device
