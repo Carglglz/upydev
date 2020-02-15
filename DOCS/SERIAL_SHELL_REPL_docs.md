@@ -255,6 +255,7 @@ Device shell commands:
     - Use 'git clone_dev' to clone the local repo into the device
     - Use 'git repo' to open the remote repo in the web browser if remote repo exists
     - Any other git command will be echoed directly to git
+  - tig: to use the 'Text mode interface for git' tool. Must be available in $PATH
 
 Some examples of these commands:
 
