@@ -711,7 +711,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
                     'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle',
-                    'upy-config']
+                    'upy-config', 'tig']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -1888,7 +1888,7 @@ def custom_sh_cmd(cmd_inp):
         time.sleep(1)
         try:
             file_to_edit = cmd_inp.split(' ')[1]
-            lemacs = 'emacs {}'.format(file_to_edit)
+            lemacs = 'emacs {} -nw'.format(file_to_edit)
             lemacs_cmd = shlex.split(lemacs)
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -2165,7 +2165,7 @@ def custom_sh_cmd(cmd_inp):
                 try:
                     fw_req = subprocess.call(get_fw_cmd)
                     if 'update' in cmd_inp:
-                        kw_cmd = cmd_inp.replace('update', 'list').split()
+                        kw_cmd = cmd_inp.replace('update', 'list latest').split()
                         md = ' '.join(kw_cmd[1:])
                         fw_cmd = 'fw -md {} -b {}'.format(md, dev_p)
                         upy_fw_cmd = 'upydev ' + fw_cmd
@@ -2643,6 +2643,27 @@ def custom_sh_cmd(cmd_inp):
 
         else:
             subprocess.call(cmd_git)
+
+    if cmd_inp == 'tig':
+        try:
+            tigtool = 'tig'
+            tig_cmd = shlex.split(tigtool)
+            # old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            #
+            # def preexec_function(action=old_action):
+            #     signal.signal(signal.SIGINT, action)
+            try:
+                if '.git' in os.listdir():
+                    tig = subprocess.call(tig_cmd)
+                else:
+                    print('tig: Not a git repository')
+                # signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+                print('tig not found')
+        except Exception as e:
+            print(e)
+            pass
 
     if cmd_inp == 'upy-config':
         results_array = radiolist_dialog(
@@ -3469,7 +3490,7 @@ def shif_tab(event):
                     # print(result)
                     buff_text = buff_text.split()[-1]
                 else:
-                    result = ['list', 'get', 'latest']
+                    result = ['list', 'get', 'latest', 'update']
                     buff_text = ''
             if len(result) > 1:
                 comm_part = os.path.commonprefix(result)
