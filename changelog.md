@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.8] Unreleased [Github Repo]
+## [0.2.9] Unreleased [Github Repo]
+## [0.2.8] - 2020-02-16
 ### Added
 - emacs in nw mode by default
 - tig integration for git workflow: [tig](https://jonas.github.io/tig/)
