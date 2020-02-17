@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.9] Unreleased [Github Repo]
 ### Fix
 - autocompletion for zsh
+- git integration and 'git init dev' command for SHELLS
 ## [0.2.8] - 2020-02-16
 ### Added
 - emacs in nw mode by default

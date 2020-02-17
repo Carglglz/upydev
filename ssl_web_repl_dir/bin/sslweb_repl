@@ -1062,6 +1062,7 @@ shell_commands_info = """
     - pkg_info: to see the PGK-INFO file of a module if available at pypi.org or micropython.org/pi
     - lping : to make local machine send ICMP ECHO_REQUEST packets to network hosts (do 'lping dev' to ping the device)
     - git : to call git commands and integrate the git workflow into a project (needs 'git' available in $PATH)
+            Use 'git init dev' to initiate device repo
             Use 'git push dev' after a 'git commit ..' or 'git pull' to push the changes to the device.
             Use 'git log dev' to see the latest commit pushed to the device ('git log dev -a' to see all commits)
             Use 'git log host' to see the latest commit in the local repo
@@ -2697,7 +2698,11 @@ def custom_sh_cmd(cmd_inp):
             #     files_to_push = subprocess.check_output(files_diff).decode().splitlines()
             # except Exception as e:
             #     print(e)
-            files_to_push = git_diff_files['diff']
+            files_to_push = []
+            for file_tp in git_diff_files['diff']:
+                if file_tp not in files_to_push:
+                    files_to_push.append(file_tp)
+            # files_to_push = git_diff_files['diff']
             if len(files_to_push) == 0:
                 print('Everything up-to-date with {}'.format(dev_platform))
             else:
@@ -2932,68 +2937,110 @@ def custom_sh_cmd(cmd_inp):
                     d_sync_recursive(_dir, show_tree=True, root_sync_folder=_dir)
 
         elif 'log' in cmd_git and 'dev' in cmd_git:
-            if '-a' in cmd_git:
-                if not encrypted_flag['sec']:
-                    # espdev.close_wconn()
-                    # espdev.cmd("cat('.gitlog')"+';gc.collect()')
-                    # espdev.open_wconn()
-                    log_dev_head = send_custom_sh_cmd("cat('.gitlog')"+';gc.collect()', True)
-                    log_info_list = [line.replace('\r','') for line in log_dev_head if line.replace('\r', '') != '']
-                    log_dev_head = '\n'.join(log_info_list)
-                    log_dev_head = log_dev_head.replace('\n ', '\n\n ').replace('\ncommit', '\n\ncommit')
-                    log_dev_head = log_dev_head.replace('\n\ncommit', '\n\n{}commit'.format(YELLOW)).replace('\nAuthor: ', '{}\nAuthor: '.format(CEND))
-                    last_commit_header = log_dev_head.split('\n')[0]
-                    log_dev_head = log_dev_head.replace(last_commit_header, '')
-                    head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN, CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
-                    commit = "{}{}){}".format(YELLOW, last_commit_header + head_dev, CEND)
-                    print(commit, end='')
-                    print(log_dev_head)
+            try:
+                if '-a' in cmd_git:
+                    if not encrypted_flag['sec']:
+                        # espdev.close_wconn()
+                        # espdev.cmd("cat('.gitlog')"+';gc.collect()')
+                        # espdev.open_wconn()
+                        log_dev_head = send_custom_sh_cmd("cat('.gitlog')"+';gc.collect()', True)
+                        log_info_list = [line.replace('\r','') for line in log_dev_head if line.replace('\r', '') != '']
+                        log_dev_head = '\n'.join(log_info_list)
+                        log_dev_head = log_dev_head.replace('\n ', '\n\n ').replace('\ncommit', '\n\ncommit')
+                        log_dev_head = log_dev_head.replace('\n\ncommit', '\n\n{}commit'.format(YELLOW)).replace('\nAuthor: ', '{}\nAuthor: '.format(CEND))
+                        last_commit_header = log_dev_head.split('\n')[0]
+                        if 'Traceback (most recent call last)' in last_commit_header:
+                            print('Device {} repo not initiated'.format(dev_platform))
+                        else:
+                            if last_commit_header != '' and last_commit_header != ' ':
+                                log_dev_head = log_dev_head.replace(last_commit_header, '')
+                                head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN, CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
+                                commit = "{}{}){}".format(YELLOW, last_commit_header + head_dev, CEND)
+                                print(commit, end='')
+                                print(log_dev_head)
+                            else:
+                                print('No commits in dev log to show')
 
+                    else:
+                        # ssl_cp.ssl_repl("cat('.gitlog')"+';gc.collect()', follow=True)
+                        log_dev_head = send_custom_sh_cmd("cat('.gitlog')"+';gc.collect()')
+                        log_dev_head = log_dev_head.replace('\n ', '\n\n ').replace('\ncommit', '\n\ncommit')
+                        log_dev_head = log_dev_head.replace('\n\ncommit', '\n\n{}commit'.format(YELLOW)).replace('\nAuthor: ', '{}\nAuthor: '.format(CEND))
+                        last_commit_header = log_dev_head.split('\n')[0]
+                        if 'Traceback (most recent call last)' in last_commit_header:
+                            print('Device {} repo not initiated'.format(dev_platform))
+                        else:
+                            log_dev_head = log_dev_head.replace(last_commit_header, '')
+                            head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN, CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
+                            commit = "{}{}){}".format(YELLOW, last_commit_header + head_dev, CEND)
+                            print(commit, end='')
+                            print(log_dev_head)
                 else:
-                    # ssl_cp.ssl_repl("cat('.gitlog')"+';gc.collect()', follow=True)
-                    log_dev_head = send_custom_sh_cmd("cat('.gitlog')"+';gc.collect()')
-                    log_dev_head = log_dev_head.replace('\n ', '\n\n ').replace('\ncommit', '\n\ncommit')
-                    log_dev_head = log_dev_head.replace('\n\ncommit', '\n\n{}commit'.format(YELLOW)).replace('\nAuthor: ', '{}\nAuthor: '.format(CEND))
-                    last_commit_header = log_dev_head.split('\n')[0]
-                    log_dev_head = log_dev_head.replace(last_commit_header, '')
-                    head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN, CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
-                    commit = "{}{}){}".format(YELLOW, last_commit_header + head_dev, CEND)
-                    print(commit, end='')
-                    print(log_dev_head)
-            else:
-                if not encrypted_flag['sec']:
-                    log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()', True)
-                    log_info_list = ''.join([line.replace('\r', '\n') for line in log_dev_head if line.replace('\r', '\n') != ''])
-                    log_info_list = log_info_list.split('\ncommit ')[0].replace('\n    ', '\n\n    ', 1)
-                    commit_body = '\n'.join(log_info_list.split('\n')[1:])
-                    commit_head = log_info_list.split('\n')[0]
-                else:
-                    log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
-                    # print(log_dev_head)
-                    log_info_list = log_dev_head.split('\ncommit ')[0].replace('\n    ', '\n\n    ', 1)
-                    commit_body = '\n'.join(log_info_list.split('\n')[1:])
-                    commit_head = log_info_list.split('\n')[0]
+                    if not encrypted_flag['sec']:
 
-                head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN,CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
-                commit = "{}{}){}".format(YELLOW, commit_head + head_dev, CEND)
-                print(commit)
-                print(commit_body)
+                        log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()', True)
+                        log_info_list = ''.join([line.replace('\r', '\n') for line in log_dev_head if line.replace('\r', '\n') != ''])
+                        log_info_list = log_info_list.split('\ncommit ')[0].replace('\n    ', '\n\n    ', 1)
+                        commit_body = '\n'.join(log_info_list.split('\n')[1:])
+                        commit_head = log_info_list.split('\n')[0]
+                    else:
+                        log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
+                        # print(log_dev_head)
+                        log_info_list = log_dev_head.split('\ncommit ')[0].replace('\n    ', '\n\n    ', 1)
+                        commit_body = '\n'.join(log_info_list.split('\n')[1:])
+                        commit_head = log_info_list.split('\n')[0]
+                    if 'Traceback (most recent call last)' in commit_head:
+                        print('Device {} repo not initiated'.format(dev_platform))
+                    else:
+                        if commit_head != '' and commit_head != ' ':
+                            head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN,CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
+                            commit = "{}{}){}".format(YELLOW, commit_head + head_dev, CEND)
+                            print(commit)
+                            print(commit_body)
+                        else:
+                            print('No commits in dev log to show')
+            except Exception as e:
+                print('No commits in dev log to show')
 
         elif 'log' in cmd_git and 'host' in cmd_git:
             cmd_git = shlex.split('git log -1')
             subprocess.call(cmd_git)
 
+        elif 'init' in cmd_git and 'dev' in cmd_git:
+            cwd_now = send_custom_sh_cmd("os.getcwd()")
+            if dev_platform == 'pyboard':
+                send_custom_sh_cmd("cd('/')")
+                send_custom_sh_cmd("cd('/flash')")
+            else:
+                send_custom_sh_cmd("cd('/')")
+            is_gitlog = "'.gitlog' in os.listdir()"
+            is_init = send_custom_sh_cmd(is_gitlog)
+            if is_init:
+                print('Device {} repo already initiated'.format(dev_platform))
+            else:
+                send_custom_sh_cmd("gitlog = open('.gitlog', 'w');gitlog.close()")
+                send_custom_sh_cmd("gitlog = open('.githash', 'w');gitlog.close()")
+                print('Device {} repo initiated succesfully!'.format(dev_platform))
+
+            send_custom_sh_cmd("cd('{}')".format(cwd_now))
+
         elif 'status' in cmd_git and 'dev' in cmd_git:
             cmd_git = shlex.split('git log --pretty=format:"%H"')
             local_gitlog = subprocess.check_output(cmd_git).decode().split()
-            if not encrypted_flag['sec']:
-                log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()', True)
-                log_info_list = [commit_hash.replace('\r', '') for commit_hash in log_dev_head]
-                # print(log_info_list)
-            else:
-                log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()')
-                # print(log_dev_head)
-                log_info_list = log_dev_head.split()
+            try:
+                if not encrypted_flag['sec']:
+                    log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()', True)
+                    log_info_list = [commit_hash.replace('\r', '') for commit_hash in log_dev_head if commit_hash != '' and commit_hash != ' ']
+                    # print(log_info_list)
+                else:
+                    log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()')
+                    # print(log_dev_head)
+
+                    log_info_list = log_dev_head.split()
+                if 'Traceback' in log_info_list and 'ENOENT' in log_info_list:
+                    log_info_list = []
+            except Exception as e:
+                log_info_list = []
             if local_gitlog == log_info_list:
                 status_msg = "On branch master\nYour branch is up to date with '{}'.\n\nnothing to commit, working tree clean".format(dev_platform)
             else:
