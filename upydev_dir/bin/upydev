@@ -232,7 +232,8 @@ helparg = '''Mode:
 
 - shr: to access the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.:
       "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this
-       needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
+       needs to be created first doing e.g.
+       "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
        The device can be accessed as "upydev shr@foo_device"
 
 - wssl: to access ssl_wrepl if WebSecureREPL is enabled in a 'ssh' style command to be used like e.g.:
@@ -240,6 +241,10 @@ helparg = '''Mode:
        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
        then the device can be accessed as "upydev wssl@foo_device"
 - set_wss: To toggle between WebSecureREPL and WebREPL, to enable WebSecureREPL do 'set_wss', to disable 'set_wss -wss'
+- jupyterc: to run MicroPython upydevice kernel for jupyter console, CTRL-D to exit, %%lsmagic to see magic commands and
+            how to connect to a device either WebREPL (%%websocketconnect) or Serial connection (%%serialconnect).
+            Hit tab to autcomplete magic commands, and MicroPython/Python code.
+            (This needs jupyter and MicroPython upydevice kernel to be installed)
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
@@ -477,7 +482,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
-                 'wssl', 'wssrepl', 'set_wss']
+                 'wssl', 'wssrepl', 'set_wss', 'jupyterc']
 
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
@@ -3090,6 +3095,22 @@ def srepl(serial_port):
         print('')
 
 
+def jupyterc():
+    jupyter_cmd_str = 'jupyter console --kernel=micropython-upydevice'
+    jupyter_cmd = shlex.split(jupyter_cmd_str)
+    old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    def preexec_function(action=old_action):
+        signal.signal(signal.SIGINT, action)
+    try:
+        jupyter_console = subprocess.call(jupyter_cmd, preexec_fn=preexec_function)
+        signal.signal(signal.SIGINT, old_action)
+    except KeyboardInterrupt:
+        pass
+        print('')
+    sys.exit()
+
+
 def find_devices():
     print('Scanning WLAN {} for upy devices...'.format(get_ssid()))
     gws = netifaces.gateways()
@@ -4263,7 +4284,7 @@ def address_entry_point(entry_point, group_file=''):
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
           'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
           'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy'
-          'ssl', 'shr', 'wssl', 'wssrepl']  # implemented till sync in GP
+          'ssl', 'shr', 'wssl', 'wssrepl', 'jupyterc']  # implemented till sync in GP
 # diagnose in G
 
 # UPYDEVICE CLASS
@@ -5317,6 +5338,9 @@ elif args.m == 'shr':
             except Exception as e:
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
 
+# JUPYTER CONSOLE
+elif args.m == 'jupyterc':
+    jupyterc()
 
 # MAKE_GROUP
 elif args.m == 'make_group':

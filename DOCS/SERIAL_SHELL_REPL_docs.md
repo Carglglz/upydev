@@ -220,6 +220,7 @@ Device shell commands:
   - timeit : to measure execution time of a script/command
   - i2c    : config/scan (config must be used first, i2c config -scl [SCL] -sda [SDA]
   - upy-config: interactive dialog to configure Network (connect to a WLAN or set an AP) or Interafaces (I2C)
+  - jupyterc: to run MicroPython upydevice kernel for jupyter console
   - exit   : to exit SSLWebREPL Terminal (in encrypted mode soft-reset by default)
         to exit without reset do 'exit -nr'
         to exit and do hard reset 'exit -hr'

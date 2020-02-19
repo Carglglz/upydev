@@ -711,7 +711,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
                     'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle',
-                    'upy-config', 'tig']
+                    'upy-config', 'tig', 'jupyterc']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -823,6 +823,7 @@ shell_commands_info = """
         - timeit : to measure execution time of a script/command
         - i2c    : config/scan (config must be used first, i2c config -scl [SCL] -sda [SDA])
         - upy-config: interactive dialog to configure Network (connect to a WLAN or set an AP) or Interafaces (I2C)
+        - jupyterc: to run MicroPython upydevice kernel for jupyter console
         - exit   : to exit SHELL-REPL Terminal
                    to exit without reset do 'exit -nr'
                    to exit and do hard reset 'exit -hr'
@@ -1832,6 +1833,25 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print(e)
             pass
+
+    if cmd_inp.split(' ')[0] == 'jupyterc':
+
+        print('Use CTRL-D to exit, Use %lsmagic to see custom magic commands')
+        jupyter_cmd_str = 'jupyter console --kernel=micropython-upydevice'
+
+        jupyter_cmd = shlex.split(jupyter_cmd_str)
+        old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        def preexec_function(action=old_action):
+            signal.signal(signal.SIGINT, action)
+
+        try:
+            jupyter_console = subprocess.call(jupyter_cmd, preexec_fn=preexec_function)
+            signal.signal(signal.SIGINT, old_action)
+
+        except KeyboardInterrupt:
+            pass
+            print('')
 
     if cmd_inp.split()[0] == 'ls':
         if len(cmd_inp.split()) == 1:
