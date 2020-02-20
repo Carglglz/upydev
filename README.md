@@ -393,7 +393,7 @@ Example: Raw commands
 
 - **jupyterc**: to run MicroPython upydevice kernel for jupyter console, CTRL-D to exit, %lsmagic to see magic commands and how to connect to a device either WebREPL (%websocketconnect) or Serial connection (%serialconnect).
 
-   Hit tab to autcomplete magic commands, and micropython/python code.
+   Hit tab to autcomplete magic commands, and MicroPython/Python code.
    (This needs jupyter and MicroPython upydevice kernel to be installed)
 * **make_group**: to make a group of boards to send commands to. Use -f for the name of the group 
 
