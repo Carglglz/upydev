@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fix
 - autocompletion for zsh
 - git integration and 'git init dev' command for SHELLS
+- sslgen_key command help
 ## [0.2.8] - 2020-02-16
 ### Added
 - emacs in nw mode by default

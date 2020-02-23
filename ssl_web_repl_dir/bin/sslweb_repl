@@ -4519,4 +4519,7 @@ while repl:
 # sys.exit()
 # EXIT MESSAGE
 print('logout')
-print('Connection to {} closed.'.format(args.t))
+if host_name != unique_id:
+    print('Connection to {} closed.'.format(host_name))
+else:
+    print('Connection to {} closed.'.format(args.t))
