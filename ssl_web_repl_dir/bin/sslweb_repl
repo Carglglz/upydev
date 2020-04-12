@@ -157,7 +157,7 @@ class SSL_REPL_server:
 
     def __init__(self, dev=None, port=8443, buff=1024, key=None,
                  cert=None, init=True, client_key=None, dev_id = None):
-        self.host = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
+        self.host = self.find_localip()
         self.port = port
         self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serv_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -216,11 +216,16 @@ class SSL_REPL_server:
         return hashed_key
 
     def find_localip(self):
-        ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        ip_soc.connect(('8.8.8.8', 1))
-        local_ip = ip_soc.getsockname()[0]
-        ip_soc.close()
-        return local_ip
+        try:
+            ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ip_soc.connect(('8.8.8.8', 1))
+            local_ip = ip_soc.getsockname()[0]
+            ip_soc.close()
+            return local_ip
+        except Exception as e:
+            return [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                        iface in netifaces.interfaces() if netifaces.AF_INET in
+                        netifaces.ifaddresses(iface)][-1]
 
     def start_SOC(self):
         while True:
@@ -538,7 +543,7 @@ class SSL_REPL_server:
 class SSL_TOOL:
     def __init__(self, ssl_repl, port=8433, key=None,
                  cert=None):
-        self.host = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
+        self.host = self.find_localip()
         self.port = port
         self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serv_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -552,6 +557,18 @@ class SSL_TOOL:
         self.bar_size = int((self.columns - self.cnt_size))
         self.pb = False
         self.wheel = ['|', '/', '-', "\\"]
+
+    def find_localip(self):
+        try:
+            ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ip_soc.connect(('8.8.8.8', 1))
+            local_ip = ip_soc.getsockname()[0]
+            ip_soc.close()
+            return local_ip
+        except Exception as e:
+            return [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                        iface in netifaces.interfaces() if netifaces.AF_INET in
+                        netifaces.ifaddresses(iface)][-1]
 
     def start_SOC(self):
         self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

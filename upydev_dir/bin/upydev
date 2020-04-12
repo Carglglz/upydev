@@ -490,7 +490,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = 'upydev: 0.2.9'
+parser.version = 'upydev: 0.3.0'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
@@ -1679,7 +1679,10 @@ def upy_keygen(rsa_key):
 def get_cert_data():
     # MAC ADDRES IF
     try:
-        addrs = netifaces.ifaddresses('en0')[netifaces.AF_LINK][0]['addr']
+        addrs = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                    iface in netifaces.interfaces() if netifaces.AF_INET in
+                    netifaces.ifaddresses(iface)][-1]
+
         USER = os.environ['USER']
         HOST_NAME = socket.gethostname()
         COUNTRY_CODE = locale.getlocale()[0].split('_')[1]
@@ -1727,7 +1730,7 @@ def ssl_ECDSA_key_certgen(ip, passwd, dir='', store=True):
                                   x509.NameAttribute(NameOID.STREET_ADDRESS, u"{}".format(cert_data['addrs'])),
                                   x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"MicroPython"),
                                   x509.NameAttribute(NameOID.COMMON_NAME, u"{}@{}".format(dev_platform, unique_id))])
-    host_ip = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
+    host_ip = cert_data['addrs']
     cert = x509.CertificateBuilder().subject_name(
                 subject).issuer_name(issuer).public_key(key.public_key()
                 ).serial_number(x509.random_serial_number()
@@ -6179,27 +6182,11 @@ elif args.m == 'wsta_conn':
 # WAP_CONN
 
 elif args.m == 'wap_conn':
-    connect_to = "u_wlan.AP_conn()"
-    conn_cmd = "{};gc.collect()".format(connect_to)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        conn_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
+    wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
+    conn_cmd = "u_wlan.AP_conn()"
+    AP_CONN = wsdevice.wr_cmd(conn_cmd, silent=True, long_string=True,
+                              rtn_resp=True)
+    print(AP_CONN.strip())
     sys.exit()
 #############################################
 
