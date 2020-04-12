@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] Unreleased [Github Repo]
 ### Fix
-- Minor fix for host ip determination while generation of ECDSA key and SSLWebREPL modes 
+- Minor fix for host ip determination (while ECDSA key is generated and for SSLWebREPL mode)
 ## [0.2.9] - 2020-02-24
 ### Added
 - jupyter console integration through jupyter-micropython-upydevice
