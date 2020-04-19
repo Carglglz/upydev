@@ -1186,6 +1186,25 @@ def _ft_datetime(t_now):
 def sortSecond(val):
     return val[1]
 
+
+def get_ip():
+    # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
+    # ip = scanoutput.decode('utf-8').split('\n')[0]
+    try:
+        ip = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                    iface in netifaces.interfaces() if netifaces.AF_INET in
+                    netifaces.ifaddresses(iface)][-1]
+        return ip
+    except Exception as e:
+        try:
+            ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ip_soc.connect(('8.8.8.8', 1))
+            local_ip = ip_soc.getsockname()[0]
+            ip_soc.close()
+            return local_ip
+        except Exception as e:
+            return '0.0.0.0'
+
 class LTREE:
 
     def __repr__(self):
@@ -2423,7 +2442,9 @@ def custom_sh_cmd(cmd_inp):
                 send_custom_sh_cmd('from upysh2 import tree;tree();gc.collect()', sh_silent=False)
 
     if cmd_inp == 'l_ifconfig':
-        ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]
+        ifconfig_local = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]
+                          for iface in netifaces.interfaces() if
+                          netifaces.AF_INET in netifaces.ifaddresses(iface)][-1]
         gateaway = list(netifaces.gateways()['default'].values())[0][0]
         print("('{}', '{}', '{}', '{}')".format(ifconfig_local['addr'],
                                                 ifconfig_local['netmask'],
@@ -2443,7 +2464,9 @@ def custom_sh_cmd(cmd_inp):
                 ':')[1].strip() for data in wifi_info[:-1]}
         ssid = wifi_info_dic['SSID']
         rssi = wifi_info_dic['agrCtlRSSI']
-        ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]
+        ifconfig_local = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]
+                          for iface in netifaces.interfaces() if
+                          netifaces.AF_INET in netifaces.ifaddresses(iface)][-1]
         gateaway = list(netifaces.gateways()['default'].values())[0][0]
         print('=' * 106)
         print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(

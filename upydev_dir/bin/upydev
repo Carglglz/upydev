@@ -490,7 +490,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = 'upydev: 0.3.0'
+parser.version = 'upydev: 0.3.1'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
@@ -743,7 +743,7 @@ class DisplayablePath(object):
 def get_fw_versions(keyword):
     fw_list = []
     fw_links = []
-    r = requests.get('https://micropython.org/download')
+    r = requests.get('https://micropython.org/download/all/')
     fw_text = [line for line in r.text.split(
         '\n') if keyword in line and any(x in line for x in ['bin', 'dfu', 'zip']) and 'firmware' in line]
     for line in fw_text:
@@ -893,8 +893,20 @@ def run_live(run_cmd, targ, password):
 def get_ip():
     # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
     # ip = scanoutput.decode('utf-8').split('\n')[0]
-    ip = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
-    return ip
+    try:
+        ip = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                    iface in netifaces.interfaces() if netifaces.AF_INET in
+                    netifaces.ifaddresses(iface)][-1]
+        return ip
+    except Exception as e:
+        try:
+            ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ip_soc.connect(('8.8.8.8', 1))
+            local_ip = ip_soc.getsockname()[0]
+            ip_soc.close()
+            return local_ip
+        except Exception as e:
+            return '0.0.0.0'
 
 
 def get_ssid():
