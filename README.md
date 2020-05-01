@@ -20,17 +20,13 @@ The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.
 
 Other tools are:
 
-'webrepl_cli.py'  for the file transfer protocol (from the WebREPL repo of micropython) (modified and named 'upytool')
+* `webrepl_cli.py`  for the file transfer protocol (from the WebREPL repo of micropython) (modified and named 'upytool')
+* `esptool.py` to flash the firmware into esp boards
+* `mpy-cross`  to compile .py scripts into .mpy files.
+* `pydfu.py` to flash firmware to a pyboard (from [MicroPython](https://github.com/micropython/micropython/blob/master/tools/pydfu.py) tools repo)
+* `upip_host.py` to install libraries via serial connection (partial port from [upip.py](https://github.com/micropython/micropython/blob/master/tools/upip.py))
 
-'esptool.py' to flash the firmware into esp boards
-
-'mpy-cross'  to compile .py scripts into .mpy files.
-
-'pydfu.py' to flash firmware to a pyboard (from [MicroPython](https://github.com/micropython/micropython/blob/master/tools/pydfu.py) tools repo)
-
-'upip_host.py' to install libraries via serial connection (partial port from [upip.py](https://github.com/micropython/micropython/blob/master/tools/upip.py))
-
-***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything***
+⚠️ ***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything*** ⚠️
 
 ### Features:
 
@@ -53,29 +49,18 @@ WebREPL enabled
 
 Python modules (automatically installed using pip):
 
-[argcomplete](https://github.com/kislyuk/argcomplete) (for command line autocompletion)
-
-[prompt_toolkit](https://github.com/prompt-toolkit/python-prompt-toolkit) (for new WebREPL Terminal implementation)
-
-[mpy-cross](https://gitlab.com/alelec/micropython/tree/gitlab_build/mpy-cross)
-
-[esptool](https://github.com/espressif/esptool)
-
-[python-nmap](http://xael.org/pages/python-nmap-en.html)
-
-[netifaces](https://github.com/al45tair/netifaces)
-
-[requests](https://requests.kennethreitz.org/en/master/)
-
-[cryptography](https://github.com/pyca/cryptography)
-
-[websocket-client](https://github.com/websocket-client/websocket-client)
-
-[Pygments](https://github.com/pygments/pygments)
-
-[pyusb](https://github.com/pyusb/pyusb)
-
-[upydevice](https://github.com/Carglglz/upydevice)
+* [argcomplete](https://github.com/kislyuk/argcomplete) (for command line autocompletion)
+* [prompt_toolkit](https://github.com/prompt-toolkit/python-prompt-toolkit) (for new WebREPL Terminal implementation)
+* [mpy-cross](https://gitlab.com/alelec/micropython/tree/gitlab_build/mpy-cross)
+* [esptool](https://github.com/espressif/esptool)
+* [python-nmap](http://xael.org/pages/python-nmap-en.html)
+* [netifaces](https://github.com/al45tair/netifaces)
+* [requests](https://requests.kennethreitz.org/en/master/)
+* [cryptography](https://github.com/pyca/cryptography)
+* [websocket-client](https://github.com/websocket-client/websocket-client)
+* [Pygments](https://github.com/pygments/pygments)
+* [pyusb](https://github.com/pyusb/pyusb)
+* [upydevice](https://github.com/Carglglz/upydevice)
 
 #### Tested on:
 
@@ -175,7 +160,7 @@ VERSION: v1.12 on 2019-12-20
 MACHINE: ESP32 module with ESP32
 ```
 
-*Option "-@" has autocompletion on tab so hit tab and see what devices are available*
+*Option `-@` has autocompletion on tab so hit tab and see what devices are available*
 
 ***New in version 0.1.9: Mode 'ssl_wrepl', a repl/shell with TLS v1.2** (*experimental)
 
