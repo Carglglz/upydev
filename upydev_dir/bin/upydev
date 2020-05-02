@@ -490,7 +490,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless Micropython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = 'upydev: 0.3.1'
+parser.version = 'upydev: 0.3.2'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
@@ -1692,8 +1692,8 @@ def get_cert_data():
     # MAC ADDRES IF
     try:
         addrs = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                    iface in netifaces.interfaces() if netifaces.AF_INET in
-                    netifaces.ifaddresses(iface)][-1]
+                 iface in netifaces.interfaces() if netifaces.AF_INET in
+                 netifaces.ifaddresses(iface)][-1]
 
         USER = os.environ['USER']
         HOST_NAME = socket.gethostname()
@@ -2335,19 +2335,19 @@ def put_f(ip, passwd, rst=None, abs_path=False):
         copyfile_str = 'upytool {} {}:/{}{} -p {} -wss'.format(
             file, host, source, file_in_upy, passwd)
     # reset_str = 'upycmd -c "{}" -t {} -p {}'.format('D', host, passwd)
-    subprocess.call(shlex.split(copyfile_str))
-
-    print('File Uploaded!')
-    time.sleep(3)
-    if rst is None:
-        print('Rebooting upy device...')
-        if not args.wss:
-            dev.reset(output=False)
+    file_uploaded = subprocess.call(shlex.split(copyfile_str))
+    if file_uploaded == 0:
+        print('File Uploaded!')
+        time.sleep(3)
+        if rst is None:
+            print('Rebooting upy device...')
+            if not args.wss:
+                dev.reset(output=False)
+            else:
+                dev.reset(silent=True, ssl=True)
+            print('Done!')
         else:
-            dev.reset(silent=True, ssl=True)
-        print('Done!')
-    else:
-        pass
+            pass
 
 
 def put_multiple_f(ip, passwd, abs_path=False):
