@@ -739,6 +739,70 @@ class DisplayablePath(object):
 
         return ''.join(reversed(parts))
 
+class LTREE:
+
+    def __repr__(self):
+        self.__call__()
+        return ""
+
+    def __call__(self, path=".", level=1, is_last=False, is_root=True,
+                 carrier="    ", hidden=False):
+        os.chdir(path)
+        r_path = path
+        path = "."
+        if hidden:
+            l = os.listdir(path)
+        else:
+            l = [f for f in os.listdir(path) if not f.startswith('.')]
+        nf = len([file for file in l if not os.stat("%s/%s" % (path, file))[0] & 0x4000])
+        nd = len(l) - nf
+        ns_f, ns_d = 0, 0
+        l.sort()
+        if len(l) > 0:
+            last_file = l[-1]
+        else:
+            last_file = ''
+        for f in l:
+            st = os.stat("%s/%s" % (path, f))
+            if st[0] & 0x4000:  # stat.S_IFDIR
+                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s <dir>" % f)
+                os.chdir(f)
+                level += 1
+                lf = last_file == f
+                if level > 1:
+                    if lf:
+                        carrier += "     "
+                    else:
+                        carrier += "    │"
+                ns_f, ns_d = self.__call__(level=level, is_last=lf,
+                                           is_root=False, carrier=carrier,
+                                           hidden=hidden)
+                if level > 1:
+                    carrier = carrier[:-5]
+                os.chdir('..')
+                level += (-1)
+                nf += ns_f
+                nd += ns_d
+            else:
+                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s" % (f))
+        if is_root:
+            print('{} directories, {} files'.format(nd, nf))
+            if r_path != ".":
+                os.chdir('..')
+        else:
+            return (nf, nd)
+
+    def _treeindent(self, lev, f, lastfile, is_last=False, carrier=None):
+        if lev == 0:
+            return ""
+        else:
+            if f != lastfile:
+                return carrier + "    ├────"
+            else:
+                return carrier + "    └────"
+
+
+see_local_tree = LTREE()
 
 def get_fw_versions(keyword):
     fw_list = []
@@ -2664,6 +2728,7 @@ def sync_multiple_f(ip, passwd, id_file_dev=None, device=None, PORT_M=8005):
 
 # DIR_SYNC
 
+
 def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
                      show_tree=False):
     t0 = time.time()
@@ -2812,6 +2877,34 @@ def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
             print('Rebooting now...')
             time.sleep(2)
             dev.d.reset()
+
+
+def sync_root():
+    file = ' '.join([fl for fl in os.listdir() if os.path.isfile(fl)
+                     and not fl.startswith('.')])
+    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
+        file, args.t, args.p, '')
+    put_cmd = shlex.split(put_str)
+    try:
+        put_file = subprocess.call(put_cmd)
+    except KeyboardInterrupt:
+        print('Operation aborted')
+
+    dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl)
+                    and not fl.startswith('.')]
+    print('Dir/s to sync:')
+    for _dir in dirs_to_sync:
+        print('- {}'.format(_dir))
+
+        d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
+                                                                   args.p,
+                                                                   _dir)
+
+        d_sync_cmd = shlex.split(d_sync_str)
+        try:
+            dir_sync = subprocess.call(d_sync_cmd)
+        except KeyboardInterrupt:
+            print('Operation aborted')
 
 
 def ping(ip):
@@ -4851,14 +4944,25 @@ elif args.m == 'sync':
 
 # D_SYNC:
 elif args.m == 'd_sync':
-    dir_to_sync = args.dir
-    args.dir = None
-    esp_dev = W_UPYDEVICE(args.t, args.p)
-    esp_dev.cmd('import uos')
-    uos = UOS(esp_dev)
-    d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
-                     show_tree=args.tree)
-    sys.exit()
+    if args.dir is None:
+        if args.tree:
+            print('\nDIRECTORY TREE STRUCTURE:\n')
+            print('        ./')
+            see_local_tree()
+
+        sync_root()
+        if args.rst is None:
+            reset(args.t, args.p)
+        sys.exit()
+    else:
+        dir_to_sync = args.dir
+        args.dir = None
+        esp_dev = W_UPYDEVICE(args.t, args.p)
+        esp_dev.cmd('import uos')
+        uos = UOS(esp_dev)
+        d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
+                         show_tree=args.tree)
+        sys.exit()
 
 # CMD (FOR DEBBUGING PURPOSE) # DEBUG:
 

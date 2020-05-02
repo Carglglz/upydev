@@ -16,11 +16,11 @@
 
 *uPydev is built on top of other tools/scripts which are:
 
-The core is 'webrepl_client.py ' : a [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl)  by [@Hermann-SW](https://github.com/Hermann-SW)
+The core is `webrepl_client.py ` : a [Terminal WebREPL protocol](https://github.com/Hermann-SW/webrepl)  by [@Hermann-SW](https://github.com/Hermann-SW)
 
 Other tools are:
 
-* `webrepl_cli.py`  for the file transfer protocol (from the WebREPL repo of micropython) (modified and named 'upytool')
+* `webrepl_cli.py`  for the file transfer protocol (from the WebREPL repo of micropython) (modified and named `upytool`)
 * `esptool.py` to flash the firmware into esp boards
 * `mpy-cross`  to compile .py scripts into .mpy files.
 * `pydfu.py` to flash firmware to a pyboard (from [MicroPython](https://github.com/micropython/micropython/blob/master/tools/pydfu.py) tools repo)
