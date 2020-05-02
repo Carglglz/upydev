@@ -1954,10 +1954,10 @@ def custom_sh_cmd(cmd_inp):
         print('Setting local time: {}'.format(
             datetime.now().strftime("%Y-%m-%d T %H:%M:%S")))
         rtc_cmd = "from machine import RTC;rtc = RTC();"
-        wkoy = date.today().isocalendar()[1]
+        wkday = date.weekday(date.today())
         datetime_local = [val for val in datetime.now().timetuple()[:-3]]
         datetime_tuple = datetime_local[:3]
-        datetime_tuple.append(wkoy)
+        datetime_tuple.append(wkday)
         datetime_final = datetime_tuple + datetime_local[3:] + [0]
         utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}+3, {}))".format(
             *datetime_final)
@@ -2092,8 +2092,6 @@ def custom_sh_cmd(cmd_inp):
         shr_htool.stop_SOC()
         send_custom_sh_cmd("cd('..')")
         send_custom_sh_cmd("cd('{}')".format(cwd_now))
-
-
 
     if cmd_inp == 'get_rawbuff':
         print(shr_cp.raw_buff)
