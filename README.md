@@ -73,13 +73,13 @@ Example: Raw commands
 `$ upydev "import my_lib;foo();my_var=2*3"`
 
 
-#### uPydev Mode/Tools:
+### uPydev Mode/Tools:
 
 - **`upydev config`**: save upy device settings (*see `-p`, `-t`, `-g`)*, so the target and password arguments wont be required any more
 
 - **`upydev put`** : to upload a file to upy device (*see `-f`, `-s` , `-dir`, `-rst`; for multiple files see `-fre` option)*
 
-- **`upydev get`** : to download a file from upy device (*see -f , -dir, -s; for multiple files see -fre option*)
+- **`upydev get`** : to download a file from upy device (*see `-f` , `-dir`, `-s`; for multiple files see `-fre` option*)
 
 - **`sync`** : for a faster transfer of large files (this needs sync_tool.py in upy device) (*see `-f`, `-s` and `-lh`; for multiple files see `-fre` option*)
 
@@ -212,12 +212,7 @@ Example: Raw commands
 * **`upydev mg_group`**: to manage a group of boards to send commands to. Use `-G` for the name of the group and `-add` option to add devices (indicate a name, ip and the password of each board) or `-rm` to remove devices (indicated by name). More info at [GitBook Wiki](https://carlosgilglez.gitbook.io/upydev/#upydev-mode-tools).
 
 
-
-------
-
-#### uPydev Commands:
-
-uPy commands are organized in:
+### uPydev Commands:
 
 * **General**: These commands should work 'out of the box' in any MicroPython running board with WebREPL daemon enabled.
 * **Wifi utils** : This commands make easier to save/load wifi configuration (STA and AP ) and connect to an access point or enable its own (needs wifiutils.py in upydevice, see [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)
@@ -246,29 +241,26 @@ uPy commands are organized in:
     * specs : to see the board specs, indicated by -b option (currently just esp32 huzzah feather)
     * pin_status: to see pin state, to request a specific set use -po option
 
-------
 
+### DEBUG :
 
-- #### DEBUG :
+#### RECOMMENDATION:
 
-  ##### *RECOMMENDATION:
-
-  **Since upydev is based in a wireless protocol connection, in order to succeed sending upydev commands make sure that there is a reliable connection* between the host and the device** **and that the wifi signal strength (rssi) in the device is above -80 ** *(below -80 performance could be inconsistent*)
+  >Since upydev is based in a wireless protocol connection, in order to succeed sending upydev commands make sure that there is a reliable connection between the host and the device and that the wifi signal strength (rssi) in the device is above -80  (below -80 performance could be inconsistent)
 
   **A 'Reliable' connection** **means that there is no packet loss**  (use ping or  `upydev ping` command to check)
 
-  See https://en.wikipedia.org/wiki/Received_signal_strength_indication and
+  See [Received signal strength indication](https://en.wikipedia.org/wiki/Received_signal_strength_indication) and 
+  [Mobile Signal Strength Recommendations](https://wiki.teltonika.lt/view/Mobile_Signal_Strength_Recommendations).
 
-  https://wiki.teltonika.lt/view/Mobile_Signal_Strength_Recommendations.
+#### TRACKING PACKETS:
 
-  ##### *TRACKING PACKETS:
+To see if "command packets" are sent and received or lost use [Wireshark](https://www.wireshark.org) and filter the ip of the device.
 
-  **To see if "command packets" are sent and received or lost use [wireshark](https://www.wireshark.org) and filter the ip of the device** 
+#### SEE WHAT'S GOING ON UNDER THE HOOD: 
 
-  ##### * SEE WHAT'S GOING ON UNDER THE HOOD: 
+_ℹ️ Host and the device must be connected._
 
-  ##### *(THIS NEEDS THAT THE HOST AND THE DEVICE TO BE CONNECTED BY USB)
-
-  In a terminal window open a 'serial repl' with `upydev srepl --port /dev/tty.[USBPORT]` command
+  In a terminal window open a 'serial repl' with `upydev srepl --port [USBPORT]` command
 
   In another window use upydev normally. Now in the terminal window with the serial repl you can see which commands are sent.
