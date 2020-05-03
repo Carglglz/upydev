@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fix
 - Fix `set_localtime` for pyboard in SERIAL SHELL-REPL mode
 - Fix [issue \#8](https://github.com/Carglglz/upydev/issues/8)
+- Fix d_sync now supports sync of cwd, use 'd_sync' without -dir flag to synchronize current working directory
 ## [0.3.1] 2020-04-23
 ### Fix
 - Fix for host ip determination
