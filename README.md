@@ -137,7 +137,7 @@ Example: Raw commands
 
 * **`upydev fw`**: to list or get available firmware versions, use `-md` option to indicate operation:
 
-  - to list do: `upydev fw -md list -b [BOARD]` , board could be 'esp32', 'esp8266' or 'PYBD' for example (web scraping from [micropython downloads page](https://www.micropython.org/downloads) ) (use `list latest -b [BOARD]` to see the latest available firmware) *results can be filtered further with `-n` option, e.g. `-n idf3`
+  - to list do: `upydev fw -md list -b [BOARD]` , board could be 'esp32', 'esp8266' or 'PYBD' for example (web scraping from [micropython downloads page](https://www.micropython.org/download/all) ) (use `list latest -b [BOARD]` to see the latest available firmware) *results can be filtered further with `-n` option, e.g. `-n idf3`
   - to get do: `upydev fw -md get [firmware file]` or `upydev fw -md get latest -b [BOARD]` to get the latest available firmware. (this uses curl) *results can be filtered further with `-n` option, e.g. `-n idf3`
   - to see available serial ports do: `upydev fw -md list serial_ports`
 
