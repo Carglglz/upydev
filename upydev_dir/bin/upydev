@@ -636,6 +636,8 @@ parser.add_argument(
     '-G', help='to indicate the group of devices that the command is directed to').completer = ChoicesCompleter(see_groups())
 parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
                     nargs='+')
+parser.add_argument('-wdl', help='option to create and check a watchdog log file in cwd, so only new or modified files are uploaded',
+                    default = False, action='store_true')
 parser.add_argument(
     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
@@ -1836,6 +1838,63 @@ def ssl_ECDSA_key_certgen(ip, passwd, dir='', store=True):
         put_f(ip, passwd, rst=args.rst)
 
 #############################################
+# WATCHDOG LOG FILE
+
+def get_hash(file):
+    with open(file, 'rb') as file_to_hash:
+        raw_file = file_to_hash.read()
+    file_hash = hashlib.sha256()
+    file_hash.update(raw_file)
+    hashed_file = file_hash.digest()
+
+    return hexlify(hashed_file).decode()
+
+def get_hash_cwd_dict():
+    hash_cwd_dict = {name:get_hash(name) for name in [file for file in os.listdir() if os.path.isfile(file) and file != '.upydev_wdlog.json']}
+    return hash_cwd_dict
+
+def check_wdlog():
+    # WD_LOG EXISTS, CHECK AND COMPARE
+    if '.upydev_wdlog.json' in os.listdir():
+        print('Checking upydev cwd watchdog logfile...')
+        with open('.upydev_wdlog.json', 'r') as wd_logfile:
+            hash_wdlog_dict = json.loads(wd_logfile.read())
+            files_wdlog_list = list(hash_wdlog_dict.keys())
+            files_cwd = [file for file in os.listdir() if os.path.isfile(file) and file != '.upydev_wdlog.json']
+            # New files in cwd:
+            new_files_to_upload = [file for file in files_cwd if file not in files_wdlog_list]
+            if len(new_files_to_upload) > 0:
+                print('New files to upload:')
+                for nf in new_files_to_upload:
+                    print('- {}'.format(nf))
+            # Files modified in cwd:
+            modified_files = [file for file in files_wdlog_list if get_hash(file) != hash_wdlog_dict[file]]
+            if len(modified_files) > 0:
+                print('Modified files to upload:')
+                for mf in modified_files:
+                    print('- {}'.format(mf))
+            # MAKE NEW WD_LOG
+            with open('.upydev_wdlog.json', 'w') as wd_logfile:
+                hash_cwd_dict = get_hash_cwd_dict()
+                wd_logfile.write(json.dumps(hash_cwd_dict))
+            global_files_to_upload = new_files_to_upload + modified_files
+            if len(global_files_to_upload) == 0:
+                print('No new or modified files found')
+            return global_files_to_upload
+    # WD_LOG DO NOT EXISTS, CREATE NEW ONE
+    else:
+        print('.upydev_wdlog.json not found, creating new one...')
+        with open('.upydev_wdlog.json', 'w') as wd_logfile:
+            hash_cwd_dict = get_hash_cwd_dict()
+            wd_logfile.write(json.dumps(hash_cwd_dict))
+        print('Done!')
+        global_files_to_upload = [file for file in os.listdir() if os.path.isfile(file) and file != '.upydev_wdlog.json']
+        for file in global_files_to_upload:
+            print('- {}'.format(file))
+        return global_files_to_upload
+
+
+#############################################
 
 # helparg = '''Mode:
 # - config : to save upy device settings (see -p, -t, -g),
@@ -2418,42 +2477,76 @@ def put_multiple_f(ip, passwd, abs_path=False):
     # case 1: -fre is current working directory (cwd)
     rst = args.rst
     if args.fre[0] == 'cwd':
-        print('Files in cwd to upload:')
-        for file in os.listdir('./'):
-            print(file)
-        for file in os.listdir('./'):
-            args.f = file
-            put_f(ip, passwd, rst=False, abs_path=abs_path)
-            print('\n')
-        if rst is None:
-            time.sleep(3)
-            reset(ip, passwd)
+        if args.wdl:
+            print('Files in cwd to upload:')
+            files_in_cwd_wdl = check_wdlog()
+            print('')
+            for file in files_in_cwd_wdl:
+                args.f = file
+                put_f(ip, passwd, rst=False, abs_path=abs_path)
+                print('\n')
+            if rst is None and len(files_in_cwd_wdl) > 0:
+                time.sleep(3)
+                reset(ip, passwd)
+        else:
+            print('Files in cwd to upload:')
+            for file in [fname for fname in os.listdir('./') if os.path.isfile(fname)]:
+                print(file)
+            for file in [fname for fname in os.listdir('./') if os.path.isfile(fname)]:
+                args.f = file
+                put_f(ip, passwd, rst=False, abs_path=abs_path)
+                print('\n')
+            if rst is None:
+                time.sleep(3)
+                reset(ip, passwd)
     else:
         # case 2: -fre is an expression to match
         if len(args.fre) == 1:
             print("Files that match expression '{}' to upload:".format(
                 args.fre[0]))
-            for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
-                print(file)
-            for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
-                args.f = file
-                put_f(ip, passwd, rst=False, abs_path=abs_path)
-                print('\n')
-            if rst is None:
-                time.sleep(3)
-                reset(ip, passwd)
+            if args.wdl:
+                files_in_cwd_wdl = check_wdlog()
+                print('')
+                for file in [fl for fl in files_in_cwd_wdl if args.fre[0] in fl]:
+                    args.f = file
+                    put_f(ip, passwd, rst=False, abs_path=abs_path)
+                    print('\n')
+                if rst is None and len(files_in_cwd_wdl) > 0:
+                    time.sleep(3)
+                    reset(ip, passwd)
+            else:
+                for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
+                    print(file)
+                for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
+                    args.f = file
+                    put_f(ip, passwd, rst=False, abs_path=abs_path)
+                    print('\n')
+                if rst is None:
+                    time.sleep(3)
+                    reset(ip, passwd)
         else:
             # case 3: -fre is a list of files
             print('Files to upload:')
-            for file in args.fre:
-                print(file)
-            for file in args.fre:
-                args.f = file
-                put_f(ip, passwd, rst=False, abs_path=abs_path)
-                print('\n')
-            if rst is None:
-                time.sleep(3)
-                reset(ip, passwd)
+            if args.wdl:
+                files_in_cwd_wdl = check_wdlog()
+                print('')
+                for file in [fl for fl in files_in_cwd_wdl if fl in args.fre]:
+                    args.f = file
+                    put_f(ip, passwd, rst=False, abs_path=abs_path)
+                    print('\n')
+                if rst is None and len(files_in_cwd_wdl) > 0:
+                    time.sleep(3)
+                    reset(ip, passwd)
+            else:
+                for file in args.fre:
+                    print(file)
+                for file in args.fre:
+                    args.f = file
+                    put_f(ip, passwd, rst=False, abs_path=abs_path)
+                    print('\n')
+                if rst is None:
+                    time.sleep(3)
+                    reset(ip, passwd)
 
 
 def get_f(ip, passwd, id_file='', check_file=True):
