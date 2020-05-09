@@ -638,6 +638,8 @@ parser.add_argument('-fre', help='special option to put or get files from upy de
                     nargs='+')
 parser.add_argument('-wdl', help='option to create and check a watchdog log file in cwd, so only new or modified files are uploaded',
                     default = False, action='store_true')
+parser.add_argument('-swdl', help='flag used internally for -wdl mode',
+                    default = True, action='store_false')
 parser.add_argument(
     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
@@ -1840,6 +1842,7 @@ def ssl_ECDSA_key_certgen(ip, passwd, dir='', store=True):
 #############################################
 # WATCHDOG LOG FILE
 
+
 def get_hash(file):
     with open(file, 'rb') as file_to_hash:
         raw_file = file_to_hash.read()
@@ -1849,18 +1852,24 @@ def get_hash(file):
 
     return hexlify(hashed_file).decode()
 
-def get_hash_cwd_dict():
-    hash_cwd_dict = {name:get_hash(name) for name in [file for file in os.listdir() if os.path.isfile(file) and file != '.upydev_wdlog.json']}
+
+def get_hash_cwd_dict(path='.'):
+    # print('wd path: {}'.format(path))
+    # print([file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file])
+    hash_cwd_dict = {name: get_hash(os.path.join(path, name)) for name in
+                     [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file))
+                       and '.upydev_wdlog.json' not in file]}
     return hash_cwd_dict
 
-def check_wdlog():
+
+def check_wdlog(path='.', save_wdlog=True):
     # WD_LOG EXISTS, CHECK AND COMPARE
-    if '.upydev_wdlog.json' in os.listdir():
+    if '.upydev_wdlog.json' in os.listdir(path):
         print('Checking upydev cwd watchdog logfile...')
-        with open('.upydev_wdlog.json', 'r') as wd_logfile:
+        with open('{}/'.format(path) + '.upydev_wdlog.json', 'r') as wd_logfile:
             hash_wdlog_dict = json.loads(wd_logfile.read())
             files_wdlog_list = list(hash_wdlog_dict.keys())
-            files_cwd = [file for file in os.listdir() if os.path.isfile(file) and file != '.upydev_wdlog.json']
+            files_cwd = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file]
             # New files in cwd:
             new_files_to_upload = [file for file in files_cwd if file not in files_wdlog_list]
             if len(new_files_to_upload) > 0:
@@ -1868,27 +1877,29 @@ def check_wdlog():
                 for nf in new_files_to_upload:
                     print('- {}'.format(nf))
             # Files modified in cwd:
-            modified_files = [file for file in files_wdlog_list if get_hash(file) != hash_wdlog_dict[file]]
+            modified_files = [file for file in files_wdlog_list if get_hash(os.path.join(path, file)) != hash_wdlog_dict[file]]
             if len(modified_files) > 0:
                 print('Modified files to upload:')
                 for mf in modified_files:
                     print('- {}'.format(mf))
             # MAKE NEW WD_LOG
-            with open('.upydev_wdlog.json', 'w') as wd_logfile:
-                hash_cwd_dict = get_hash_cwd_dict()
-                wd_logfile.write(json.dumps(hash_cwd_dict))
+            if save_wdlog:
+                with open('{}/'.format(path) + '.upydev_wdlog.json', 'w') as wd_logfile:
+                    hash_cwd_dict = get_hash_cwd_dict(path=path)
+                    wd_logfile.write(json.dumps(hash_cwd_dict))
             global_files_to_upload = new_files_to_upload + modified_files
             if len(global_files_to_upload) == 0:
                 print('No new or modified files found')
             return global_files_to_upload
     # WD_LOG DO NOT EXISTS, CREATE NEW ONE
     else:
-        print('.upydev_wdlog.json not found, creating new one...')
-        with open('.upydev_wdlog.json', 'w') as wd_logfile:
-            hash_cwd_dict = get_hash_cwd_dict()
-            wd_logfile.write(json.dumps(hash_cwd_dict))
-        print('Done!')
-        global_files_to_upload = [file for file in os.listdir() if os.path.isfile(file) and file != '.upydev_wdlog.json']
+        if save_wdlog:
+            print('.upydev_wdlog.json not found, creating new one...')
+            with open('{}/'.format(path) + '.upydev_wdlog.json', 'w') as wd_logfile:
+                hash_cwd_dict = get_hash_cwd_dict(path=path)
+                wd_logfile.write(json.dumps(hash_cwd_dict))
+            print('Done!')
+        global_files_to_upload = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file]
         for file in global_files_to_upload:
             print('- {}'.format(file))
         return global_files_to_upload
@@ -2473,13 +2484,14 @@ def put_f(ip, passwd, rst=None, abs_path=False):
             pass
 
 
-def put_multiple_f(ip, passwd, abs_path=False):
+def put_multiple_f(ip, passwd, abs_path=False, wdl_path='./',
+                    save_wdlog=args.swdl):
     # case 1: -fre is current working directory (cwd)
     rst = args.rst
     if args.fre[0] == 'cwd':
         if args.wdl:
             print('Files in cwd to upload:')
-            files_in_cwd_wdl = check_wdlog()
+            files_in_cwd_wdl = check_wdlog(save_wdlog=save_wdlog)
             print('')
             for file in files_in_cwd_wdl:
                 args.f = file
@@ -2505,12 +2517,22 @@ def put_multiple_f(ip, passwd, abs_path=False):
             print("Files that match expression '{}' to upload:".format(
                 args.fre[0]))
             if args.wdl:
-                files_in_cwd_wdl = check_wdlog()
+                files_in_cwd_wdl = check_wdlog(path=wdl_path, save_wdlog=save_wdlog)
                 print('')
-                for file in [fl for fl in files_in_cwd_wdl if args.fre[0] in fl]:
-                    args.f = file
-                    put_f(ip, passwd, rst=False, abs_path=abs_path)
-                    print('\n')
+                # print(files_in_cwd_wdl)
+                # print(args.fre)
+                if wdl_path != './':
+                    for file in [os.path.join(wdl_path, fl) for fl in
+                                 files_in_cwd_wdl if args.fre[0] in os.path.join(wdl_path, fl)]:
+                        args.f = file
+                        put_f(ip, passwd, rst=False, abs_path=abs_path)
+                        print('\n')
+                else:
+                    for file in [os.path.join('', fl) for fl in
+                                 files_in_cwd_wdl if args.fre[0] in os.path.join('', fl)]:
+                        args.f = file
+                        put_f(ip, passwd, rst=False, abs_path=abs_path)
+                        print('\n')
                 if rst is None and len(files_in_cwd_wdl) > 0:
                     time.sleep(3)
                     reset(ip, passwd)
@@ -2528,12 +2550,22 @@ def put_multiple_f(ip, passwd, abs_path=False):
             # case 3: -fre is a list of files
             print('Files to upload:')
             if args.wdl:
-                files_in_cwd_wdl = check_wdlog()
+                files_in_cwd_wdl = check_wdlog(path=wdl_path, save_wdlog=save_wdlog)
                 print('')
-                for file in [fl for fl in files_in_cwd_wdl if fl in args.fre]:
-                    args.f = file
-                    put_f(ip, passwd, rst=False, abs_path=abs_path)
-                    print('\n')
+                # print(files_in_cwd_wdl)
+                # print(args.fre)
+                if wdl_path != './':
+                    for file in [os.path.join(wdl_path, fl) for fl in
+                                  files_in_cwd_wdl if os.path.join(wdl_path, fl) in args.fre]:
+                        args.f = file
+                        put_f(ip, passwd, rst=False, abs_path=abs_path)
+                        print('\n')
+                else:
+                    for file in [os.path.join('', fl) for fl in
+                                  files_in_cwd_wdl if os.path.join('', fl) in args.fre]:
+                        args.f = file
+                        put_f(ip, passwd, rst=False, abs_path=abs_path)
+                        print('\n')
                 if rst is None and len(files_in_cwd_wdl) > 0:
                     time.sleep(3)
                     reset(ip, passwd)
@@ -2854,8 +2886,13 @@ def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
         print('\n')
         print('FILES/DIRS IN DIRECTORY {}:'.format(directory))
         for file in os.listdir(directory):
-            print('- {} {}'.format(type_file_dict[os.path.isfile(os.path.join(current_dir, file))],
-                                   file))
+            if args.wdl:
+                if file != '.upydev_wdlog.json':
+                    print('- {} {}'.format(type_file_dict[os.path.isfile(os.path.join(current_dir, file))],
+                                           file))
+            else:
+                print('- {} {}'.format(type_file_dict[os.path.isfile(os.path.join(current_dir, file))],
+                                       file))
         file_list = os.listdir(directory)
         print('\n')
         for file in file_list:
@@ -2865,7 +2902,11 @@ def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
                 dir_list_abs_path.append(os.path.join(current_dir, file))
     print('LIST OF FILES TO UPLOAD:')
     for file in file_list_abs_path:
-        print('- {}'.format(file.split('/')[-1]))
+        if args.wdl:
+            if file.split('/')[-1] != '.upydev_wdlog.json':
+                print('- {}'.format(file.split('/')[-1]))
+        else:
+            print('- {}'.format(file.split('/')[-1]))
     print('\n')
     print('LIST OF SUBDIRS TO CREATE:')
     for subdir in dir_list_abs_path:
@@ -2924,10 +2965,15 @@ def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
     if len(file_list_abs_path) > 1:
         args.fre = file_list_abs_path
         args.rst = False
-        put_multiple_f(args.t, args.p, abs_path=True)
+        put_multiple_f(args.t, args.p, abs_path=True, wdl_path=current_dir)
     elif len(file_list_abs_path) == 1:
-        args.f = file_list_abs_path[0]
-        put_f(args.t, args.p, rst=False, abs_path=True)
+        if args.wdl:
+            args.fre = file_list_abs_path
+            args.rst = False
+            put_multiple_f(args.t, args.p, abs_path=True, wdl_path=current_dir)
+        else:
+            args.f = file_list_abs_path[0]
+            put_f(args.t, args.p, rst=False, abs_path=True)
     else:
         print('NO FILES IN DIR TO UPLOAD')
     # Now create subdirs:
@@ -2972,11 +3018,19 @@ def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
             dev.d.reset()
 
 
-def sync_root():
+def sync_root(save_wdl=True):
     file = ' '.join([fl for fl in os.listdir() if os.path.isfile(fl)
                      and not fl.startswith('.')])
-    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-        file, args.t, args.p, '')
+    if args.wdl:
+        if save_wdl:
+            put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -wdl'.format(
+                file, args.t, args.p, '')
+        else:
+            put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -wdl -swdl'.format(
+                file, args.t, args.p, '')
+    else:
+        put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
+            file, args.t, args.p, '')
     put_cmd = shlex.split(put_str)
     try:
         put_file = subprocess.call(put_cmd)
@@ -2988,10 +3042,19 @@ def sync_root():
     print('Dir/s to sync:')
     for _dir in dirs_to_sync:
         print('- {}'.format(_dir))
-
-        d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
-                                                                   args.p,
-                                                                   _dir)
+        if args.wdl:
+            if save_wdl:
+                d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f -wdl'.format(args.t,
+                                                                           args.p,
+                                                                           _dir)
+            else:
+                d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f -wdl -swdl'.format(args.t,
+                                                                           args.p,
+                                                                           _dir)
+        else:
+            d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
+                                                                       args.p,
+                                                                       _dir)
 
         d_sync_cmd = shlex.split(d_sync_str)
         try:
@@ -4781,7 +4844,11 @@ if args.G is not None:
                     if args.fre is None:
                         put_f(dev_ip, dev_pass, rst=args.rst)
                     else:
-                        put_multiple_f(dev_ip, dev_pass)
+                        if dev == devs[-1]:
+                            put_multiple_f(dev_ip, dev_pass)
+                        else:
+                            put_multiple_f(dev_ip, dev_pass, save_wdlog=False)
+
                 elif group_cmd_str.split()[1] == 'get':
                     if args.fre is None:
                         get_f(dev_ip, dev_pass,
@@ -4813,6 +4880,27 @@ if args.G is not None:
                     diagnose(dev_ip, dev_pass, save_rep=args.rep,
                              rst_opt=args.rst, name_rep=args.n,
                              vers=parser.version, local=localdev)
+                elif group_cmd_str.split()[1] == 'd_sync':
+                    args.t, args.p = dev_ip, dev_pass
+                    if args.dir is None:
+                        if args.tree:
+                            print('\nDIRECTORY TREE STRUCTURE:\n')
+                            print('        ./')
+                            see_local_tree()
+                        if dev == devs[-1]:
+                            sync_root()
+                        else:
+                            sync_root(save_wdl=False)
+                        if args.rst is None:
+                            reset(dev_ip, dev_pass)
+                    else:
+                        dir_to_sync = args.dir
+                        args.dir = None
+                        esp_dev = W_UPYDEVICE(dev_ip, dev_pass)
+                        esp_dev.cmd('import uos')
+                        uos = UOS(esp_dev)
+                        d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
+                                         show_tree=args.tree)
 
         sys.exit()
     except Exception as e:
