@@ -18,8 +18,8 @@
 * Terminal WebREPL and WebSecureREPL protocol
 * Custom commands to automate communication/control
 * Command line autocompletion
-* SSLWebREPL (a Terminal SHELL/REPL over SSL)
-* SERIAL SHELL-REPL (a Terminal SHELL/REPL over USB)
+* [SSLWebREPL](https://github.com/Carglglz/upydev/blob/master/DOCS/SSLWebREPL_docs.md) (a Terminal SHELL/REPL over SSL)
+* [SERIAL SHELL-REPL](https://github.com/Carglglz/upydev/blob/master/DOCS/SERIAL_SHELL_REPL_docs.md) (a Terminal SHELL/REPL over USB)
 
 #### See what is [NEW](https://github.com/Carglglz/upydev/blob/master/DOCS/WHATSNEW.md)
 
@@ -86,14 +86,14 @@ Example: Raw commands
 #### uPydev Mode/Tools:
 
 - **`upydev config`**: save upy device settings (*see `-p`, `-t`, `-g`)*, so the target and password arguments wont be required any more
-        
+  
 - **`upydev put`** : to upload a file to upy device (*see `-f`, `-s` , `-dir`, `-rst`; for multiple files see `-fre` option)*
 
 - **`upydev get`** : to download a file from upy device (*see `-f` , `-dir`, `-s`; for multiple files see `-fre` option*)
 
 - **`upydev sync`** : for a faster transfer of large files (this needs [sync_tool.py](https://github.com/Carglglz/upydev/tree/master/upyutils) in upy device) (*see `-f`, `-s` and `-lh`; for multiple files see `-fre` option*) 
-    
-- **`upydev d_sync`**: to recursively sync a folder in upydevice filesystem use `-dir` to indicate the folder (must be in cwd), use `-tree` to see dir structure, or `-s sd` to sync to an Sd card mounted as 'sd'
+  
+- **`upydev d_sync`**: to recursively sync a folder in upydevice filesystem use `-dir` to indicate the folder (must be in cwd), use `-tree` to see dir structure, or `-s sd` to sync to an Sd card mounted as 'sd'. Use `-wdl` to sync only new or modified files.
 
 - **`upydev cmd`** : for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
 
@@ -116,13 +116,13 @@ Example: Raw commands
      see: [Terminal WebREPL](https://github.com/Hermann-SW/webrepl) for the original work)
     
 - **`upydev wssrepl`** : to enter the terminal WebSecureREPL; CTRL-x to exit, CTRL-d to do soft reset To see more keybindings info do CTRL-k. REPL over WebSecureSockets (This needs use of `sslgen_key -tfkey`, `update_upyutils` and enable WebSecureREPL in the device `import wss_repl;wss_repl.start(ssl=True)`)
-    
+  
 - **`upydev srepl`** : to enter the terminal serial repl using picocom, indicate port by `-port` option (to exit do CTRL-a, CTRL-x) (see: [Picocom](https://github.com/npat-efault/picocom) for more information)
-        
+  
 - **`upydev ping`** : pings the target to see if it is reachable, CTRL-C to stop
 
 - **`upydev run`** : just calls import 'script', where 'script' is indicated by `-f` option (script must be in upy device or in sd card indicated by `-s` option and the sd card must be already mounted as 'sd');
-    
+  
      Supports *CTRL-C* to stop the execution and exit nicely.
 
 - **`upydev install`** : install libs to '/lib' path with upip; indicate lib with -f option
@@ -142,7 +142,7 @@ Example: Raw commands
   - to see available serial ports do: `upydev fw -md list serial_ports`
 
 * **`upydev flash`**: to flash a firmware file to the upydevice, a serial port must be indicated to flash do: `upydev flash -port [serial port] -f [firmware file]` (*just for esp8266 and esp32*)
-          
+  
 * **`upydev see`**: to get specific command help info indicated with `-c` option
 
 * **`upydev find`**: to get a list of possible upy devices. Scans the local network to find devices with port 8266 (WebREPL) open. Use `-n` option to perform n scans (A single scan may not find all the devices)
@@ -176,7 +176,7 @@ Example: Raw commands
      To generate ECDSA key and a self-signed certificate to enable SSL sockets This needs a passphrase, that will be required every time the key is loaded. Use `-tfkey` to upload this key to the device (use only if connected directly to the AP of the device or a "secure" wifi e.g. local/home). If not connected to a "secure" wifi upload the key (it is stored in upydev._*path*_) by USB/Serial connection.
 
 - **`upydev ssl_wrepl`**: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal (SSL sockets); CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default) To see more keybindings info do CTRL-k. By default resets after exit. (This mode needs *ssl_repl.py)* use `-rkey` option to refresh the WebREPL password with a new random password, after exit. This passowrd will be stored in the working directory or in global directory with `-g` option. (This mode needs *ssl_repl.py, upysecrets.py* for `-rfkey`) *(Use `-nem` option to use without encryption (for esp8266))
-         
+  
 - **`upydev ssl`**: to acces ssl_wrepl in a 'ssh' style command to be used like e.g.: `upydev ssl@192.168.1.42` or if a device is stored in a global group called "*UPY_G*" (this needs to be created first doing e.g. `$ upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass`) The device can be accesed as `$ upydev ssl@foo_device` or redirect any command as e.g. `$ upydev ping -@foo_device`
   
 - **`upydev sh_srepl`**: To enter the serial terminal SHELL-REPL; CTRL-x to exit, To see more keybindings info do CTRL-k. By default resets after exit. To configure a serial device use `-t` for baudrate and `-p` for serial port To acces without previous configuration: `sh_srepl -port [serial port] -b [baudrate]` (default baudrate is 115200) To acces with previous configuration:

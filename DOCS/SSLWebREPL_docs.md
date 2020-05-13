@@ -68,7 +68,7 @@ esp32@esp_room1:~ $
 
 * **The HANDSHAKE**:
 
-  The host logs into the WebREPL and then starts the ssl_repl (this switch the terminal IO from WebREPL to SSLREPL) 
+  The host logs into the WebREPL (or WebSecureREPL) and then starts the ssl_repl (this switch the terminal IO from WebREPL to SSLREPL) 
 
   Then the handshake is done by SSL sockets 
 
@@ -290,3 +290,16 @@ logout
 Connection to 192.168.1.42 closed.
 ```
 
+### Example session:
+
+![Example session](https://raw.githubusercontent.com/Carglglz/upydev/master/DOCS/SSLWebREPL_demo.gif)
+
+
+
+
+
+### Git integration:
+
+
+
+![](https://github.com/Carglglz/upydev/blob/master/DOCS/ssl_git.gif?raw=true)

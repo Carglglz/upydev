@@ -47,4 +47,8 @@ How to use it:
     - `$ upydev wssl@esp_room1` or `$ upydev wssl@192.168.1.42`
 
   See [changelog](https://github.com/Carglglz/upydev/blob/master/changelog.md) for new commands in both SSLWeb SHELL-REPL and SERIAL SHELL-REPL.
+  
+* #### New in version 0.3.2: Watch mode for `put -fre` and `d_sync`:
+
+  * Using flag `-wdl` with `put -fre` or `d_sync` commands will create a log of files `.upydev_wdlog.json` in the directory so next time this commands are used with `-wdl` flag only new or modified files are uploaded.
 
