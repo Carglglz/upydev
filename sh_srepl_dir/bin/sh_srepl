@@ -1749,16 +1749,21 @@ def custom_sh_cmd(cmd_inp):
                     time.sleep(0.2)
                     shr_htool.stop_SOC()
             else:
-                print('- {}'.format(file))
-                # shr_htool.start_SOC()
-                shr_htool.get(file)
-                # shr_cp.sh_repl("print('Done!')")
-                time.sleep(0.2)
-                shr_htool.stop_SOC()
+                shr_cp.sh_repl("[file for file in os.listdir() if file in {} and not os.stat(file)[0] & 0x4000]".format([file]))
+                espdev.get_output()
+                files_to_put_dir = espdev.output
+                if len(files_to_put_dir) == 0:
+                    print('File not Found\nIndicate a file to get')
+                else:
+                    print('- {}'.format(file))
+                    # shr_htool.start_SOC()
+                    shr_htool.get(file)
+                    # shr_cp.sh_repl("print('Done!')")
+                    time.sleep(0.2)
+                    shr_htool.stop_SOC()
         except Exception as e:
             print(e)
-            print('Indicate a file to get')
-
+            print('File not Found\nIndicate a file to get')
 
     if cmd_inp.split(' ')[0] == 'put':
         try:
@@ -1803,15 +1808,19 @@ def custom_sh_cmd(cmd_inp):
                     time.sleep(0.2)
                     shr_htool.stop_SOC()
             else:
-                print('- {}'.format(file))
-                # shr_htool.start_SOC()
-                shr_htool.put(file)
-                # shr_cp.sh_repl("print('Done!')")
-                time.sleep(0.2)
-                shr_htool.stop_SOC()
+                files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in [file]]
+                if len(files_to_put_dir) == 0:
+                    print('File not Found\nIndicate a valid file to put')
+                else:
+                    print('- {}'.format(file))
+                    # shr_htool.start_SOC()
+                    shr_htool.put(file)
+                    # shr_cp.sh_repl("print('Done!')")
+                    time.sleep(0.2)
+                    shr_htool.stop_SOC()
         except Exception as e:
             # print(e)
-            print('Indicate a file to put')
+            print('File not Found\nIndicate a valid file to put')
 
     if cmd_inp.split(' ')[0] == 'catl':
         try:

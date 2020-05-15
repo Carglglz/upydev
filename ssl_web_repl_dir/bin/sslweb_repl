@@ -2037,7 +2037,7 @@ def custom_sh_cmd(cmd_inp):
                     pass
                     print('Operation aborted')
             except Exception as e:
-                print('Indicate a file to get')
+                print('File not Found\nIndicate a file to get')
 
         else:
             try:
@@ -2091,15 +2091,21 @@ def custom_sh_cmd(cmd_inp):
                         time.sleep(0.2)
                         ssl_htool.stop_SOC()
                 else:
-                    print('- {}'.format(file))
-                    ssl_htool.start_SOC()
-                    ssl_htool.get(file)
-                    # ssl_cp.ssl_repl("print('Done!')")
-                    time.sleep(0.2)
-                    ssl_htool.stop_SOC()
+                    ssl_cp.ssl_repl("ssl_repl.get_files_dir({})".format([file]))
+                    espdev.get_output()
+                    files_to_put_dir = espdev.output
+                    if len(files_to_put_dir) == 0:
+                        print('File not Found\nIndicate a file to get')
+                    else:
+                        print('- {}'.format(file))
+                        ssl_htool.start_SOC()
+                        ssl_htool.get(file)
+                        # ssl_cp.ssl_repl("print('Done!')")
+                        time.sleep(0.2)
+                        ssl_htool.stop_SOC()
             except Exception as e:
                 # print(e)
-                print('Indicate a file to put')
+                print('File not Found\nIndicate a file to get')
 
     if cmd_inp.split(' ')[0] == 'sync':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
@@ -2142,7 +2148,7 @@ def custom_sh_cmd(cmd_inp):
                 pass
                 print('Operation aborted')
         except Exception as e:
-            print('Indicate a file to get')
+            print('File not Found\nIndicate a file to get')
 
     if cmd_inp.split(' ')[0] == 'put':
         if not encrypted_flag['sec']:
@@ -2189,7 +2195,7 @@ def custom_sh_cmd(cmd_inp):
                     print('Operation aborted')
             except Exception as e:
                 # print(e)
-                print('Indicate a file to put')
+                print('File not Found\nIndicate a valid file to put')
         else:
             try:
                 print('File/s to put:')
@@ -2233,15 +2239,19 @@ def custom_sh_cmd(cmd_inp):
                         time.sleep(0.2)
                         ssl_htool.stop_SOC()
                 else:
-                    print('- {}'.format(file))
-                    ssl_htool.start_SOC()
-                    ssl_htool.put(file)
-                    # ssl_cp.ssl_repl("print('Done!')")
-                    time.sleep(0.2)
-                    ssl_htool.stop_SOC()
+                    files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in [file]]
+                    if len(files_to_put_dir) == 0:
+                        print('File not Found\nIndicate a valid file to put')
+                    else:
+                        print('- {}'.format(file))
+                        ssl_htool.start_SOC()
+                        ssl_htool.put(file)
+                        # ssl_cp.ssl_repl("print('Done!')")
+                        time.sleep(0.2)
+                        ssl_htool.stop_SOC()
             except Exception as e:
                 # print(e)
-                print('Indicate a file to put')
+                print('File not Found\nIndicate a valid file to put')
     if cmd_inp.split(' ')[0] == 'catl':
         try:
             file = cmd_inp.split(' ')[1]

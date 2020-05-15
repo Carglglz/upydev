@@ -122,7 +122,8 @@ helparg = '''Mode:
         see: https://github.com/Hermann-SW/webrepl for the original work)
 - wssrepl : to enter the terminal WebSecureREPL; CTRL-x to exit, CTRL-d to do soft reset
         To see more keybindings info do CTRL-k. REPL over WebSecureSockets (This needs use of
-        'sslgen_key -tfkey', 'update_upyutils' and enable WebSecureREPL in the device "import wss_repl;wss_repl.start(ssl=True)")
+        'sslgen_key -tfkey', 'update_upyutils' and enable WebSecureREPL in the device
+        "import wss_repl;wss_repl.start(ssl=True)")
 - srepl : to enter the terminal serial repl using picocom, indicate port by -port option
         (to exit do CTRL-a, CTRL-x)
 - ping : pings the target to see if it is reachable, CTRL-C to stop \n
@@ -595,7 +596,7 @@ parser.add_argument('-rkey', help='To refresh password after WebREPL disconnecti
                     required=False, default=False, action='store_true')
 parser.add_argument('-localkey_id', help='To refresh password manually of a current WebREPL connection',
                     required=False)
-parser.add_argument('-nem', help='To initiate CryptoWebREPL in unencrypted mode only',
+parser.add_argument('-nem', help='To initiate CryptoWebREPL/SSLWebREPL in unencrypted mode only',
                     required=False, default=False, action='store_true')
 parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
                     default=0)
