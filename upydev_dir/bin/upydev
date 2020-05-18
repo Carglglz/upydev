@@ -488,7 +488,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
-                                 description='Command line tool for wireless Micropython devices',
+                                 description='Command line tool for wireless MicroPython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
 parser.version = 'upydev: 0.3.2'

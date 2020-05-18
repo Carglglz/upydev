@@ -534,11 +534,15 @@ class SERIAL_TOOL:
                 # else:
                 #     self.serv_soc.exec_('w(' + repr(data) + ')')
                 # self.sh_srepl.sh_repl('w(' + repr(data) + ')', assert_len=False)
-                self.sh_srepl.send_message('w(' + repr(data) + ')'+'\r')
+                # self.sh_srepl.send_message('w(' + repr(data) + ')'+'\r')
                 if dev_platform == 'pyboard':
+                    self.sh_srepl.send_message('w(' + repr(data) + ')'+'\r')
                     time.sleep(0.05)
                 else:
-                    time.sleep(0.2)
+                    self.sh_srepl.sh_repl('w(' + repr(data) + ')'+'\r')
+                    # time.sleep(0.2)
+                # self.sh_srepl.sh_repl('len('+ repr(data) + ')'+'\r')
+                # print(len(data))
                 cnt += len(data)
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
