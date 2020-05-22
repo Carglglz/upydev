@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix [issue \#8](https://github.com/Carglglz/upydev/issues/8)
 - Fix d_sync now supports sync of cwd, use 'd_sync' without -dir flag to synchronize current working directory
 - Fix error messages in SSLREPL
+- Fix, now to toggle between shell and repl modes, there is no need to press ENTER
+- Fix, toggle local path in prompt without pressing ENTER
 ### Added
 - Watch mode with `-wdl` flag for `put -fre` and `d_sync` modes. Uploads only new or modified files
 ## [0.3.1] 2020-04-23

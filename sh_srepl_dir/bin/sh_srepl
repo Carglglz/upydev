@@ -686,6 +686,8 @@ d_prompt = '>>> '
 # KEYBINDINGS
 kb = KeyBindings()
 
+mem_show_rp = {'show': False, 'call': False, 'used': '?',
+               'free': '?', 'percent': 0}
 dev_path = {'p': ' '}
 local_path = {'p': ''}
 show_local_path = {'s': False}
@@ -771,7 +773,7 @@ Custom keybindings:
 - CTRL-a : set cursor position at the beggining
 - CTRL-f : toggle autosuggest mode (Fish shell like)(use right arrow to complete)
 - CTRL-g : To active listen for device output (Timer or hardware interrupts), CTRL-c to break
-- CRTL-s , ENTER : toggle shell mode to navigate filesystem (see shell commands)
+- CRTL-s : toggle shell mode to navigate filesystem (see shell commands)
 - CTRL-k : prints the custom keybindings (this list) (+ shell commands if in shell mode)
 >>> """
 
@@ -780,7 +782,7 @@ shell_commands_info = """
      - tab to autocomplete device file / dirs names / raw micropython (repl commands)
      - shift-tab to autocomplete shell commands
      - shift-right to autocomplete local file / dirs names
-     - shift-left,ENTER to toggle local path in prompt
+     - shift-left to toggle local path in prompt
 
 * Device shell commands:
     * upysh commands:
@@ -1252,22 +1254,30 @@ def print_filesys_info(filesize):
 
 def get_rprompt():
     if status_encryp_msg['S']:
-        RAM = send_custom_sh_cmd(
-            'from micropython import mem_info;mem_info()')
-        mem_info = RAM.splitlines()[1]
-        mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
-                          1]) for elem in mem_info[4:].split(',')}
-        used_mem = mem['used']/1024
-        free_mem = mem['free']/1024
-        used_mem_s = "{:.3f} KB".format(used_mem)
-        free_mem_s = "{:.3f} KB".format(free_mem)
-        total_mem = mem['total']/1024
-        use_percent = round((used_mem/total_mem)*100, 2)
-
-        if use_percent < 85:
-            return HTML('<aaa fg="ansiblack" bg="ansiwhite"> RAM </aaa><b><style fg="ansigreen"> USED </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa><b><style fg="ansigreen"> FREE </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa>'.format(used_mem_s, free_mem_s))
+        if mem_show_rp['call']:
+            RAM = send_custom_sh_cmd(
+                'from micropython import mem_info;mem_info()')
+            mem_info = RAM.splitlines()[1]
+            mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
+                              1]) for elem in mem_info[4:].split(',')}
+            used_mem = mem['used']/1024
+            free_mem = mem['free']/1024
+            used_mem_s = "{:.3f} KB".format(used_mem)
+            free_mem_s = "{:.3f} KB".format(free_mem)
+            # set used and free
+            mem_show_rp['used'] = used_mem_s
+            mem_show_rp['free'] = free_mem_s
+            total_mem = mem['total']/1024
+            use_percent = round((used_mem/total_mem)*100, 2)
+            mem_show_rp['percent'] = use_percent
+            mem_show_rp['call'] = False
         else:
-            return HTML('<aaa fg="ansiblack" bg="ansiwhite"> RAM </aaa><b><style fg="ansired"> USED </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa><b><style fg="ansired"> FREE </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa>'.format(used_mem_s, free_mem_s))
+            pass
+
+        if mem_show_rp['percent'] < 85:
+            return HTML('<aaa fg="ansiblack" bg="ansiwhite"> RAM </aaa><b><style fg="ansigreen"> USED </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa><b><style fg="ansigreen"> FREE </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa>'.format(mem_show_rp['used'], mem_show_rp['free']))
+        else:
+            return HTML('<aaa fg="ansiblack" bg="ansiwhite"> RAM </aaa><b><style fg="ansired"> USED </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa><b><style fg="ansired"> FREE </style></b><aaa fg="ansiblack" bg="ansiwhite"> {} </aaa>'.format(mem_show_rp['used'], mem_show_rp['free']))
     else:
         return HTML('<b><style fg="ansiblack"> {} </style></b>'.format(' '*10))
 
@@ -3206,14 +3216,34 @@ def reset_cursor(event):
 
 @kb.add('c-s')
 def toggle_shell_mode(event):
-    if shell_mode['S']:
-        prompt['p'] = d_prompt
-        shell_mode['S'] = False
-    else:
-        prompt['p'] = shell_prompt['s']
-        shell_mode['S'] = True
-        shr_cp.sh_repl('from upysh import *', no_raw_buff=True)
-        espdev.output = None
+    def show_p():
+        if shell_mode['S']:
+            if local_path['p'] == '':
+                g_p = [val[1] for val in prompt['p'][1:5]]
+                b_p = [val[1] for val in prompt['p'][5:]]
+                color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m".format(
+                    "".join(g_p[:-1]), "".join(b_p))
+                print(color_p)
+            else:
+                m_p = [prompt['p'][0][1]]
+                g_p = [val[1] for val in prompt['p'][1:5]]
+                b_p = [val[1] for val in prompt['p'][5:]]
+                color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m".format(
+                    "".join(m_p), "".join(g_p[:-1]), "".join(b_p))
+                print(color_p)
+        else:
+            print(prompt['p'])
+
+        if shell_mode['S']:
+            prompt['p'] = d_prompt
+            shell_mode['S'] = False
+        else:
+            prompt['p'] = shell_prompt['s']
+            shell_mode['S'] = True
+            shr_cp.sh_repl('from upysh import *', no_raw_buff=True)
+            espdev.output = None
+
+    run_in_terminal(show_p)
 
 
 @kb.add('c-c')
@@ -3259,7 +3289,7 @@ def paste_mode(event):
 
         def cmd_paste():
             print(
-                'paste mode; Ctrl-C to cancel, Ctrl-D to finish, Then ESC, ENTER to exit paste mode')
+                'paste mode; Press ENTER to write, Ctrl-C to cancel, Ctrl-D to finish, Then ESC, ENTER to exit paste mode')
             print("===")
             prompt['p'] = ""
         run_in_terminal(cmd_paste)
@@ -3840,6 +3870,12 @@ def toggle_status_ram_msg(event):
         else:
             status_encryp_msg['S'] = True
 
+    if not mem_show_rp['show']:
+        mem_show_rp['show'] = True
+        mem_show_rp['call'] = True
+    else:
+        mem_show_rp['show'] = False
+
 
 @kb.add('c-g')
 def listen_SHELL_REPL(event):
@@ -3866,6 +3902,9 @@ def listen_SHELL_REPL(event):
     run_in_terminal(echo_ouput)
 
 
+def check_prompt():
+    return prompt['p']
+
 session_p = PromptSession()
 
 # REPL/SHELL LOOP
@@ -3876,12 +3915,13 @@ while repl:
         if exit_flag['exit']:
             break
         else:
-            inp = session_p.prompt(prompt['p'],
+            inp = session_p.prompt(check_prompt,
                                    auto_suggest=ConditionalAutoSuggest(AutoSuggestFromHistory(),
                                                                        autosuggest_is_on),
                                    key_bindings=kb, style=style_p,
                                    multiline=edit_mode['E'] or paste_flag['p'],
-                                   rprompt=get_rprompt)
+                                   rprompt=get_rprompt,
+                                   refresh_interval=0.2)
             status_encryp_msg['S'] = False
             status_encryp_msg['Toggle'] = True
             if inp is not None and inp != '' and not paste_flag['p']:

@@ -125,14 +125,14 @@ Custom keybindings:
 - CTRL-a : set cursor position at the beggining
 - CTRL-f : toggle autosuggest mode (Fish shell like)
 - CTRL-g : To active listen for device output (Timer or hardware interrupts), CTRL-c to break
-- CRTL-s , ENTER : toggle shell mode to navigate filesystem (see shell commands)
+- CRTL-s : toggle shell mode to navigate filesystem (see shell commands)
 - CTRL-k : prints the custom keybindings (this list) (+ shell commands if in shell mode)
 
 Autocompletion commands:
 - tab to autocomplete device file / dirs names / raw micropython (repl commands)
 - shift-tab to autocomplete shell commands
 - shift-right to autocomplete local file / dirs names
-- shift-left,ENTER to toggle local path in prompt
+- shift-left to toggle local path in prompt
 
 Device shell commands:
 * upysh commands:
