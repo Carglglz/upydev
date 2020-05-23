@@ -23,6 +23,8 @@
 
 #### See what is [NEW](https://github.com/Carglglz/upydev/blob/master/DOCS/WHATSNEW.md)
 
+:information_source: For Bluetooth Low Energy devices check [uPyble](https://github.com/Carglglz/upyble)
+
 ------
 
 ### Getting Started
