@@ -854,7 +854,7 @@ if not args.nem:
     ssl_cp.ssl_repl("\x02", banner=True)
     ssl_cp.flush_conn()
     espdev.output = None
-print('Use CTRL-x to exit, Use CTRL-s,ENTER to toggle shell/repl mode\nUse CTRL-k to see more info')
+print('Use CTRL-x to exit, Use CTRL-s to toggle shell/repl mode\nUse CTRL-k to see more info')
 # PROMT SESSION CONFIGURATION
 
 # Style
