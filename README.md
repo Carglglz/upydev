@@ -89,7 +89,7 @@ Example: Raw commands
 
 - **`upydev config`**: save upy device settings (*see `-p`, `-t`, `-g`)*, so the target and password arguments wont be required any more
   
-- **`upydev put`** : to upload a file to upy device (*see `-f`, `-s` , `-dir`, `-rst`; for multiple files see `-fre` option)*
+- **`upydev put`** : to upload a file to upy device (*see `-f`, `-s` , `-dir`, `-rst`; for multiple files see `-fre` option and  use `-wdl` to put only new or modified files.)*
 
 - **`upydev get`** : to download a file from upy device (*see `-f` , `-dir`, `-s`; for multiple files see `-fre` option*)
 

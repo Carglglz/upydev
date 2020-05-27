@@ -4,20 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.2] Unreleased [Github Repo]
+## [0.3.3] Unreleased [Github Repo]
+## [0.3.2] - 2020-05-27
 ### Fix
 - Fix `set_localtime` for pyboard in SERIAL SHELL-REPL mode
 - Fix [issue \#8](https://github.com/Carglglz/upydev/issues/8)
-- Fix d_sync now supports sync of cwd, use 'd_sync' without -dir flag to synchronize current working directory
-- Fix error messages in SSLREPL
-- Fix, now to toggle between shell and repl modes, there is no need to press ENTER
+- Fix `d_sync` now supports sync of cwd, use `d_sync` without -dir flag to synchronize current working directory
+- Fix error messages in SSLWebREPL
+- Fix, now to toggle between shell and REPL modes, there is no need to press ENTER
 - Fix, toggle local path in prompt without pressing ENTER
+- Fix, `apscan` mode now show MAC address instead of bytes
 ### Added
 - Watch mode with `-wdl` flag for `put -fre` and `d_sync` modes. Uploads only new or modified files
-## [0.3.1] 2020-04-23
+## [0.3.1] - 2020-04-23
 ### Fix
 - Fix for host ip determination
-## [0.3.0] 2020-04-13
+## [0.3.0] - 2020-04-13
 ### Fix
 - Minor fix for host ip determination (while ECDSA key is generated and for SSLWebREPL mode)
 ## [0.2.9] - 2020-02-24

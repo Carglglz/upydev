@@ -6209,7 +6209,11 @@ elif args.m == 'apscan':
     if len(ap_scan_list) > 0:
         ap_devices = ast.literal_eval(ap_scan_list[0])
         print('Found {} devices:'.format(len(ap_devices)))
-        print(ap_devices)
+        for dev in ap_devices:
+            bytdev = hexlify(dev[0]).decode()
+            mac_ad = ':'.join([bytdev[i:i+2] for i in range(0, len(bytdev),
+                                                            2)])
+            print('MAC: {}'.format(mac_ad))
     else:
         print('No device found')
     sys.exit()
