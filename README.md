@@ -23,13 +23,13 @@
 
 #### See what is [NEW](https://github.com/Carglglz/upydev/blob/master/DOCS/WHATSNEW.md)
 
-:information_source: For Bluetooth Low Energy devices check [uPyble](https://github.com/Carglglz/upyble)
+ℹ️ For Bluetooth Low Energy devices check [uPyble](https://github.com/Carglglz/upyble)
 
 ------
 
 ### Getting Started
 
-First be sure that the <u>WebREPL daemon is enabled</u> and running see:
+First be sure that the **WebREPL daemon is enabled** and running see:
 
 * [WebREPL: a prompt over-wifi](http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#webrepl-a-prompt-over-wifi) 
 * [WebREPL: web-browser interactive prompt](http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt)
