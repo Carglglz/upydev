@@ -13,6 +13,8 @@ import os
 import signal
 import netifaces
 import nmap
+import serial.tools.list_ports
+import glob
 import textwrap
 import ast
 import socket
@@ -174,6 +176,14 @@ class SERIAL_REPL_server:
         self.output = None
         self.IO = False
         self.color_style = 'monokai'
+
+    def is_reachable(self):
+        portlist = [p.device for p in
+                    serial.tools.list_ports.comports()] + glob.glob('/dev/*')
+        if self.dev.serial.writable() and self.dev.serial_port in portlist:
+            return True
+        else:
+            return False
 
     def flush_conn(self):
         flushed = 0
@@ -536,8 +546,9 @@ class SERIAL_TOOL:
                 # self.sh_srepl.sh_repl('w(' + repr(data) + ')', assert_len=False)
                 # self.sh_srepl.send_message('w(' + repr(data) + ')'+'\r')
                 if dev_platform == 'pyboard':
-                    self.sh_srepl.send_message('w(' + repr(data) + ')'+'\r')
-                    time.sleep(0.05)
+                    # self.sh_srepl.send_message('w(' + repr(data) + ')'+'\r')
+                    # time.sleep(0.2)
+                    self.sh_srepl.sh_repl('w(' + repr(data) + ')'+'\r')
                 else:
                     self.sh_srepl.sh_repl('w(' + repr(data) + ')'+'\r')
                     # time.sleep(0.2)
@@ -2321,6 +2332,8 @@ def custom_sh_cmd(cmd_inp):
                                             resp = input('Press any key to continue')
 
                                         time.sleep(0.2)
+                                        while not shr_cp.is_reachable():
+                                            time.sleep(0.2)
                                         shr_cp.enable_wrepl_io()
                                         shr_cp.flush_conn()
                                         shr_cp.flush_conn()
