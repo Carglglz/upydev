@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.3] Unreleased [Github Repo]
 ### Fix
+- Fix `git status dev` aware of current branch 
 - Fix `d_sync`, in SHELL-REPLS, support root directory `.` will sync local cwd into device cwd
 - Fix `put` for pyboard in SERIAL SHELL-REPL mode
 - Fix `fw` for downloading and flashing firmware to pyboard, esp in SERIAL SHELL-REPL mode, now asserts serial port is available after flashing.

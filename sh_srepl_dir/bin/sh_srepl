@@ -1264,6 +1264,13 @@ def print_filesys_info(filesize):
     return sizestr
 
 
+def get_git_branch():
+    cmd_git = shlex.split('git branch')
+    git_branch = subprocess.check_output(cmd_git).decode().split('\n')
+    current_branch = [b.replace('* ', '') for b in git_branch
+                      if b.startswith('* ')][0]
+    return current_branch
+
 def get_rprompt():
     if status_encryp_msg['S']:
         if mem_show_rp['call']:
@@ -2754,7 +2761,7 @@ def custom_sh_cmd(cmd_inp):
                 log_info_list = []
 
             if local_gitlog == log_info_list:
-                status_msg = "On branch master\nYour branch is up to date with '{}'.\n\nnothing to commit, working tree clean".format(dev_platform)
+                status_msg = "On branch {}\nYour branch is up to date with '{}'.\n\nnothing to commit, working tree clean".format(get_git_branch(), dev_platform)
             else:
                 if len(git_diff_files['diff']) > 0:  # tracked changes
                     cmd_git_l = shlex.split('git log --name-status  --pretty=format:"%H"')
@@ -2766,7 +2773,7 @@ def custom_sh_cmd(cmd_inp):
                                 git_diff_files['diff'] += [file for file in commit_dict[commit][1::2] if file not in git_diff_files['diff']]
                     git_diff_files['n_commits'] = int(len(local_gitlog) - len(log_info_list))
 
-                    status_msg = "On branch master\nYour branch is ahead of '{0}' by {1} commit{2}.\n (use 'git push dev' to push your local commits to {0})\n\nnothing to commit, working tree clean".format(dev_platform, git_diff_files['n_commits'],
+                    status_msg = "On branch {0}\nYour branch is ahead of '{1}' by {2} commit{3}.\n (use 'git push dev' to push your local commits to {1})\n\nnothing to commit, working tree clean".format(get_git_branch(), dev_platform, git_diff_files['n_commits'],
                                 ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
 
                 else:  # untracked changes (outside shell)
@@ -2778,7 +2785,7 @@ def custom_sh_cmd(cmd_inp):
                             git_diff_files['diff'] += commit_dict[commit][1::2]
                             git_diff_files['n_commits'] += 1
 
-                    status_msg = "On branch master\nYour branch is ahead of '{0}' by {1} commit{2} not tracked by upydev.\n (use 'git push dev' to push last commit changes to {0})\n\nnothing to commit, working tree clean".format(dev_platform, git_diff_files['n_commits'],
+                    status_msg = "On branch {0}\nYour branch is ahead of '{1}' by {2} commit{3} not tracked by upydev.\n (use 'git push dev' to push last commit changes to {1})\n\nnothing to commit, working tree clean".format(get_git_branch(), dev_platform, git_diff_files['n_commits'],
                                 ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
             print(status_msg)
 
