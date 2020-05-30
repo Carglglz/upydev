@@ -830,7 +830,8 @@ shell_commands_info = """
         - edit   : to edit a file (e.g. edit my_script.py)
         - get    : to get a file from the device (also allows "*" wildcard, 'cwd' or multiple files)
         - put    : to upload a file to the device (also allows "*" wildcard, 'cwd' or multiple files)
-        - d_sync : to recursively sync a local directory with the device filesystem
+        - d_sync : to recursively sync a local directory with the device filesystem,
+                   use 'd_sync .' to sync local cwd into device cwd
         - srepl  : to enter the Serial Terminal (This needs Picocom)
         - reload : to delete a module from sys.path so it can be imported again.
         - flush_soc: to flush serial in case of wrong output
@@ -1871,7 +1872,30 @@ def custom_sh_cmd(cmd_inp):
         elif len(cmd_inp.split()) == 2:
             dir_to_sync = cmd_inp.split()[-1]
             # print('Directory to sync: {}'.format(dir_to_sync))
-            d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
+            if dir_to_sync == '.':
+                file = 'cwd'
+                if file == 'cwd':
+                    files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl) and not fl.startswith('.')]
+                    if len(files_to_put) > 0:
+                        print('File/s to put:')
+                    for file in files_to_put:
+                        print('- {}'.format(file))
+                    shr_htool.start_SOC()
+                    for file in files_to_put:
+                        shr_htool.put(file)
+                        time.sleep(0.2)
+                    # ssl_cp.ssl_repl("print('Done!')")
+                    time.sleep(0.2)
+                    shr_htool.stop_SOC()
+
+                dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
+                print('Dir/s to sync:')
+                for _dir in dirs_to_sync:
+                    print('- {}'.format(_dir))
+                    # print('Directory to sync: {}'.format(dir_to_sync))
+                    d_sync_recursive(_dir, show_tree=True, root_sync_folder=_dir)
+            else:
+                d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
 
     if cmd_inp.split(' ')[0] == 'l_micropython':
         print('<-- Local machine MicroPython -->')
@@ -2279,6 +2303,8 @@ def custom_sh_cmd(cmd_inp):
                                             # shr_cp.enable_wrepl_io()
                                             print(e)
                                         time.sleep(0.2)
+                                        while not shr_cp.is_reachable():
+                                            time.sleep(0.2)
                                         shr_cp.enable_wrepl_io()
                                         shr_cp.flush_conn()
                                         shr_cp.flush_conn()

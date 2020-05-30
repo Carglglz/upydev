@@ -1042,7 +1042,8 @@ shell_commands_info = """
         - get    : to get a file from the device (also allows "*" wildcard, 'cwd' or multiple files)
         - put    : to upload a file to the device (also allows "*" wildcard, 'cwd' or multiple files)
         - sync   : to get file (faster) from the device (use with > 10 KB files) (no encrypted mode only)
-        - d_sync : to recursively sync a local directory with the device filesystem
+        - d_sync : to recursively sync a local directory with the device filesystem,
+                   use 'd_sync .' to sync local cwd into device cwd
         - wrepl  : to enter the original WebREPL terminal (no encryption mode)
         - reload : to delete a module from sys.path so it can be imported again.
         - flush_soc: to flush socket in case of wrong output
@@ -2277,26 +2278,20 @@ def custom_sh_cmd(cmd_inp):
             print('Indicate a file to show')
 
     if cmd_inp.split(' ')[0] == 'd_sync':
+
         if not encrypted_flag['sec']:
             print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
             try:
                 ssl_cp.enable_wrepl_io()
             except Exception as e:
                 pass
-            if dev_path['p'] != ' ':
-                dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
-            else:
-                dev_dir = ''
-            try:
-                dir_to_sync = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
-
-                d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
-                                                                           args.p,
-                                                                           dir_to_sync)
-
-                d_sync_cmd = shlex.split(d_sync_str)
+            if cmd_inp.split()[-1] == '.':
+                file =' '.join([fl for fl in os.listdir() if os.path.isfile(fl) and not fl.startswith('.')])
+                put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
+                    file, args.t, args.p, '')
+                put_cmd = shlex.split(put_str)
                 try:
-                    dir_sync = subprocess.call(d_sync_cmd)
+                    put_file = subprocess.call(put_cmd)
                     try:
                         ssl_cp.enable_wrepl_io()
                     except Exception as e:
@@ -2308,8 +2303,64 @@ def custom_sh_cmd(cmd_inp):
                         pass
                     pass
                     print('Operation aborted')
-            except Exception as e:
-                print('Indicate a file to get')
+
+                dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
+                try:
+                    ssl_cp.enable_wrepl_io()
+                except Exception as e:
+                    pass
+                if len(dirs_to_sync) > 0:
+                    print('Dir/s to sync:')
+                for _dir in dirs_to_sync:
+                    print('- {}'.format(_dir))
+
+                    d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
+                                                                               args.p,
+                                                                               _dir)
+
+                    d_sync_cmd = shlex.split(d_sync_str)
+                    try:
+                        dir_sync = subprocess.call(d_sync_cmd)
+                    except KeyboardInterrupt:
+                        try:
+                            ssl_cp.enable_wrepl_io()
+                        except Exception as e:
+                            pass
+                        pass
+                        print('Operation aborted')
+
+                try:
+                    ssl_cp.enable_wrepl_io()
+                except Exception as e:
+                    pass
+            else:
+                if dev_path['p'] != ' ':
+                    dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
+                else:
+                    dev_dir = ''
+                try:
+                    dir_to_sync = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
+
+                    d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
+                                                                               args.p,
+                                                                               dir_to_sync)
+
+                    d_sync_cmd = shlex.split(d_sync_str)
+                    try:
+                        dir_sync = subprocess.call(d_sync_cmd)
+                        try:
+                            ssl_cp.enable_wrepl_io()
+                        except Exception as e:
+                            pass
+                    except KeyboardInterrupt:
+                        try:
+                            ssl_cp.enable_wrepl_io()
+                        except Exception as e:
+                            pass
+                        pass
+                        print('Operation aborted')
+                except Exception as e:
+                    print('Indicate a dir to sync')
         else:
             if len(cmd_inp.split()) == 1: # root_dir
                 dir_to_sync = os.getcwd().split('/')[-1]
@@ -2320,7 +2371,31 @@ def custom_sh_cmd(cmd_inp):
             elif len(cmd_inp.split()) == 2:
                 dir_to_sync = cmd_inp.split()[-1]
                 # print('Directory to sync: {}'.format(dir_to_sync))
-                d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
+                if dir_to_sync == '.':
+                    file = 'cwd'
+                    if file == 'cwd':
+                        files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl) and not fl.startswith('.')]
+                        if len(files_to_put) > 0:
+                            print('File/s to put:')
+                        for file in files_to_put:
+                            print('- {}'.format(file))
+                        ssl_htool.start_SOC()
+                        for file in files_to_put:
+                            ssl_htool.put(file)
+                            time.sleep(0.2)
+                        # ssl_cp.ssl_repl("print('Done!')")
+                        time.sleep(0.2)
+                        ssl_htool.stop_SOC()
+
+                    dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
+                    if len(dirs_to_sync) > 0:
+                        print('Dir/s to sync:')
+                        for _dir in dirs_to_sync:
+                            print('- {}'.format(_dir))
+                            # print('Directory to sync: {}'.format(dir_to_sync))
+                            d_sync_recursive(_dir, show_tree=True, root_sync_folder=_dir)
+                else:
+                    d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
 
     if cmd_inp.split(' ')[0] == 'l_micropython':
         print('<-- Local machine MicroPython -->')
@@ -3026,11 +3101,12 @@ def custom_sh_cmd(cmd_inp):
                     ssl_htool.stop_SOC()
 
                 dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
-                print('Dir/s to sync:')
-                for _dir in dirs_to_sync:
-                    print('- {}'.format(_dir))
-                    # print('Directory to sync: {}'.format(dir_to_sync))
-                    d_sync_recursive(_dir, show_tree=True, root_sync_folder=_dir)
+                if len(dirs_to_sync) > 0:
+                    print('Dir/s to sync:')
+                    for _dir in dirs_to_sync:
+                        print('- {}'.format(_dir))
+                        # print('Directory to sync: {}'.format(dir_to_sync))
+                        d_sync_recursive(_dir, show_tree=True, root_sync_folder=_dir)
 
         elif 'log' in cmd_git and 'dev' in cmd_git:
             try:

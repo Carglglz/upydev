@@ -3040,7 +3040,8 @@ def sync_root(save_wdl=True):
 
     dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl)
                     and not fl.startswith('.')]
-    print('Dir/s to sync:')
+    if len(dirs_to_sync) > 0:
+        print('Dir/s to sync:')
     for _dir in dirs_to_sync:
         print('- {}'.format(_dir))
         if args.wdl:
