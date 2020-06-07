@@ -8523,12 +8523,14 @@ elif args.m == 'battery':
                               auth=args.wss)
     batlev = wsdevice.wr_cmd(batt_cmd, silent=True, rtn_resp=True)
     wsdevice.close_wconn()
-
-    if batlev > 0:
-        volts = batlev
-        percentage = round((volts - 3.3) / (4.23 - 3.3) * 100, 1)
-        print('Battery Voltage : {} V; Level:{} %'.format(
-            round(volts, 2), percentage))
+    try:
+        if batlev > 0:
+            volts = batlev
+            percentage = round((volts - 3.3) / (4.23 - 3.3) * 100, 1)
+            print('Battery Voltage : {} V; Level:{} %'.format(
+                round(volts, 2), percentage))
+    except Exception as e:
+        print('Battery Voltage : ? V; Level:? %')
     sys.exit()
 
 # SPECS REF

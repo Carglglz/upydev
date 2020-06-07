@@ -4,12 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] Unreleased [Github Repo]
 ## [0.3.3] Unreleased [Github Repo]
 ### Fix
-- Fix `git status dev` aware of current branch 
+- Fix `git status dev` aware of current branch
 - Fix `d_sync`, in SHELL-REPLS, support root directory `.` will sync local cwd into device cwd
 - Fix `put` for pyboard in SERIAL SHELL-REPL mode
 - Fix `fw` for downloading and flashing firmware to pyboard, esp in SERIAL SHELL-REPL mode, now asserts serial port is available after flashing.
+- Fix `battery` error if command fails.
 ## [0.3.2] - 2020-05-27
 ### Fix
 - Fix `set_localtime` for pyboard in SERIAL SHELL-REPL mode
