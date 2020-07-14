@@ -6,7 +6,7 @@ A module to notify events with beeps (buzzer needed) and blinks. This is useful 
 
 Class:
 
-**NOTIFIER**(buzz_pin, led_pin, fq=4000, on_time=150, n_times=2, off_time=150, timer=None, period=5000)
+**NOTIFYER**(buzz_pin, led_pin, fq=4000, on_time=150, n_times=2, off_time=150, timer=None, period=5000)
 
 * *buzz_pin*: the pin number to drive the buzzer
 * *led_pin*: the pin number to drive the led
@@ -19,7 +19,7 @@ Class:
 
 
 
-Methods of **NOTIFIER** class:
+Methods of **NOTIFYER** class:
 
 * ***buzz_beep***(beep_on_time, n_times, beep_off_time, fq, led=True)
 

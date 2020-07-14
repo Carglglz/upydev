@@ -491,7 +491,7 @@ parser = argparse.ArgumentParser(prog='upydev',
                                  description='Command line tool for wireless MicroPython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
-parser.version = 'upydev: 0.3.3'
+parser.version = 'upydev: 0.3.4'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())

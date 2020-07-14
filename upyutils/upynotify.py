@@ -9,7 +9,7 @@ from machine import Pin, PWM, Timer
 import time
 
 
-class NOTIFIER:
+class NOTIFYER:
     def __init__(self, buzz_pin, led_pin, fq=4000, on_time=150, n_times=2,
                  off_time=50, timer=None, period=5000):
 

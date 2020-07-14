@@ -2346,7 +2346,7 @@ def custom_sh_cmd(cmd_inp):
                                             except Exception as e:
                                                 # shr_cp.enable_wrepl_io()
                                                 print(e)
-                                            print('Flashing firmware finished succesfully!')
+                                            print('Flashing firmware finished successfully!')
                                             time.sleep(1)
                                             resp = input('Press any key to continue')
                                         else:
@@ -2360,7 +2360,7 @@ def custom_sh_cmd(cmd_inp):
                                             except Exception as e:
                                                 # shr_cp.enable_wrepl_io()
                                                 print(e)
-                                            print('Flashing firmware finished succesfully, RESET the pyboard now')
+                                            print('Flashing firmware finished successfully, RESET the pyboard now')
                                             time.sleep(1)
                                             resp = input('Press any key to continue')
 
@@ -2423,7 +2423,7 @@ def custom_sh_cmd(cmd_inp):
                 except Exception as e:
                     # shr_cp.enable_wrepl_io()
                     print(e)
-                print('Flashing firmware finished succesfully!')
+                print('Flashing firmware finished successfully!')
                 time.sleep(1)
                 resp = input('Press any key to continue')
             else:
@@ -2437,7 +2437,7 @@ def custom_sh_cmd(cmd_inp):
                 except Exception as e:
                     # shr_cp.enable_wrepl_io()
                     print(e)
-                print('Flashing firmware finished succesfully, RESET the pyboard now.')
+                print('Flashing firmware finished successfully, RESET the pyboard now.')
                 time.sleep(1)
                 resp = input('Press any key to continue')
         time.sleep(0.2)
@@ -2744,7 +2744,7 @@ def custom_sh_cmd(cmd_inp):
             else:
                 send_custom_sh_cmd("gitlog = open('.gitlog', 'w');gitlog.close()")
                 send_custom_sh_cmd("gitlog = open('.githash', 'w');gitlog.close()")
-                print('Device {} repo initiated succesfully!'.format(dev_platform))
+                print('Device {} repo initiated successfully!'.format(dev_platform))
 
             send_custom_sh_cmd("cd('{}')".format(cwd_now))
 
@@ -2914,14 +2914,14 @@ def custom_sh_cmd(cmd_inp):
                                         time.sleep(1)
 
                                     saveconfig = yes_no_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
-                                                               text="{} connected succesfully to {}\n Do you want to save configuration?".format(dev_platform, ssid)).run()
+                                                               text="{} connected successfully to {}\n Do you want to save configuration?".format(dev_platform, ssid)).run()
 
                                     if saveconfig:
                                         saveconfig_cmd = "import json;sta_config=open('wifi_.config', 'w');sta_config.write(json.dumps(dict(ssid='{}', password='{}')));sta_config.close()".format(
                                             ssid, passwd)
                                         send_custom_sh_cmd(saveconfig_cmd)
                                         message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
-                                                       text="{} Configuration saved succesfully as 'wifi_.config'".format(ssid)).run()
+                                                       text="{} Configuration saved successfully as 'wifi_.config'".format(ssid)).run()
 
                     else:
                         message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
@@ -2949,14 +2949,14 @@ def custom_sh_cmd(cmd_inp):
                         resp = shr_cp.send_message(ap_config+'\r')
                         time.sleep(1)
                         saveconfig = yes_no_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
-                                                   text="{} AP:{} enabled succesfully\n Do you want to save configuration?".format(dev_platform, ssid)).run()
+                                                   text="{} AP:{} enabled successfully\n Do you want to save configuration?".format(dev_platform, ssid)).run()
 
                         if saveconfig:
                             saveconfig_cmd = "import json;sta_config=open('ap_.config', 'w');sta_config.write(json.dumps(dict(ssid='{}', password='{}')));sta_config.close()".format(
                                 ssid, passwd)
                             send_custom_sh_cmd(saveconfig_cmd)
                             message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
-                                           text="{} Configuration saved succesfully as 'ap_.config'".format(ssid)).run()
+                                           text="{} Configuration saved successfully as 'ap_.config'".format(ssid)).run()
 
             elif results_array == 'interface':
                 results_array = radiolist_dialog(
@@ -3004,7 +3004,7 @@ def custom_sh_cmd(cmd_inp):
                             shr_cp.sh_repl("from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl,sda))
 
                         message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
-                                       text="I2C Default configuration enabled succesfully as 'i2c'").run()
+                                       text="I2C Default configuration enabled successfully as 'i2c'").run()
                     elif results_array == 'I2C_CUSTOM':
                         custom_i2c = input_dialog(
                                 title="Upydev {} Configuration Tool".format(
@@ -3023,7 +3023,7 @@ def custom_sh_cmd(cmd_inp):
                             shr_cp.sh_repl("from machine import Pin, I2C;i2c_custom = I2C(scl=Pin({}), sda=Pin({}), freq={})".format(scl, sda, freq))
 
                         message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
-                                       text="I2C Custom configuration enabled succesfully as 'i2c_custom'").run()
+                                       text="I2C Custom configuration enabled successfully as 'i2c_custom'").run()
 
     if cmd_inp.split(' ')[0] == 'exit':
         if reset_flag['R']:
@@ -3417,7 +3417,7 @@ def paste_mode_exit(event):
                 shr_cp.flush_conn()
             event.app.current_buffer.reset()
 
-            print("File {} edited succesfully!".format(file_to_edit))
+            print("File {} edited successfully!".format(file_to_edit))
             print('PRESS ESC, THEN ENTER TO EXIT EDIT MODE')
     if not shell_mode['S']:
         if paste_flag['p']:
@@ -3500,9 +3500,14 @@ def tab_press(event):
                                     cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')]".format(fbuff_text[1], fbuff_text[3])
                         else:
                             cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('./lib') if '.py' in scp]"
+                            if dev_platform == 'pyboard':
+                                cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('/flash/lib') if '.py' in scp]"
                             frozen_modules['SUB'] = frozen_modules['FM']
                             if buff_text != '':
                                 cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('./lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
+                                if dev_platform == 'pyboard':
+                                    cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('/flash/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
+
                                 frozen_modules['SUB'] = [mod for mod in frozen_modules['FM'] if mod.startswith(buff_text)]
 
                     if shell_mode['S']:

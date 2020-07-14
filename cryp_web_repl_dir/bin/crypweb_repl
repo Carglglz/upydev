@@ -1490,7 +1490,7 @@ def paste_mode_exit(event):
             # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
             event.app.current_buffer.reset()
             # print(buff_text)
-            print("File {} edited succesfully!".format(file_to_edit))
+            print("File {} edited successfully!".format(file_to_edit))
             print('PRESS ESC, THEN ENTER TO EXIT EDIT MODE')
     if not shell_mode['S']:
         if paste_flag['p']:

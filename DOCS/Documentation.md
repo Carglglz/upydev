@@ -2040,7 +2040,7 @@ SD ENABLED
 to initialize the sd card; (spi must be configured first)
 create sd object and mounts as a filesystem, needs sdcard.py from upytuils directory
 
-*Prints os.listdir('/') to see sd succesfully mounted*
+*Prints os.listdir('/') to see sd successfully mounted*
 
 ```
 upydev sd_init

@@ -87,4 +87,4 @@ For more info see [upyutils_docs](https://github.com/Carglglz/upydev/blob/master
 #### USEFUL DEVELOPER TOOLS: (*Under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) folder*)
 
 * [**upylog**](https://github.com/Carglglz/upydev/tree/master/DOCS/upylog.md): MicroPython logging module with time format (predefined) and log to file support.
-* [**upynotify**](https://github.com/Carglglz/upydev/tree/master/DOCS/upynotify.md) : module with NOTIFIER class to notify events with beeps and blinks. 
+* [**upynotify**](https://github.com/Carglglz/upydev/tree/master/DOCS/upynotify.md) : module with NOTIFYER class to notify events with beeps and blinks. 
