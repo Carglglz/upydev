@@ -80,7 +80,7 @@ def see_groups():
     return local_cwd + globl_wd
 
 
-def see_global_devs():
+def see_global_devs(serial=False, all=False):
     # avoid_files = ['upydev_.config', 'help.config', 'esp32h.config']
     # # local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
     # # ) if '.config' in group_file and group_file not in 'upydev_.config']
@@ -90,7 +90,12 @@ def see_global_devs():
         with open('{}/UPY_G.config'.format(upydev.__path__[0]), 'r', encoding='utf-8') as group:
             devices = json.loads(group.read())
             # print(devices)
-        devs = list(devices.keys())
+        if not serial:
+            devs = [dev for dev in devices if '.' in devices[dev][0]]
+        elif serial:
+            devs = [dev for dev in devices if '.' not in devices[dev][0]]
+        if all:
+            devs = [dev for dev in devices]
         return devs
     except Exception as e:
         return []
@@ -485,6 +490,9 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc']
 
+keywords_mode += ['shr@{}'.format(dev) for dev in see_global_devs(serial=True)]
+keywords_mode += ['ssl@{}'.format(dev) for dev in see_global_devs()]
+keywords_mode += ['wssl@{}'.format(dev) for dev in see_global_devs()]
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -494,7 +502,7 @@ parser = argparse.ArgumentParser(prog='upydev',
 parser.version = 'upydev: 0.3.4'
 parser.add_argument(
     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
-parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
+parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-p", help='password', required=False)
 parser.add_argument("-f", help='script or file name', required=False)
 parser.add_argument(
@@ -543,7 +551,7 @@ parser.add_argument(
     required=False).completer = ChoicesCompleter(['esp32', 'esp8266'])
 parser.add_argument(
     "-att",
-    help='[attenuation] for attenuate adc input, default is 11dB attenuation, do -att info for more info',
+    help='[attenuation] for attenuation of adc input, default is 11dB attenuation, do -att info for more info',
     required=False, default=3)
 parser.add_argument(
     "-tm",
@@ -744,6 +752,7 @@ class DisplayablePath(object):
 
         return ''.join(reversed(parts))
 
+
 class LTREE:
 
     def __repr__(self):
@@ -809,6 +818,7 @@ class LTREE:
 
 see_local_tree = LTREE()
 
+
 def get_fw_versions(keyword):
     fw_list = []
     fw_links = []
@@ -839,22 +849,6 @@ def see_groups():
     globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
         upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
     return local_cwd + globl_wd
-
-
-def see_global_devs():
-    # avoid_files = ['upydev_.config', 'help.config', 'esp32h.config']
-    # # local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
-    # # ) if '.config' in group_file and group_file not in 'upydev_.config']
-    # globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
-    #     upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
-    try:
-        with open('{}/UPY_G.config'.format(upydev.__path__[0]), 'r', encoding='utf-8') as group:
-            devices = json.loads(group.read())
-            # print(devices)
-        devs = list(devices.keys())
-        return devs
-    except Exception as e:
-        return []
 
 
 def run_command_rl(command):
@@ -1907,545 +1901,6 @@ def check_wdlog(path='.', save_wdlog=True):
 
 
 #############################################
-
-# helparg = '''Mode:
-# - config : to save upy device settings (see -p, -t, -g),
-#             so the target and password arguments wont be required any more
-# - put : to upload a file to upy device (see -f, -s, -fre, -dir, -rst)
-# - get : to download a file from upy device (see -f, -s, -fre, -dir)
-# - sync : for a faster transfer of large files
-#     (this needs sync_tool.py in upy device) (see -f, -s and -lh)
-# - d_sync: to recursively sync a folder in upydevice filesystem use -dir
-#             to indicate the folder (must be in cwd), use -tree to see dir
-#             structure, to sync to an Sd card mounted as 'sd' use -s sd
-# - cmd : to send command to upy device ; (see -c, -r, -rl);
-#         example: upydev cmd -c "led.on()" ; upydev cmd -r "print('Hello uPy')";
-#                 upydev cmd -rl "function_that_print_multiple_lines()";
-#     * tip: simple commands can be used without quotes;
-#         but for commands with parenthesis or special characters use quotes,
-#         for example: 'dummy_func()' ; use double quotes "" when the command
-#         includes a string like this example: "uos.listdir('/sd')"
-# - wrepl : to enter the terminal WebREPL; CTRL-x to exit, CTRL-d to do soft reset
-#         To see more keybindings info do CTRL-k
-#         (Added custom keybindings and autocompletion on tab to the previous work
-#         see: https://github.com/Hermann-SW/webrepl for the original work)
-# - wssrepl : to enter the terminal WebSecureREPL; CTRL-x to exit, CTRL-d to do soft reset
-#         To see more keybindings info do CTRL-k. REPL over WebSecureSockets (This needs use of
-#         'sslgen_key -tfkey', 'update_upyutils' and enable WebSecureREPL in the device "import wss_repl;wss_repl.start(ssl=True)")
-# - srepl : to enter the terminal serial repl using picocom, indicate port by -port option
-#         (to exit do CTRL-a, CTRL-x)
-# - ping : pings the target to see if it is reachable, CTRL-C to stop \n
-# - run : just calls import 'script', where 'script' is indicated by -f option
-#         (script must be in upydevice or in sd card indicated by -s option
-#         and the sd card must be already mounted as 'sd');
-#         * Supports CTRL-C to stop the execution and exits nicely.
-# - install : install libs to '/lib' path with upip; indicate lib with -f option
-# - mpyx : to froze a module/script indicated with -f option, and save some RAM,
-#          it uses mpy-cross tool (see https://gitlab.com/alelec/mpy_cross)
-# - timeit: to measure execution time of a module/script indicated with -f option.
-#           This is an implementation of
-#           https://github.com/peterhinch/micropython-samples/tree/master/timed_function
-# - fw: to list or get available firmware versions, use -md option to indicate operation:
-#         to list do: "upydev fw -md list -b [BOARD]" board can be e.g. 'esp32','esp8266' or 'PYBD'
-#                     "upydev fw -md list latest -b [BOARD]" to see the latest firmware available
-#         to get do: "upydev fw -md get [firmware file]" or "upydev fw -md get latest -b[BOARD]"
-#         * for list or get modes the -n option will filter the results further: e.g. -n ota
-#         to see available serial ports do: "upydev fw -md list serial_ports"
-# - flash: to flash a firmware file to the upydevice, a serial port must be indicated
-#             to flash do: "upydev flash -port [serial port] -f [firmware file]"
-# - see: to get specific command help info indicated with -c option. To get specific
-#         info about a devices group use -G option as "see -G [GROUP NAME]"
-# - find: to get a list of possible upy devices. Scans the local network to find devices
-#         with port 8266 (WebREPL) open. Use -n option to perform n scans (A single scan
-#         may not find all the devices)
-# - diagnose: to make a diagnostic test of the device (sends useful to commands
-#             to get device state info), to save report to file see -rep, use -n to save
-#             the report with a custom name (automatic name is "upyd_ID_DATETIME.txt")
-#             Use "-md local" option if connected to esp AP.
-# - errlog: if 'error.log' is present in the upydevice, this shows the content
-#             (cat('error.log')), if 'error.log' in sd use -s sd
-# - stream_test: to test download speed (from device to host). Default test is 10 MB of
-#                random bytes are sent in chunks of 20 kB and received in chunks of 32 kB.
-#                To change test parameters use -chunk_tx , -chunk_rx, and -total_size.
-# - sysctl : to start/stop a script without following the output. To follow initiate
-#            wrepl/srepl as normal, and exit with CTRL-x (webrepl) or CTRL-A,X (srepl)
-#            TO START: use -start [SCRIPT_NAME], TO STOP: use -stop [SCRIPT_NAME]
-# - log: to log the output of a upydevice script, indicate script with -f option, and
-#         the sys.stdout log level and file log level with -dslev and -dflev (defaults
-#         are debug for sys.stdout and error for file). To log in background use -daemon
-#         option, then the log will be redirected to a file with level -dslev.
-#         To stop the 'daemon' log mode use -stopd and indicate script with -f option.
-#         'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME
-#         directory, named after the name of the script. To follow an on going 'daemon'
-#         mode log, use -follow option and indicate the script with -f option.
-# - update_upyutils: to update the latest versions of sync_tool.py, upylog.py,
-#                 upynotify.py, upysecrets.py, upysh2.py, ssl_repl.py, uping.py, time_it.py,
-#                 wss_repl.py and wss_helper.py.
-# - debug: to execute a local script line by line in the target upydevice, use -f option
-#         to indicate the file. To enter next line press ENTER, to finish PRESS C
-#         then ENTER. To break a while loop do CTRL+C.
-#
-# - gen_rsakey: To generate RSA-2048 bit key that will be shared with the device
-#               (it is unique for each device) use -tfkey to send this key to the
-#               device (use only if connected directly to the AP of the device or a
-#               "secure" wifi e.g. local/home). If not connected to a "secure" wifi
-#               upload the key (it is stored in upydev.__path__) by USB/Serial connection.
-# - rf_wrkey: To "refresh" the WebREPL password with a new random password derivated from
-#             the RSA key previously generated. A token then is sent to the device to generate
-#             the same password from the RSA key previously uploaded. This won't leave
-#             any clues in the TCP Websocekts packages of the current WebREPL password.
-#             (Only the token will be visible; check this using wireshark)
-#             (This needs upysecrets.py)
-#
-# - crypto_wrepl: To enter the terminal CryptoWebREPL a E2EE wrepl/shell terminal;
-#              CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
-#              To see more keybindings info do CTRL-k. By default resets after exit,
-#              use -rkey option to refresh the WebREPL password with a new random password,
-#              after exit.This passowrd will be stored in the working directory or in global directory with
-#              -g option. (This mode needs upysecrets.py)
-# - upy: to access crypto_wrepl in a 'ssh' style command to be used like e.g.:
-#       "upydev upy@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
-#        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
-#        The device can be accessed as "upydev upy@foo_device" or redirect any command as e.g.
-#        "upydev ping -@foo_device"
-#
-# - sslgen_key: (This needs openssl available in $PATH)
-#                To generate ECDSA key and a self-signed certificate to enable SSL sockets
-#                This needs a passphrase, that will be required every time the key is loaded.
-#                Use -tfkey to upload this key to the device
-#                (use only if connected directly to the AP of the device or a
-#                "secure" wifi e.g. local/home). If not connected to a "secure" wifi
-#                upload the key (it is stored in upydev.__path__) by USB/Serial connection.
-#
-# - ssl_wrepl: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal (SSL sockets);
-#              CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
-#              To see more keybindings info do CTRL-k. By default resets after exit,
-#              use -rkey option to refresh the WebREPL password with a new random password,
-#              after exit.This passowrd will be stored in the working directory or in global directory with
-#              -g option. (This mode needs ssl_repl.py, upysecrets.py for -rfkey)
-#              *(Use -nem option to use without encryption (for esp8266))
-# - ssl: to access ssl_wrepl in a 'ssh' style command to be used like e.g.:
-#       "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
-#        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
-#        The device can be accessed as "upydev ssl@foo_device" or redirect any command as e.g.
-#        "upydev ping -@foo_device". *(For esp8266 use the option -nem (no encryption mode))
-#
-# - sh_srepl: To enter the serial terminal SHELL-REPL; CTRL-x to exit,
-#             To see more keybindings info do CTRL-k. By default resets after exit.
-#             To configure a serial device use -t for baudrate and -p for serial port
-#             To access without previous configuration: "sh_srepl -port [serial port] -b [baudrate]"
-#             (default baudrate is 115200)
-#             To access with previous configuration:
-#                 - "sh_srepl" (if device configured in current working directory)
-#                 - "sh_srepl -@ foo_device" (if foo_device is configured in global group 'UPY_G')
-#
-# - shr: to access the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.:
-#       "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this
-#        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
-#        The device can be accessed as "upydev shr@foo_device"
-#
-# - wssl: to access ssl_wrepl if WebSecureREPL is enabled in a 'ssh' style command to be used like e.g.:
-#       "upydev wssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
-#        needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
-#        then the device can be accessed as "upydev wssl@foo_device"
-# - set_wss: To toggle between WebSecureREPL and WebREPL, to enable WebSecureREPL do 'set_wss', to disable 'set_wss -wss'
-#
-# - make_group: to make a group of boards to send commands to. Use -f for the name
-#               of the group and -devs option to indicate a name, ip and the
-#               password of each board. (To store the group settings globally use -g option)
-#
-# - mg_group: to manage a group of boards to send commands to. Use -G for the name
-#               of the group and -add option to add devices (indicate a name, ip and the
-#               password of each board) or -rm to remove devices (indicated by name)
-# * GROUP COMMAND MODE:
-#         To send a command to multiple devices in a group (made with make_group
-#         command) use -G option as -G [GROUP NAME]; to target specific devices
-#         within a group add -devs option as -devs [DEV NAME] [DEV NAME] ...
-#         (upydev will use local working directory configuration unless it does
-#         not find any or manually indicated with -g option)
-#         * This sends the command to one device at a time;
-#         ** For parallel command execution use -GP option (instead of -G)
-#
-# upy Commands:
-# > GENERAL
-# - info : for upy device system info
-# - id : for upy device unique id
-# - upysh : to enable the upy shell in the upy device (then do 'upydev man' to
-#         access upysh manual info)
-# - reset : to do a soft reset in upy device
-# - kbi : sends CTRL-C signal to stop an ongoing loop, to be able to access repl again
-# - uhelp : just calls micropython help
-# - umodules: just calls micropython help('modules')
-# - mem_info : for upy device RAM memory info; call it once to check actual memory,
-#             call it twice and it will free some memory
-# - filesize : to get the size of file in root dir (default) or sd with '-s sd' option;
-#             if no file name indicated with -f option, prints all files
-# - filesys_info : to get memory info of the file system, (total capacity, free, used),
-#             (default root dir, -s option to change)
-# - netinfo : for upy device network info if station is enabled and connected to an AP
-# - netinfot : same as netinfo but in table format
-# - netscan : for upy device network scan
-# - netstat_on : to enable STA
-# - netstat_off : to disable STA
-# - netstat_conn : to connect to an AP , must provide essid and password (see -wp)
-# - netstat : STA state ; returns True if enabled, False if disabled
-# - ap_on : to enable AP
-# - ap_off : to disable AP
-# - apstat : AP state ; returns True if enabled, False if disabled
-# - apconfig : AP configuration of essid and password with authmode WPA/WPA2/PSK,
-#             (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
-# - apscan : scan devices connected to AP; returns number of devices and mac address
-# - i2c_config : to configure the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
-# - i2c_scan : to scan i2c devices (must config i2c pins first)
-# - spi_config: to configure the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
-# - set_localtime: to pass host localtime and set upy device rtc
-# - set_ntptime: to set rtc from server, (see -utc for time zone)
-# - get_datetime: to get date and time (must be set first, see above commands)
-#
-# > WIFI UTILS (needs wifiutils.py in upydevice, see upyutils in upydev github repo)
-# - wlan_init: Initiates wlan util (call this before the following commands)
-# - wsta_config: Saves a "netowrk STA" configuration json file in upydevice, use with -wp option as -wp 'ssid' 'password'
-# - wap_config: Saves a "netowrk AP" configuration json file in upydevice, use with -ap option as -ap 'ssid' 'password'
-# - wsta_conn: Connects to the wlan configured with the command wsta_config
-# - wap_conn: Enables the upydevice AP configured with the command wap_config
-#
-# > SD
-# - sd_enable: to enable/disable the LDO 3.3V regulator that powers the SD module
-#              use -po option to indicate the Pin.
-# - sd_init: to initialize the sd card; (spi must be configured first)
-#            create sd object and mounts as a filesystem, needs sdcard.py see
-#            https://github.com/Carglglz/upydev/blob/master/DOCS/Documentation.md#sd_init
-# - sd_deinit: to unmount sd card
-# - sd_auto: experimental command, needs a sd module with sd detection pin
-#            and the SD_AM.py script. Enable an Interrupt
-#            with the sd detection pin, so it mounts the sd when is detected,
-#            and unmount the sd card when is extracted. See more info in:
-#            https://github.com/Carglglz/upydev/blob/master/DOCS/Documentation.md#sd_auto
-# >INPUT
-# Sensors:
-#     * ADC:
-#         ^ON BOARD ADCS:
-#         - adc_config : to config analog pin to read from (see pinout, -po and -att)
-#         - aread : to read from an analog pin previously configured
-#
-#         ^EXTERNAL ADC: (I2C) ADS1115 ***
-#         - ads_init : to initialize and configure ADS1115 and the channel to
-#                     read from (see -ads, -ch)
-#         - ads_read : to read from analog pin previously configured
-#                 (see -tm option for stream mode, and -f for logging*)
-#                 * for one shot read, logging is also available with -f and
-#                     -n option (for tagging)
-#                 * use '-f now' for automatic 'log_mode_datetime.txt' name.
-#                 * for stream mode profiling use -tm [ms] -ads test
-#     * IMU:
-#         - imu_init : initialize IMU, use -imu option to indicate the imu library.
-#                     (default option is 'lsm9ds1', see sensor requirements for more info')
-#         - imuacc : one shot read of the IMU lineal accelerometer (g=-9.8m/s^2),
-#                 (see -tm option for stream mode, and -f for logging*)
-#                 * for one shot read, logging is also available with -f and
-#                     -n option (for tagging)
-#                 * use '-f now' for automatic 'log_mode_datetime.txt' name.
-#                 * for stream mode profiling use -tm [ms] -imu test
-#                 ** stream mode and logging are supported in imugy and imumag also
-#         - imuacc_sd: log the imuacc data to the sd (must be mounted)
-#                     with the file format 'log_mode_datetime.txt'
-#                     (see -tm option for stream mode)
-#         - imugy :  one shot read of the IMU gyroscope (deg/s)
-#         - imumag : one shot read of the IMU magnetometer (gauss)
-#     * WEATHER SENSOR: (BME280)
-#         - bme_init: initialize bme, use -bme option to indicate the weather sensor library.
-#                     (default option is 'bme280', see sensor requirements for more info')
-#         - bme_read : to read values from bme (Temp(C), Pressure(Pa), Rel.Hummidity (percentage))
-#                 (see -tm option for stream mode, and -f for logging*)
-#                 * for one shot read, logging is also available with -f and
-#                     -n option (for tagging)
-#                 * use '-f now' for automatic 'log_mode_datetime.txt' name.
-#                 * for stream mode profiling use -tm [ms] -bme test
-#     * POWER SENSOR: (INA219)
-#         - ina_init: initialize ina, use -ina option to indicate the power sensor library.
-#                     (default option is 'ina219', see sensor requirements for more info')
-#         - ina_read : to read values from ina (Pot.Diff (Volts), Current(mA), Power(mW))
-#                 (see -tm option for stream mode, and -f for logging*)
-#                 * for one shot read, logging is also available with -f and
-#                     -n option (for tagging)
-#                 * use '-f now' for automatic 'log_mode_datetime.txt' name.
-#                 * for stream mode profiling use -tm [ms] -ina test
-#         - ina_batt: Use the sensor to profile battery usage and estimate battery life left.
-#                     It will made 100 measurements during 5 seconds. Indicate battery capacity
-#                     with -batt option; (in mAh)
-#
-# >OUTPUT:
-#     * DAC:
-#         - dac_config: to config analog pin to write to (use -po option)
-#         - dac_write: to write a value in volts (0-3.3V)
-#         - dac_sig: to write a signal use -sig for different options:
-#                   > [type] [Amp] [frequency]
-#                     (type: 'sin, sq'; Amp 0-1 V ; fq:0-50 (above that fq loses quality))
-#                   > start : starts signal generation
-#                   > stop : stops signal
-#                   > mod [Amp] [frequency]: modify the signal with the Amp and fq indicated.
-#     * BUZZER:
-#         - buzz_config: to config PWM pin to drive the buzzer (use -po option)
-#         - buzz_set_alarm: to set an alarm at time indicated with option -at, be
-#                          aware that the rtc time must be set first with set_localtime
-#                          or set_ntptime
-#         - buzz_interrupt: to configure an interrupt with pins indicated with -po,
-#                         use -md 'rev' for interrupt reverse operation
-#         - buzz_beep: make the buzzer beep, with options set by -opt,
-#                     usage: buzz_beep -opt [beep_ms] [number_of_beeps] [time_between_beeps] [fq]
-#     * DC MOTOR:
-#         - dcmotor_config: to config PWM pins to drive a DC motor (use -po option as -po [DIR1] [DIR2])
-#         - dcmotor_move: to move the motor to one direction ['R'] or the opposite ['L']
-#                         use -to option as -to ['R' or 'L'] [VELOCITY] (60-512)
-#         - dcmotor_stop: to stop the DC motor
-#     * SERVO:
-#         - servo_config: to configure the servo pin with -po option
-#         - servo_angle: to move the servo an angle indicated by -opt option
-#     * STEPPER MOTOR:
-#         - stepper_config: to configure the step and direction pin with -po option
-#                             *( -po [DIR_PIN] [STEP_PIN])
-#         - stepper_move: to move the stepper to right or left, at a velocity and
-#                        a numbers of steps indicated with -to option: [R or L] [velocity] [# steps]
-#                        R: right, L:left, velocity (1000-20000) (smaller is faster) and
-#                        # steps (int), where 200 steps means a complete lap
-#
-# NETWORKING:
-#     * MQTT:
-#         - mqtt_config: to set id, broker address, user and password, use with -client option
-#                        as "mqtt_config -client [ID] [BROKER ADDRESS] [USER] [PASSWORD]"
-#         - mqtt_conn: to start a mqtt client and connect to broker; use mqtt_config first
-#         - mqtt_sub: to subscribe to a topic, use -to option as "mqtt_sub -to [TOPIC]"
-#         - mqtt_pub: to publish to a topic, use -to option as "mqtt_pub -to [TOPIC] [PAYLOAD]" or
-#                     "mqtt_pub -to [PAYLOAD]" if already subscribed to a topic.
-#         - mqtt_check: to check for new messages of the subscribed topics.
-#     * SOCKETS:
-#         - socli_init: to initiate a socket client use with -server option as
-#                       "socli_init -server [IP] [PORT] [BUFFER LENGTH]"
-#         - socli_conn: to connect the socket client to a server (inidcated by IP)
-#         - socli_send: to send a message to the server, use -n option to indicate
-#                       the message
-#         - socli_recv: to receive a message from the server
-#         - socli_close: to close the client socket
-#         - sosrv_init: to initiate a socket server, use with -server option as
-#                       "sosrv_init -server [PORT] [BUFFER LENGTH]"
-#         - sosrv_start: to start the server, waits for a connection
-#         - sosrv_send: to send a message to the client, use -n option to indicate
-#                       the message
-#         - sosrv_recv: to receive a message from the client
-#         - sosrv_close: to close the server socket
-#     * UREQUEST:
-#         - rget_json: to make a request to API that returns a JSON response format
-#                     (indicate API URL with -f option)
-#         - rget_text: to make a request to API that returns a text response format
-#                     (indicate API URL with -f option)
-#
-# Port/board specific commands:
-# - battery : if running on battery, gets battery voltage (esp32 huzzah feather)
-# - pinout : to see the pinout reference/info of a board, indicated by -b option,
-#            to request a single or a list of pins info use -po option
-# - specs : to see the board specs, indicated by -b option
-# - pin_status: to see pin state, to request a specific set use -po option ***
-#
-# * ESP32: (Not implemented yet)
-#     - touch
-#     - hall
-#     - deepsleep
-#     - temp
-# '''
-#
-# usag = """%(prog)s [Mode] [options] or %(prog)s [upy command] [options] \n
-# This means that if the first argument is not a Mode keyword or a
-# upy command keyword it assumes it is a 'raw' upy command to send to the upy device \n
-# Needs webrepl enabled in upy device;
-# see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt"""
-#
-# # UPY MODE KEYWORDS AND COMMANDS
-# keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
-#                  'netscan', 'i2c_scan', 'id', 'reset', 'upysh', 'wrepl',
-#                  'battery', 'mem_info', 'ping', 'filesize', 'filesys_info',
-#                  'uhelp', 'umodules', 'netinfot', 'netstat_on', 'netstat_off',
-#                  'netstat', 'ap_on', 'ap_off', 'apstat', 'apscan', 'run',
-#                  'apconfig', 'netstat_conn', 'i2c_config', 'imu_init',
-#                  'imuacc', 'imugy', 'imumag', 'pinout', 'specs', 'install',
-#                  'pin_status', 'adc_config', 'aread', 'set_ntptime',
-#                  'get_datetime', 'set_localtime', 'imuacc_sd', 'ads_init',
-#                  'ads_read', 'sd_enable', 'spi_config', 'sd_init', 'sd_deinit',
-#                  'sd_auto', 'dac_config', 'dac_write', 'dac_sig',
-#                  'buzz_config', 'buzz_set_alarm', 'buzz_interrupt',
-#                  'buzz_beep', 'servo_config', 'servo_angle', 'stepper_config',
-#                  'stepper_move', 'dcmotor_config', 'dcmotor_move',
-#                  'dcmotor_stop', 'mpyx', 'timeit', 'mqtt_config', 'mqtt_conn',
-#                  'mqtt_pub', 'mqtt_sub', 'mqtt_check', 'socli_init',
-#                  'socli_conn', 'socli_send', 'socli_recv', 'socli_close',
-#                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
-#                  'sosrv_close', 'rget_json', 'rget_text', 'fw', 'flash',
-#                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-#                  'ina_batt', 'make_group', 'srepl', 'mg_group', 'find',
-#                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
-#                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
-#                  'stream_test', 'sysctl', 'log', 'update_upyutils',
-#                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
-#                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
-#                  'wssl', 'wssrepl', 'set_wss']
-#
-# help_dv = "To point the command to a specific device saved in the global group"
-# # ARG PARSER
-# parser = argparse.ArgumentParser(prog='upydev',
-#                                  description='Command line tool for wireless Micropython devices',
-#                                  formatter_class=argparse.RawTextHelpFormatter,
-#                                  usage=usag, prefix_chars='-')
-# parser.version = 'upydev: 0.2.8'
-# parser.add_argument(
-#     "m", metavar='Mode', help=helparg).completer = ChoicesCompleter(keywords_mode)
-# parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs())
-# parser.add_argument("-p", help='password', required=False)
-# parser.add_argument("-f", help='script or file name', required=False)
-# parser.add_argument(
-#     "-lh", help='local ip for sync mode if can not be automatically detected',
-#     required=False)
-# parser.add_argument(
-#     "-t", help='target host for example : 192.168.1.40 or for AP 192.168.4.1',
-#     required=False)
-# parser.add_argument(
-#     "-sec", help='to configure a device password with no stream trace',
-#     required=False, default=False, action='store_true')
-# parser.add_argument(
-#     "-s", help='source dir in upy device, default is root dir (flash memory); sd for sd card source dir mounted as "/sd"', required=False)
-# parser.add_argument(
-#     "-dir", help='target dir in upy device, default is root dir (flash memory)', required=False)
-# parser.add_argument(
-#     "-tree", help='to see the tree structure of a the directory to sync', required=False, default=False, action='store_true')
-# parser.add_argument(
-#     "-c", help='command to send to upy device, do not wait for a response',
-#     required=False, type=str).completer = ChoicesCompleter(keywords_mode)
-# parser.add_argument(
-#     "-r", help='command to send to upy device, waits for a short response (one line)', required=False)
-# parser.add_argument(
-#     "-rl", help='command to send to upy device, waits for a longer response (multiple lines), so it can catch tracebacks messages', required=False)
-# parser.add_argument(
-#     "-g", help='to store/read the configuration file globally, if there is no config file in working directory, \n it uses the global file',
-#     required=False, default=False, action='store_true')
-# parser.add_argument(
-#     "-st", help='shows target ip if using config file', required=False, default=False, action='store_true')
-# parser.add_argument(
-#     "-rst", help='reset flag after put file operation, default true, "f" to disable', required=False)
-# parser.add_argument(
-#     "-ap", help='[essid] [password] to set AP name and password',
-#     required=False, nargs=2)
-# parser.add_argument(
-#     "-wp", help='[essid] [password] to connect the STA to an AP',
-#     required=False, nargs=2)
-# parser.add_argument(
-#     "-i2c", help='[SCL] [SDA] to config scl and sda i2c pins in upy device',
-#     required=False, nargs=2, default=[22, 23], type=int)
-# parser.add_argument(
-#     "-spi", help='[SCk] [MISO] [MOSI] [CS] to config scl and sda i2c pins in upy device',
-#     required=False, nargs=4, default=[5, 19, 18, 21], type=int)
-# parser.add_argument(
-#     "-b", help='[BOARD NAME] to request info of specs or of the pinouts',
-#     required=False).completer = ChoicesCompleter(['esp32', 'esp8266'])
-# parser.add_argument(
-#     "-att",
-#     help='[attenuation] for attenuate adc input, default is 11dB attenuation, do -att info for more info',
-#     required=False, default=3)
-# parser.add_argument(
-#     "-tm",
-#     help='[timeout] enable stream mode and indicates a timeout in milliseconds',
-#     required=False, type=int)
-# parser.add_argument(
-#     "-po",
-#     help='[pin] indicates the pin to request info',
-#     required=False, nargs='+', type=int)
-#
-# parser.add_argument(
-#     "-opt",
-#     help='wildcard option to be used by several commands',
-#     required=False, nargs='+', type=int)
-#
-# parser.add_argument(
-#     "-n",
-#     help='tag a log shot from a sensor or adc',
-#     required=False)
-# parser.add_argument("-wss",
-#                     help='Use WebSocket Secure (not available for all commands), this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
-#                     default=False, action='store_true')
-# parser.add_argument('-v', action='version')
-# parser.add_argument('-start', help='To start a script with sysctl; use as -start [SCRIPT_NAME]',
-#                     required=False)
-# parser.add_argument('-stop', help='To start a script with sysctl; use as -stop [SCRIPT_NAME]',
-#                     required=False)
-# parser.add_argument('-dflev', help='debug file mode level, options [debug, info, warning, error, critical]; default=error', default='error').completer = ChoicesCompleter(log_levs)
-# parser.add_argument('-dslev', help='debug sys.stdout mode level, options [debug, info, warning, error, critical]; default=debug', default='debug').completer = ChoicesCompleter(log_levs)
-# parser.add_argument('-daemon', help='enable "daemon mode", uses nohup so this means running in background, output if any is redirected to [SCRIPT_NAME]_daemon.log', default=False, action='store_true')
-# parser.add_argument('-stopd', help='To stop a log daemon script', default=False, action='store_true')
-# parser.add_argument('-follow', help='To follow a daemon log script file, indicate script with -f option', default=False, action='store_true')
-# parser.add_argument('-rep', help='to save the report in a text file',
-#                     required=False, default=False, action='store_true')
-# parser.add_argument('-apmd', help='set target to 192.168.4.1',
-#                     required=False, default=False, action='store_true')
-# parser.add_argument('-chunk_tx', help='chunk size of data packets in kB to send for wifi speed test',
-#                     required=False, default=20, type=int)
-# parser.add_argument('-chunk_rx', help='chunk size of data packets in kB to receive for wifi speed test',
-#                     required=False, default=32, type=int)
-# parser.add_argument('-total_size', help='total size of data packets in MB for wifi speed test',
-#                     required=False, default=10, type=int)
-# parser.add_argument('-show_key', help='show RSA key',
-#                     required=False, default=False, action='store_true')
-# parser.add_argument('-tfkey', help='transfer RSA/ECDSA key,ideally this should be done only if connected to the AP of the device',
-#                     required=False, default=False, action='store_true')
-# parser.add_argument('-key_size', help='Indicate RSA key length in bits (default is 2048)',
-#                     required=False, default=2048, type=int)
-# parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection',
-#                     required=False, default=False, action='store_true')
-# parser.add_argument('-localkey_id', help='To refresh password manually of a current WebREPL connection',
-#                     required=False)
-# parser.add_argument('-nem', help='To initiate CryptoWebREPL in unencrypted mode only',
-#                     required=False, default=False, action='store_true')
-# parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
-#                     default=0)
-# parser.add_argument('-imu', help='to select the imu library',
-#                     default='lsm9ds1')
-# parser.add_argument('-ads', help='to select the ads library and config options',
-#                     default='ads1115')
-# parser.add_argument('-ch', help='to select the ads analog channel to read from',
-#                     type=int, default=0)
-# parser.add_argument('-bme', help='to select the bme library and config options',
-#                     default='bme280')
-# parser.add_argument('-ina', help='to select the ina library and config options',
-#                     default='ina219')
-# parser.add_argument('-batt', help='to indicate battery capacity',
-#                     type=int, nargs='+')
-# parser.add_argument('-sig', help='to indicate a value or type of signal to write',
-#                     nargs='+')
-# parser.add_argument('-at', help='[HOUR] [MINUTE] [SECONDS]',
-#                     nargs='+', type=int, default=[0, 0, 0])
-# parser.add_argument('-to', help='[DIRECTION] [VELOCITY] [STEPS]',
-#                     nargs='+', default=['R', 2000, 100])
-#
-# parser.add_argument('-client', help='[ID] [BROKER ADDRESS] [USER] [PASSWORD]',
-#                     nargs='+', default=[None, 'test.mosquitto.org'])
-# parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGTH]; Server Socket [PORT] [BUFFER LENGTH]',
-#                     nargs='+')
-# parser.add_argument('-md', help='for command suboptions',
-#                     nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest'])
-# parser.add_argument(
-#     '-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
-# parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
-#                     nargs='+')
-# parser.add_argument('-add', help='to indicate the devices that will be added to a group, use as -add [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
-#                     nargs='+')
-# parser.add_argument('-rm', help='to indicate the devices that will be removed from a group, use as -rm [DEV_1] [DEV_2]...',
-#                     nargs='+')
-# parser.add_argument(
-#     '-G', help='to indicate the group of devices that the command is directed to').completer = ChoicesCompleter(see_groups())
-# parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
-#                     nargs='+')
-# parser.add_argument(
-#     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
-# argcomplete.autocomplete(parser)
-# args = parser.parse_args()
-
-# MODE FUNCTIONS
 
 
 def put_f(ip, passwd, rst=None, abs_path=False):

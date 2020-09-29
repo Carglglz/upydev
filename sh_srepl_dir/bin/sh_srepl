@@ -729,7 +729,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
                     'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle',
-                    'upy-config', 'tig', 'jupyterc']
+                    'upy-config', 'tig', 'jupyterc', 'pytest']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -1919,6 +1919,22 @@ def custom_sh_cmd(cmd_inp):
             except Exception as e:
                 print(e)
                 print('Local MicroPython not found')
+        except Exception as e:
+            print(e)
+            pass
+
+    if cmd_inp.split()[0] == 'pytest':
+        try:
+            pytest_cmd = shlex.split(cmd_inp)
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+            try:
+                pytest = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
         except Exception as e:
             print(e)
             pass

@@ -922,7 +922,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'du', 'ldu', 'upipl', 'pkg_info', 'uping', 'lping',
                     'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle',
-                    'upy-config', 'wss', 'tig', 'jupyterc']
+                    'upy-config', 'wss', 'tig', 'jupyterc', 'pytest']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -2404,6 +2404,22 @@ def custom_sh_cmd(cmd_inp):
                             d_sync_recursive(_dir, show_tree=True, root_sync_folder=_dir)
                 else:
                     d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
+
+    if cmd_inp.split()[0] == 'pytest':
+        try:
+            pytest_cmd = shlex.split(cmd_inp)
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+            try:
+                pytest = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+        except Exception as e:
+            print(e)
+            pass
 
     if cmd_inp.split(' ')[0] == 'l_micropython':
         print('<-- Local machine MicroPython -->')

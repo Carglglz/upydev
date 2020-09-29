@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.4] Unreleased [Github Repo]
 ### Fix
-- Fix autocomplete on tab in REPL while `import` or `from X import`
+- Fix autocomplete on tab in REPL while `import` or `from X import` in SERIAL REPL
+### Added
+- Autocomplete `shr@` , `ssl@` and `wssl@` commands with saved devices in UPY_G global group
+- `pytest` command in SHELL-REPLS
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch
