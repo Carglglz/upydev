@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Autocomplete `shr@` , `ssl@` and `wssl@` commands with saved devices in UPY_G global group
 - `pytest` command in SHELL-REPLS
+- `pytest` command mode in CLI.
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch

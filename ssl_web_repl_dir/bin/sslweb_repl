@@ -19,6 +19,7 @@ import textwrap
 import select
 import subprocess
 import shlex
+import shutil
 import webbrowser
 import argparse
 from upydev import upip_host
@@ -2406,20 +2407,42 @@ def custom_sh_cmd(cmd_inp):
                     d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
 
     if cmd_inp.split()[0] == 'pytest':
-        try:
-            pytest_cmd = shlex.split(cmd_inp)
-            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-            def preexec_function(action=old_action):
-                signal.signal(signal.SIGINT, action)
+        # setup conftest.py
+        if 'setup' in cmd_inp.split():
+            shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
+            shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
+        else:
             try:
-                pytest = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
-                signal.signal(signal.SIGINT, old_action)
+                ssl_cp.enable_wrepl_io()
+            except Exception as e:
+                pass
+            try:
+                pytest_cmd = shlex.split(cmd_inp)
+                if '--dev' not in pytest_cmd and '-h' not in pytest_cmd:
+                    pytest_cmd += ['--dev', host_name]
+                old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+                def preexec_function(action=old_action):
+                    signal.signal(signal.SIGINT, action)
+                try:
+                    pytest = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
+                    signal.signal(signal.SIGINT, old_action)
+                    try:
+                        ssl_cp.enable_wrepl_io()
+                    except Exception as e:
+                        pass
+                except Exception as e:
+                    print(e)
+                    try:
+                        ssl_cp.enable_wrepl_io()
+                    except Exception as e:
+                        pass
             except Exception as e:
                 print(e)
-        except Exception as e:
-            print(e)
-            pass
+                try:
+                    ssl_cp.enable_wrepl_io()
+                except Exception as e:
+                    pass
 
     if cmd_inp.split(' ')[0] == 'l_micropython':
         print('<-- Local machine MicroPython -->')

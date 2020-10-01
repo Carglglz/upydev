@@ -29,6 +29,7 @@ import secrets
 import signal
 import hashlib
 import locale
+import shutil
 import textwrap
 from binascii import hexlify
 from pathlib import Path
@@ -45,6 +46,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
+from ipaddress import ip_address
+from upydevice import check_device_type, Device
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
@@ -99,7 +102,6 @@ def see_global_devs(serial=False, all=False):
         return devs
     except Exception as e:
         return []
-
 
 #############################################
 # ARGPARSER
@@ -251,6 +253,10 @@ helparg = '''Mode:
             how to connect to a device either WebREPL (%%websocketconnect) or Serial connection (%%serialconnect).
             Hit tab to autcomplete magic commands, and MicroPython/Python code.
             (This needs jupyter and MicroPython upydevice kernel to be installed)
+
+- pytest: to run upydevice test with pytest, do "pytest-setup" first to enable selection
+         of specific device with -@ entry point.
+- check: to check device information with -@ entry point if stored in a group configuration file.
 
 - make_group: to make a group of boards to send commands to. Use -f for the name
               of the group and -devs option to indicate a name, ip and the
@@ -488,11 +494,13 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
-                 'wssl', 'wssrepl', 'set_wss', 'jupyterc']
+                 'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
+                 'pytest-setup', 'check']
 
 keywords_mode += ['shr@{}'.format(dev) for dev in see_global_devs(serial=True)]
 keywords_mode += ['ssl@{}'.format(dev) for dev in see_global_devs()]
 keywords_mode += ['wssl@{}'.format(dev) for dev in see_global_devs()]
+# keywords_mode += ['pytest@{}'.format(dev) for dev in see_global_devs()]
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -646,9 +654,11 @@ parser.add_argument(
 parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
                     nargs='+')
 parser.add_argument('-wdl', help='option to create and check a watchdog log file in cwd, so only new or modified files are uploaded',
-                    default = False, action='store_true')
+                    default=False, action='store_true')
 parser.add_argument('-swdl', help='flag used internally for -wdl mode',
-                    default = True, action='store_false')
+                    default=True, action='store_false')
+parser.add_argument('-i', help='Show extensive device information with check command',
+                    default=False, action='store_true')
 parser.add_argument(
     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
@@ -3995,12 +4005,62 @@ def address_entry_point(entry_point, group_file=''):
     devs = devices.keys()
     # NAME ENTRY POINT
     if entry_point in devs:
-        dev_ip = devices[entry_point][0]
-        dev_pass = devices[entry_point][1]
-        return (dev_ip, dev_pass)
+        dev_address = devices[entry_point][0]
+        try:
+            int(dev_address)
+            dev_address = devices[entry_point][1]
+        except Exception as e:
+            pass
+        if '.' in dev_address and dev_address.count('.') == 3:
+            # check IP
+            try:
+                ip_address(dev_address)
+                dev_ip = devices[entry_point][0]
+                dev_pass = devices[entry_point][1]
+                return (dev_ip, dev_pass)
+            except Exception as e:
+                print(e)
+        elif 'COM' in dev_address or '/dev/' in dev_address:
+            dev_br = devices[entry_point][0]
+            dev_sport = devices[entry_point][1]
+            return (dev_sport, dev_br)
+        elif len(dev_address.split('-')) == 5:
+            try:
+                assert [len(s) for s in dev_address.split('-')] == [8, 4, 4, 4, 12], dev_address
+                dev_uuid = devices[entry_point][0]
+                dev_pass = devices[entry_point][1]
+                return (dev_uuid, dev_pass)
+            except Exception as e:
+                print('uuid malformed')
     else:
         print('Device not configured in global group: {}'.format(group_file))
         sys.exit()
+#############################################
+
+
+def pytest(devname):
+    if args.f is not None:
+        test = args.f
+    elif args.fre is not None:
+        test = ' '.join(args.fre)
+    else:
+        test = ''
+    pytest_cmd_str = 'pytest {} -s --dev {}'.format(test, devname)
+    if args.md:
+        pytest_cmd_str = ' '.join([pytest_cmd_str, args.md[0]])
+    pytest_cmd = shlex.split(pytest_cmd_str)
+    old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    def preexec_function(action=old_action):
+        signal.signal(signal.SIGINT, action)
+    try:
+        pytest_session = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
+        signal.signal(signal.SIGINT, old_action)
+    except KeyboardInterrupt:
+        pass
+        print('')
+
+
 #############################################
 
 
@@ -4008,7 +4068,8 @@ def address_entry_point(entry_point, group_file=''):
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
           'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
           'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy'
-          'ssl', 'shr', 'wssl', 'wssrepl', 'jupyterc']  # implemented till sync in GP
+          'ssl', 'shr', 'wssl', 'wssrepl', 'jupyterc', 'pytest',
+          'pytest-setup']  # implemented till sync in GP
 # diagnose in G
 
 # UPYDEVICE CLASS
@@ -4162,7 +4223,11 @@ if args.m == 'config':
             sys.exit()
     upydev_ip = args.t
     upydev_pass = args.p
-    upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass}
+    if vars(args)['@'] is not None:
+            upydev_name = vars(args)['@']
+    else:
+        upydev_name = 'upydevice'
+    upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
     file_conf = 'upydev_.config'
     if args.g:
         file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
@@ -4185,6 +4250,10 @@ if args.t is None:
             upy_conf = json.loads(config_file.read())
         args.t = upy_conf['ip']
         args.p = upy_conf['passwd']
+        if 'name' in upy_conf:
+            _dev_name = upy_conf['name']
+        else:
+            _dev_name = 'upydevice'
         # @ ENTRY POINT
         if args.b is not None:
             if "@" in args.b:
@@ -4211,6 +4280,18 @@ if args.G is not None:
             group_file = '{}/{}'.format(upydev.__path__[0], args.G)
         if args.m == 'see':
             see()
+            sys.exit()
+        if args.m == 'pytest':
+            print('Running pytest in group: {}'.format(group_file.split('/')[-1]))
+            with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+                devices = json.loads(group.read())
+                # print(devices)
+            devs = devices.keys()
+            if args.devs is not None:
+                devs = args.devs
+            for dev in devs:
+                print('Running pytest with Device: {}'.format(dev))
+                pytest(dev)
             sys.exit()
         if args.m == 'mg_group':
             if args.add is not None:
@@ -5101,6 +5182,42 @@ elif args.m == 'shr':
 # JUPYTER CONSOLE
 elif args.m == 'jupyterc':
     jupyterc()
+
+
+# PYTEST
+elif args.m == 'pytest-setup':
+    shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
+    shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
+    print('pytest.ini and conftest.py saved in current working directory.')
+    sys.exit()
+
+elif args.m == 'pytest':
+    if vars(args)['@'] is not None:
+        print('Running pytest with Device: {}'.format(entryp))
+        pytest(entryp)
+    else:
+        print('Running pytest with Device: {}'.format(_dev_name))
+        pytest(_dev_name)
+
+    sys.exit()
+
+# CHECK
+
+elif args.m == 'check':
+    if vars(args)['@'] is not None:
+        print('Device: {}'.format(entryp))
+    else:
+        print('Device: {}'.format(_dev_name))
+    dt = check_device_type(args.t)
+    if not args.i:
+        print('Address: {}, Device Type: {}'.format(args.t, dt))
+    else:
+        if not args.wss:
+            dev = Device(args.t, args.p, init=True)
+        else:
+            dev = Device(args.t, args.p, init=True, ssl=True)
+        print(dev)
+    sys.exit()
 
 # MAKE_GROUP
 elif args.m == 'make_group':

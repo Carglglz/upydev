@@ -1925,16 +1925,25 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp.split()[0] == 'pytest':
         try:
-            pytest_cmd = shlex.split(cmd_inp)
-            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            # setup conftest.py
+            if 'setup' in cmd_inp.split():
+                shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
+                shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
+            else:
+                pytest_cmd = shlex.split(cmd_inp)
+                if '--dev' not in pytest_cmd and '-h' not in pytest_cmd:
+                    pytest_cmd += ['--dev', host_name]
+                old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-            def preexec_function(action=old_action):
-                signal.signal(signal.SIGINT, action)
-            try:
-                pytest = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
-                signal.signal(signal.SIGINT, old_action)
-            except Exception as e:
-                print(e)
+                def preexec_function(action=old_action):
+                    signal.signal(signal.SIGINT, action)
+                try:
+                    pytest = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
+                    signal.signal(signal.SIGINT, old_action)
+                except Exception as e:
+                    print(e)
+                shr_cp.sh_repl('import os;import gc;from upysh import *', silent=True)
+                shr_cp.flush_conn()
         except Exception as e:
             print(e)
             pass
