@@ -83,7 +83,7 @@ def see_groups():
     return local_cwd + globl_wd
 
 
-def see_global_devs(serial=False, all=False):
+def see_global_devs(ws=True, serial=False, ble=False, all=False):
     # avoid_files = ['upydev_.config', 'help.config', 'esp32h.config']
     # # local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
     # # ) if '.config' in group_file and group_file not in 'upydev_.config']
@@ -93,10 +93,12 @@ def see_global_devs(serial=False, all=False):
         with open('{}/UPY_G.config'.format(upydev.__path__[0]), 'r', encoding='utf-8') as group:
             devices = json.loads(group.read())
             # print(devices)
-        if not serial:
-            devs = [dev for dev in devices if '.' in devices[dev][0]]
-        elif serial:
-            devs = [dev for dev in devices if '.' not in devices[dev][0]]
+        if ws:
+            devs = [dev for dev in devices if check_device_type(devices[dev][0]) == 'WebSocketDevice']
+        if serial:
+            devs = [dev for dev in devices if check_device_type(devices[dev][1]) == 'SerialDevice']
+        if ble:
+            devs = [dev for dev in devices if check_device_type(devices[dev][0]) == 'BleDevice']
         if all:
             devs = [dev for dev in devices]
         return devs
@@ -495,12 +497,12 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
-                 'pytest-setup', 'check']
+                 'pytest-setup', 'check', 'ble', 'brepl']
 
 keywords_mode += ['shr@{}'.format(dev) for dev in see_global_devs(serial=True)]
 keywords_mode += ['ssl@{}'.format(dev) for dev in see_global_devs()]
 keywords_mode += ['wssl@{}'.format(dev) for dev in see_global_devs()]
-# keywords_mode += ['pytest@{}'.format(dev) for dev in see_global_devs()]
+keywords_mode += ['ble@{}'.format(dev) for dev in see_global_devs(ble=True)]
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
@@ -3993,6 +3995,31 @@ def sh_srepl(baud, port, usr=None):
 
 #############################################
 
+def ble_repl(uuid, usr=None):
+
+    if usr is not None:
+
+        blerepl_cmd_str = 'blerepl -t {} -dev {} -r'.format(uuid, usr)
+    else:
+
+        blerepl_cmd_str = 'blerepl -t {} -r'.format(uuid)
+    blerepl_cmd = shlex.split(blerepl_cmd_str)
+
+    old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    def preexec_function(action=old_action):
+        signal.signal(signal.SIGINT, action)
+
+    try:
+        blerepl = subprocess.call(blerepl_cmd, preexec_fn=preexec_function)
+    except KeyboardInterrupt:
+        pass
+
+    sys.exit()
+
+#############################################
+
+
 def address_entry_point(entry_point, group_file=''):
     if group_file == '':
         group_file = 'UPY_G'
@@ -4069,7 +4096,7 @@ kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
           'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
           'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy'
           'ssl', 'shr', 'wssl', 'wssrepl', 'jupyterc', 'pytest',
-          'pytest-setup']  # implemented till sync in GP
+          'pytest-setup', 'ble']  # implemented till sync in GP
 # diagnose in G
 
 # UPYDEVICE CLASS
@@ -4210,6 +4237,7 @@ class UPYDEVICE:
 # @ ENTRY
 if "@" in args.m:
     args.m, entry_point = args.m.split('@')
+    args.t, args.p = address_entry_point(entry_point)
 
 # CONFIG:
 if args.m == 'config':
@@ -5047,6 +5075,7 @@ elif args.m == 'upy':
 
 # MAKE AN DIRECT ENTRY WITH @ FORMAT
 
+# SSLSHELL-REPL
 elif args.m == 'ssl':
     group_file = 'UPY_G'
     # print(group_file)
@@ -5084,6 +5113,7 @@ elif args.m == 'ssl':
             except Exception as e:
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
 
+# WSSLSHELL-REPL
 elif args.m == 'wssl':
     group_file = 'UPY_G'
     # print(group_file)
@@ -5143,6 +5173,8 @@ elif args.m == 'set_wss':
         else:
             pass
 
+# SERIALSHELL-REPL
+
 elif args.m == 'shr':
     group_file = 'UPY_G'
     # print(group_file)
@@ -5178,6 +5210,23 @@ elif args.m == 'shr':
                 sh_srepl(115200, entry_point, usr=entry_point)
             except Exception as e:
                 print('PASSWORD INVALID or DEVICE NOT REACHABLE')
+
+# BLESHELL-REPL
+
+elif args.m == 'brepl':
+    print('BLE SHELL-REPL: Connecting...')
+    if vars(args)['@'] is not None:
+        entryp = vars(args)['@']
+        ble_repl(args.t, usr=entryp)
+    else:
+        ble_repl(args.t)
+
+elif args.m == 'ble':
+    print('BLE SHELL-REPL: Connecting...')
+    try:
+        ble_repl(args.t, usr=entry_point)
+    except Exception as e:
+        print('UUID INVALID or DEVICE NOT REACHABLE')
 
 # JUPYTER CONSOLE
 elif args.m == 'jupyterc':
