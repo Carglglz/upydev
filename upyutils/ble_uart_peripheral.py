@@ -3,12 +3,13 @@
 import bluetooth
 from ble_advertising import advertising_payload
 import time
-
+# from machine import Pin
 from micropython import const
 
 _IRQ_CENTRAL_CONNECT = const(1)
 _IRQ_CENTRAL_DISCONNECT = const(2)
 _IRQ_GATTS_WRITE = const(3)
+_IRQ_GATTS_INDICATE_DONE = const(20)
 
 _UART_UUID = bluetooth.UUID('6E400001-B5A3-F393-E0A9-E50E24DCCA9E')
 _UART_TX = (bluetooth.UUID('6E400003-B5A3-F393-E0A9-E50E24DCCA9E'),
@@ -19,6 +20,7 @@ _UART_SERVICE = (_UART_UUID, (_UART_TX, _UART_RX,),)
 
 # org.bluetooth.characteristic.gap.appearance.xml
 _ADV_APPEARANCE_GENERIC_COMPUTER = const(128)
+# led = Pin(13, Pin.OUT)
 
 
 class BLEUART:
@@ -31,7 +33,7 @@ class BLEUART:
          ) = self._ble.gatts_register_services((_UART_SERVICE,))
         # Increase the size of the rx buffer and enable append mode.
         self._ble.gatts_set_buffer(self._rx_handle, rxbuf, True)
-        self._ble.gatts_set_buffer(self._tx_handle, rxbuf)
+        self._ble.gatts_set_buffer(self._tx_handle, 128, True)
         self._connections = set()
         self._rx_buffer = bytearray()
         self._tx_available = True
@@ -61,6 +63,9 @@ class BLEUART:
                 self._rx_buffer += self._ble.gatts_read(self._rx_handle)
                 if self._handler:
                     self._handler()
+        elif event == _IRQ_GATTS_INDICATE_DONE:
+            # led.value(not led.value())
+            pass
 
     def any(self):
         return len(self._rx_buffer)
@@ -83,8 +88,18 @@ class BLEUART:
                     break
                 except Exception as e:
                     # self._ble.gatts_read(self._tx_handle)
+                    # while True:
+                    #     try:
+                    #         self._ble.gatts_write(self._tx_handle, data)
+                    #         self._ble.gatts_indicate(conn_handle, self._tx_handle)
+                    #         break
+                    #     except Exception as e:
+                    #
+                    #         self._tx_available = False
+                    #         time.sleep_ms(200)
+                    self._ble.gatts_indicate(conn_handle, self._tx_handle)
                     self._tx_available = False
-                    time.sleep_ms(25)
+                    time.sleep_ms(10)
             # self._ble.gatts_write(self._tx_handle, data)
             # self._ble.gatts_indicate(conn_handle, self._tx_handle)
 

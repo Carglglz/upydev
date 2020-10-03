@@ -49,6 +49,38 @@ from prompt_toolkit.shortcuts import (radiolist_dialog, message_dialog,
 # TODO: EDIT?
 
 
+def parse_bash_profile():
+    ALIASES = {}
+    if '.bash_rc' in os.listdir(os.environ['HOME']):
+        bash_rc = os.path.join(os.environ['HOME'], '.bash_rc')
+        with open(bash_rc, 'r') as bf:
+            bf_content = bf.read()
+            bf_alias = [alias_line for alias_line in bf_content.splitlines() if alias_line.startswith('alias')]
+
+        for alias in bf_alias:
+            alias_key = alias.split('=')[0].replace('alias', '').strip()
+            try:
+                alias_value = ast.literal_eval(alias.split('=')[1])
+            except Exception as e:
+                alias_value = alias.split('=')[1].split()[0]
+            ALIASES[alias_key] = alias_value
+
+    if '.profile' in os.listdir(os.environ['HOME']):
+        profile = os.path.join(os.environ['HOME'], '.profile')
+        with open(profile, 'r') as pf:
+            pf_content = pf.read()
+            pf_alias = [alias_line for alias_line in pf_content.splitlines() if alias_line.startswith('alias')]
+
+        for alias in pf_alias:
+            alias_key = alias.split('=')[0].replace('alias', '').strip()
+            try:
+                alias_value = ast.literal_eval(alias.split('=')[1])
+            except Exception as e:
+                alias_value = alias.split('=')[1].split()[0]
+            ALIASES[alias_key] = alias_value
+    return ALIASES
+
+
 class BLE_REPL_server:
     """
     BLE REPL server class
@@ -99,9 +131,9 @@ class BLE_REPL_server:
     async def as_paste_buff(self, cmd, **kargs):
         # print('Here')
         long_command = cmd
-        await self.dev.ble_client.write_gatt_char(self.dev.writeables['RX'], b'\x05')
+        await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART TX'], b'\x05')
         await asyncio.sleep(1, loop=self.dev.loop)
-        # await self.dev.ble_client.write_gatt_char(self.dev.writeables['RX'], b'\x04')
+        # await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART TX'], b'\x04')
         # print(long_command)
         lines = long_command.split('\n')
         # print(lines)
@@ -111,9 +143,9 @@ class BLE_REPL_server:
             data = bytes(line + '\n', 'utf-8')
             if len(data) > 100:
                 for i in range(0, len(data), 100):
-                    await self.dev.ble_client.write_gatt_char(self.dev.writeables['RX'], data[i:i+100])
+                    await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART TX'], data[i:i+100])
             else:
-                await self.dev.ble_client.write_gatt_char(self.dev.writeables['RX'], data)
+                await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART TX'], data)
         output = await self.dev.as_wr_cmd('\x04', **kargs)
 
         return output
@@ -379,7 +411,7 @@ shell_message = [
 d_prompt = '>>> '
 # KEYBINDINGS
 kb = KeyBindings()
-
+SHELL_ALIASES = parse_bash_profile()
 mem_show_rp = {'show': False, 'call': False, 'used': '?',
                'free': '?', 'percent': 0}
 dev_path = {'p': ' '}
@@ -435,7 +467,9 @@ if shell_mode['S']:
 else:
     prompt['p'] = shell_prompt['s']
     shell_mode['S'] = True
-    ble_cp.sh_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
+    ble_cp.sh_repl('import gc;import os;from upysh import *;gc.collect();\
+    print(">>> ");print(">>> ")\r',
+                    silent=True)
     time.sleep(1)
     ble_cp.flush_conn()
     # ble_cp.flush_conn()
@@ -564,7 +598,8 @@ shell_commands_info = """
             Any other git command will be echoed directly to git
     - tig: to use the 'Text mode interface for git' tool. Must be available in $PATH
 
-
+* Local shell special commands:
+    Commands that start with '%' or not registered will be forwarded to local shell.
 """
 #
 # TAB OPTIONS FORMATTER
@@ -2671,6 +2706,26 @@ def custom_sh_cmd(cmd_inp):
 #                         message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
 #                                        text="I2C Custom configuration enabled successfully as 'i2c_custom'").run()
 
+    if cmd_inp.split()[0].startswith('%') or cmd_inp.split()[0] not in custom_sh_cmd_kw + shell_commands:
+        try:
+            if cmd_inp.startswith('%'):
+                cmd_inp = cmd_inp[1:]
+            shell_cmd_str = shlex.split(cmd_inp)
+            if shell_cmd_str[0] in SHELL_ALIASES:
+                shell_cmd_str[0] = SHELL_ALIASES[shell_cmd_str[0]]
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+            try:
+                shell_cmd = subprocess.call(shell_cmd_str,
+                                            preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+        except Exception as e:
+            print(e)
+            pass
+
     if cmd_inp.split(' ')[0] == 'exit':
         if reset_flag['R']:
             if len(cmd_inp.split(' ')) > 1:
@@ -2679,7 +2734,7 @@ def custom_sh_cmd(cmd_inp):
                     time.sleep(0.5)
                 elif cmd_inp.split(' ')[1] == '-hr':
                     print('Device Hard Reset...')
-                    ble_cp.dev.write_char_raw(key='RX', data='import machine;machine.reset()\r')
+                    ble_cp.dev.write_char_raw(key='Nordic UART TX', data='import machine;machine.reset()\r')
                     time.sleep(1)
                     print('Done!')
             else:
@@ -3740,6 +3795,7 @@ while repl:
                     if inp_args[0] in custom_sh_cmd_kw:
                         custom_sh_cmd(inp)
                     else:
+                        shell_inp = inp
                         inp, frst_cmd = map_upysh(inp)
                         if frst_cmd == 'run':
                             ble_cp.dev.cmd_finished = False
@@ -3766,8 +3822,10 @@ while repl:
                                 ble_cp.sh_repl(inp+';gc.collect()', follow=True)
                                 ble_cp.flush_conn()
                             else:
-                                ble_cp.sh_repl(inp)
-
+                                if frst_cmd not in shell_commands:
+                                    custom_sh_cmd(shell_inp)
+                                else:
+                                    ble_cp.sh_repl(inp)
                         if frst_cmd == 'cd':
                             ble_cp.dev.output = None
                             ble_cp.sh_repl('pwd', silent=True)

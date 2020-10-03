@@ -12,6 +12,8 @@ import machine
 from machine import unique_id
 from ubinascii import hexlify
 from sys import platform
+import time
+# from machine import Pin
 
 from ble_uart_peripheral import BLEUART
 
@@ -23,6 +25,8 @@ if hasattr(machine, 'Timer'):
     _timer = machine.Timer(-1)
 else:
     _timer = None
+
+# led = Pin(13, Pin.OUT)
 
 
 # Batch writes into 50ms intervals.
@@ -66,17 +70,21 @@ class BLEUARTStream(io.IOBase):
 
     def _flush(self):
         if self._uart._tx_available:
-            data = self._tx_buf[0:512]
-            self._tx_buf = self._tx_buf[512:]
+            data = self._tx_buf[0:128]
+            self._tx_buf = self._tx_buf[128:]
             self._uart.write(data)
             if self._tx_buf:
-                schedule_in(self._flush, 25)
+                # led.on()
+                time.sleep_ms(20)
+                schedule_in(self._flush, 20)
 
     def write(self, buf):
         empty = not self._tx_buf
         self._tx_buf += buf
         if empty:
-            schedule_in(self._flush, 25)
+            schedule_in(self._flush, 20)
+        elif len(self._txt_buf) > 256:
+            time.sleep_ms(20)
 
 
 def start():

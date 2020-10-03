@@ -55,6 +55,38 @@ def get_cmd(raw):
     return output
 
 
+def parse_bash_profile():
+    ALIASES = {}
+    if '.bash_rc' in os.listdir(os.environ['HOME']):
+        bash_rc = os.path.join(os.environ['HOME'], '.bash_rc')
+        with open(bash_rc, 'r') as bf:
+            bf_content = bf.read()
+            bf_alias = [alias_line for alias_line in bf_content.splitlines() if alias_line.startswith('alias')]
+
+        for alias in bf_alias:
+            alias_key = alias.split('=')[0].replace('alias', '').strip()
+            try:
+                alias_value = ast.literal_eval(alias.split('=')[1])
+            except Exception as e:
+                alias_value = alias.split('=')[1].split()[0]
+            ALIASES[alias_key] = alias_value
+
+    if '.profile' in os.listdir(os.environ['HOME']):
+        profile = os.path.join(os.environ['HOME'], '.profile')
+        with open(profile, 'r') as pf:
+            pf_content = pf.read()
+            pf_alias = [alias_line for alias_line in pf_content.splitlines() if alias_line.startswith('alias')]
+
+        for alias in pf_alias:
+            alias_key = alias.split('=')[0].replace('alias', '').strip()
+            try:
+                alias_value = ast.literal_eval(alias.split('=')[1])
+            except Exception as e:
+                alias_value = alias.split('=')[1].split()[0]
+            ALIASES[alias_key] = alias_value
+    return ALIASES
+
+
 # CRYPTO
 
 
@@ -697,6 +729,8 @@ d_prompt = '>>> '
 # KEYBINDINGS
 kb = KeyBindings()
 
+SHELL_ALIASES = parse_bash_profile()
+
 mem_show_rp = {'show': False, 'call': False, 'used': '?',
                'free': '?', 'percent': 0}
 dev_path = {'p': ' '}
@@ -881,6 +915,11 @@ shell_commands_info = """
             Use 'git repo' to open the remote repo in the web browser if remote repo exists
             Any other git command will be echoed directly to git
     - tig: to use the 'Text mode interface for git' tool. Must be available in $PATH
+    - pytest: to run a test script with the current device (use '$ pytest setup' first to copy pytest configuration in cwd)
+             e.g. 'pytest test_pyboard.py -s -rp'. (args are forwarded to pytest)
+
+* Local shell special commands:
+    Commands that start with '%' or not registered will be forwarded to local shell.
 
 
 """
@@ -3050,6 +3089,27 @@ def custom_sh_cmd(cmd_inp):
                         message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
                                        text="I2C Custom configuration enabled successfully as 'i2c_custom'").run()
 
+    if cmd_inp.split()[0].startswith('%') or cmd_inp.split()[0] not in custom_sh_cmd_kw + shell_commands:
+        try:
+            if cmd_inp.startswith('%'):
+                cmd_inp = cmd_inp[1:]
+            shell_cmd_str = shlex.split(cmd_inp)
+            if shell_cmd_str[0] in SHELL_ALIASES:
+                shell_cmd_str[0] = SHELL_ALIASES[shell_cmd_str[0]]
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+            try:
+                shell_cmd = subprocess.call(shell_cmd_str,
+                                            preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+        except Exception as e:
+            print(e)
+            pass
+
+
     if cmd_inp.split(' ')[0] == 'exit':
         if reset_flag['R']:
             if len(cmd_inp.split(' ')) > 1:
@@ -4007,6 +4067,7 @@ while repl:
                     if inp_args[0] in custom_sh_cmd_kw:
                         custom_sh_cmd(inp)
                     else:
+                        shell_inp = inp
                         inp, frst_cmd = map_upysh(inp)
                         if frst_cmd == 'run':
                             try:
@@ -4028,9 +4089,12 @@ while repl:
                                 shr_cp.sh_repl(inp+';gc.collect()', follow=True)
                                 shr_cp.flush_conn()
                             else:
-                                shr_cp.sh_repl(inp)
-                                if espdev.output is not None:
-                                    print(espdev.output)
+                                if frst_cmd not in shell_commands:
+                                    custom_sh_cmd(shell_inp)
+                                else:
+                                    shr_cp.sh_repl(inp)
+                                    if espdev.output is not None:
+                                        print(espdev.output)
                         if frst_cmd == 'cd':
                             espdev.output = None
                             shr_cp.sh_repl('pwd')
