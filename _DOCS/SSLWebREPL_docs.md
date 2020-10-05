@@ -4,7 +4,7 @@
 
 1. **Put 'ssl_repl.py' in the device**: to do this use '**update_upyutils**' command as:
 
-   `$ upydev update_upyutils` or `$ upydev update_upyutils -@ esp_room1` (if already configurated in the global group ) 
+   `$ upydev update_upyutils` or `$ upydev update_upyutils -@ esp_room1` (if already configured in the global group ) 
 
    This will upload : 
 

@@ -3470,6 +3470,12 @@ def custom_sh_cmd(cmd_inp):
                             title="Upydev {} Configuration Tool".format(
                                 dev_platform),
                             text='Please set {} Password:'.format(ssid)).run()
+                    while passwd is not None and len(passwd) < 8:
+                        passwd = input_dialog(
+                                title="Upydev {} Configuration Tool".format(
+                                    dev_platform),
+                                text='Please set {} Password (More than 8 characters):'.format(ssid)).run()
+
                     if ssid is not None and passwd is not None:
                         ap_enbale = send_custom_sh_cmd(
                             "import network;network.WLAN(network.AP_IF).active(0)")

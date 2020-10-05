@@ -34,11 +34,11 @@ import textwrap
 from binascii import hexlify
 from pathlib import Path
 import multiprocessing
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 from sys import platform as _platform
 import argcomplete
 from argcomplete.completers import ChoicesCompleter
-from upydevice import W_UPYDEVICE, BASE_WS_DEVICE, BASE_SERIAL_DEVICE
+from upydevice import W_UPYDEVICE, BASE_WS_DEVICE
 from upydevice.phantom import UOS
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, ec
@@ -48,6 +48,8 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 from ipaddress import ip_address
 from upydevice import check_device_type, Device
+from upydev.gencommands import gen_command
+from upydev.wlancommands import wlan_command
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
@@ -277,47 +279,9 @@ helparg = '''Mode:
         ** For parallel command execution use -GP option (instead of -G)
 
 upy Commands:
-> GENERAL
-- info : for upy device system info
-- id : for upy device unique id
-- upysh : to enable the upy shell in the upy device (then do 'upydev man' to
-        access upysh manual info)
-- reset : to do a soft reset in upy device
-- kbi : sends CTRL-C signal to stop an ongoing loop, to be able to access repl again
-- uhelp : just calls micropython help
-- umodules: just calls micropython help('modules')
-- mem_info : for upy device RAM memory info; call it once to check actual memory,
-            call it twice and it will free some memory
-- filesize : to get the size of file in root dir (default) or sd with '-s sd' option;
-            if no file name indicated with -f option, prints all files
-- filesys_info : to get memory info of the file system, (total capacity, free, used),
-            (default root dir, -s option to change)
-- netinfo : for upy device network info if station is enabled and connected to an AP
-- netinfot : same as netinfo but in table format
-- netscan : for upy device network scan
-- netstat_on : to enable STA
-- netstat_off : to disable STA
-- netstat_conn : to connect to an AP , must provide essid and password (see -wp)
-- netstat : STA state ; returns True if enabled, False if disabled
-- ap_on : to enable AP
-- ap_off : to disable AP
-- apstat : AP state ; returns True if enabled, False if disabled
-- apconfig : AP configuration of essid and password with authmode WPA/WPA2/PSK,
-            (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
-- apscan : scan devices connected to AP; returns number of devices and mac address
-- i2c_config : to configure the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
-- i2c_scan : to scan i2c devices (must config i2c pins first)
-- spi_config: to configure the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
-- set_localtime: to pass host localtime and set upy device rtc
-- set_ntptime: to set rtc from server, (see -utc for time zone)
-- get_datetime: to get date and time (must be set first, see above commands)
+> GENERAL: do '$ upydev hgc' to see General commmands help.
 
-> WIFI UTILS (needs wifiutils.py in upydevice, see upyutils in upydev github repo)
-- wlan_init: Initiates wlan util (call this before the following commands)
-- wsta_config: Saves a "netowrk STA" configuration json file in upydevice, use with -wp option as -wp 'ssid' 'password'
-- wap_config: Saves a "netowrk AP" configuration json file in upydevice, use with -ap option as -ap 'ssid' 'password'
-- wsta_conn: Connects to the wlan configured with the command wsta_config
-- wap_conn: Enables the upydevice AP configured with the command wap_config
+> WIFI UTILS: do '$ upydev hwu' to see Wifi utils commands help.
 
 > SD
 - sd_enable: to enable/disable the LDO 3.3V regulator that powers the SD module
@@ -466,13 +430,21 @@ Port/board specific commands:
 usag = """%(prog)s [Mode] [options] or %(prog)s [upy command] [options] \n
 This means that if the first argument is not a Mode keyword or a
 upy command keyword it assumes it is a 'raw' upy command to send to the upy device \n
-Needs webrepl enabled in upy device;
-see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt"""
+Requirements: Needs REPL to be accesible.
+    > Wireless Devices:
+        * WiFi: Needs WebREPL enabled in the device;
+        see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt
+
+        * Bluetooth Low Energy: Needs BleREPL enabled in the device.
+        see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt
+
+    > Serial Devices:
+        * USB: Connected through USB cable. """
 
 # UPY MODE KEYWORDS AND COMMANDS
 keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'netscan', 'i2c_scan', 'id', 'reset', 'upysh', 'wrepl',
-                 'battery', 'mem_info', 'ping', 'filesize', 'filesys_info',
+                 'battery', 'meminfo', 'ping', 'du', 'df',
                  'uhelp', 'umodules', 'netinfot', 'netstat_on', 'netstat_off',
                  'netstat', 'ap_on', 'ap_off', 'apstat', 'apscan', 'run',
                  'apconfig', 'netstat_conn', 'i2c_config', 'imu_init',
@@ -497,7 +469,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
-                 'pytest-setup', 'check', 'ble', 'brepl']
+                 'pytest-setup', 'check', 'ble', 'brepl', 'hgc', 'hwu']
 
 keywords_mode += ['shr@{}'.format(dev) for dev in see_global_devs(serial=True)]
 keywords_mode += ['ssl@{}'.format(dev) for dev in see_global_devs()]
@@ -506,7 +478,7 @@ keywords_mode += ['ble@{}'.format(dev) for dev in see_global_devs(ble=True)]
 help_dv = "To point the command to a specific device saved in the global group"
 # ARG PARSER
 parser = argparse.ArgumentParser(prog='upydev',
-                                 description='Command line tool for wireless MicroPython devices',
+                                 description='Command line tool for wireless/serial MicroPython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
 parser.version = 'upydev: 0.3.4'
@@ -552,7 +524,7 @@ parser.add_argument(
     required=False, nargs=2)
 parser.add_argument(
     "-i2c", help='[SCL] [SDA] to config scl and sda i2c pins in upy device',
-    required=False, nargs=2, default=[22, 23], type=int)
+    required=False, nargs=2, default=[22, 23])
 parser.add_argument(
     "-spi", help='[SCk] [MISO] [MOSI] [CS] to config scl and sda i2c pins in upy device',
     required=False, nargs=4, default=[5, 19, 18, 21], type=int)
@@ -665,6 +637,23 @@ parser.add_argument(
     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
+
+
+# MODES
+
+# GENERAL COMMANDS
+GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
+                    'uhelp', 'umodules', 'meminfo', 'du', 'df',
+                    'netinfo', 'netinfot', 'netscan', 'netstat_on',
+                    'netstat_off', 'netstat_conn', 'netstat', 'ap_on',
+                    'ap_off', 'apstat', 'apconfig', 'apscan', 'i2c_config',
+                    'i2c_scan', 'spi_config', 'set_localtime', 'set_ntptime',
+                    'get_datetime', 'hgc']
+# WLAN COMMANDS
+
+WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
+                       'wap_conn', 'hwu']
+# PROTOTYPE
 
 #############################################
 # TERMINAL SIZE
@@ -4371,7 +4360,13 @@ if args.G is not None:
             print('Device Name: {}'.format(dev))
             dev_ip = devices[dev][0]
             dev_pass = devices[dev][1]
-            print('Device IP: {}'.format(devices[dev][0]))
+            try: # FIX FOR SERIAL
+                int(dev_ip)
+                dev_ip = dev_pass
+                dev_type = check_device_type(dev_ip)
+            except Exception as e:
+                dev_type = check_device_type(dev_ip)
+            print('{} @ {}'.format(dev_type, dev_ip))
             print('Sending command {} ...'.format(args.m))
             # print(sys.argv[1:])
             for i in range(len(sys.argv[1:])):
@@ -4635,34 +4630,9 @@ if args.apmd:
     args.t = '192.168.4.1'
 if args.m not in keywords_mode:
     cmd = args.m
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        cmd, args.t, args.p)
-    cmd = shlex.split(cmd_str)
-    try:
-        proc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()
-            if b'\n' in resp:
-                resp = resp[:-1].decode()
-            else:
-                resp = resp.decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print(resp[4:])
-                else:
-                    print(resp)
-            else:
-                print(resp)
-    except KeyboardInterrupt:
-        time.sleep(1)
-        result = proc.stdout.readlines()
-        for message in result:
-            print(message[:-1].decode())
-
+    dev = Device(args.t, args.p)
+    dev.cmd(cmd)
+    dev.disconnect()
     sys.exit()
 
 # PUT:
@@ -5291,830 +5261,17 @@ elif args.m == 'make_group':
 
 # * GENERAL COMMANDS *
 # INFO :
+elif args.m in GENERAL_COMMANDS:
+    gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
+                ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
+                init=True, ssl=args.wss, auth=args.wss)
 
-elif args.m == 'info':
-    info_cmd = 'import uos;uos.uname();gc.collect()'
-    if '.' in args.t:
-        wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-        upyinfo = wsdevice.wr_cmd(info_cmd,
-                                  silent=True, rtn_resp=True)
-        wsdevice.close_wconn()
-    else:
-        sdevice = BASE_SERIAL_DEVICE(args.p, args.t)
-        upyinfo = sdevice.cmd(info_cmd)
-    try:
-        dev_info = upyinfo.split("'")
-        print('SYSTEM NAME: {}'.format(dev_info[1]))
-        print('NODE NAME: {}'.format(dev_info[3]))
-        print('RELEASE: {}'.format(dev_info[5]))
-        print('VERSION: {}'.format(dev_info[7]))
-        print('MACHINE: {}'.format(dev_info[9]))
-    except Exception as e:
-        pass
-    sys.exit()
-
-# ID:
-
-elif args.m == 'id':
-    uid_cmd = "import gc;from machine import unique_id;from ubinascii import hexlify;hexlify(unique_id());gc.collect()"
-    if '.' in args.t:
-        wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
-        uid = wsdevice.wr_cmd(uid_cmd, silent=True, rtn_resp=True)
-        wsdevice.close_wconn()
-    else:
-        sdevice = BASE_SERIAL_DEVICE(args.p, args.t)
-        uid = sdevice.cmd(uid_cmd)
-    print('ID: {}'.format(uid.decode()))
-    sys.exit()
-
-# UPYSH
-
-elif args.m == 'upysh':
-    upysh_cmd = "from upysh import *;gc.collect()"
-    if '.' in args.t:
-        wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
-        wsdevice.wr_cmd(upysh_cmd, long_string=True)
-        wsdevice.close_wconn()
-    else:
-        sdevice = BASE_SERIAL_DEVICE(args.p, args.t)
-        resp = sdevice.cmd(upysh_cmd)
-        print(resp)
-    sys.exit()
-
-# RESET
-
-elif args.m == 'reset':
-    reset(args.t, args.p)
-    sys.exit()
-
-# KEYBOARD Interrupt
-
-elif args.m == 'kbi':
-    kbi(args.t, args.p)
-    sys.exit()
-
-# UHELP
-
-elif args.m == 'uhelp':
-    wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
-    help_cmd = "help();gc.collect()"
-    wsdevice.wr_cmd(help_cmd, long_string=True)
-    wsdevice.close_wconn()
-    sys.exit()
-
-# UMODULES
-
-elif args.m == 'umodules':
-    wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
-    help_cmd = "help('modules');gc.collect()"
-    wsdevice.wr_cmd(help_cmd, long_string=True)
-    wsdevice.close_wconn()
-    sys.exit()
-
-# MEM_INFO
-
-elif args.m == 'mem_info':
-    mem_cmd = "from micropython import mem_info;mem_info();gc.collect()"
-    wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
-    RAM = wsdevice.wr_cmd(mem_cmd, silent=True, long_string=True, rtn_resp=True)
-    wsdevice.close_wconn()
-    mem_info = RAM.splitlines()[1]
-    mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
-                      1]) for elem in mem_info[4:].split(',')}
-    print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memmory',
-                                                        'Size', 'Used',
-                                                        'Avail',
-                                                        'Use%']))
-    total_mem = mem['total']/1024
-    used_mem = mem['used']/1024
-    free_mem = mem['free']/1024
-    total_mem_s = "{:.3f} KB".format(total_mem)
-    used_mem_s = "{:.3f} KB".format(used_mem)
-    free_mem_s = "{:.3f} KB".format(free_mem)
-
-    print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
-                                                      used_mem_s, free_mem_s,
-                                                      "{:.1f} %".format((used_mem/total_mem)*100)))
-    sys.exit()
-
-# FILESIZE
-
-elif args.m == 'filesize':
-    wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
-    file_name = args.f
-    if args.s is not None:
-        file_name = '/{}/{}'.format(args.s, args.f)
-    cmd_str = "import uos;uos.stat('{}');gc.collect()".format(file_name)
-    if args.f is None:
-        dir = ''
-        if args.s is not None:
-            dir = '/{}/'.format(args.s)
-        cmd_str = "[(filename,uos.stat('{0}'+str(filename))[6]) for filename in uos.listdir('{0}')]".format(dir)
-    filesize_info = wsdevice.wr_cmd(cmd_str, silent=True, rtn_resp=True)
-    if len(filesize_info) > 0:
-        if args.f is not None:
-            size = filesize_info[6]
-            print_sizefile(args.f, size)
-        else:
-            print_sizefile_all(filesize_info)
-    wsdevice.close_wconn()
-    sys.exit()
-
-# FILESYS_INFO
-
-elif args.m == 'filesys_info':
-    wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
-    filesys = ''
-    filesys_check = True
-    if args.s is not None:
-        filesys = '/{}'.format(args.s)
-        filesys_check = wsdevice.wr_cmd("import uos;'{}' in uos.listdir();gc.collect()".format(filesys.split('/')[1]), silent=True, rtn_resp=True)
-    cmd_str = "import uos;uos.statvfs('{}');gc.collect()".format(filesys)
-    if filesys == '':
-        filesys = 'Flash'
-    if filesys_check:
-        resp = wsdevice.wr_cmd(cmd_str, silent=True, rtn_resp=True)
-        size_info = resp
-        total_b = size_info[0] * size_info[2]
-        used_b = (size_info[0] * size_info[2]) - (size_info[0] * size_info[3])
-        total_mem = print_filesys_info(total_b)
-        free_mem = print_filesys_info(size_info[0] * size_info[3])
-        used_mem = print_filesys_info(used_b)
-        if filesys == 'Flash':
-            mounted_on = '/'
-        else:
-            mounted_on = filesys
-        print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
-                                                                   'Size', 'Used',
-                                                                   'Avail',
-                                                                   'Use%', 'Mounted on']))
-        print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                used_mem, free_mem,
-                                                                "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
-    else:
-        print('{} not mounted'.format(filesys))
-    wsdevice.close_wconn()
-    sys.exit()
-
-# NETINFO :
-
-elif args.m == 'netinfo':
-    net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
-    net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
-    net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
-    net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        net_comp_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    net_info_list = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    net_info_list.append(line[4:])
-                else:
-                    net_info_list.append(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    if len(net_info_list) > 0:
-        print('IF CONFIG: {}'.format(net_info_list[0]))
-        print('ESSID: {}'.format(net_info_list[1]))
-        print('RSSI: {} dB'.format(net_info_list[2]))
-    sys.exit()
-
-# NETINFOT
-
-elif args.m == 'netinfot':
-    net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
-    net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
-    net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
-    net_comp_cmd = '{}{}{}'.format(net_cmd, net_info_cmd, net_signal_cmd)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        net_comp_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    net_info_list = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    net_info_list.append(line[4:])
-                else:
-                    net_info_list.append(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    print('IF CONFIG:')
-    print('=' * 106)
-    print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-        'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
-    try:
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-            *ast.literal_eval(net_info_list[0]), net_info_list[1],
-            net_info_list[2]))
-    except Exception as e:
-        print(e)
-        pass
-
-    sys.exit()
-
-# NETSCAN
-
-elif args.m == 'netscan':
-    net_cmd = "import network;network.WLAN(network.STA_IF).scan();gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        net_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    net_scan_list = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    if line[4:][0] != '[':
-                        print(line[4:])
-                    else:
-                        net_scan_list.append(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    print('=' * 110)
-    print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-        'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
-    print('=' * 110)
-    for net in net_scan_list:
-        netlist = ast.literal_eval(net)
-        for netscan in netlist:
-            auth = AUTHMODE_DICT[netscan[4]]
-            vals = hexlify(netscan[1]).decode()
-            bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
-            print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                netscan[0].decode(), bssid, netscan[2], netscan[3],
-                auth, str(netscan[5])))
-    sys.exit()
-
-# NETSTAT_ON
-
-elif args.m == 'netstat_on':
-    help_cmd = "import network;network.WLAN(network.STA_IF).active(True);gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        help_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# NETSTAT_OFF
-
-elif args.m == 'netstat_off':
-    help_cmd = "import network;network.WLAN(network.STA_IF).active(False);gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        help_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# NETSTAT_CONN
-
-elif args.m == 'netstat_conn':
-    essid, passwd = args.wp
-    connect_to = "network.WLAN(network.STA_IF).connect('{}', '{}')".format(
-        essid, passwd)
-    conn_cmd = "import network;{};gc.collect()".format(connect_to)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        conn_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# NETSTAT
-
-elif args.m == 'netstat':
-    help_cmd = "import network;network.WLAN(network.STA_IF).active();gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        help_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    netstat_info = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    netstat_info.append(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    print('STA ENABLED: {}'.format(netstat_info[0]))
-    sys.exit()
-
-# AP_ON
-
-elif args.m == 'ap_on':
-    help_cmd = "import network;network.WLAN(network.AP_IF).active(True);gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        help_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# AP_OFF
-
-elif args.m == 'ap_off':
-    help_cmd = "import network;network.WLAN(network.AP_IF).active(False);gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        help_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# APSTAT
-
-elif args.m == 'apstat':
-    ap_state = "network.WLAN(network.AP_IF).active()"
-    ap_essid = "network.WLAN(network.AP_IF).config('essid')"
-    ap_channel = "network.WLAN(network.AP_IF).config('channel')"
-    ap_authmode = "network.WLAN(network.AP_IF).config('authmode')"
-    ap_ifconfig = "network.WLAN(network.AP_IF).ifconfig()"
-    apstat_cmd = "import network;{};{};{};{};{};gc.collect()".format(
-        ap_state, ap_essid, ap_channel, ap_authmode, ap_ifconfig)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        apstat_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    apstat_info = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    apstat_info.append(line[4:])
-                else:
-                    apstat_info.append(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    if len(apstat_info) > 0:
-        auth = AUTHMODE_DICT[int(apstat_info[-2])]
-        print('AP INFO:')
-        print('=' * 70)
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-            'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-            *apstat_info[:-2], auth))
-        print('=' * 70)
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-            'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
-        try:
-            print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-                *ast.literal_eval(apstat_info[-1])))
-        except Exception as e:
-            print(e)
-            pass
-    sys.exit()
-
-# APCONFIG
-
-elif args.m == 'apconfig':
-    essid, passwd = args.ap
-    ap_config = "network.WLAN(network.AP_IF).config(essid='{}',authmode=network.AUTH_WPA_WPA2_PSK, password='{}')".format(
-        essid, passwd)
-    apconfig_cmd = "import network;{};gc.collect()".format(ap_config)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        apconfig_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# APSCAN
-
-elif args.m == 'apscan':
-    help_cmd = "import network;network.WLAN(network.AP_IF).status('stations');gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        help_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    ap_scan_list = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    if line[4:][0] != '[':
-                        print(line[4:])
-                    else:
-                        ap_scan_list.append(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    if len(ap_scan_list) > 0:
-        ap_devices = ast.literal_eval(ap_scan_list[0])
-        print('Found {} devices:'.format(len(ap_devices)))
-        for dev in ap_devices:
-            bytdev = hexlify(dev[0]).decode()
-            mac_ad = ':'.join([bytdev[i:i+2] for i in range(0, len(bytdev),
-                                                            2)])
-            print('MAC: {}'.format(mac_ad))
-    else:
-        print('No device found')
-    sys.exit()
-
-
-# I2C_CONFIG
-
-elif args.m == 'i2c_config':
-    i2c_po = {'scl': args.i2c[0], 'sda': args.i2c[1]}
-    cmd = "i2c_po = {};gc.collect()".format(i2c_po)
-    print('SCL = Pin({}), SDA = Pin({})'.format(args.i2c[0], args.i2c[1]))
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    net_info_list = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# I2C_SCAN
-
-elif args.m == 'i2c_scan':
-    i2c_scl = "i2c_po['scl']"
-    i2c_sda = "i2c_po['sda']"
-    i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
-        i2c_scl, i2c_sda)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        i2c_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    i2c_info_list = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    if line[4:][0] != '[':
-                        print(line[4:])
-                    else:
-                        i2c_info_list.append(line[4:])
-
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    if len(i2c_info_list) > 0:
-        i2c_devices = ast.literal_eval(i2c_info_list[0])
-        print('Found {} devices:'.format(len(i2c_devices)))
-        print(i2c_devices)
-        print('Hex:')
-        print([hex(dev) for dev in i2c_devices])
-    else:
-        print('No device found')
-    sys.exit()
-
-# SPI CONFIG
-elif args.m == 'spi_config':
-    spi_po = {'sck': args.spi[0], 'miso': args.spi[1],
-              'mosi': args.spi[2], 'cs': args.spi[3]}
-    cmd = "spi_po = {};gc.collect()".format(spi_po)
-    print('SCK = Pin({}), MISO = Pin({}), MOSI = Pin({}), CS = Pin({}))'.format(
-        *args.spi))
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-
-#  * RTC *
-
-# SET LOCAL TIME
-
-elif args.m == 'set_localtime':
-    print('Setting local time: {}'.format(
-        datetime.now().strftime("%Y-%m-%d T %H:%M:%S")))
-    rtc_cmd = "from machine import RTC;rtc = RTC();"
-    wkoy = date.today().isocalendar()[1]
-    datetime_local = [val for val in datetime.now().timetuple()[:-3]]
-    datetime_tuple = datetime_local[:3]
-    datetime_tuple.append(wkoy)
-    datetime_final = datetime_tuple + datetime_local[3:] + [0]
-    utc_zone_cmd = "rtc.datetime(({}, {}, {}, {}, {}, {}, {}+3, {}));['OK']".format(
-        *datetime_final)
-    settime_cmd = rtc_cmd + utc_zone_cmd
-    dev = W_UPYDEVICE(args.t, args.p)
-    dev.output = None
-    while dev.output is None:
-        dev.cmd(settime_cmd, silent=True)
-    dev.cmd_nb('gc.collect()', silent=True)
-    print('Done!')
-    sys.exit()
-
-# SET NTP TIME
-elif args.m == 'set_ntptime':
-    print('Setting time UTC+{}'.format(args.utc))
-    rtc_cmd = "from machine import RTC;rtc = RTC();"
-    ntptime_cmd = "from ntptime import settime;settime();"
-    rtc_config = "(year, month, mday, week_of_year, hour, minute, second, milisecond) = rtc.datetime();"
-    utc_zone_cmd = "rtc.datetime((year, month, mday, week_of_year,hour+{}, minute, second, milisecond));['OK']".format(
-        args.utc)
-    settime_cmd = rtc_cmd + ntptime_cmd + rtc_config + utc_zone_cmd
-    dev = W_UPYDEVICE(args.t, args.p)
-    dev.output = None
-    while dev.output is None:
-        dev.cmd(settime_cmd, silent=True)
-    dev.cmd_nb('gc.collect()', silent=True)
-    print('Done!')
-    sys.exit()
-
-# GET UPY DEVICE LOCALTIME
-elif args.m == 'get_datetime':
-    get_time_cmd = "tnow = time.localtime();"
-    get_time2_cmd = "[tnow[0],tnow[1],tnow[2],tnow[3],tnow[4],tnow[5]];gc.collect()"
-    get_datetime_cmd = get_time_cmd + get_time2_cmd
-    dev = W_UPYDEVICE(args.t, args.p)
-    dev.output = None
-    while dev.output is None:
-        dev.cmd(get_datetime_cmd, silent=True)
-    formatted_devtime = _ft_datetime(dev.output)
-    print('Device RTC time: {}-{}-{} T {}:{}:{}'.format(*formatted_devtime))
-    sys.exit()
 #############################################
 # WLAN UTILS COMMANDS
+elif args.m in WLAN_UTILS_COMMANDS:
+    wlan_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
+                 init=True, ssl=args.wss, auth=args.wss)
 
-# WLAN_INIT
-elif args.m == 'wlan_init':
-    wlan_init_cmd = 'from wifiutils import WIFI_UTIL; u_wlan = WIFI_UTIL(silent=False);gc.collect()'
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        wlan_init_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# WSTA_CONFIG
-
-elif args.m == 'wsta_config':
-    essid, passwd = args.wp
-    connect_to = "u_wlan.sta_config('{}', '{}')".format(
-        essid, passwd)
-    conn_cmd = "{};gc.collect()".format(connect_to)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        conn_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# WAP_CONFIG
-
-elif args.m == 'wap_config':
-    essid, passwd = args.ap
-    connect_to = "u_wlan.ap_config('{}', '{}')".format(
-        essid, passwd)
-    conn_cmd = "{};gc.collect()".format(connect_to)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        conn_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# WSTA_CONN
-
-elif args.m == 'wsta_conn':
-    connect_to = "u_wlan.STA_conn()"
-    conn_cmd = "{};gc.collect()".format(connect_to)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        conn_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    sys.exit()
-
-# WAP_CONN
-
-elif args.m == 'wap_conn':
-    wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True)
-    conn_cmd = "u_wlan.AP_conn()"
-    AP_CONN = wsdevice.wr_cmd(conn_cmd, silent=True, long_string=True,
-                              rtn_resp=True)
-    print(AP_CONN.strip())
-    sys.exit()
 #############################################
 
 # SD COMMANDS

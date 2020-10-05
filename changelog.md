@@ -7,12 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.4] Unreleased [Github Repo]
 ### Fix
 - Fix autocomplete on tab in REPL while `import` or `from X import` in SERIAL REPL
+- Command names change:
+  * `filesize` --> `du`,
+  * `filesys_info` --> `df`
+- Catching passwords too short for AP configuration
 ### Added
 - Autocomplete `shr@` , `ssl@` and `wssl@` commands with saved devices in UPY_G global group
 - `pytest` command in SHELL-REPLS
 - `pytest` command mode in CLI.
 - commands that start with `%` or not registered in SHELL-REPLS commands are forwarded to local shell (works with alias too)
 - Ble SHELL-REPL `ble@[device]`
+- `check` command to see device configuration
+- `hgc` command to see help about General commands
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch
