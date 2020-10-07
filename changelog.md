@@ -10,15 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Command names change:
   * `filesize` --> `du`,
   * `filesys_info` --> `df`
+  * `fw` --> `fwr`
 - Catching passwords too short for AP configuration
+- Refactor help info organization for easy reading.
 ### Added
-- Autocomplete `shr@` , `ssl@` and `wssl@` commands with saved devices in UPY_G global group
+- Autocomplete `shr@` , `ssl@`, `wssl@` and `ble@` commands with saved devices in UPY_G global group
 - `pytest` command in SHELL-REPLS
 - `pytest` command mode in CLI.
 - commands that start with `%` or not registered in SHELL-REPLS commands are forwarded to local shell (works with alias too)
 - Ble SHELL-REPL `ble@[device]`
+- `set` command to set current device configuration to a device saved in global group
 - `check` command to see device configuration
-- `hgc` command to see help about General commands
+- `dm` command to see help about DEVICE MANAGEMENT
+- `gc` command to see help about GENERAL COMMANDS
+- `wu` command to see help about WLAN UTILS COMMANDS
+- `sd`
+- `pro`
+
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch

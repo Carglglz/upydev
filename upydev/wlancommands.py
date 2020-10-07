@@ -8,14 +8,14 @@ KEY_N_ARGS = {'wsta_config': ['wp'],
 VALS_N_ARGS = ['wp', 'ap']
 
 WLAN_UTILS_COMMANDS_HELP = """
-> WIFI UTILS: Usage: '$ upydev [cmd] [opts]'
+> WIFI UTILS: Usage: '$ upydev COMMAND [opts]'
     * (needs wifiutils.py in upydevice, see upyutils in upydev github repo)
-
-    - wlan_init: Initiates wlan util (call this before the following commands)
-    - wsta_config: Saves a "netowrk STA" configuration json file in upydevice, use with -wp option as -wp 'ssid' 'password'
-    - wap_config: Saves a "netowrk AP" configuration json file in upydevice, use with -ap option as -ap 'ssid' 'password'
-    - wsta_conn: Connects to the wlan configured with the command wsta_config
-    - wap_conn: Enables the upydevice AP configured with the command wap_config"""
+    * COMMAND:
+        - wlan_init: Initiates wlan util (call this before the following commands)
+        - wsta_config: Saves a "netowrk STA" configuration json file in upydevice, use with -wp option as -wp 'ssid' 'password'
+        - wap_config: Saves a "netowrk AP" configuration json file in upydevice, use with -ap option as -ap 'ssid' 'password'
+        - wsta_conn: Connects to the wlan configured with the command wsta_config
+        - wap_conn: Enables the upydevice AP configured with the command wap_config"""
 
 
 def wlan_command(cmd, *args, **kargs):
@@ -107,6 +107,6 @@ def wlan_command(cmd, *args, **kargs):
         dev.disconnect()
         sys.exit()
 
-    elif cmd == 'hwu':
+    elif cmd == 'wu':
         print(WLAN_UTILS_COMMANDS_HELP)
         sys.exit()

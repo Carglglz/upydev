@@ -16,40 +16,41 @@ VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc']
 
 
 GENERAL_COMMANDS_HELP = """
-> GENERAL: Usage '$ upydev [cmd] [opts]'
-    - info : for upy device system info
-    - id : for upy device unique id
-    - upysh : to enable the upy shell in the upy device (then do 'upydev man' to
-            access upysh manual info)
-    - reset : to do a soft reset in upy device
-    - kbi : sends CTRL-C signal to stop an ongoing loop, to be able to access repl again
-    - uhelp : just calls micropython help
-    - umodules: just calls micropython help('modules')
-    - meminfo : for upy device RAM memory info; call it once to check actual memory,
-                call it twice and it will free some memory
-    - du : to get the size of file in root dir (default) or sd with '-s sd' option;
-                if no file name indicated with -f option, prints all files
-    - df : to get memory info of the file system, (total capacity, free, used),
-                (default root dir, -s option to change)
-    - netinfo : for upy device network info if station is enabled and connected to an AP
-    - netinfot : same as netinfo but in table format
-    - netscan : for upy device network scan
-    - netstat_on : to enable STA
-    - netstat_off : to disable STA
-    - netstat_conn : to connect to an AP , must provide essid and password (see -wp)
-    - netstat : STA state ; returns True if enabled, False if disabled
-    - ap_on : to enable AP
-    - ap_off : to disable AP
-    - apstat : AP state ; returns True if enabled, False if disabled
-    - apconfig : AP configuration of essid and password with authmode WPA/WPA2/PSK,
-                (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
-    - apscan : scan devices connected to AP; returns number of devices and mac address
-    - i2c_config : to configure the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
-    - i2c_scan : to scan i2c devices (must config i2c pins first)
-    - spi_config: to configure the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
-    - set_localtime: to pass host localtime and set upy device rtc
-    - set_ntptime: to set rtc from server, (see -utc for time zone)
-    - get_datetime: to get date and time (must be set first, see above commands)"""
+> GENERAL COMMANDS: Usage '$ upydev COMMAND [opts]'
+    COMMAND:
+        - info : for upy device system info
+        - id : for upy device unique id
+        - upysh : to enable the upy shell in the upy device (then do 'upydev man' to
+                access upysh manual info)
+        - reset : to do a soft reset in upy device
+        - kbi : sends CTRL-C signal to stop an ongoing loop, to be able to access repl again
+        - uhelp : just calls micropython help
+        - umodules: just calls micropython help('modules')
+        - meminfo : for upy device RAM memory info; call it once to check actual memory,
+                    call it twice and it will free some memory
+        - du : to get the size of file in root dir (default) or sd with '-s sd' option;
+                    if no file name indicated with -f option, prints all files
+        - df : to get memory info of the file system, (total capacity, free, used),
+                    (default root dir, -s option to change)
+        - netinfo : for upy device network info if station is enabled and connected to an AP
+        - netinfot : same as netinfo but in table format
+        - netscan : for upy device network scan
+        - netstat_on : to enable STA
+        - netstat_off : to disable STA
+        - netstat_conn : to connect to an AP , must provide essid and password (see -wp)
+        - netstat : STA state ; returns True if enabled, False if disabled
+        - ap_on : to enable AP
+        - ap_off : to disable AP
+        - apstat : AP state ; returns True if enabled, False if disabled
+        - apconfig : AP configuration of essid and password with authmode WPA/WPA2/PSK,
+                    (see -ap), needs first that the AP is enabled (do 'upydev ap_on')
+        - apscan : scan devices connected to AP; returns number of devices and mac address
+        - i2c_config : to configure the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
+        - i2c_scan : to scan i2c devices (must config i2c pins first)
+        - spi_config: to configure the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
+        - set_localtime: to pass host localtime and set upy device rtc
+        - set_ntptime: to set rtc from server, (see -utc for time zone)
+        - get_datetime: to get date and time (must be set first, see above commands)"""
 
 
 def print_sizefile(file_name, filesize, tabs=0):
@@ -695,6 +696,6 @@ def gen_command(cmd, *args, **kargs):
         dev.disconnect()
         sys.exit()
 
-    elif cmd == 'hgc':
+    elif cmd == 'gc':
         print(GENERAL_COMMANDS_HELP)
         sys.exit()
