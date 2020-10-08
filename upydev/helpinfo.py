@@ -1,6 +1,13 @@
+import upydev
+import json
+import os
+import textwrap
 
-HELP_INFO_ARG ='''Mode/Tools:
-> DEVICE MANAGMENT: '$ upydev dm' to see help on device management.
+UPYDEV_PATH = upydev.__path__[0]
+
+
+HELP_INFO_ARG = '''Mode/Tools:
+> DEVICE MANAGEMENT: '$ upydev dm' to see help on device management.
     ACTIONS : config, check, set, make_group, mg_group, see, gg
 
 > FILEIO: '$ upydev fio' to see help on file input/ouput operations.
@@ -30,6 +37,8 @@ HELP_INFO_ARG ='''Mode/Tools:
 
         - see: Help info about ANY ACTION/COMMAND indicated by '-c' option
 
+            or put %% before ANY ACTION/COMMAND as : $ upydev %%ACTION
+
     ACTIONS: help, h, dm, fio, fw, kg, rp, sh, db, gp, gc, wu, sd, pro.
 
 upy Commands:
@@ -41,3 +50,17 @@ upy Commands:
 
 > PROTOTYPE: do '$ upydev pro' to see Prototype utils commands help.
 '''
+
+
+def see_help(cmd):
+    help_file = os.path.join(UPYDEV_PATH, 'help.config')
+    with open(help_file, 'r') as helpref:
+        help_dict = json.loads(helpref.read())
+    columns, rows = os.get_terminal_size(0)
+    if cmd is not None:
+        if cmd in help_dict:
+            print('\n'.join(textwrap.wrap(help_dict[cmd], columns-3)))
+        else:
+            print('Help info not available for "{}" command'.format(cmd))
+    else:
+        pass

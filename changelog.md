@@ -19,13 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pytest` command mode in CLI.
 - commands that start with `%` or not registered in SHELL-REPLS commands are forwarded to local shell (works with alias too)
 - Ble SHELL-REPL `ble@[device]`
-- `set` command to set current device configuration to a device saved in global group
-- `check` command to see device configuration
+- `set` command to set current device configuration of a device saved in global group
+- `check` command to see device configuration (`-i` to see more info if device available)
 - `dm` command to see help about DEVICE MANAGEMENT
 - `gc` command to see help about GENERAL COMMANDS
 - `wu` command to see help about WLAN UTILS COMMANDS
-- `sd`
-- `pro`
+- `sd` command to see help about SD UTILS COMMANDS
+- `pro` command to see help about PROTOTYPE COMMANDS
+- `gg` to see global group
+- `-gg` flag to set -G flag to global group (-gg == -G UPY_G)
+- `%` before any command e.g. `%config` display help info about that command.
 
 ## [0.3.3] - 2020-06-07
 ### Fix

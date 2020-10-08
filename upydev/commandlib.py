@@ -93,6 +93,16 @@ WLAN_CONN = "u_wlan.STA_conn();gc.collect()"
 
 WLAN_AP_CONN = "u_wlan.AP_conn();gc.collect()"
 
+SD_ENABLE_CONF = "from machine import Pin;sd_enable=Pin({}, Pin.OUT);"
+SD_ENABLE_TOGGLE = "sd_enable.value(not sd_enable.value());sd_enable.value();gc.collect()"
+SD_ENABLE = SD_ENABLE_CONF + SD_ENABLE_TOGGLE
+
+SD_SDINIT = "import sdcard,uos;sd = sdcard.SDCard(spi, cs);time.sleep_ms(1000);"
+SD_MOUNT = "uos.mount(sd, '/sd');'sd' in uos.listdir('/');gc.collect()"
+SD_INIT = SD_SDINIT + SD_MOUNT
+
+SD_DEINIT = "import uos;uos.umount('/sd');sd_enable.off();sd_enable.value();gc.collect()"
+SD_AUTO = "import SD_AM;gc.collect()"
 
 CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'MEM': MEM, 'OS_STAT': OS_STAT, 'FILE_STAT': FILE_STAT,
@@ -107,6 +117,8 @@ CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'SET_RTC_NT': SET_RTC_NT, 'DATETIME': DATETIME,
             'I2C_CONFIG_PYB': I2C_CONFIG_PYB, 'WLAN_INIT': WLAN_INIT,
             'WLAN_CONFIG': WLAN_CONFIG, 'WLAN_AP_CONFIG': WLAN_AP_CONFIG,
-            'WLAN_CONN': WLAN_CONN, 'WLAN_AP_CONN': WLAN_AP_CONN}
+            'WLAN_CONN': WLAN_CONN, 'WLAN_AP_CONN': WLAN_AP_CONN,
+            'SD_ENABLE': SD_ENABLE, 'SD_INIT': SD_INIT,
+            'SD_DEINIT': SD_DEINIT, 'SD_AUTO': SD_AUTO}
 
 _CMDDICT_ = {k: 'import gc;' + v for k, v in CMDDICT_.items()}

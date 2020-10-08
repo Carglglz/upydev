@@ -52,8 +52,8 @@ from upydev.gencommands import gen_command
 from upydev.wlancommands import wlan_command
 from upydev.sdcommands import sd_command
 from upydev.prototypecommands import prototype_command
-from upydev.helpinfo import HELP_INFO_ARG
-from upydev.devicemanagement import DEVICE_MANAGEMENT_HELP
+from upydev.helpinfo import HELP_INFO_ARG, see_help
+from upydev.devicemanagement import DEVICE_MANAGEMENT_HELP, devicemanagement_action
 from upydev.fileio import FILEIO_HELP
 from upydev.firmwaretools import FIRMWARE_HELP
 from upydev.keygen import KEYGEN_HELP
@@ -110,7 +110,7 @@ def see_global_devs(ws=True, serial=False, ble=False, all=False):
         if ws:
             devs = [dev for dev in devices if check_device_type(devices[dev][0]) == 'WebSocketDevice']
         if serial:
-            devs = [dev for dev in devices if check_device_type(devices[dev][1]) == 'SerialDevice']
+            devs = [dev for dev in devices if check_device_type(devices[dev][0]) == 'SerialDevice']
         if ble:
             devs = [dev for dev in devices if check_device_type(devices[dev][0]) == 'BleDevice']
         if all:
@@ -171,6 +171,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg']
 
+keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
                 'gc', 'wu', 'sd', 'pro']
 
@@ -189,7 +190,7 @@ parser = argparse.ArgumentParser(prog=upydev.name,
                                  usage=usag, prefix_chars='-')
 parser.version = '{}: {}'.format(upydev.name, upydev.version)
 parser.add_argument(
-    "m", metavar='ACTION', help=helparg).completer = ChoicesCompleter(keywords_mode)
+    "m", metavar='ACTION', help=helparg).completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-gg", help='global group flag', required=False,
                     action='store_true')
@@ -347,7 +348,10 @@ argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
 
-# MODES
+# DEVICE MANAGEMENT ACTIONS
+
+DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'set', 'make_group',
+                             'mg_group', 'gg', 'see']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -363,7 +367,7 @@ WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
                        'wap_conn', 'wu']
 
 # SD COMMANDS
-SD_UTILS_COMMANDS = ['sd']
+SD_UTILS_COMMANDS = ['sd', 'sd_enable', 'sd_init', 'sd_deinit', 'sd_auto']
 
 # PROTOTYPE
 PROTOTYPE_COMMANDS = ['pro']
@@ -2457,46 +2461,8 @@ def install_f(ip, passwd, dev=''):
     print('{}Library {} installed!'.format(dev, args.f))
 
 
-def see():
-    if args.G is None:
-        help_file = '{}/help.config'.format(upydev.__path__[0])
-        with open(help_file, 'r') as helpref:
-            help_dict = json.loads(helpref.read())
-        columns, rows = os.get_terminal_size(0)
-        if args.c is not None:
-            if args.c in help_dict:
-                print('\n'.join(textwrap.wrap(help_dict[args.c], columns-3)))
-            else:
-                print('Help info not available for "{}" command'.format(args.c))
-        else:
-            print('-c option required to indicate a command to get help about')
-            print('e.g. "$ upydev see -c config"')
-    else:
-        group_file = '{}.config'.format(args.G)
-        if group_file not in os.listdir() or args.g:
-            group_file = '{}/{}.config'.format(upydev.__path__[0], args.G)
-        with open(group_file, 'r') as group:
-            group_devs = (json.loads(group.read()))
-        print('GROUP NAME: {}'.format(args.G))
-        print('# DEVICES: {}'.format(len(group_devs.keys())))
-        for key in group_devs.keys():
-            dev_add = group_devs[key][0]
-            dev_pass = group_devs[key][1]
-            try:  # FIX FOR SERIAL
-                int(dev_add)
-                dev_add = dev_pass
-                dev_type = check_device_type(dev_add)
-            except Exception as e:
-                dev_type = check_device_type(dev_add)
-            if key != list(group_devs.keys())[-1]:
-                tree = '┣━'
-            else:
-                tree = '┗━'
 
-            print('{} {:10} -> {:} @ {:} '.format(tree, key, dev_type, dev_add))
-
-
-def reset(ip, passwd):
+def reset(ip, passwd):  # wait for FILEIO
     reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
         'D', ip, passwd)
     print('Rebooting upy device...')
@@ -2506,7 +2472,7 @@ def reset(ip, passwd):
     print('Done!')
 
 
-def kbi(ip, passwd):
+def kbi(ip, passwd):  # wait for DEBUGGING
     reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
         '0x3', ip, passwd)
     print('Keyboard Interrupt sent!')
@@ -2527,6 +2493,7 @@ def wrepl(ip, passwd):
     if args.rkey:
         refresh_wrkey(ip, passwd)
         sys.exit()
+
 
 def wssrepl(ip, passwd):
     web_repl_cmd_str = 'web_repl {} -p {} -wss'.format(ip, passwd)
@@ -3966,7 +3933,7 @@ if args.m == 'h' or args.m == 'help':
     print(parser.version)
     print(parser.description, end='\n\n')
     print("usage: " + parser.usage.replace('%(prog)s', upydev.name), end='\n\n')
-    print('\n\t'.join(HELP_INFO_ARG.splitlines()))
+    print('\n\t'.join(HELP_INFO_ARG.splitlines()).replace('%%', '%'))
     print("\n (Do '$ upydev -h' to see help info about optional arguments too)")
     sys.exit()
 
@@ -4000,60 +3967,19 @@ if args.m in help_actions:
             print(GROUP_MODE_HELP)
             sys.exit()
 
+if args.m not in keywords_mode and args.m.startswith('%'):
+    action = args.m.replace('%', '')
+    see_help(action)
+    sys.exit()
+
 # @ ENTRY
 if "@" in args.m:
     args.m, entry_point = args.m.split('@')
     args.t, args.p = address_entry_point(entry_point)
 
-# CONFIG:
-if args.m == 'config':
-    if args.t is None or args.p is None:
-        if args.sec:
-            print('Secure config mode:')
-            args.t = input('IP of device: ')
-            args.p = getpass.getpass(prompt='Password: ', stream=None)
-        else:
-            if args.t is None:
-                print('Target Address required, see -t')
-                sys.exit()
-            else:
-                dt = check_device_type(args.t)
-                if dt == 'WebSocketDevice':
-                    print('Target Address and Password required, see -t, -p or -sec')
-                    sys.exit()
-                else:
-                    args.p = 'pass'
-    upydev_ip = args.t
-    upydev_pass = args.p
-    if vars(args)['@'] is not None:
-            upydev_name = vars(args)['@']
-    else:
-        upydev_name = 'upydevice'
-    upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
-    file_conf = 'upydev_.config'
-    dt = check_device_type(args.t)
-    if args.gg:
-        group_file = 'UPY_G.config'
-        group_file_path = os.path.join(UPYDEV_PATH, group_file)
-        if group_file not in os.listdir(UPYDEV_PATH):
-            with open(group_file_path, 'w', encoding='utf-8') as group:
-                group.write(json.dumps({}))
-        with open(group_file_path, 'r', encoding='utf-8') as group:
-            devices = json.loads(group.read())
-            devices.update({upydev_name: [upydev_ip, upydev_pass]})
-        with open(group_file_path, 'w', encoding='utf-8') as group:
-            group.write(json.dumps(devices))
-        print('{} {} settings saved in global group!'.format(dt, upydev_name))
-    else:
-        if args.g:
-            file_conf = os.path.join(UPYDEV_PATH, file_conf)
-        with open(file_conf, 'w') as config_file:
-            config_file.write(json.dumps(upy_conf))
-        if args.g:
-            print('{} {} settings saved globally!'.format(dt, upydev_name))
-        else:
-            print('{} {} settings saved in working directory!'.format(dt, upydev_name))
-    sys.exit()
+# DEVICE MANAGEMENT
+if args.m in DEVICE_MANAGEMENT_ACTIONS:
+    devicemanagement_action(args)
 
 # UPYDEV LOOKS FOR UPYDEV_.CONFIG FILE
 if args.t is None:
@@ -4084,7 +4010,8 @@ if args.t is None:
             print('Target:{}'.format(args.t))
     except Exception as e:
         print('upydev_.config file not found, please provide target and \
-        password or create config file with command "config" (see help)')
+        password or create config file with command "config"')
+        see_help('config')
         sys.exit()
 
 # UPYDEV GROUP COMMAND
@@ -4101,9 +4028,9 @@ if args.G is not None:
         # print(group_file)
         if '{}.config'.format(group_file) not in os.listdir() or args.g:
             group_file = '{}/{}'.format(upydev.__path__[0], args.G)
-        if args.m == 'see':
-            see()
-            sys.exit()
+        # if args.m == 'see':
+        #     see()
+        #     sys.exit()
         if args.m == 'pytest':
             print('Running pytest in group: {}'.format(group_file.split('/')[-1]))
             with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
@@ -4116,43 +4043,43 @@ if args.G is not None:
                 print('Running pytest with Device: {}'.format(dev))
                 pytest(dev)
             sys.exit()
-        if args.m == 'mg_group':
-            if args.add is not None:
-                group_dict = dict(zip(args.add[::3], [
-                                  [args.add[i], args.add[i+1]] for i in range(1, len(args.add)-1, 3)]))
-                with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-                    devices = json.loads(group.read())
-                    devices.update(group_dict)
-                with open('{}.config'.format(group_file), 'w', encoding='utf-8') as group:
-                    group.write(json.dumps(devices))
-                print('Upy devices group updated!')
-                print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
-                print('# DEVICES ADDED: {}'.format(len(group_dict.keys())))
-                for key in group_dict.keys():
-                    dt = check_device_type(group_dict[key][0])
-                    print('{} : {} @ {}'.format(key, dt, group_dict[key][0]))
-            elif args.rm is not None:
-                group_dict_rm = args.rm
-                removed_devs = {}
-                with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-                    devices = json.loads(group.read())
-                    for dev in group_dict_rm:
-                        # del devices[dev]
-                        if dev in devices:
-                            removed_devs.update({dev: devices.pop(dev)})
-                        else:
-                            print('Device {} not in this group'.format(dev))
-                if removed_devs:
-                    with open('{}.config'.format(group_file), 'w', encoding='utf-8') as group:
-                        group.write(json.dumps(devices))
-                    print('Upy devices group updated!')
-                    print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
-                    print('# DEVICES REMOVED: {}'.format(len(removed_devs.keys())))
-                    for key in removed_devs.keys():
-                        dt = check_device_type(removed_devs[key][0])
-                        print('{} : {} @ {}'.format(key, dt, removed_devs[key][0]))
-
-            sys.exit()
+        # if args.m == 'mg_group':
+        #     if args.add is not None:
+        #         group_dict = dict(zip(args.add[::3], [
+        #                           [args.add[i], args.add[i+1]] for i in range(1, len(args.add)-1, 3)]))
+        #         with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+        #             devices = json.loads(group.read())
+        #             devices.update(group_dict)
+        #         with open('{}.config'.format(group_file), 'w', encoding='utf-8') as group:
+        #             group.write(json.dumps(devices))
+        #         print('Upy devices group updated!')
+        #         print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
+        #         print('# DEVICES ADDED: {}'.format(len(group_dict.keys())))
+        #         for key in group_dict.keys():
+        #             dt = check_device_type(group_dict[key][0])
+        #             print('{} : {} @ {}'.format(key, dt, group_dict[key][0]))
+        #     elif args.rm is not None:
+        #         group_dict_rm = args.rm
+        #         removed_devs = {}
+        #         with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+        #             devices = json.loads(group.read())
+        #             for dev in group_dict_rm:
+        #                 # del devices[dev]
+        #                 if dev in devices:
+        #                     removed_devs.update({dev: devices.pop(dev)})
+        #                 else:
+        #                     print('Device {} not in this group'.format(dev))
+        #         if removed_devs:
+        #             with open('{}.config'.format(group_file), 'w', encoding='utf-8') as group:
+        #                 group.write(json.dumps(devices))
+        #             print('Upy devices group updated!')
+        #             print('GROUP NAME: {}'.format(group_file.split('/')[-1]))
+        #             print('# DEVICES REMOVED: {}'.format(len(removed_devs.keys())))
+        #             for key in removed_devs.keys():
+        #                 dt = check_device_type(removed_devs[key][0])
+        #                 print('{} : {} @ {}'.format(key, dt, removed_devs[key][0]))
+        #
+        #     sys.exit()
         print('Sending command to group: {}'.format(group_file.split('/')[-1]))
         with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
             devices = json.loads(group.read())
@@ -4432,8 +4359,8 @@ if args.apmd:
 
 if args.m not in keywords_mode:
     cmd = args.m
-    dev = Device(args.t, args.p)
-    dev.cmd(cmd, long_string=True)
+    dev = Device(args.t, args.p, init=True)
+    dev.wr_cmd(cmd, follow=True)
     dev.disconnect()
     sys.exit()
 
@@ -4707,11 +4634,6 @@ elif args.m == 'flash':
             print('Operation cancelled')
     sys.exit()
 
-# SEE
-elif args.m == 'see':
-    see()
-    sys.exit()
-
 # FIND
 
 elif args.m == 'find':
@@ -4958,8 +4880,8 @@ elif args.m == 'shr':
     devs = devices.keys()
     # NAME ENTRY POINT
     if entry_point in devs:
-        dev_baud = devices[entry_point][0]
-        dev_port = devices[entry_point][1]
+        dev_port = devices[entry_point][0]
+        dev_baud = devices[entry_point][1]
         try:
             sh_srepl(dev_baud, dev_port, usr=entry_point)
         except Exception as e:
@@ -5022,69 +4944,7 @@ elif args.m == 'pytest':
 
     sys.exit()
 
-# CHECK
 
-elif args.m == 'check':
-    if vars(args)['@'] is not None:
-        print('Device: {}'.format(entryp))
-    else:
-        print('Device: {}'.format(_dev_name))
-    dt = check_device_type(args.t)
-    if not args.i:
-        print('Address: {}, Device Type: {}'.format(args.t, dt))
-    else:
-        if not args.wss:
-            dev = Device(args.t, args.p, init=True)
-        else:
-            dev = Device(args.t, args.p, init=True, ssl=True)
-        print(dev)
-    sys.exit()
-
-# MAKE_GROUP
-elif args.m == 'make_group':
-    group_file = '{}.config'.format(args.f)
-    group_dict = dict(zip(args.devs[::3], [
-                      [args.devs[i], args.devs[i+1]] for i in range(1, len(args.devs)-1, 3)]))
-    if args.g:
-        group_file = '{}/{}.config'.format(upydev.__path__[0], args.f)
-    with open(group_file, 'w') as group:
-        group.write(json.dumps(group_dict))
-
-    if args.g:
-        print('Group settings saved globally!')
-    else:
-        print('Group settings saved in working directory!')
-    print('Upy devices group created!')
-    print('GROUP NAME: {}'.format(args.f))
-    print('# DEVICES: {}'.format(len(group_dict.keys())))
-    for key in group_dict.keys():
-        print('DEVICE NAME: {}, IP: {}'.format(key, group_dict[key][0]))
-    sys.exit()
-
-# SET
-elif args.m == 'set':
-    dt = check_device_type(args.t)
-    if vars(args)['@'] is not None:
-        print('Setting {}: {}'.format(dt, entryp))
-    else:
-        print('Setting {}: {}'.format(dt, _dev_name))
-    upydev_ip = args.t
-    upydev_pass = args.p
-    if vars(args)['@'] is not None:
-            upydev_name = vars(args)['@']
-    else:
-        upydev_name = 'upydevice'
-    upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
-    file_conf = 'upydev_.config'
-    if args.g:
-        file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
-    with open(file_conf, 'w') as config_file:
-        config_file.write(json.dumps(upy_conf))
-    if args.g:
-        print('{} {} settings saved globally!'.format(dt, upydev_name))
-    else:
-        print('{} {} settings saved in working directory!'.format(dt, upydev_name))
-    sys.exit()
 # * GENERAL COMMANDS *
 # INFO :
 elif args.m in GENERAL_COMMANDS:
@@ -5102,163 +4962,15 @@ elif args.m in WLAN_UTILS_COMMANDS:
 
 # SD COMMANDS
 elif args.m in SD_UTILS_COMMANDS:
-    sd_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
-                 init=True, ssl=args.wss, auth=args.wss)
+    sd_command(args.m, args.t, args.p, po=args.po,
+               init=True, ssl=args.wss, auth=args.wss)
 
 #############################################
 
 # PROTOTYPE COMMANDS
 elif args.m in PROTOTYPE_COMMANDS:
     prototype_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
-                 init=True, ssl=args.wss, auth=args.wss)
-
-# SD_ENABLE
-elif args.m == 'sd_enable':
-    sd_enable_pin_config = "sd_enable=Pin({}, Pin.OUT);".format(args.po[0])
-    sd_enable_cmd = "sd_enable.value(not sd_enable.value());print(sd_enable.value());gc.collect()"
-    sd_onoff_cmd = sd_enable_pin_config + sd_enable_cmd
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        sd_onoff_cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    sd_state = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                    sd_state.append(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    if len(sd_state) > 0:
-        if ast.literal_eval(sd_state[0]) == 1:
-            print('SD ENABLED')
-        else:
-            print('SD DISABLED')
-    sys.exit()
-
-# SD_INIT
-elif args.m == 'sd_init':
-    spi_sck = "spi_po['sck']"
-    spi_miso = "spi_po['miso']"
-    spi_mosi = "spi_po['mosi']"
-    spi_cs = "spi_po['cs']"
-    spi_init = "spi = machine.SPI(1, baudrate=10000000, sck=Pin({}), mosi=Pin({}), miso=Pin({}));".format(
-        spi_sck, spi_mosi, spi_miso)
-    cs_init = "cs = Pin({}, Pin.OUT);".format(spi_cs)
-    # mount sd
-    sd_card_init = "import sdcard;sd = sdcard.SDCard(spi, cs);time.sleep_ms(1000);"
-    sd_mount = "uos.mount(sd, '/sd');print(uos.listdir('/'))"
-    sd_final_cmd = spi_init + cs_init + sd_card_init + sd_mount
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        sd_final_cmd, args.t, args.p)
-    print('Initialzing SD card...')
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    print('Done!')
-    sys.exit()
-
-# SD_DEINIT
-
-elif args.m == 'sd_deinit':
-    sd_deinit_and_disable_cmd = "uos.umount('/sd');sd_enable.off();gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        sd_deinit_and_disable_cmd, args.t, args.p)
-    print('Deinitialzing SD card...')
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    print('Done!')
-    sys.exit()
-
-# SD_AUTO
-
-elif args.m == 'sd_auto':
-    sd_auto_cmd = "import SD_AM;gc.collect()"
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        sd_auto_cmd, args.t, args.p)
-    run_live_cmd = shlex.split(cmd_str)
-    print('Autodetect SD Card mode enabled')
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print(resp[4:])
-                else:
-                    print(resp)
-            else:
-                print(resp)
-    except KeyboardInterrupt:
-        try:
-            print('...closing...')
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
-            for i in range(10):
-                proc.stdout.readlines()
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-        except KeyboardInterrupt:
-            print('...wait for closing...')
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-    print('Done!')
-    sys.exit()
+                      init=True, ssl=args.wss, auth=args.wss)
 
 
 #############################################
