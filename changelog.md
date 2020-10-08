@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * `fw` --> `fwr`
 - Catching passwords too short for AP configuration
 - Refactor help info organization for easy reading.
+- Refactor device management actions (configuration, groups...)
+- Refactor firmware actions, `-i` option to check firmware and platform match. (from firmware file name)
 ### Added
 - Autocomplete `shr@` , `ssl@`, `wssl@` and `ble@` commands with saved devices in UPY_G global group
 - `pytest` command in SHELL-REPLS

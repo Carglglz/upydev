@@ -2454,7 +2454,7 @@ def custom_sh_cmd(cmd_inp):
         # shr_cp.enable_wrepl_io()
         if dev_platform != 'pyboard':
             shr_cp.enable_wrepl_io()
-            upy_fw_cmd = 'upydev flash -port {} -f {}'.format(args.p, bin_file)
+            upy_fw_cmd = 'upydev flash -port {} -f {} -i'.format(args.p, bin_file)
             # print(upy_fw_cmd)
             flash_fw_cmd = shlex.split(upy_fw_cmd)
 

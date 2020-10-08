@@ -1,4 +1,4 @@
-from upydevice import Device, DeviceException
+from upydevice import Device
 import sys
 from upydev.helpinfo import see_help
 from upydevice import check_device_type
