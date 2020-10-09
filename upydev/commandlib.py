@@ -9,13 +9,13 @@ MODULES = "help('modules');gc.collect()"
 
 MEM = "from micropython import mem_info;mem_info();gc.collect()"
 
-OS_STAT = "import uos;uos.stat('{}');gc.collect()"
+OS_STAT = "import os;os.stat('{}');gc.collect()"
 
-FILE_STAT = "import uos;[(filename,uos.stat('{0}'+str(filename))[6]) for filename in uos.listdir('{0}')]"
+FILE_STAT = "import os;[(filename,os.stat('{0}'+str(filename))[6]) for filename in os.listdir('{0}')]"
 
-CHECK_DIR = "import uos;'{}' in uos.listdir('/');gc.collect()"
+CHECK_DIR = "import os;'{}' in os.listdir('/');gc.collect()"
 
-STAT_FS = "import uos;uos.statvfs('{}');gc.collect()"
+STAT_FS = "import os;os.statvfs('{}');gc.collect()"
 
 IFCONFIG = "network.WLAN(network.STA_IF).ifconfig()"
 
@@ -97,11 +97,11 @@ SD_ENABLE_CONF = "from machine import Pin;sd_enable=Pin({}, Pin.OUT);"
 SD_ENABLE_TOGGLE = "sd_enable.value(not sd_enable.value());sd_enable.value();gc.collect()"
 SD_ENABLE = SD_ENABLE_CONF + SD_ENABLE_TOGGLE
 
-SD_SDINIT = "import sdcard,uos;sd = sdcard.SDCard(spi, cs);time.sleep_ms(1000);"
-SD_MOUNT = "uos.mount(sd, '/sd');'sd' in uos.listdir('/');gc.collect()"
+SD_SDINIT = "import sdcard,os;sd = sdcard.SDCard(spi, cs);time.sleep_ms(1000);"
+SD_MOUNT = "os.mount(sd, '/sd');'sd' in os.listdir('/');gc.collect()"
 SD_INIT = SD_SDINIT + SD_MOUNT
 
-SD_DEINIT = "import uos;uos.umount('/sd');sd_enable.off();sd_enable.value();gc.collect()"
+SD_DEINIT = "import os;os.umount('/sd');sd_enable.off();sd_enable.value();gc.collect()"
 SD_AUTO = "import SD_AM;gc.collect()"
 
 CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
