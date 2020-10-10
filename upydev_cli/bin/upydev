@@ -23,14 +23,10 @@ import socket
 import struct
 import logging
 import glob
-import string
 import getpass
-import secrets
 import signal
 import hashlib
-import locale
 import shutil
-import textwrap
 from binascii import hexlify
 from pathlib import Path
 import multiprocessing
@@ -40,12 +36,6 @@ import argcomplete
 from argcomplete.completers import ChoicesCompleter
 from upydevice import W_UPYDEVICE, BASE_WS_DEVICE
 from upydevice.phantom import UOS
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa, ec
-from cryptography.hazmat.primitives import serialization
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes
 from ipaddress import ip_address
 from upydevice import check_device_type, Device
 from upydev.gencommands import gen_command
@@ -56,7 +46,7 @@ from upydev.helpinfo import HELP_INFO_ARG, see_help
 from upydev.devicemanagement import DEVICE_MANAGEMENT_HELP, devicemanagement_action
 from upydev.fileio import FILEIO_HELP
 from upydev.firmwaretools import FIRMWARE_HELP, firmwaretools_action
-from upydev.keygen import KEYGEN_HELP
+from upydev.keygen import KEYGEN_HELP, keygen_action
 from upydev.repls import REPLS_HELP
 from upydev.shellrepls import SHELL_REPLS_HELP
 from upydev.debugging import DEBUGGING_HELP
@@ -356,6 +346,11 @@ DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'set', 'make_group',
 # FIRMWARE ACTIONS
 
 FIRMWARE_ACTIONS = ['mpyx', 'fwr', 'flash']
+
+
+# KEYGEN ACTIONS
+
+KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -1420,146 +1415,6 @@ def lognow(filename, sensor):
     else:
         return filename
 
-# CRYPTO
-
-
-def rsa_keygen(dir='', store=True, show_key=False, id='00'):
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=args.key_size,
-        backend=default_backend())
-    my_p = getpass.getpass(prompt='Password: ', stream=None)
-    pem = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
-                                    encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
-    if show_key:
-        print(pem)
-    if store:
-        with open(dir+'upy_pub_rsa{}.key'.format(id), 'wb') as keyfile:
-            keyfile.write(pem)
-    return pem
-
-
-def load_rsa_key(dir='', show_key=False, id='00'):
-    buff_key = b''
-    try:
-        with open(dir+'upy_pub_rsa{}.key'.format(id), 'rb') as keyfile:
-            while True:
-                try:
-                    buff = keyfile.read(2000)
-                    if buff != b'':
-                        buff_key += buff
-                    else:
-                        break
-                except Exception as e:
-                    print(e)
-        if show_key:
-            print(buff_key)
-        return buff_key
-    except Exception as e:
-        print("No RSA key found for this device, generate one first with '$ upydev gen_rsakey -tfkey' ")
-
-
-def upy_keygen(rsa_key):
-    aZ09 = bytes(string.ascii_letters + string.digits, 'ascii')
-    raw_key_list = [line for line in rsa_key.splitlines()[1:-1]]
-    raw_key = b''
-    for line in raw_key_list:
-        raw_key += line
-    random_token = secrets.token_bytes(32)  # send this
-    for b in random_token:
-        raw_key += bytes(chr(raw_key[b]), 'utf-8')
-    key_hash = hashlib.sha256()
-    key_hash.update(raw_key)
-    hashed_key = key_hash.digest()
-    index_key = [secrets.randbelow(len(hashed_key)) for i in range(8)]  # send this
-    password_long = bytes([hashed_key[val] for val in index_key])
-    password_short = bytes([aZ09[val % len(aZ09)] for val in password_long]).decode()
-
-    return (password_short, random_token + bytes(index_key))
-
-
-def get_cert_data():
-    # MAC ADDRES IF
-    try:
-        addrs = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                 iface in netifaces.interfaces() if netifaces.AF_INET in
-                 netifaces.ifaddresses(iface)][-1]
-
-        USER = os.environ['USER']
-        HOST_NAME = socket.gethostname()
-        COUNTRY_CODE = locale.getlocale()[0].split('_')[1]
-        return {'addrs': addrs, 'USER': USER, 'HOST_NAME': HOST_NAME,
-                'COUNTRY_CODE': COUNTRY_CODE}
-    except Exception as e:
-        default_temp = {'addrs': 'xxxx', 'USER': 'xxxx', 'HOST_NAME': 'xxxx',
-                        'COUNTRY_CODE': 'XX'}
-        return default_temp
-
-
-def ssl_ECDSA_key_certgen(ip, passwd, dir='', store=True):
-    # print('Generating RSA key and Cerficate...')
-    print('Getting unique id...')
-    espdev = W_UPYDEVICE(ip, passwd)
-    espdev.open_wconn()
-    espdev.wr_cmd("from machine import unique_id; unique_id()",
-                  silent=True, follow=False)
-    unique_id = hexlify(espdev.output).decode()
-    print('ID: {}'.format(unique_id))
-    espdev.wr_cmd("import sys; sys.platform",
-                  silent=True)
-    dev_platform = espdev.output
-    espdev.close_wconn()
-    # key = rsa.generate_private_key(
-    #     public_exponent=65537,
-    #     key_size=args.key_size,
-    #     backend=default_backend())
-    key = ec.generate_private_key(
-        ec.SECP256R1(),
-        backend=default_backend())
-
-    my_p = getpass.getpass(prompt='Passphrase: ', stream=None)
-    pem = key.private_bytes(encoding=serialization.Encoding.PEM,
-                            format=serialization.PrivateFormat.TraditionalOpenSSL,
-                            encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
-
-    if store:
-        with open(dir+'SSL_key{}.pem'.format(unique_id), 'wb') as keyfile:
-            keyfile.write(pem)
-    cert_data = get_cert_data()
-    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"{}".format(cert_data['COUNTRY_CODE'])),
-                                  x509.NameAttribute(NameOID.USER_ID, u"{}".format(cert_data['USER'])),
-                                  x509.NameAttribute(NameOID.SURNAME, u"{}".format(cert_data['HOST_NAME'])),
-                                  x509.NameAttribute(NameOID.STREET_ADDRESS, u"{}".format(cert_data['addrs'])),
-                                  x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"MicroPython"),
-                                  x509.NameAttribute(NameOID.COMMON_NAME, u"{}@{}".format(dev_platform, unique_id))])
-    host_ip = cert_data['addrs']
-    cert = x509.CertificateBuilder().subject_name(
-                subject).issuer_name(issuer).public_key(key.public_key()
-                ).serial_number(x509.random_serial_number()
-                ).not_valid_before(datetime.utcnow()
-                ).not_valid_after(datetime.utcnow() + timedelta(days=365)
-                ).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
-                                                            x509.DNSName(u"{}".format(host_ip)),
-                                                            x509.DNSName(u"wss://{}:8833".format(args.t)),
-                                                            x509.DNSName(u"wss://192.168.4.1:8833")]),
-                                                            critical=False
-                ).sign(key, hashes.SHA256(), default_backend())
-    if store:
-        with open(dir+'SSL_certificate{}.pem'.format(unique_id), 'wb') as certfile:
-            certfile.write(cert.public_bytes(serialization.Encoding.PEM))
-
-    # CONVERT TO DER FORMAT
-    cert_args = shlex.split('openssl x509 -in {}SSL_certificate{}.pem -out {}SSL_certificate{}.der -outform DER'.format(dir, unique_id, dir, unique_id))
-    subprocess.call(cert_args)
-    key_args = shlex.split('openssl ec -in {}SSL_key{}.pem -out {}SSL_key{}.der -outform DER'.format(dir, unique_id, dir, unique_id))
-    subprocess.call(key_args)
-
-    if args.tfkey:
-        print('Transfering ECDSA key and Certificates to the device...')
-        args.f = '{}/{}'.format(upydev.__path__[0], 'SSL_key{}.der'.format(unique_id))
-        put_f(ip, passwd, rst=False)
-        args.f = '{}/{}'.format(upydev.__path__[0], 'SSL_certificate{}.der'.format(unique_id))
-        put_f(ip, passwd, rst=args.rst)
 
 #############################################
 # WATCHDOG LOG FILE
@@ -2495,7 +2350,7 @@ def wrepl(ip, passwd):
         pass
         print('')
     if args.rkey:
-        refresh_wrkey(ip, passwd)
+        # refresh_wrkey(ip, passwd)
         sys.exit()
 
 
@@ -2508,7 +2363,7 @@ def wssrepl(ip, passwd):
         pass
         print('')
     if args.rkey:
-        refresh_wrkey(ip, passwd)
+        # refresh_wrkey(ip, passwd)
         sys.exit()
 
 
@@ -3473,73 +3328,6 @@ def debug_upyscript(ip, passwd, upyfile):
         time.sleep(1)
         kbi(ip, passwd)
 
-#############################################
-# CRYPTO
-
-
-def get_rsa_key(ip, passwd):
-    print('Generating RSA key...')
-    print('Getting unique id...')
-    espdev = W_UPYDEVICE(ip, passwd)
-    espdev.open_wconn()
-    espdev.wr_cmd("from machine import unique_id; unique_id()",
-                 silent=True, follow=False)
-    unique_id = hexlify(espdev.output).decode()
-    print('ID: {}'.format(unique_id))
-    pkey = rsa_keygen(dir=upydev.__path__[0]+'/', show_key=args.show_key,
-                      id=unique_id)
-    print('Done!')
-    espdev.close_wconn()
-    if args.tfkey:
-        print('Transfering RSA key to the device...')
-        args.f = '{}/{}'.format(upydev.__path__[0], 'upy_pub_rsa{}.key'.format(unique_id))
-        put_f(ip, passwd, rst=args.rst)
-        print('Done!')
-
-
-def refresh_wrkey(ip, passwd):
-    if args.localkey_id is None:
-        print('Generating new random WebREPL password...')
-        print('Getting unique id...')
-        espdev = W_UPYDEVICE(ip, passwd)
-        espdev.open_wconn()
-        espdev.wr_cmd("from machine import unique_id; unique_id()",
-                      silent=True, follow=False)
-        unique_id = hexlify(espdev.output).decode()
-        print('ID: {}'.format(unique_id))
-        pvkey = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=args.show_key,
-                             id=unique_id)
-        print('Generating random password from RSA key...')
-        new_p, new_token = upy_keygen(pvkey)
-        espdev.wr_cmd("from upysecrets import load_key, upy_keygen")
-        espdev.wr_cmd("rk = load_key()")
-        espdev.wr_cmd("newp = upy_keygen(rk, {})".format(new_token))
-        print('New random password generated!')
-    else:
-        print('Generating new random WebREPL password...')
-        unique_id = args.localkey_id
-        print('ID: {}'.format(unique_id))
-        pvkey = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=args.show_key,
-                             id=unique_id)
-        print('Generating random password from RSA key...')
-        new_p, new_token = upy_keygen(pvkey)
-        print('Use this token to generate new password in the device:\n', new_token)
-    upydev_ip = args.t
-    upydev_pass = new_p
-    upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass}
-    file_conf = 'upydev_.config'
-    if args.localkey_id is None:
-        espdev.close_wconn()
-        espdev.reset(output=False)
-    if args.g:
-        file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
-    with open(file_conf, 'w') as config_file:
-        config_file.write(json.dumps(upy_conf))
-    if args.g:
-        print('upy device settings saved globally!')
-    else:
-        print('upy device settings saved in working directory!')
-
 
 #############################################
 def cryp_wrepl(ip, passwd, usr=None):
@@ -3595,16 +3383,8 @@ def cryp_wrepl(ip, passwd, usr=None):
             pass
             print('')
 
-        refresh_wrkey(ip, passwd)
+        # refresh_wrkey(ip, passwd)
         sys.exit()
-
-
-#############################################
-
-def get_ssl_keycert(ip, passwd):
-    print('Generating SSL ECDSA key and certificates...')
-    ssl_ECDSA_key_certgen(ip, passwd, dir=upydev.__path__[0]+'/')
-#############################################
 
 
 def ssl_wrepl(ip, passwd, usr=None, wss=False):
@@ -3661,7 +3441,7 @@ def ssl_wrepl(ip, passwd, usr=None, wss=False):
             pass
             print('')
 
-        refresh_wrkey(ip, passwd)
+        # refresh_wrkey(ip, passwd)
         sys.exit()
 
 #############################################
@@ -4533,26 +4313,33 @@ elif args.m == 'debug':
     debug_upyscript(args.t, args.p, args.f)
     sys.exit()
 
-# GEN_RSAKEY
 
-elif args.m == 'gen_rsakey':
-    get_rsa_key(args.t, args.p)
+# KEYGEN ACTIONS
+elif args.m in KEYGEN_ACTIONS:
+    if vars(args)['@'] is not None:
+        dev_name = entryp
+    else:
+        dev_name = _dev_name
+    key_dict = keygen_action(args, device=dev_name)
+    if key_dict:
+        if key_dict['mode'] == 'SSL':
+            key, cert = key_dict['Files']
+            args.f = key
+            put_f(args.t, args.p, rst=False)
+            args.f = cert
+            put_f(args.t, args.p, rst=args.rst)
+        elif key_dict['mode'] == 'RSA':
+            rsa_key, = key_dict['Files']
+            args.f = rsa_key
+            put_f(args.t, args.p, rst=args.rst)
+
     sys.exit()
 
-# RF_WRKEY
-elif args.m == 'rf_wrkey':
-    refresh_wrkey(args.t, args.p)
-    sys.exit()
 
 # CRYP_WREPL
 elif args.m == 'crypto_wrepl':
     cryp_wrepl(args.t, args.p)
 
-# SSLGEN_KEY
-
-elif args.m == 'sslgen_key':
-    get_ssl_keycert(args.t, args.p)
-    sys.exit()
 
 # SSL_WREPL
 elif args.m == 'ssl_wrepl':
