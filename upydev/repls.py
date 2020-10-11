@@ -1,4 +1,8 @@
-
+import shlex
+import subprocess
+import sys
+from upydev.keygen import keygen_action
+from upydevice import check_device_type
 
 REPLS_HELP = """
 > REPLS: Usage '$ upydev ACTION [opts]'
@@ -16,3 +20,91 @@ REPLS_HELP = """
         - srepl : to enter the terminal serial repl using picocom, indicate port by -port option
                 (to exit do CTRL-a, CTRL-x)
 """
+
+
+def wrepl(args, device):
+    dev_name = device
+    web_repl_cmd_str = 'web_repl {} -p {}'.format(args.t, args.p)
+    web_repl_cmd = shlex.split(web_repl_cmd_str)
+    try:
+        web_repl = subprocess.call(web_repl_cmd)
+    except KeyboardInterrupt:
+        pass
+        print('')
+    if args.rkey:
+        args.m = 'rf_wrkey'
+        keygen_action(args, device=dev_name)
+
+
+def wssrepl(args, device):
+    dev_name = device
+    web_repl_cmd_str = 'web_repl {} -p {} -wss'.format(args.t, args.p)
+    web_repl_cmd = shlex.split(web_repl_cmd_str)
+    try:
+        web_repl = subprocess.call(web_repl_cmd)
+    except KeyboardInterrupt:
+        pass
+        print('')
+    if args.rkey:
+        args.m = 'rf_wrkey'
+        args.wss = True
+        keygen_action(args, device=dev_name)
+
+
+def srepl(args, device):
+    s_port = args.t
+    if args.port is not None:
+        s_port = args.port
+    serial_repl_cmd_str = 'picocom -t \x02 {} -b{} -q '.format(s_port, args.p)
+    serial_repl_cmd = shlex.split(serial_repl_cmd_str)
+    try:
+        serial_repl = subprocess.call(serial_repl_cmd)
+    except KeyboardInterrupt:
+        pass
+        print('')
+
+
+def repl_action(args, **kargs):
+    dev_name = kargs.get('device')
+    dt = check_device_type(args.t)
+
+    if args.m == 'wrepl':
+        if dt == 'WebSocketDevice':
+            print('Initiating WebREPL terminal for {} ...'.format(dev_name))
+            wrepl(args, dev_name)
+        else:
+            print('{} is NOT a WebSocketDevice'.format(dev_name))
+            if dt == 'SerialDevice':
+                print('Use srepl instead')
+            elif dt == 'BleDevice':
+                print('Use brepl instead')
+        sys.exit()
+
+    # WEB SECURE REPL :
+
+    elif args.m == 'wssrepl':
+        if dt == 'WebSocketDevice':
+            print('Initiating WebSecREPL terminal for {} ...'.format(dev_name))
+            wssrepl(args, dev_name)
+        else:
+            print('{} is NOT a WebSocketDevice'.format(dev_name))
+            if dt == 'SerialDevice':
+                print('Use srepl instead')
+            elif dt == 'BleDevice':
+                print('Use brepl instead')
+        sys.exit()
+
+    # SERIAL REPL:
+
+    elif args.m == 'srepl':
+        if dt == 'SerialDevice':
+            print('Initiating Serial REPL terminal for {} ...'.format(dev_name))
+            print('Do C-a, C-x to exit')
+            srepl(args, dev_name)
+        else:
+            print('{} is NOT a SerialDevice'.format(dev_name))
+            if dt == 'WebSocketDevice':
+                print('Use wrepl or wssrepl instead')
+            elif dt == 'BleDevice':
+                print('Use brepl instead')
+        sys.exit()

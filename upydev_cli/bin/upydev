@@ -47,9 +47,9 @@ from upydev.devicemanagement import DEVICE_MANAGEMENT_HELP, devicemanagement_act
 from upydev.fileio import FILEIO_HELP
 from upydev.firmwaretools import FIRMWARE_HELP, firmwaretools_action
 from upydev.keygen import KEYGEN_HELP, keygen_action
-from upydev.repls import REPLS_HELP
-from upydev.shellrepls import SHELL_REPLS_HELP
-from upydev.debugging import DEBUGGING_HELP
+from upydev.repls import REPLS_HELP, repl_action
+from upydev.shellrepls import SHELL_REPLS_HELP, shell_repl_action
+from upydev.debugging import DEBUGGING_HELP, debugging_action
 from upydev.groupmode import GROUP_MODE_HELP
 
 UPYDEV_PATH = upydev.__path__[0]
@@ -156,10 +156,11 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
-                 'debug', 'gen_rsakey', 'rf_wrkey', 'crypto_wrepl', 'upy',
+                 'debug', 'gen_rsakey', 'rf_wrkey',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
-                 'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg']
+                 'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
+                 'scan']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -332,6 +333,12 @@ parser.add_argument('-swdl', help='flag used internally for -wdl mode',
                     default=True, action='store_false')
 parser.add_argument('-i', help='Show extensive device information with check command',
                     default=False, action='store_true')
+parser.add_argument('-sr', help='Serial scan flag for scan command',
+                    default=False, action='store_true')
+parser.add_argument('-bl', help='Bluetooth Low Energy scan flag for scan command',
+                    default=False, action='store_true')
+parser.add_argument('-nt', help='Local Area Network scan flag for scan command',
+                    default=False, action='store_true')
 parser.add_argument(
     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
@@ -351,6 +358,19 @@ FIRMWARE_ACTIONS = ['mpyx', 'fwr', 'flash']
 # KEYGEN ACTIONS
 
 KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key']
+
+# REPL ACTIONS
+
+REPL_ACTIONS = ['wrepl', 'wssrepl', 'srepl', 'brepl']
+
+# SHELL-REPL ACTIONS
+
+SHELL_REPL_ACTIONS = ['ssl_wrepl', 'ssl', 'sh_srepl', 'shr', 'wssl', 'set_wss',
+                      'ble', 'jupyterc']
+
+# DEBUGGING ACTIONS
+
+DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -2393,31 +2413,6 @@ def jupyterc():
     sys.exit()
 
 
-def find_devices():
-    print('Scanning WLAN {} for upy devices...'.format(get_ssid()))
-    gws = netifaces.gateways()
-    host_range = "{}-255".format(gws['default'][netifaces.AF_INET][0])
-    nmScan = nmap.PortScanner()
-    n_scans = 1
-    if args.n is not None:
-        n_scans = int(args.n)
-    for i in range(n_scans):
-        print('SCAN # {}'.format(i))
-        my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266')
-        hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port':list(
-            nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
-        devs = [host for host in hosts_list if host['status'] == 'open']
-        print('FOUND {} device/s :'.format(len(devs)))
-        N = 1
-        for dev in devs:
-            try:
-                print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
-                    N, dev['host'], dev['state'], dev['port'], dev['status']))
-                N += 1
-            except Exception as e:
-                pass
-
-
 #############################################
 def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=None, local=False):
     t0 = time.time()
@@ -3327,172 +3322,7 @@ def debug_upyscript(ip, passwd, upyfile):
     except KeyboardInterrupt:
         time.sleep(1)
         kbi(ip, passwd)
-
-
 #############################################
-def cryp_wrepl(ip, passwd, usr=None):
-    if not args.rkey:
-        if not args.nem:
-            if usr is not None:
-                crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r -dev {}'.format(ip, passwd, usr)
-            else:
-                crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -r'.format(ip, passwd)
-            crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
-            clean_exit = False
-            while not clean_exit:
-                try:
-                    crypweb_repl = subprocess.call(crypweb_repl_cmd)
-                    clean_exit = True
-                except KeyboardInterrupt:
-                    print('KeyboardInterrupt!')
-                    print('Reinitiating CryptoWebREPL...')
-                    crypweb_repl_cmd = crypweb_repl_cmd + ' -ping'
-                    time.sleep(7)
-                except Exception as e:
-                    print('Reinitiating CryptoWebREPL...')
-                    time.sleep(5)
-        else:
-            if usr is not None:
-                crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -dev {} -nem'.format(ip, passwd, usr)
-            else:
-                crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -nem'.format(ip, passwd)
-            crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
-            clean_exit = False
-            while not clean_exit:
-                try:
-                    crypweb_repl = subprocess.call(crypweb_repl_cmd)
-                    clean_exit = True
-                except KeyboardInterrupt:
-                    print('KeyboardInterrupt!')
-                    print('Reinitiating CryptoWebREPL...')
-                    crypweb_repl_cmd = crypweb_repl_cmd + ' -ping'
-                    time.sleep(7)
-                except Exception as e:
-                    print('Reinitiating CryptoWebREPL...')
-                    time.sleep(5)
-
-    if args.rkey:
-        if usr is not None:
-            crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {} -dev {}'.format(ip, passwd, usr)
-        else:
-            crypweb_repl_cmd_str = 'crypweb_repl -t {} -p {}'.format(ip, passwd)
-        crypweb_repl_cmd = shlex.split(crypweb_repl_cmd_str)
-        try:
-            crypweb_repl = subprocess.call(crypweb_repl_cmd)
-        except KeyboardInterrupt:
-            pass
-            print('')
-
-        # refresh_wrkey(ip, passwd)
-        sys.exit()
-
-
-def ssl_wrepl(ip, passwd, usr=None, wss=False):
-    if not args.rkey:
-        if not args.nem:
-            if usr is not None:
-                if wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss'.format(ip, passwd, usr)
-                else:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {}'.format(ip, passwd, usr)
-            else:
-                if wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -wss'.format(ip, passwd)
-                else:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r'.format(ip, passwd)
-            sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
-
-            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-            def preexec_function(action=old_action):
-                signal.signal(signal.SIGINT, action)
-
-            try:
-                sslweb_repl = subprocess.call(sslweb_repl_cmd, preexec_fn=preexec_function)
-            except KeyboardInterrupt:
-                pass
-
-        else:
-            if usr is not None:
-                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -nem'.format(ip, passwd, usr)
-            else:
-                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -nem'.format(ip, passwd)
-            sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
-
-            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-            def preexec_function(action=old_action):
-                signal.signal(signal.SIGINT, action)
-
-            try:
-                sslweb_repl = subprocess.call(sslweb_repl_cmd, preexec_fn=preexec_function)
-            except KeyboardInterrupt:
-                pass
-
-    if args.rkey:
-        if usr is not None:
-            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {}'.format(ip, passwd, usr)
-        else:
-            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {}'.format(ip, passwd)
-        sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
-        try:
-            sslweb_repl = subprocess.call(sslweb_repl_cmd)
-        except KeyboardInterrupt:
-            pass
-            print('')
-
-        # refresh_wrkey(ip, passwd)
-        sys.exit()
-
-#############################################
-
-
-def sh_srepl(baud, port, usr=None):
-        if baud is None:
-            baud = 115200
-        if usr is not None:
-            sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r -dev {}'.format(baud, port, usr)
-        else:
-            sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r'.format(baud, port)
-        sh_srepl_cmd = shlex.split(sh_srepl_cmd_str)
-
-        old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        def preexec_function(action=old_action):
-            signal.signal(signal.SIGINT, action)
-
-        try:
-            sh_srepl = subprocess.call(sh_srepl_cmd, preexec_fn=preexec_function)
-        except KeyboardInterrupt:
-            pass
-
-
-#############################################
-
-def ble_repl(uuid, usr=None):
-
-    if usr is not None:
-
-        blerepl_cmd_str = 'blerepl -t {} -dev {} -r'.format(uuid, usr)
-    else:
-
-        blerepl_cmd_str = 'blerepl -t {} -r'.format(uuid)
-    blerepl_cmd = shlex.split(blerepl_cmd_str)
-
-    old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-    def preexec_function(action=old_action):
-        signal.signal(signal.SIGINT, action)
-
-    try:
-        blerepl = subprocess.call(blerepl_cmd, preexec_fn=preexec_function)
-    except KeyboardInterrupt:
-        pass
-
-    sys.exit()
-
-#############################################
-
 
 def address_entry_point(entry_point, group_file=''):
     if group_file == '':
@@ -3760,6 +3590,7 @@ if args.m not in keywords_mode and args.m.startswith('%'):
 if "@" in args.m:
     args.m, entry_point = args.m.split('@')
     args.t, args.p = address_entry_point(entry_point)
+    _dev_name = entry_point
 
 # DEVICE MANAGEMENT
 if args.m in DEVICE_MANAGEMENT_ACTIONS:
@@ -3804,7 +3635,8 @@ if args.m == 'gg':
     args.m = 'see'
 
 if args.gg:
-    args.G = 'UPY_G'
+    if args.m not in DEBUGGING_ACTIONS:
+        args.G = 'UPY_G'
 
 if args.G is not None:
     try:
@@ -4212,38 +4044,34 @@ elif args.m == 'cmd':
                         pass
         sys.exit()
 
-# WEB REPL :
 
-elif args.m == 'wrepl':
-    wrepl(args.t, args.p)
+# REPL ACTIONS
 
-# WEB SECURE REPL :
+elif args.m in REPL_ACTIONS:
+    if vars(args)['@'] is not None:
+        dev_name = entryp
+    else:
+        dev_name = _dev_name
+    repl_action(args, device=dev_name)
 
-elif args.m == 'wssrepl':
-    wssrepl(args.t, args.p)
 
-# SERIAL REPL:
-
-elif args.m == 'srepl':
-    srepl(args.port)
-
-# PING :
-
-elif args.m == 'ping':
-    ping(args.t)
+# # PING :
+#
+# elif args.m == 'ping':
+#     ping(args.t)
 
 # RUN :
 
-
-elif args.m == 'run':
-    run_script(args.t, args.p)
-    sys.exit()
+#
+# elif args.m == 'run':
+#     run_script(args.t, args.p)
+#     sys.exit()
 
 # TIMEIT:
 
-elif args.m == 'timeit':
-    timeit_script(args.t, args.p)
-    sys.exit()
+# elif args.m == 'timeit':
+#     timeit_script(args.t, args.p)
+#     sys.exit()
 
 # INSTALL:
 
@@ -4258,11 +4086,16 @@ elif args.m in FIRMWARE_ACTIONS:
         dev_name = _dev_name
     firmwaretools_action(args, device=dev_name)
 
-# FIND
 
-elif args.m == 'find':
-    find_devices()
-    sys.exit()
+# DEBUGGING ACTIONS
+
+elif args.m in DEBUGGING_ACTIONS:
+    if vars(args)['@'] is not None:
+        dev_name = entryp
+    else:
+        dev_name = _dev_name
+    debugging_action(args, device=dev_name)
+
 
 # DIAGNOSE
 elif args.m == 'diagnose':
@@ -4336,226 +4169,14 @@ elif args.m in KEYGEN_ACTIONS:
     sys.exit()
 
 
-# CRYP_WREPL
-elif args.m == 'crypto_wrepl':
-    cryp_wrepl(args.t, args.p)
+# SHELL-REPL ACTIONS
 
-
-# SSL_WREPL
-elif args.m == 'ssl_wrepl':
+elif args.m in SHELL_REPL_ACTIONS:
     if vars(args)['@'] is not None:
-        entryp = vars(args)['@']
-        ssl_wrepl(args.t, args.p, usr=entryp)
+        dev_name = entryp
     else:
-        ssl_wrepl(args.t, args.p)
-
-elif args.m == 'sh_srepl':
-    if vars(args)['@'] is not None:
-        entryp = vars(args)['@']
-        sh_srepl(args.t, args.p, usr=entryp)
-    else:
-        if args.port is not None:
-            sh_srepl(args.b, args.port)
-        else:
-            sh_srepl(args.t, args.p)
-
-# MAKE AN DIRECT ENTRY WITH @ FORMAT
-
-elif args.m == 'upy':
-    group_file = 'UPY_G'
-    # print(group_file)
-    if '{}.config'.format(group_file) not in os.listdir() or args.g:
-        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
-    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-        devices = json.loads(group.read())
-        # print(devices)
-    devs = devices.keys()
-    # NAME ENTRY POINT
-    if entry_point in devs:
-        dev_ip = devices[entry_point][0]
-        if args.apmd:
-            dev_ip = '192.168.4.1'
-        dev_pass = devices[entry_point][1]
-        try:
-            cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
-        except Exception as e:
-            print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-    else:
-        # get dev by ip
-        which_dev = [devices[dev][1] for dev in devs if devices[dev][0] == entry_point ]
-        if len(which_dev) > 0:
-            dev_ip = entry_point
-            dev_pass = which_dev[0]
-            try:
-                cryp_wrepl(dev_ip, dev_pass, usr=entry_point)
-            except Exception as e:
-                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-        else:
-            print('Device Not configured PASSWORD NEEDED')
-            my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
-            try:
-                cryp_wrepl(entry_point, my_p, usr=entry_point)
-            except Exception as e:
-                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-
-# MAKE AN DIRECT ENTRY WITH @ FORMAT
-
-# SSLSHELL-REPL
-elif args.m == 'ssl':
-    group_file = 'UPY_G'
-    # print(group_file)
-    if '{}.config'.format(group_file) not in os.listdir() or args.g:
-        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
-    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-        devices = json.loads(group.read())
-        # print(devices)
-    devs = devices.keys()
-    # NAME ENTRY POINT
-    if entry_point in devs:
-        dev_ip = devices[entry_point][0]
-        if args.apmd:
-            dev_ip = '192.168.4.1'
-        dev_pass = devices[entry_point][1]
-        try:
-            ssl_wrepl(dev_ip, dev_pass, usr=entry_point)
-        except Exception as e:
-            print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-    else:
-        # get dev by ip
-        which_dev = [devices[dev][1] for dev in devs if devices[dev][0] == entry_point ]
-        if len(which_dev) > 0:
-            dev_ip = entry_point
-            dev_pass = which_dev[0]
-            try:
-                ssl_wrepl(dev_ip, dev_pass, usr=entry_point)
-            except Exception as e:
-                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-        else:
-            print('Device Not configured PASSWORD NEEDED')
-            my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
-            try:
-                ssl_wrepl(entry_point, my_p, usr=entry_point)
-            except Exception as e:
-                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-
-# WSSLSHELL-REPL
-elif args.m == 'wssl':
-    group_file = 'UPY_G'
-    # print(group_file)
-    if '{}.config'.format(group_file) not in os.listdir() or args.g:
-        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
-    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-        devices = json.loads(group.read())
-        # print(devices)
-    devs = devices.keys()
-    # NAME ENTRY POINT
-    if entry_point in devs:
-        dev_ip = devices[entry_point][0]
-        if args.apmd:
-            dev_ip = '192.168.4.1'
-        dev_pass = devices[entry_point][1]
-        try:
-            ssl_wrepl(dev_ip, dev_pass, usr=entry_point, wss=True)
-        except Exception as e:
-            print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-    else:
-        # get dev by ip
-        which_dev = [devices[dev][1] for dev in devs if devices[dev][0] == entry_point ]
-        if len(which_dev) > 0:
-            dev_ip = entry_point
-            dev_pass = which_dev[0]
-            try:
-                ssl_wrepl(dev_ip, dev_pass, usr=entry_point, wss=True)
-            except Exception as e:
-                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-        else:
-            print('Device Not configured PASSWORD NEEDED')
-            my_p = getpass.getpass(prompt='Enter passphrase for device {} :'.format(entry_point), stream=None)
-            try:
-                ssl_wrepl(entry_point, my_p, usr=entry_point, wss=True)
-            except Exception as e:
-                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-
-elif args.m == 'set_wss':
-    if not args.wss:
-        print('Enabling WebSecureREPL...')
-        wss_repl_cmd = 'import wss_repl;wss_repl.stop();wss_repl.start(ssl=True);wss_repl.set_ssl(True)\r'
-        if '.' in args.t:
-            wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-            bytes_sent = wsdevice.write(wss_repl_cmd)
-            wsdevice.close_wconn()
-            print('\rWebSecureREPL enabled!')
-        else:
-            pass
-    else:
-        print('Switching to WebREPL...')
-        wrepl_cmd = 'import wss_repl;wss_repl.stop();wss_repl.start(ssl=False);wss_repl.set_ssl(False)\r'
-        if '.' in args.t:
-            wsdevice = BASE_WS_DEVICE(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-            bytes_sent = wsdevice.write(wrepl_cmd)
-            wsdevice.close_wconn()
-            print('\rWebREPL enabled!, WebSecureREPL disabled!')
-        else:
-            pass
-
-# SERIALSHELL-REPL
-
-elif args.m == 'shr':
-    group_file = 'UPY_G'
-    # print(group_file)
-    if '{}.config'.format(group_file) not in os.listdir() or args.g:
-        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
-    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-        devices = json.loads(group.read())
-        # print(devices)
-    devs = devices.keys()
-    # NAME ENTRY POINT
-    if entry_point in devs:
-        dev_port = devices[entry_point][0]
-        dev_baud = devices[entry_point][1]
-        try:
-            sh_srepl(dev_baud, dev_port, usr=entry_point)
-        except Exception as e:
-            print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-    else:
-        pass
-        # get dev by ip
-        which_dev = [devices[dev][1] for dev in devs if devices[dev][0] == entry_point ]
-        if len(which_dev) > 0:
-            dev_port = entry_point
-            dev_baud = which_dev[0]
-            try:
-                sh_srepl(dev_baud, dev_port, usr=entry_point)
-            except Exception as e:
-                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-        else:
-            try:
-                if args.port is not None:
-                    entry_point = args.port
-                sh_srepl(115200, entry_point, usr=entry_point)
-            except Exception as e:
-                print('PASSWORD INVALID or DEVICE NOT REACHABLE')
-
-# BLESHELL-REPL
-
-elif args.m == 'brepl':
-    print('BLE SHELL-REPL: Connecting...')
-    if vars(args)['@'] is not None:
-        entryp = vars(args)['@']
-        ble_repl(args.t, usr=entryp)
-    else:
-        ble_repl(args.t)
-
-elif args.m == 'ble':
-    print('BLE SHELL-REPL: Connecting...')
-    try:
-        ble_repl(args.t, usr=entry_point)
-    except Exception as e:
-        print('UUID INVALID or DEVICE NOT REACHABLE')
-
-# JUPYTER CONSOLE
-elif args.m == 'jupyterc':
-    jupyterc()
+        dev_name = _dev_name
+    shell_repl_action(args, device=dev_name)
 
 
 # PYTEST

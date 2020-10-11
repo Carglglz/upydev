@@ -31,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `gg` to see global group
 - `-gg` flag to set -G flag to global group (-gg == -G UPY_G)
 - `%` before any command e.g. `%config` display help info about that command.
-
+- `probe` command to test if a device/group is reachable
+- `scan` command to look for devices (serial [-sr], network [-nt] or ble [-bl])
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch

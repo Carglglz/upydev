@@ -26,7 +26,7 @@ HELP_INFO_ARG = '''Mode/Tools:
     ACTIONS: ssl_wrepl, ssl, sh_srepl, shr, wssl, set_wss, ble, jupyterc
 
 > DEBUGGING: '$ upydev db' to see help on debugging operations.
-    ACTIONS: ping, run, timeit, see, find, diagnose, errlog, stream_test,
+    ACTIONS: ping, probe, scan, run, timeit, diagnose, errlog, stream_test,
              sysctl, log, debug, pytest
 
 > GROUP COMMAND MODE: '$ upydev gp' to see help on group mode options.

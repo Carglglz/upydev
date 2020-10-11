@@ -80,13 +80,7 @@ def see(args):
         print('# DEVICES: {}'.format(len(group_devs.keys())))
         for key in group_devs.keys():
             dev_add = group_devs[key][0]
-            dev_pass = group_devs[key][1]
-            try:  # FIX FOR SERIAL
-                int(dev_add)
-                dev_add = dev_pass
-                dev_type = check_device_type(dev_add)
-            except Exception as e:
-                dev_type = check_device_type(dev_add)
+            dev_type = check_device_type(dev_add)
             if key != list(group_devs.keys())[-1]:
                 tree = '┣━'
             else:
