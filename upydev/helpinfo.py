@@ -35,9 +35,8 @@ HELP_INFO_ARG = '''Mode/Tools:
 > HELP: '$ upydev h' or '$ upydev help' to see help (without optional args)
         '$ upydev -h' or '$ upydev --help' to see full help info.
 
-        - see: Help info about ANY ACTION/COMMAND indicated by '-c' option
-
-            or put %% before ANY ACTION/COMMAND as : $ upydev %%ACTION
+        - To see help about a any ACTION/COMMAND
+          put %% before that ACTION/COMMAND as : $ upydev %%ACTION
 
     ACTIONS: help, h, dm, fio, fw, kg, rp, sh, db, gp, gc, wu, sd, pro.
 

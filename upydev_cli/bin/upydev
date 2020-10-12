@@ -23,10 +23,8 @@ import socket
 import struct
 import logging
 import glob
-import getpass
 import signal
 import hashlib
-import shutil
 from binascii import hexlify
 from pathlib import Path
 import multiprocessing
@@ -370,7 +368,8 @@ SHELL_REPL_ACTIONS = ['ssl_wrepl', 'ssl', 'sh_srepl', 'shr', 'wssl', 'set_wss',
 
 # DEBUGGING ACTIONS
 
-DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit']
+DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'errlog', 'stream_test',
+                     'sysctl', 'log', 'pytest-setup', 'pytest']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -3312,18 +3311,6 @@ def update_upyutils(ip, passwd):
 
 
 #############################################
-def debug_upyscript(ip, passwd, upyfile):
-    print('Loading {} ...'.format(upyfile))
-    print('ENTER: EXECUTE NEXT LINE, C: BREAK')
-    dbug_wrepl_tool_cmd = 'dbg_wrepl -f{} -t {} -p {}'.format(upyfile, ip, passwd)
-    dbg_cmd = shlex.split(dbug_wrepl_tool_cmd)
-    try:
-        subprocess.call(dbg_cmd)
-    except KeyboardInterrupt:
-        time.sleep(1)
-        kbi(ip, passwd)
-#############################################
-
 def address_entry_point(entry_point, group_file=''):
     if group_file == '':
         group_file = 'UPY_G'
@@ -3993,57 +3980,6 @@ elif args.m == 'd_sync':
                          show_tree=args.tree)
         sys.exit()
 
-# CMD (FOR DEBBUGING PURPOSE) # DEBUG:
-
-elif args.m == 'cmd':
-    if args.c is not None:
-        cmd_str = 'upycmd -c "{}" -t {} -p {}'.format(
-            args.c, args.t, args.p)
-        command = shlex.split(cmd_str)
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-        time.sleep(0.1)
-        stdout = process.communicate()
-        sys.exit()
-    if args.r is not None:
-        cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(args.r, args.t, args.p)
-        command = shlex.split(cmd_str)
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-        time.sleep(0.1)
-        stdout = process.communicate()
-        try:
-            resp = ast.literal_eval(
-                stdout[0].decode('utf-8').split('\n')[0][4:-1])
-        except Exception as e:
-            try:
-                resp = stdout[0].decode('utf-8').split('\n')[0]
-            except Exception as e:
-                resp = None
-
-            pass
-        print(resp)
-        sys.exit()
-    if args.rl is not None:
-        web_repl_cmd = 'web_repl_cmd_r -p {} -t {} -c "{}"'.format(
-            args.p, args.t, args.rl)
-        cmd_resp = run_command_rl(web_repl_cmd)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
-        sys.exit()
-
 
 # REPL ACTIONS
 
@@ -4054,24 +3990,6 @@ elif args.m in REPL_ACTIONS:
         dev_name = _dev_name
     repl_action(args, device=dev_name)
 
-
-# # PING :
-#
-# elif args.m == 'ping':
-#     ping(args.t)
-
-# RUN :
-
-#
-# elif args.m == 'run':
-#     run_script(args.t, args.p)
-#     sys.exit()
-
-# TIMEIT:
-
-# elif args.m == 'timeit':
-#     timeit_script(args.t, args.p)
-#     sys.exit()
 
 # INSTALL:
 
@@ -4110,40 +4028,10 @@ elif args.m == 'diagnose':
              name_rep=args.n, vers=parser.version, local=localdev)
     sys.exit()
 
-# ERRLOG
-elif args.m == 'errlog':
-    get_error_log(args.t, args.p, args.s)
-    sys.exit()
-
-# STREAM_TEST
-
-elif args.m == 'stream_test':
-    get_stream_test(args.t, args.p)
-    sys.exit()
-
-# SYSCTL
-
-elif args.m == 'sysctl':
-    sysctl(args.t, args.p)
-    sys.exit()
-
-# LOG
-
-elif args.m == 'log':
-    if not args.follow:
-        get_log_script(args.t, args.p)
-    else:
-        follow_daemon_log()
-    sys.exit()
 
 # UPDATE UPYUTILS
 elif args.m == 'update_upyutils':
     update_upyutils(args.t, args.p)
-    sys.exit()
-
-# _DEBUG SCRIPT
-elif args.m == 'debug':
-    debug_upyscript(args.t, args.p, args.f)
     sys.exit()
 
 
@@ -4177,24 +4065,6 @@ elif args.m in SHELL_REPL_ACTIONS:
     else:
         dev_name = _dev_name
     shell_repl_action(args, device=dev_name)
-
-
-# PYTEST
-elif args.m == 'pytest-setup':
-    shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
-    shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
-    print('pytest.ini and conftest.py saved in current working directory.')
-    sys.exit()
-
-elif args.m == 'pytest':
-    if vars(args)['@'] is not None:
-        print('Running pytest with Device: {}'.format(entryp))
-        pytest(entryp)
-    else:
-        print('Running pytest with Device: {}'.format(_dev_name))
-        pytest(_dev_name)
-
-    sys.exit()
 
 
 # * GENERAL COMMANDS *
