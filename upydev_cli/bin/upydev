@@ -158,7 +158,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
-                 'scan']
+                 'scan', 'repl', 'rpl', 'shell', 'shl']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -170,6 +170,8 @@ keywords_mode += ['shr@{}'.format(dev) for dev in see_global_devs(serial=True)]
 keywords_mode += ['ssl@{}'.format(dev) for dev in see_global_devs()]
 keywords_mode += ['wssl@{}'.format(dev) for dev in see_global_devs()]
 keywords_mode += ['ble@{}'.format(dev) for dev in see_global_devs(ble=True)]
+keywords_mode += ['rpl@{}'.format(dev) for dev in see_global_devs(all=True)]
+keywords_mode += ['shl@{}'.format(dev) for dev in see_global_devs(all=True)]
 help_dv = "To point the command to a specific device saved in the global group"
 
 # ARG PARSER
@@ -359,17 +361,17 @@ KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key']
 
 # REPL ACTIONS
 
-REPL_ACTIONS = ['wrepl', 'wssrepl', 'srepl', 'brepl']
+REPL_ACTIONS = ['repl', 'rpl', 'wrepl', 'wssrepl', 'srepl', 'brepl']
 
 # SHELL-REPL ACTIONS
 
 SHELL_REPL_ACTIONS = ['ssl_wrepl', 'ssl', 'sh_srepl', 'shr', 'wssl', 'set_wss',
-                      'ble', 'jupyterc']
+                      'ble', 'jupyterc', 'shell', 'shl']
 
 # DEBUGGING ACTIONS
 
-DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'errlog', 'stream_test',
-                     'sysctl', 'log', 'pytest-setup', 'pytest']
+DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'diagnose', 'errlog',
+                     'stream_test', 'sysctl', 'log', 'pytest-setup', 'pytest']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -2339,7 +2341,6 @@ def install_f(ip, passwd, dev=''):
     print('{}Library {} installed!'.format(dev, args.f))
 
 
-
 def reset(ip, passwd):  # wait for FILEIO
     reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
         'D', ip, passwd)
@@ -4015,18 +4016,18 @@ elif args.m in DEBUGGING_ACTIONS:
     debugging_action(args, device=dev_name)
 
 
-# DIAGNOSE
-elif args.m == 'diagnose':
-    if args.rst is None:
-        args.rst = True
-    else:
-        args.rst = False
-    localdev = False
-    if args.apmd:
-        localdev = True
-    diagnose(args.t, args.p, save_rep=args.rep, rst_opt=args.rst,
-             name_rep=args.n, vers=parser.version, local=localdev)
-    sys.exit()
+# # DIAGNOSE
+# elif args.m == 'diagnose':
+#     if args.rst is None:
+#         args.rst = True
+#     else:
+#         args.rst = False
+#     localdev = False
+#     if args.apmd:
+#         localdev = True
+#     diagnose(args.t, args.p, save_rep=args.rep, rst_opt=args.rst,
+#              name_rep=args.n, vers=parser.version, local=localdev)
+#     sys.exit()
 
 
 # UPDATE UPYUTILS

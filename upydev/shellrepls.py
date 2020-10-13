@@ -9,6 +9,11 @@ from upydevice import Device
 SHELL_REPLS_HELP = """
 > SHELL-REPLS: Usage '$ upydev ACTION [opts]'
     ACTIONS:
+        - shell/shl: To enter one of the following SHELL-REPLS depending of upydevice type:
+                    * WebSocketDevice --> ssl_wrepl/wssl (with -wss flag)
+                    * SerialDeivce --> sh_repl/shr
+                    * BleDevice --> ble
+
         - ssl_wrepl: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal over SSL sockets;
                      CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
                      To see more keybindings info do CTRL-k. By default resets after exit,
@@ -186,7 +191,22 @@ def shell_repl_action(args, **kargs):
     dev_name = kargs.get('device')
     dt = check_device_type(args.t)
 
-    if args.m == 'ssl_wrepl' or args.m == 'ssl':
+    if args.m == 'shell' or args.m == 'shl':
+        if dt == 'WebSocketDevice':
+            print('SSL SHELL-REPL @ {} '.format(dev_name))
+            ssl_wrepl(args, dev_name)
+        elif dt == 'SerialDevice' or args.port:
+            if args.port:
+                dev_name = args.port
+            print('SERIAL SHELL-REPL @ {} '.format(dev_name))
+            sh_srepl(args, dev_name)
+
+        if dt == 'BleDevice':
+            print('BLE SHELL-REPL @ {}'.format(dev_name))
+            ble_repl(args, dev_name)
+        sys.exit()
+
+    elif args.m == 'ssl_wrepl' or args.m == 'ssl':
         if dt == 'WebSocketDevice':
             print('SSL SHELL-REPL @ {} '.format(dev_name))
             ssl_wrepl(args, dev_name)
@@ -215,7 +235,7 @@ def shell_repl_action(args, **kargs):
         if dt == 'SerialDevice' or args.port:
             if args.port:
                 dev_name = args.port
-            print('Serial SHELL-REPL @ {} '.format(dev_name))
+            print('SERIAL SHELL-REPL @ {} '.format(dev_name))
             sh_srepl(args, dev_name)
         else:
             print('{} is NOT a SerialDevice'.format(dev_name))

@@ -20,10 +20,10 @@ HELP_INFO_ARG = '''Mode/Tools:
     ACTIONS: gen_rsakey, rf_wrkey, sslgen_key
 
 > REPLS: '$ upydev rp' to see help on repls modes.
-    ACTIONS: wrepl, wssrepl, srepl
+    ACTIONS: repl, rpl, wrepl, wssrepl, srepl
 
 > SHELL-REPLS: '$ upydev sh' to see help on shell-repls modes.
-    ACTIONS: ssl_wrepl, ssl, sh_srepl, shr, wssl, set_wss, ble, jupyterc
+    ACTIONS: shell, shl, ssl_wrepl, ssl, sh_srepl, shr, wssl, set_wss, ble, jupyterc
 
 > DEBUGGING: '$ upydev db' to see help on debugging operations.
     ACTIONS: ping, probe, scan, run, timeit, diagnose, errlog, stream_test,

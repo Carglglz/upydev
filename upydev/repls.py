@@ -2,11 +2,15 @@ import shlex
 import subprocess
 import sys
 from upydev.keygen import keygen_action
-from upydevice import check_device_type
+from upydevice import check_device_type, Device
 
 REPLS_HELP = """
 > REPLS: Usage '$ upydev ACTION [opts]'
     ACTIONS:
+        - repl/rpl: to enter one of the following depending of upydevice type:
+                * WebSocketDevice --> wrepl/wssrepl (with -wss flag)
+                * SerialDeivce --> srepl
+
         - wrepl : to enter the terminal WebREPL; CTRL-x to exit, CTRL-d to do soft reset
                 To see more keybindings info do CTRL-k
                 (Added custom keybindings and autocompletion on tab to the previous work
@@ -68,9 +72,26 @@ def repl_action(args, **kargs):
     dev_name = kargs.get('device')
     dt = check_device_type(args.t)
 
-    if args.m == 'wrepl':
+    if args.m == 'repl' or args.m == 'rpl':
+        if dt == 'WebSocketDevice':
+            if not args.wss:
+                print('Initiating WebREPL terminal for {} ...'.format(dev_name))
+                print('Do CTRL-k so see keybindings')
+                wrepl(args, dev_name)
+            else:
+                print('Initiating WebSecREPL terminal for {} ...'.format(dev_name))
+                print('Do CTRL-k so see keybindings')
+                wssrepl(args, dev_name)
+        elif dt == 'SerialDevice':
+            print('Initiating Serial REPL terminal for {} ...'.format(dev_name))
+            print('Do C-a, C-x to exit')
+            dev = Device(args.t, args.p, init=True)
+            srepl(args, dev_name)
+
+    elif args.m == 'wrepl':
         if dt == 'WebSocketDevice':
             print('Initiating WebREPL terminal for {} ...'.format(dev_name))
+            print('Do CTRL-k so see keybindings')
             wrepl(args, dev_name)
         else:
             print('{} is NOT a WebSocketDevice'.format(dev_name))
@@ -85,6 +106,7 @@ def repl_action(args, **kargs):
     elif args.m == 'wssrepl':
         if dt == 'WebSocketDevice':
             print('Initiating WebSecREPL terminal for {} ...'.format(dev_name))
+            print('Do CTRL-k so see keybindings')
             wssrepl(args, dev_name)
         else:
             print('{} is NOT a WebSocketDevice'.format(dev_name))
@@ -100,6 +122,7 @@ def repl_action(args, **kargs):
         if dt == 'SerialDevice':
             print('Initiating Serial REPL terminal for {} ...'.format(dev_name))
             print('Do C-a, C-x to exit')
+            dev = Device(args.t, args.p, init=True)
             srepl(args, dev_name)
         else:
             print('{} is NOT a SerialDevice'.format(dev_name))

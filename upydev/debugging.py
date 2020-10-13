@@ -1,6 +1,9 @@
 from upydevice import Device, check_device_type, serial_scan, ble_scan, net_scan
 import sys
 from upydev.helpinfo import see_help
+from upydev.firmwaretools import get_fw_versions
+from upydev.gencommands import print_filesys_info, print_sizefile_all
+from upydev.commandlib import _CMDDICT_
 import os
 import json
 import upydev
@@ -9,11 +12,13 @@ import subprocess
 import shlex
 import time
 import socket
-from datetime import timedelta
+from datetime import timedelta, datetime
 import netifaces
 import logging
 import shutil
 import signal
+from binascii import hexlify
+import nmap
 
 UPYDEV_PATH = upydev.__path__[0]
 
@@ -32,6 +37,9 @@ if columns > cnt_size:
 else:
     bar_size = 1
     pb = False
+
+AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
+                    4: 'WPA/WAP2 PSK'}
 
 DEBUGGING_HELP = """
 > DEBUGGING: Usage '$ upydev ACTION [opts]'
@@ -84,6 +92,23 @@ DEBUGGING_HELP = """
         - pytest: to run upydevice test with pytest, do "pytest-setup" first to enable selection
                  of specific device with -@ entry point.
                  """
+
+
+def sortSecond(val):
+    return val[1]
+
+
+def _dt_format(number):
+        rtc_n = str(number)
+        if len(rtc_n) == 1:
+            rtc_n = "0{}".format(rtc_n)
+            return rtc_n
+        else:
+            return rtc_n
+
+
+def _ft_datetime(t_now):
+    return([_dt_format(i) for i in t_now])
 
 
 def print_sizefile(file_name, filesize, tabs=0):
@@ -193,6 +218,677 @@ def timeit_script(args):
     dev.cmd(reload_cmd, silent=True)
     dev.disconnect()
     print('Done!')
+
+
+def ping_diagnose(ip, rep_file=None):
+    ping_cmd_str = 'ping -c 5 {}'.format(ip)
+    ping_cmd = shlex.split(ping_cmd_str)
+    timeouts = 0
+    try:
+        proc = subprocess.Popen(
+            ping_cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        while proc.poll() is None:
+            resp = proc.stdout.readline()[:-1].decode()
+            print(resp)
+            if 'timeout' in resp:
+                timeouts += 1
+            if rep_file is not None:
+                rep_file.append(resp)
+
+        time.sleep(1)
+        result = proc.stdout.readlines()
+        for message in result:
+            print(message[:-1].decode())
+            rep_file.append(message[:-1].decode())
+
+    except KeyboardInterrupt:
+        time.sleep(1)
+        result = proc.stdout.readlines()
+        for message in result:
+            print(message[:-1].decode())
+
+    if timeouts >= 3:
+        print('DEVICE IS DOWN OR SIGNAL RSSI IS TO LOW')
+        print('WIRELESS DIAGNOSTICS NOT POSSIBLE, PLEASE RESET THE DEVICE OR PLACE IT NEARER TO THE LOCAL AP')
+        return False
+    else:
+        return True
+
+
+def diagnose(args):
+    t0 = time.time()
+    save_rep = args.rep
+    if args.rst is None:
+        args.rst = True
+    else:
+        args.rst = False
+    local = False
+    if args.apmd:
+        local = True
+    vers = upydev.version
+    name_rep = args.n
+
+    FILE_REPORT = []
+    # FULL REPORT TEST
+    print('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test', '*'*20))
+    FILE_REPORT.append('{:<10} {} {:>10}'.format(
+        '*'*20, 'uPydev Diagnostics Test', '*'*20))
+    print('\n')
+    FILE_REPORT.append('\n')
+    print('upydev version : {}'.format(vers))
+    FILE_REPORT.append('upydev version : {}'.format(vers))
+    # CHECK IF DEVICE IS REACHABLE
+    print('\n')
+    FILE_REPORT.append('\n')
+    print('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
+    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
+    device_is_on = ping_diagnose(args.t, rep_file=FILE_REPORT)
+    print('\n')
+    FILE_REPORT.append('\n')
+    # CHECK IF PORT 8266 IS OPEN(WEBREPL)
+    host_range = args.t
+    nmScan = nmap.PortScanner()
+    print('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
+    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
+    print('\n')
+    FILE_REPORT.append('\n')
+    n_tries = 0
+    while n_tries < 3:
+        my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266 -Pn')
+        hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port': list(
+            nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
+        devs = [host for host in hosts_list if host['status'] == 'open']
+        if len(devs) > 0:
+            n_tries = 3
+            print('DEVICE FOUND')
+            FILE_REPORT.append('DEVICE FOUND')
+            N = 1
+            for dev in devs:
+                try:
+                    print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
+                        N, dev['host'], dev['state'], dev['port'], dev['status']))
+                    FILE_REPORT.append('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
+                        N, dev['host'], dev['state'], dev['port'], dev['status']))
+                    N += 1
+                except Exception as e:
+                    pass
+        else:
+            if n_tries >= 2:
+                print('DEVICE NOT FOUND')
+                FILE_REPORT.append('DEVICE NOT FOUND')
+                n_tries += 1
+            else:
+                n_tries += 1
+    # ISSUE A KBI
+    if device_is_on:
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss,
+                     autodetect=True)
+        # dev.kbi()
+        glo_vars = dev.cmd('dir()', silent=True, rtn_resp=True)
+        # ID
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'MACHINE ID', '='*10))
+        uid = dev.cmd(_CMDDICT_['UID'], silent=True, rtn_resp=True)
+        print('\n')
+        FILE_REPORT.append('\n')
+        print("ID: {}".format(uid.decode()))
+        upy_id = uid.decode()
+        FILE_REPORT.append("ID: {}".format(uid.decode()))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # UNAME
+        print('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'DEVICE INFO', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        info_dev = str(dev)
+        print(info_dev)
+        FILE_REPORT.append(info_dev)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # CHECK AVAILABLE FIRMWARE
+        if not local:
+            print('{:<10} {} {:>10}'.format(
+                '='*10, 'AVAILABLE FIRMWARE', '='*10))
+            FILE_REPORT.append('{:<10} {} {:>10}'.format(
+                '='*10, 'AVAILABLE FIRMWARE', '='*10))
+            print('\n')
+            FILE_REPORT.append('\n')
+            print('Available firmware found for {}'.format(dev.dev_platform))
+            FILE_REPORT.append(
+                'Available firmware found for {}'.format(dev.dev_platform))
+            for vers in get_fw_versions(dev.dev_platform)[1]:
+                print('  - {}'.format(vers))
+                FILE_REPORT.append('  - {}'.format(vers))
+            print('\n')
+            FILE_REPORT.append('\n')
+        # RAM MEM
+        print('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        RAM = dev.cmd(_CMDDICT_['MEM'], silent=True, rtn_resp=True,
+                      long_string=True)
+        mem_info = RAM.splitlines()[1]
+        mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
+                          1]) for elem in mem_info[4:].split(',')}
+        print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memmory',
+                                                            'Size', 'Used',
+                                                            'Avail',
+                                                            'Use%']))
+        FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memmory',
+                                                            'Size', 'Used',
+                                                            'Avail',
+                                                            'Use%']))
+        total_mem = mem['total']/1024
+        used_mem = mem['used']/1024
+        free_mem = mem['free']/1024
+        total_mem_s = "{:.3f} KB".format(total_mem)
+        used_mem_s = "{:.3f} KB".format(used_mem)
+        free_mem_s = "{:.3f} KB".format(free_mem)
+
+        print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
+                                                          used_mem_s, free_mem_s,
+                                                          "{:.1f} %".format((used_mem/total_mem)*100)))
+        FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
+                                                          used_mem_s, free_mem_s,
+                                                          "{:.1f} %".format((used_mem/total_mem)*100)))
+
+        print('\n')
+        FILE_REPORT.append('\n')
+        # DIR()
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'GLOBAL SPACE VARIABLES', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'GLOBAL SPACE VARIABLES', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        print(glo_vars)
+        FILE_REPORT.append(glo_vars)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # FLASH MEM
+        print('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'FLASH MEMORY', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        cmd_str = _CMDDICT_['STAT_FS'].format('')
+        resp = dev.cmd(cmd_str, silent=True, rtn_resp=True)
+        size_info = resp
+        total_b = size_info[0] * size_info[2]
+        used_b = (size_info[0] * size_info[2]) - (size_info[0] * size_info[3])
+        total_mem = print_filesys_info(total_b)
+        free_mem = print_filesys_info(size_info[0] * size_info[3])
+        used_mem = print_filesys_info(used_b)
+        filesys = 'Flash'
+        if filesys == 'Flash':
+            mounted_on = '/'
+        else:
+            mounted_on = filesys
+        print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
+                                                                   'Size', 'Used',
+                                                                   'Avail',
+                                                                   'Use%', 'Mounted on']))
+        FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
+                                                                   'Size', 'Used',
+                                                                   'Avail',
+                                                                   'Use%', 'Mounted on']))
+        print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
+                                                                used_mem, free_mem,
+                                                                "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+        FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
+                                                                used_mem, free_mem,
+                                                                "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        ld = dev.cmd("import uos;uos.listdir('/')", silent=True, rtn_resp=True)
+        if 'sd' in ld:
+            sd_ismounted = True
+            cmd_str = _CMDDICT_['STAT_FS'].format('sd')
+            resp = dev.cmd(cmd_str, silent=True, rtn_resp=True)
+            size_info = resp
+            total_b = size_info[0] * size_info[2]
+            used_b = (size_info[0] * size_info[2]) - (size_info[0] * size_info[3])
+            total_mem = print_filesys_info(total_b)
+            free_mem = print_filesys_info(size_info[0] * size_info[3])
+            used_mem = print_filesys_info(used_b)
+            filesys = 'sd'
+            mounted_on = '/sd'
+            print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
+                                                                       'Size', 'Used',
+                                                                       'Avail',
+                                                                       'Use%', 'Mounted on']))
+            FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
+                                                                       'Size', 'Used',
+                                                                       'Avail',
+                                                                       'Use%', 'Mounted on']))
+            print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
+                                                                    used_mem, free_mem,
+                                                                    "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+            FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
+                                                                    used_mem, free_mem,
+                                                                    "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+            print('\n')
+            FILE_REPORT.append('\n')
+        else:
+            sd_ismounted = False
+            print('SD NOT FOUND')
+            FILE_REPORT.append('SD NOT FOUND')
+        # FILES IN FLASH + SIZE
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'Files in FLASH MEMORY', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'Files in FLASH MEMORY', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        du = dev.cmd("[(filename,uos.stat(''+str(filename))[6]) for filename in uos.listdir('')]",
+                     silent=True, rtn_resp=True)
+        filesize = du
+        filesize.sort(key=sortSecond, reverse=True)
+        print('Files in FLASH MEMORY:')
+        FILE_REPORT.append('Files in FLASH MEMORY:')
+        print_sizefile_all(filesize, frep=FILE_REPORT)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # MODULES
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'Frozen Modules in Firmware', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'Frozen Modules in Firmware', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        umodules = dev.cmd("help('modules')", silent=True, long_string=True,
+                           rtn_resp=True)
+        print(umodules)
+        FILE_REPORT.append(umodules)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # /LIB
+        print('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'Modules in /lib', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        lib = dev.cmd("import uos; uos.listdir('/lib')", silent=True, rtn_resp=True)
+        for flib in lib:
+            print(flib)
+            FILE_REPORT.append(flib)
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'Modules/scripts in /', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'Modules/scripts in /', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        pyfs = dev.cmd("import uos; uos.listdir('/')", silent=True, rtn_resp=True)
+        pyfiles = [pyf for pyf in pyfs if '.py' in pyf]
+        for pyf in pyfiles:
+            print(pyf)
+            FILE_REPORT.append(pyf)
+
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        # I2C SCAN (config option)
+        print('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'I2C SCAN', '='*10))
+        i2c_scl = "22"
+        i2c_sda = "23"
+        if dev.dev_platform == 'esp8266':
+            i2c_scl = "5"
+            i2c_sda = "4"
+        i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
+            i2c_scl, i2c_sda)
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        i2c_scan = dev.cmd(i2c_cmd, silent=True, rtn_resp=True)
+        print('Found {} i2c devices'.format(len(i2c_scan)))
+        FILE_REPORT.append('Found {} i2c devices'.format(len(i2c_scan)))
+        print('DEC: ')
+        FILE_REPORT.append('DEC: ')
+        print(i2c_scan)
+        FILE_REPORT.append(i2c_scan)
+        print('HEX:')
+        FILE_REPORT.append('HEX:')
+        print([hex(val) for val in i2c_scan])
+        FILE_REPORT.append([hex(val) for val in i2c_scan])
+
+        print('\n')
+        FILE_REPORT.append('\n')
+        # RTC CHECK LOCAL TIME - HOST TIME DIFF
+        print('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'RTC DATETIME CHECK', '='*10))
+        get_time_cmd = "import time;tnow = time.localtime();"
+        get_time2_cmd = "[tnow[0],tnow[1],tnow[2],tnow[3],tnow[4],tnow[5]];gc.collect()"
+        get_datetime_cmd = get_time_cmd + get_time2_cmd
+        devtime = dev.cmd(get_datetime_cmd, silent=True, rtn_resp=True)
+        localtime = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        print('\n')
+        FILE_REPORT.append('\n')
+        devicetime = "{}-{}-{}T{}:{}:{}".format(*_ft_datetime(devtime))
+        print('{:<15} :  {:^15}'.format('Device DateTime', devicetime))
+        FILE_REPORT.append('{:<15} :  {:^15}'.format(
+            'Device DateTime', devicetime))
+        print('{:<15} :  {:^15}'.format('Local DateTime', localtime))
+        FILE_REPORT.append('{:<15} :  {:^15}'.format(
+            'Local DateTime', localtime))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # IF NETWORK:
+        is_conn_cmd = 'import network; network.WLAN(network.STA_IF).isconnected()'
+
+        devconn = dev.cmd(is_conn_cmd, silent=True, rtn_resp=True)
+        is_connected = devconn
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK STA IF CONFIG', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK STA IF CONFIG', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        if is_connected:
+            net_info_list = dev.cmd(_CMDDICT_['NET_INFO'], silent=True,
+                                    rtn_resp=True)
+            if len(net_info_list) > 0:
+                vals = hexlify(net_info_list[2]).decode()
+                bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
+                print('IF CONFIG:')
+                print('┏{0}━┳━{1}━┳━{2}━┳━{3}━┳━{4}━┳━{5}━┳━{6}━┓'.format(
+                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
+                                '━'*10))
+                print('┃{0:^15} ┃ {1:^15} ┃ {2:^15} ┃ {3:^15} ┃ {4:^15} ┃ {5:^20} ┃ {6:^10} ┃'.format(
+                                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'SSID', 'BSSID',
+                                'RSSI'))
+                print('┣{0}━╋━{1}━╋━{2}━╋━{3}━╋━{4}━╋━{5}━╋━{6}━┫'.format(
+                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
+                                '━'*10))
+                try:
+                    print('┃{0:^15} ┃ {1:^15} ┃ {2:^15} ┃ {3:^15} ┃ {4:^15} ┃ {5:^20} ┃ {6:^10} ┃'.format(
+                        *net_info_list[0], net_info_list[1],
+                        bssid, net_info_list[3]))
+                    print('┗{0}━┻━{1}━┻━{2}━┻━{3}━┻━{4}━┻━{5}━┻━{6}━┛'.format(
+                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
+                                '━'*10))
+                except Exception as e:
+                    print(e)
+
+                FILE_REPORT.append('IF CONFIG:')
+                FILE_REPORT.append('┏{0}━┳━{1}━┳━{2}━┳━{3}━┳━{4}━┳━{5}━┳━{6}━┓'.format(
+                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
+                                '━'*10))
+                FILE_REPORT.append('┃{0:^15} ┃ {1:^15} ┃ {2:^15} ┃ {3:^15} ┃ {4:^15} ┃ {5:^20} ┃ {6:^10} ┃'.format(
+                                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'SSID', 'BSSID',
+                                'RSSI'))
+                FILE_REPORT.append('┣{0}━╋━{1}━╋━{2}━╋━{3}━╋━{4}━╋━{5}━╋━{6}━┫'.format(
+                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
+                                '━'*10))
+                try:
+                    FILE_REPORT.append('┃{0:^15} ┃ {1:^15} ┃ {2:^15} ┃ {3:^15} ┃ {4:^15} ┃ {5:^20} ┃ {6:^10} ┃'.format(
+                        *net_info_list[0], net_info_list[1],
+                        bssid, net_info_list[3]))
+                    FILE_REPORT.append('┗{0}━┻━{1}━┻━{2}━┻━{3}━┻━{4}━┻━{5}━┻━{6}━┛'.format(
+                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
+                                '━'*10))
+                except Exception as e:
+                    FILE_REPORT.append(e)
+        else:
+            print('STA NOT CONNECTED')
+            FILE_REPORT.append('STA NOT CONNECTED')
+        # STA (NETSCAN)
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK STA SCAN', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        net_scan_list = dev.cmd(_CMDDICT_['NET_SCAN'], silent=True, rtn_resp=True)
+        print('=' * 110)
+        FILE_REPORT.append('=' * 110)
+        print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+            'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
+        FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+            'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
+        print('=' * 110)
+        FILE_REPORT.append('=' * 110)
+        for netscan in net_scan_list:
+            auth = AUTHMODE_DICT[netscan[4]]
+            vals = hexlify(netscan[1]).decode()
+            bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
+            print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+                netscan[0].decode(), bssid , netscan[2], netscan[3],
+                auth, str(netscan[5])))
+            FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
+                netscan[0].decode(), bssid , netscan[2], netscan[3],
+                auth, str(netscan[5])))
+        print('\n')
+        FILE_REPORT.append('\n')
+        # AP (APSTAT)
+        print('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK AP IF CONFIG', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK AP IF CONFIG', '='*10))
+        apstat = dev.cmd(_CMDDICT_['APSTAT'], silent=True, rtn_resp=True)
+        print('\n')
+        FILE_REPORT.append('\n')
+        if len(apstat) > 0:
+            auth = AUTHMODE_DICT[int(apstat[-2])]
+            print('AP INFO:')
+            print('┏{0}━┳━{1}━┳━{2}━┳━{3}━┓'.format(
+                            '━'*20, '━'*20, '━'*20, '━'*20))
+            print('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
+                'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
+            print('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
+                *apstat[:-2], auth))
+            print('┣{0}━╋━{1}━╋━{2}━╋━{3}━┫'.format(
+                            '━'*20, '━'*20, '━'*20, '━'*20))
+            print('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
+                'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
+            try:
+                print('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
+                    *apstat[-1]))
+                print('┗{0}━┻━{1}━┻━{2}━┻━{3}━┛'.format(
+                            '━'*20, '━'*20, '━'*20, '━'*20))
+            except Exception as e:
+                print(e)
+                pass
+            FILE_REPORT.append('AP INFO:')
+            FILE_REPORT.append('┏{0}━┳━{1}━┳━{2}━┳━{3}━┓'.format(
+                            '━'*20, '━'*20, '━'*20, '━'*20))
+            FILE_REPORT.append('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
+                'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
+            FILE_REPORT.append('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
+                *apstat[:-2], auth))
+            FILE_REPORT.append('┣{0}━╋━{1}━╋━{2}━╋━{3}━┫'.format(
+                            '━'*20, '━'*20, '━'*20, '━'*20))
+            FILE_REPORT.append('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
+                'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
+            try:
+                FILE_REPORT.append('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
+                    *apstat[-1]))
+                FILE_REPORT.append('┗{0}━┻━{1}━┻━{2}━┻━{3}━┛'.format(
+                            '━'*20, '━'*20, '━'*20, '━'*20))
+            except Exception as e:
+                FILE_REPORT.append(e)
+                pass
+
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        # AP (APSCAN)
+        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'NETWORK AP SCAN', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        apscan_cmd = _CMDDICT_['AP_SCAN']
+        if apstat[:-2][0] != 0:
+            if dev.dev_platform != 'esp8266':
+
+                ap_scan_list = dev.cmd(apscan_cmd, silent=True, rtn_resp=True)
+                if isinstance(ap_scan_list, list):
+                    if len(ap_scan_list) > 0:
+                        ap_devices = ap_scan_list
+                        print('Found {} devices:'.format(len(ap_devices)))
+                        FILE_REPORT.append('Found {} devices:'.format(len(ap_devices)))
+                        for cdev in ap_devices:
+                            bytdev = hexlify(cdev[0]).decode()
+                            mac_ad = ':'.join([bytdev[i:i+2] for i in range(0, len(bytdev),
+                                                                            2)])
+                            print('MAC: {}'.format(mac_ad))
+                            FILE_REPORT.append('MAC: {}'.format(mac_ad))
+                    else:
+                        print('No device found')
+                        FILE_REPORT.append('No device found')
+                else:
+                    print('No device found')
+                    FILE_REPORT.append('No device found')
+            else:
+                print('ESP8266 NOT SUPPORTED')
+                FILE_REPORT.append('ESP8266 NOT SUPPORTED')
+        else:
+            print('AP DISABLED')
+            FILE_REPORT.append('AP DISABLED')
+        # CAT 'BOOT.PY'
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'boot.py CONTENT', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        dev.cmd('from upysh import *', silent=True)
+        boot = dev.cmd("cat('boot.py')", silent=True, long_string=True, rtn_resp=True)
+        print(boot)
+        FILE_REPORT.append(boot)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # CAT 'MAIN.PY'
+
+        print('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'main.py CONTENT', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        mainpy = dev.cmd("cat('main.py');gc.collect()", silent=True, long_string=True,
+                         rtn_resp=True)
+        print(mainpy)
+        FILE_REPORT.append(mainpy)
+        print('\n')
+        FILE_REPORT.append('\n')
+        # CAT 'ERROR.LOG'
+
+        print('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'error.log CONTENT', '='*10))
+        print('\n')
+        FILE_REPORT.append('\n')
+        is_err_log = dev.cmd("import uos;uos.listdir('/')", silent=True, rtn_resp=True)
+        if 'error.log' in is_err_log:
+            try:
+
+                errlog = dev.cmd("cat('error.log');gc.collect()",
+                                 silent=True, long_string=True, rtn_resp=True)
+
+                print(errlog)
+                FILE_REPORT.append(errlog)
+            except Exception as e:
+                pass
+        else:
+            print('error.log NOT FOUND')
+            FILE_REPORT.append('error.log NOT FOUND')
+        print('\n')
+        FILE_REPORT.append('\n')
+        if sd_ismounted:
+            print('Looking for error.log in SD:')
+            print('\n')
+            FILE_REPORT.append('\n')
+
+            is_err_log = dev.cmd("import uos;uos.listdir('/sd')", silent=True,
+                                 rtn_resp=True)
+            if 'error.log' in is_err_log:
+                try:
+
+                    errlog = dev.cmd("cat('/sd/error.log');gc.collect()",
+                                     silent=True, long_string=True, rtn_resp=True)
+                    print(errlog)
+                    FILE_REPORT.append(errlog)
+                    print('\n')
+                    FILE_REPORT.append('\n')
+                except Exception as e:
+                    pass
+            else:
+                print('error.log NOT FOUND')
+                FILE_REPORT.append('error.log NOT FOUND')
+
+        # HW
+        # PINS STATE
+        print('\n')
+        FILE_REPORT.append('\n')
+        print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '='*10, 'PINS STATE', '='*10))
+        pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
+        if dev.dev_platform == 'esp8266':
+            pinlist = "[0,2,4,5,12,13,14,15]"
+        machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
+        status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
+        pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
+            pinlist, machine_pin, status)
+
+        pin_dict = dev.cmd(pin_status_cmd, silent=True, rtn_resp=True)
+        pin_list = list(pin_dict.keys())
+        pin_list.sort()
+        for key in pin_list:
+            if pin_dict[key] == 1:
+                print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+                FILE_REPORT.append(
+                    '{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
+            else:
+                print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+                FILE_REPORT.append(
+                    '{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
+        print('\n')
+        FILE_REPORT.append('\n')
+
+        tdiff = time.time()-t0
+        print('{:<10} {} {:>10}'.format(
+            '*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
+        FILE_REPORT.append('{:<10} {} {:>10}'.format(
+            '*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
+        print('TOTAL TIME: {} s'.format(round(tdiff, 2)))
+        FILE_REPORT.append('TOTAL TIME: {} s'.format(round(tdiff, 2)))
+
+        if save_rep:
+            name_file = 'upyd_{}_{}_report.txt'.format(
+                upy_id, datetime.now().strftime("%m-%d-%Y_at_%H-%M-%S"))
+            if name_rep is not None:
+                name_file = "{}.txt".format(name_rep)
+            with open(name_file, 'w') as rfile:
+                for line in FILE_REPORT:
+                    if isinstance(line, str):
+                        rfile.write(line)
+                        rfile.write('\n')
+                    else:
+                        rfile.write("{}".format(line))
+                        rfile.write('\n')
+        if args.rst:
+            dev.reset(reconnect=False)
 
 
 def get_error_log(args):
@@ -695,6 +1391,9 @@ def debugging_action(args, **kargs):
 
     elif args.m == 'timeit':
         timeit_script(args)
+
+    elif args.m == 'diagnose':
+        diagnose(args)
 
     elif args.m == 'errlog':
         get_error_log(args)
