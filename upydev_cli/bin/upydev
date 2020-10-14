@@ -36,19 +36,7 @@ from upydevice import W_UPYDEVICE, BASE_WS_DEVICE
 from upydevice.phantom import UOS
 from ipaddress import ip_address
 from upydevice import check_device_type, Device
-from upydev.gencommands import gen_command
-from upydev.wlancommands import wlan_command
-from upydev.sdcommands import sd_command
-from upydev.prototypecommands import prototype_command
 from upydev.helpinfo import HELP_INFO_ARG, see_help
-from upydev.devicemanagement import DEVICE_MANAGEMENT_HELP, devicemanagement_action
-from upydev.fileio import FILEIO_HELP
-from upydev.firmwaretools import FIRMWARE_HELP, firmwaretools_action
-from upydev.keygen import KEYGEN_HELP, keygen_action
-from upydev.repls import REPLS_HELP, repl_action
-from upydev.shellrepls import SHELL_REPLS_HELP, shell_repl_action
-from upydev.debugging import DEBUGGING_HELP, debugging_action
-from upydev.groupmode import GROUP_MODE_HELP
 
 UPYDEV_PATH = upydev.__path__[0]
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
@@ -3532,6 +3520,7 @@ class UPYDEVICE:
 # UPYDEV MODES:
 # HELP
 if args.m == 'h' or args.m == 'help':
+    from upydev.helpinfo import HELP_INFO_ARG
     print(parser.version)
     print(parser.description, end='\n\n')
     print("usage: " + parser.usage.replace('%(prog)s', upydev.name), end='\n\n')
@@ -3545,27 +3534,35 @@ if args.m in help_actions:
                 args.m in SD_UTILS_COMMANDS,
                 args.m in PROTOTYPE_COMMANDS]):
         if args.m == 'dm':
+            from upydev.devicemanagement import DEVICE_MANAGEMENT_HELP
             print(DEVICE_MANAGEMENT_HELP)
             sys.exit()
         elif args.m == 'fio':
+            from upydev.fileio import FILEIO_HELP
             print(FILEIO_HELP)
             sys.exit()
         elif args.m == 'fw':
+            from upydev.firmwaretools import FIRMWARE_HELP
             print(FIRMWARE_HELP)
             sys.exit()
         elif args.m == 'kg':
+            from upydev.keygen import KEYGEN_HELP
             print(KEYGEN_HELP)
             sys.exit()
         elif args.m == 'rp':
+            from upydev.repls import REPLS_HELP
             print(REPLS_HELP)
             sys.exit()
         elif args.m == 'sh':
+            from upydev.shellrepls import SHELL_REPLS_HELP
             print(SHELL_REPLS_HELP)
             sys.exit()
         elif args.m == 'db':
+            from upydev.debugging import DEBUGGING_HELP
             print(DEBUGGING_HELP)
             sys.exit()
         elif args.m == 'gp':
+            from upydev.groupmode import GROUP_MODE_HELP
             print(GROUP_MODE_HELP)
             sys.exit()
 
@@ -3574,6 +3571,7 @@ if args.m not in keywords_mode and args.m.startswith('%'):
     see_help(action)
     sys.exit()
 
+_dev_name = None
 # @ ENTRY
 if "@" in args.m:
     args.m, entry_point = args.m.split('@')
@@ -3582,7 +3580,8 @@ if "@" in args.m:
 
 # DEVICE MANAGEMENT
 if args.m in DEVICE_MANAGEMENT_ACTIONS:
-    devicemanagement_action(args)
+    from upydev.devicemanagement import devicemanagement_action
+    devicemanagement_action(args, device=_dev_name)
 
 # UPYDEV LOOKS FOR UPYDEV_.CONFIG FILE
 if args.t is None:
@@ -3985,6 +3984,7 @@ elif args.m == 'd_sync':
 # REPL ACTIONS
 
 elif args.m in REPL_ACTIONS:
+    from upydev.repls import repl_action
     if vars(args)['@'] is not None:
         dev_name = entryp
     else:
@@ -3999,6 +3999,7 @@ elif args.m == 'install':
     sys.exit()
 
 elif args.m in FIRMWARE_ACTIONS:
+    from upydev.firmwaretools import firmwaretools_action
     if vars(args)['@'] is not None:
         dev_name = entryp
     else:
@@ -4009,6 +4010,7 @@ elif args.m in FIRMWARE_ACTIONS:
 # DEBUGGING ACTIONS
 
 elif args.m in DEBUGGING_ACTIONS:
+    from upydev.debugging import debugging_action
     if vars(args)['@'] is not None:
         dev_name = entryp
     else:
@@ -4038,6 +4040,7 @@ elif args.m == 'update_upyutils':
 
 # KEYGEN ACTIONS
 elif args.m in KEYGEN_ACTIONS:
+    from upydev.keygen import keygen_action
     if vars(args)['@'] is not None:
         dev_name = entryp
     else:
@@ -4061,6 +4064,7 @@ elif args.m in KEYGEN_ACTIONS:
 # SHELL-REPL ACTIONS
 
 elif args.m in SHELL_REPL_ACTIONS:
+    from upydev.shellrepls import shell_repl_action
     if vars(args)['@'] is not None:
         dev_name = entryp
     else:
@@ -4071,6 +4075,7 @@ elif args.m in SHELL_REPL_ACTIONS:
 # * GENERAL COMMANDS *
 # INFO :
 elif args.m in GENERAL_COMMANDS:
+    from upydev.gencommands import gen_command
     gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
                 ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
                 init=True, ssl=args.wss, auth=args.wss)
@@ -4078,6 +4083,7 @@ elif args.m in GENERAL_COMMANDS:
 #############################################
 # WLAN UTILS COMMANDS
 elif args.m in WLAN_UTILS_COMMANDS:
+    from upydev.wlancommands import wlan_command
     wlan_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
                  init=True, ssl=args.wss, auth=args.wss)
 
@@ -4085,6 +4091,7 @@ elif args.m in WLAN_UTILS_COMMANDS:
 
 # SD COMMANDS
 elif args.m in SD_UTILS_COMMANDS:
+    from upydev.sdcommands import sd_command
     sd_command(args.m, args.t, args.p, po=args.po,
                init=True, ssl=args.wss, auth=args.wss)
 
@@ -4092,6 +4099,7 @@ elif args.m in SD_UTILS_COMMANDS:
 
 # PROTOTYPE COMMANDS
 elif args.m in PROTOTYPE_COMMANDS:
+    from upydev.prototypecommands import prototype_command
     prototype_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
                       init=True, ssl=args.wss, auth=args.wss)
 

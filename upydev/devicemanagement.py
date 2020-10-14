@@ -99,7 +99,7 @@ def devicemanagement_action(args, **kargs):
         for varg in VALS_N_ARGS:
             if varg in kargs and varg not in KEY_N_ARGS[args.m]:
                 kargs.pop(varg)
-
+    _dev_name = kargs.get("device")
     # CONFIG:
     if args.m == 'config':
         if args.t is None or args.p is None:
@@ -324,5 +324,5 @@ def devicemanagement_action(args, **kargs):
             see_help(args.c)
         else:
             see_help(args.m)
-        sys.exit()
+
     sys.exit()

@@ -56,11 +56,11 @@ SHELL_REPLS_HELP = """
                "upydev make_group -g -f UPY_G -devs foo_device UUID PASS")
                The device can be accessed as "upydev ble@foo_device"
 
-        - jupyterc: to run MicroPython upydevice kernel for jupyter console, CTRL-D to exit, %%lsmagic to see magic commands and
-                    how to connect to a device either WebREPL (%%websocketconnect) or Serial connection (%%serialconnect).
+        - jupyterc: to run MicroPython upydevice kernel for jupyter console, CTRL-D to exit,
+                    %%lsmagic to see magic commands and how to connect to a
+                    device either WebREPL (%%websocketconnect) or Serial connection (%%serialconnect).
                     Hit tab to autcomplete magic commands, and MicroPython/Python code.
                     (This needs jupyter and MicroPython upydevice kernel to be installed)"""
-
 
 
 def ssl_wrepl(args, device):
