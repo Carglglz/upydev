@@ -317,7 +317,7 @@ parser.add_argument(
 parser.add_argument("-r", help='reset on exit',
                     default=False, action='store_true')
 parser.add_argument("-buff", help='Ble max writing length to use',
-                    default=100)
+                    default=100, type=int)
 args = parser.parse_args()
 
 
