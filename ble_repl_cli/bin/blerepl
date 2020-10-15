@@ -351,15 +351,18 @@ if not basedev.connected:
 # basedev.get_services()
 if args.dev is not None:
     basedev.name = args.dev
+    unique_id = args.dev
+else:
+    kbi = basedev.kbi()
+    uid = basedev.wr_cmd("from machine import unique_id; unique_id()",
+                         silent=True, rtn_resp=True)
+    try:
+        unique_id = hexlify(uid).decode()
+    except Exception as e:
+        unique_id = uid
 
 time.sleep(0.2)
 kbi = basedev.kbi()
-uid = basedev.wr_cmd("from machine import unique_id; unique_id()",
-                     silent=True, rtn_resp=True)
-try:
-    unique_id = hexlify(uid).decode()
-except Exception as e:
-    unique_id = uid
 devp = basedev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
 dev_platform = devp
 if args.v:
