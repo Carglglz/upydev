@@ -316,12 +316,14 @@ parser.add_argument(
     "-dev", help='device name, default unique_id', required=False)
 parser.add_argument("-r", help='reset on exit',
                     default=False, action='store_true')
+parser.add_argument("-buff", help='Ble max writing length to use',
+                    default=100)
 args = parser.parse_args()
 
 
 # HANDSHAKE
 if args.t != "auto" and "@" not in args.t:
-    basedev = BASE_BLE_DEVICE(args.t, name=args.dev)
+    basedev = BASE_BLE_DEVICE(args.t, name=args.dev, lenbuff=args.buff)
 else:
     if args.t == "auto":
         devs = []
@@ -330,7 +332,7 @@ else:
                 devs = ble_scan()
             except KeyboardInterrupt:
                 sys.exit()
-        basedev = BASE_BLE_DEVICE(devs[0])
+        basedev = BASE_BLE_DEVICE(devs[0], lenbuff=args.buff)
     elif "@" in args.t:
         devs = []
         while len(devs) == 0:
@@ -341,7 +343,7 @@ else:
         bdev = args.t.split("@")[1]
         for dev in devs:
             if bdev in dev.name:
-                basedev = BASE_BLE_DEVICE(devs[0])
+                basedev = BASE_BLE_DEVICE(devs[0], lenbuff=args.buff)
                 break
 
 basedev.connect(show_servs=args.v, debug=args.v)
