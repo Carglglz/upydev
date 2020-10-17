@@ -20,7 +20,8 @@ import subprocess
 import shlex
 import webbrowser
 import argparse
-# import shutil
+import shutil
+import upydev
 # from upydev import upip_host
 from upydev.style_customs import one_darkStyle
 from datetime import datetime, date, timedelta
@@ -131,9 +132,9 @@ class BLE_REPL_server:
     async def as_paste_buff(self, cmd, **kargs):
         # print('Here')
         long_command = cmd
-        await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART TX'], b'\x05')
+        await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART RX'], b'\x05')
         await asyncio.sleep(1, loop=self.dev.loop)
-        # await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART TX'], b'\x04')
+        # await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART RX'], b'\x04')
         # print(long_command)
         lines = long_command.split('\n')
         # print(lines)
@@ -141,11 +142,11 @@ class BLE_REPL_server:
             self.flush_conn()
             await asyncio.sleep(0.2, loop=self.dev.loop)
             data = bytes(line + '\n', 'utf-8')
-            if len(data) > 100:
-                for i in range(0, len(data), 100):
-                    await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART TX'], data[i:i+100])
+            if len(data) > self.dev.len_buffer:
+                for i in range(0, len(data), self.dev.len_buffer):
+                    await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART RX'], data[i:i+self.dev.len_buffer])
             else:
-                await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART TX'], data)
+                await self.dev.ble_client.write_gatt_char(self.dev.writeables['Nordic UART RX'], data)
         output = await self.dev.as_wr_cmd('\x04', **kargs)
 
         return output
@@ -253,7 +254,7 @@ class BLE_TOOL:
         print('\n')
         self.ble_cp.sh_repl("f.close()")
 
-    def put(self, src, chunk_size=256, abs_path=True): # from Pyboard.py
+    def put(self, src, chunk_size=256, abs_path=True):  # from Pyboard.py
         self.get_pb()
         sz = os.stat(src)[6]
         cnt = 0
@@ -280,9 +281,9 @@ class BLE_TOOL:
                     self.ble_cp.sh_repl('w(' + repr(data) + ')', silent=True)
                     # time.sleep(0.05)
                 else:
-                    if len(data) > 100:
-                        for i in range(0, len(data), 100):
-                            self.ble_cp.sh_repl('w(' + repr(data[i:i+100]) + ')',
+                    if len(data) > self.ble_cp.dev.len_buffer:
+                        for i in range(0, len(data), self.ble_cp.dev.len_buffer):
+                            self.ble_cp.sh_repl('w(' + repr(data[i:i+self.ble_cp.dev.len_buffer]) + ')',
                                                 silent=True)
                     else:
                         self.ble_cp.sh_repl('w(' + repr(data) + ')',
@@ -347,6 +348,8 @@ else:
                 break
 
 basedev.connect(show_servs=args.v, debug=args.v)
+if basedev.name == 'P8':
+    basedev.len_buffer = 20  # FIXME: INCREASE MTU SIZE IN NRF52
 if not basedev.connected:
     print('Device not reachable, try again.')
     sys.exit()
@@ -365,6 +368,7 @@ else:
 
 time.sleep(0.2)
 kbi = basedev.kbi()
+time.sleep(0.2)
 devp = basedev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
 dev_platform = devp
 if args.v:
@@ -374,6 +378,7 @@ if basedev.name is None:
 # ble_cp = SERIAL_REPL_server(dev=espdev, dev_id=unique_id)
 # shr_htool = SERIAL_TOOL(sh_srepl=ble_cp)
 print('BLE SHELL-REPL connected')
+time.sleep(0.2)
 basedev.banner()
 # ble_cp.sh_repl("\x02", banner=True)
 # ble_cp.flush()
@@ -449,7 +454,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
                     'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle',
-                    'upy-config', 'tig', 'get_services']
+                    'upy-config', 'tig', 'get_services', 'pytest']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -472,10 +477,11 @@ if shell_mode['S']:
 else:
     prompt['p'] = shell_prompt['s']
     shell_mode['S'] = True
-    ble_cp.sh_repl('import gc;import os;from upysh import *;gc.collect();\
-    print(">>> ");print(">>> ")\r',
-                    silent=True)
+    time.sleep(0.5)
+    ble_cp.sh_repl('import gc;import os;', silent=True)
+    # ble_cp.sh_repl('from upysh import *;print(">>> ");', silent=True)
     time.sleep(1)
+    ble_cp.sh_repl('from upysh import *;print(">>> ");', silent=True)
     ble_cp.flush_conn()
     # ble_cp.flush_conn()
     ble_cp.dev.output = None
@@ -1282,7 +1288,7 @@ def custom_sh_cmd(cmd_inp):
         RAM = send_custom_sh_cmd(
             'from micropython import mem_info;mem_info()')
 
-        mem_info = RAM.replace('GC', '\nGC').replace('No', '\nNo').splitlines()[1]
+        mem_info = RAM.replace('\n', '').replace('GC', '\nGC').replace('No', '\nNo').splitlines()[1]
         mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
                           1]) for elem in mem_info[4:].split(',')}
         print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memmory',
@@ -1510,7 +1516,7 @@ def custom_sh_cmd(cmd_inp):
                 else:
                     print('- {}'.format(file))
                     # ble_htool.start_SOC()
-                    ble_htool.get(file)
+                    ble_htool.get(file, chunk_size=ble_cp.dev.len_buffer)
                     # ble_cp.sh_repl("print('Done!')")
                     time.sleep(0.2)
                     ble_htool.stop_SOC()
@@ -1567,7 +1573,7 @@ def custom_sh_cmd(cmd_inp):
                 else:
                     print('- {}'.format(file))
                     # ble_htool.start_SOC()
-                    ble_htool.put(file)
+                    ble_htool.put(file, chunk_size=ble_cp.dev.len_buffer)
                     # ble_cp.sh_repl("print('Done!')")
                     time.sleep(0.2)
                     ble_htool.stop_SOC()
@@ -1934,6 +1940,34 @@ def custom_sh_cmd(cmd_inp):
 
         except Exception as e:
             print('Indicate a ".py" file to view')
+
+    if cmd_inp.split()[0] == 'pytest':
+        try:
+            # setup conftest.py
+            if 'setup' in cmd_inp.split():
+                shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
+                shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
+            else:
+                ble_cp.dev.disconnect()
+                pytest_cmd = shlex.split(cmd_inp)
+                if '--dev' not in pytest_cmd and '-h' not in pytest_cmd:
+                    pytest_cmd += ['--dev', host_name]
+                old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+                def preexec_function(action=old_action):
+                    signal.signal(signal.SIGINT, action)
+                try:
+                    pytest = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
+                    signal.signal(signal.SIGINT, old_action)
+                except Exception as e:
+                    print(e)
+                ble_cp.dev.connect()
+                time.sleep(0.2)
+                ble_cp.sh_repl('import os;import gc;from upysh import *', silent=True)
+                ble_cp.flush_conn()
+        except Exception as e:
+            print(e)
+            pass
 #
 #     if cmd_inp.split(' ')[0] == 'rcat':
 #         try:
@@ -2739,7 +2773,7 @@ def custom_sh_cmd(cmd_inp):
                     time.sleep(0.5)
                 elif cmd_inp.split(' ')[1] == '-hr':
                     print('Device Hard Reset...')
-                    ble_cp.dev.write_char_raw(key='Nordic UART TX', data='import machine;machine.reset()\r')
+                    ble_cp.dev.write_char_raw(key='Nordic UART RX', data='import machine;machine.reset()\r')
                     time.sleep(1)
                     print('Done!')
             else:
@@ -3713,7 +3747,7 @@ def toggle_status_ram_msg(event):
             mem_show_rp['call'] = True
             RAM = output
             try:
-                mem_info = RAM.replace('GC', '\nGC').replace('No', '\nNo').splitlines()[1]
+                mem_info = RAM.replace('\n', '').replace('GC', '\nGC').replace('No', '\nNo').splitlines()[1]
                 mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
                                   1]) for elem in mem_info[4:].split(',')}
                 used_mem = mem['used']/1024
@@ -3836,7 +3870,7 @@ while repl:
                             ble_cp.sh_repl('pwd', silent=True)
                             if ble_cp.dev.output is not None:
                                 # print(ble_cp.dev.output)
-                                devpath = ble_cp.dev.output
+                                devpath = ble_cp.dev.output.replace('\n', '')
                                 dev_path['p'] = devpath
                                 if devpath == '/':
                                     devpath = ' '

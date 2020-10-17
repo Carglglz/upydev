@@ -656,9 +656,7 @@ parser.add_argument(
     "-dev", help='device name, default unique_id', required=False)
 parser.add_argument("-r", help='reset on exit',
                     default=False, action='store_true')
-parser.add_argument("-nem",
-                    help='No encryption mode, this bypass handshake and does not allow encryption afterwards',
-                    default=False, action='store_true')
+
 args = parser.parse_args()
 
 # HANDSHAKE
@@ -2336,7 +2334,7 @@ def custom_sh_cmd(cmd_inp):
                     kw_cmd = cmd_inp.replace('update', 'get latest').split()
                     print('Updating device firmware...')
                 md = ' '.join(kw_cmd[1:])
-                fw_cmd = 'fw -md {} -b {}'.format(md, dev_p)
+                fw_cmd = 'fwr -md {} -@ {}'.format(md, args.dev)
                 upy_fw_cmd = 'upydev ' + fw_cmd
                 # print(upy_fw_cmd)
                 get_fw_cmd = shlex.split(upy_fw_cmd)
@@ -2345,7 +2343,7 @@ def custom_sh_cmd(cmd_inp):
                     if 'update' in cmd_inp:
                         kw_cmd = cmd_inp.replace('update', 'list latest').split()
                         md = ' '.join(kw_cmd[1:])
-                        fw_cmd = 'fw -md {} -b {}'.format(md, dev_p)
+                        fw_cmd = 'fwr -md {} -@ {}'.format(md, args.dev)
                         upy_fw_cmd = 'upydev ' + fw_cmd
                         # print(upy_fw_cmd)
                         get_fw_cmd = shlex.split(upy_fw_cmd)
@@ -2360,85 +2358,30 @@ def custom_sh_cmd(cmd_inp):
                             try:
                                 print('File to flash: {}'.format(fw_file))
                                 resp = input('Do yo wish to continue? (y/n): ')
-                                if dev_platform != 'pyboard':
-                                    if resp == 'y':
-                                        bin_file = fw_file
-                                        shr_cp.enable_wrepl_io()
-                                        upy_fw_cmd = 'upydev flash -port {} -f {}'.format(args.p, bin_file)
-                                        # print(upy_fw_cmd)
-                                        flash_fw_cmd = shlex.split(upy_fw_cmd)
+                                # if dev_platform != 'pyboard':
+                                if resp == 'y':
+                                    bin_file = fw_file
+                                    shr_cp.enable_wrepl_io()
+                                    upy_fw_cmd = 'upydev flash -@ {} -f {} -i'.format(args.dev, bin_file)
+                                    # print(upy_fw_cmd)
+                                    flash_fw_cmd = shlex.split(upy_fw_cmd)
 
-                                        try:
-                                            fw_flash = subprocess.call(flash_fw_cmd)
-                                        except Exception as e:
-                                            # shr_cp.enable_wrepl_io()
-                                            print(e)
-                                        time.sleep(0.2)
-                                        while not shr_cp.is_reachable():
-                                            time.sleep(0.2)
-                                        shr_cp.enable_wrepl_io()
-                                        shr_cp.flush_conn()
-                                        shr_cp.flush_conn()
-                                        time.sleep(1)
-                                        shr_cp.sh_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
-                                        shr_cp.flush_conn()
-                                    else:
-                                        print('Operation cancelled')
-                                elif dev_platform == 'pyboard':
-                                    if resp == 'y':
-                                        bin_file = fw_file
+                                    try:
+                                        fw_flash = subprocess.call(flash_fw_cmd)
+                                    except Exception as e:
                                         # shr_cp.enable_wrepl_io()
-                                        # print('Warning: Unmount the pyboard first')
-                                        # dfu_mode = input('Put the pyboard in DFU mode, need help? (y/n): ')
-                                        # if dfu_mode == 'y':
-                                        #     webbrowser.open('https://github.com/micropython/micropython/wiki/Pyboard-Firmware-Update')
-                                        # else:
-                                        #     pass
-                                        dfu_mode = input('Warning: Unmount the pyboard first if mounted (but DO NOT DISCONNECT), press any key to continue.')
-                                        print('Enabling DFU mode in pyboard, DO NOT DISCONNECT...')
-                                        shr_cp.send_message('import pyb;pyb.bootloader()\r')
-                                        shr_cp.enable_wrepl_io()
-                                        flash_tool = input('Select a tool to flash pydfu.py/dfu-util: (0/1) ')
-                                        if flash_tool == '0':
-                                            print('Using pydfu.py...')
-                                            pydfu_fw_cmd = 'pydfu -u {}'.format(bin_file)
-                                            # print(upy_fw_cmd)
-                                            flash_fw_cmd = shlex.split(pydfu_fw_cmd)
-
-                                            try:
-                                                fw_flash = subprocess.call(flash_fw_cmd)
-                                            except Exception as e:
-                                                # shr_cp.enable_wrepl_io()
-                                                print(e)
-                                            print('Flashing firmware finished successfully!')
-                                            time.sleep(1)
-                                            resp = input('Press any key to continue')
-                                        else:
-                                            print('Using dfu-util...')
-                                            dfu_fw_cmd = 'sudo dfu-util --alt 0 -D {}'.format(bin_file)
-                                            # print(upy_fw_cmd)
-                                            flash_fw_cmd = shlex.split(dfu_fw_cmd)
-
-                                            try:
-                                                fw_flash = subprocess.call(flash_fw_cmd)
-                                            except Exception as e:
-                                                # shr_cp.enable_wrepl_io()
-                                                print(e)
-                                            print('Flashing firmware finished successfully, RESET the pyboard now')
-                                            time.sleep(1)
-                                            resp = input('Press any key to continue')
-
+                                        print(e)
+                                    time.sleep(0.2)
+                                    while not shr_cp.is_reachable():
                                         time.sleep(0.2)
-                                        while not shr_cp.is_reachable():
-                                            time.sleep(0.2)
-                                        shr_cp.enable_wrepl_io()
-                                        shr_cp.flush_conn()
-                                        shr_cp.flush_conn()
-                                        time.sleep(1)
-                                        shr_cp.sh_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
-                                        shr_cp.flush_conn()
-                                    else:
-                                        print('Operation cancelled')
+                                    shr_cp.enable_wrepl_io()
+                                    shr_cp.flush_conn()
+                                    shr_cp.flush_conn()
+                                    time.sleep(1)
+                                    shr_cp.sh_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
+                                    shr_cp.flush_conn()
+                                else:
+                                    print('Operation cancelled')
 
                             except Exception as e:
                                 print(e)
