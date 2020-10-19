@@ -348,7 +348,7 @@ else:
                 break
 
 basedev.connect(show_servs=args.v, debug=args.v)
-if basedev.name == 'P8':
+if basedev.name == 'P8' or basedev.name == 'Pixl.js' or basedev.name == 'PineTime':
     basedev.len_buffer = 20  # FIXME: INCREASE MTU SIZE IN NRF52
 if not basedev.connected:
     print('Device not reachable, try again.')
@@ -356,18 +356,17 @@ if not basedev.connected:
 # basedev.get_services()
 if args.dev is not None:
     basedev.name = args.dev
-    unique_id = args.dev
-else:
-    kbi = basedev.kbi()
-    uid = basedev.wr_cmd("from machine import unique_id; unique_id()",
-                         silent=True, rtn_resp=True)
-    try:
-        unique_id = hexlify(uid).decode()
-    except Exception as e:
-        unique_id = uid
 
 time.sleep(0.2)
 kbi = basedev.kbi()
+time.sleep(0.2)
+uid = basedev.wr_cmd("from machine import unique_id; unique_id()",
+                     silent=True, rtn_resp=True)
+try:
+    unique_id = hexlify(uid).decode()
+except Exception as e:
+    unique_id = uid
+
 time.sleep(0.2)
 devp = basedev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
 dev_platform = devp
@@ -2751,7 +2750,7 @@ def custom_sh_cmd(cmd_inp):
                 cmd_inp = cmd_inp[1:]
             shell_cmd_str = shlex.split(cmd_inp)
             if shell_cmd_str[0] in SHELL_ALIASES:
-                shell_cmd_str[0] = SHELL_ALIASES[shell_cmd_str[0]]
+                shell_cmd_str = SHELL_ALIASES[shell_cmd_str[0]].split() + shell_cmd_str[1:]
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
             def preexec_function(action=old_action):
                 signal.signal(signal.SIGINT, action)

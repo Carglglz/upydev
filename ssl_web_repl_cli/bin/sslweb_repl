@@ -3597,7 +3597,7 @@ def custom_sh_cmd(cmd_inp):
                 cmd_inp = cmd_inp[1:]
             shell_cmd_str = shlex.split(cmd_inp)
             if shell_cmd_str[0] in SHELL_ALIASES:
-                shell_cmd_str[0] = SHELL_ALIASES[shell_cmd_str[0]]
+                shell_cmd_str = SHELL_ALIASES[shell_cmd_str[0]].split() + shell_cmd_str[1:]
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
             def preexec_function(action=old_action):
                 signal.signal(signal.SIGINT, action)
