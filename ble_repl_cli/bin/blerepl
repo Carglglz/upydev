@@ -47,7 +47,9 @@ from prompt_toolkit import print_formatted_text
 from prompt_toolkit.shortcuts import (radiolist_dialog, message_dialog,
                                       input_dialog, yes_no_dialog)
 
-# TODO: EDIT?
+
+_WASPDEV = ["P8", "PineTime", "Pixl.js"]
+_IS_WASPDEV = False
 
 
 def parse_bash_profile():
@@ -348,8 +350,9 @@ else:
                 break
 
 basedev.connect(show_servs=args.v, debug=args.v)
-if basedev.name == 'P8' or basedev.name == 'Pixl.js' or basedev.name == 'PineTime':
+if basedev.name in _WASPDEV:
     basedev.len_buffer = 20  # FIXME: INCREASE MTU SIZE IN NRF52
+    _IS_WASPDEV = True
 if not basedev.connected:
     print('Device not reachable, try again.')
     sys.exit()
@@ -488,6 +491,9 @@ else:
     # frozen_modules['FM'] = ble_cp.dev.output.split()[:-6]
     # ble_cp.flush_conn()
     # ble_cp.flush_conn()
+    if _IS_WASPDEV:
+        time.sleep(0.5)
+        ble_cp.sh_repl('wasp.system.wake()', silent=True)
 #
 #
 # KEYBINDINGS INFO
@@ -2776,10 +2782,13 @@ def custom_sh_cmd(cmd_inp):
                     time.sleep(1)
                     print('Done!')
             else:
-                print('Rebooting device...')
-                ble_cp.dev.reset(silent=True, reconnect=False)
-                time.sleep(1)
-                print('Done!')
+                if ble_cp.dev.is_connected():
+                    print('Rebooting device...')
+                    ble_cp.dev.reset(silent=True, reconnect=False)
+                    time.sleep(1)
+                    print('Done!')
+                else:
+                    print('Cannot Reboot, device disconnected already.')
         else:
             # ble_cp.sh_repl("ssl_client.switch_wrepl()")
             time.sleep(0.5)
@@ -3950,7 +3959,8 @@ while repl:
 
 # sys.exit()
 # EXIT MESSAGE
-if ble_cp.dev.connected:
+if ble_cp.dev.connected and ble_cp.dev.is_connected():
+
     ble_cp.dev.disconnect()
 print('logout')
 if host_name != unique_id:
