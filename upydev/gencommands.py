@@ -4,6 +4,7 @@ import sys
 import ast
 from datetime import datetime, date
 from binascii import hexlify
+import time
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
@@ -166,6 +167,8 @@ def gen_command(cmd, *args, **kargs):
     elif cmd == 'reset':
         dev = Device(*args, **kargs)
         dev.reset(reconnect=False)
+        time.sleep(0.5)
+        dev.disconnect()
         sys.exit()
 
     # KEYBOARD Interrupt
