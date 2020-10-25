@@ -17,7 +17,7 @@ try:
     import usocket as socket
 except ImportError:
     import socket
-import upydev as websocket_helper
+from upydev import websocket_helper
 from upydev import wss_helper_host
 
 # Define to 1 to use builtin "uwebsocket" module of MicroPython

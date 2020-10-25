@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * `filesys_info` --> `df`
   * `fw` --> `fwr`
 - Catching passwords too short for AP configuration
-- Refactor help info organization for easy reading.
+- Refactor help info organisation for easy reading.
 - Refactor device management actions (configuration, groups...)
 - Refactor firmware actions, `-i` option to check firmware and platform match. (from firmware file name)
 ### Added
@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `%` before any command e.g. `%config` display help info about that command.
 - `probe` command to test if a device/group is reachable
 - `scan` command to look for devices (serial [-sr], network [-nt] or ble [-bl])
+- `shl` / `shell`, and `rpl` / `repl` commands works with `@` or `-@` and will detect device type, redirecting to the proper SHELL-REPL / REPL type.
+- `put`, `get` file operations now support indicating file/files/cwd/expression as a second argument, e.g, `upydev put this_file.py`, `upydev put demo_*.py`,  `upydev put fileone.py filetwo.py`, `upydev put cwd -dir lib` ...
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch

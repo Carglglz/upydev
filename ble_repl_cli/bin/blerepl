@@ -2775,6 +2775,8 @@ def custom_sh_cmd(cmd_inp):
             if len(cmd_inp.split(' ')) > 1:
                 if cmd_inp.split(' ')[1] == '-nr':
                     # ble_cp.sh_repl("ssl_client.switch_wrepl()")
+                    if ble_cp.dev.is_connected():
+                        ble_cp.dev.disconnect()
                     time.sleep(0.5)
                 elif cmd_inp.split(' ')[1] == '-hr':
                     print('Device Hard Reset...')

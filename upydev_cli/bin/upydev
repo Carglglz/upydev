@@ -169,7 +169,7 @@ parser = argparse.ArgumentParser(prog=upydev.name,
                                  usage=usag, prefix_chars='-')
 parser.version = '{}: {}'.format(upydev.name, upydev.version)
 parser.add_argument(
-    "m", metavar='ACTION', help=helparg).completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
+    "m", metavar='ACTION', help=helparg, nargs='+').completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
 parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-gg", help='global group flag', required=False,
                     action='store_true')
@@ -332,6 +332,18 @@ parser.add_argument(
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
+if len(args.m) == 1:
+    args.m = args.m[0]
+
+elif len(args.m) == 2:
+    args.m, args.f = args.m
+    if args.f == 'cwd' or '*' in args.f or args.f == '.':
+        args.fre = [args.f]
+
+elif len(args.m) > 2:
+    args.m, args.fre = args.m[0], args.m[1:]
+# print(args.m, args.f, args.fre)
+# sys.exit()
 
 # DEVICE MANAGEMENT ACTIONS
 
@@ -360,6 +372,10 @@ SHELL_REPL_ACTIONS = ['ssl_wrepl', 'ssl', 'sh_srepl', 'shr', 'wssl', 'set_wss',
 
 DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'diagnose', 'errlog',
                      'stream_test', 'sysctl', 'log', 'pytest-setup', 'pytest']
+
+# FILEIO ACTIONS
+
+FILEIO_ACTIONS = ['put', 'get']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -3932,22 +3948,32 @@ if args.m not in keywords_mode:
     sys.exit()
 
 # PUT:
+# FILEIO ACTIONS
 
-elif args.m == 'put':
-    if args.fre is None:
-        put_f(args.t, args.p, rst=args.rst)
+elif args.m in FILEIO_ACTIONS:
+    from upydev.fileio import fileio_action
+    if vars(args)['@'] is not None:
+        dev_name = entryp
     else:
-        put_multiple_f(args.t, args.p)
-    sys.exit()
+        dev_name = _dev_name
+    fileio_action(args, device=dev_name)
+
+
+# elif args.m == 'put':
+#     if args.fre is None:
+#         put_f(args.t, args.p, rst=args.rst)
+#     else:
+#         put_multiple_f(args.t, args.p)
+#     sys.exit()
 
 # GET :
-
-elif args.m == 'get':
-    if args.fre is None:
-        get_f(args.t, args.p)
-    else:
-        get_multiple_f(args.t, args.p)
-    sys.exit()
+#
+# elif args.m == 'get':
+#     if args.fre is None:
+#         get_f(args.t, args.p)
+#     else:
+#         get_multiple_f(args.t, args.p)
+#     sys.exit()
 
 # SYNC :
 
