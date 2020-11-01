@@ -2,12 +2,11 @@
 from upydev.wsio import wstool
 from upydev.serialio import serialtool
 from upydev.bleio import bletool
-from upydevice import check_device_type
-# from upydevice import Device, DeviceNotFound, DeviceException
-# from upydev.helpinfo import see_help
-# import sys
-# import time
-# import os
+from upydev.helpinfo import see_help
+from upydevice import check_device_type, Device
+import upydev
+import os
+import sys
 
 FILEIO_HELP = """
 > FILEIO: Usage '$ upydev ACTION [opts]'
@@ -33,11 +32,42 @@ FILEIO_HELP = """
 """
 
 
-#############################################
-def fileio_action(args, **kargs):
-    dev_name = kargs.get('device')
-    dt = check_device_type(args.t)
+def install_w_upip(args, dt, dev_name):
+    if args.f is None:
+        see_help(args.m)
+        sys.exit()
+    else:
+        if dt == 'WebSocketDevice':
+            dev = Device(args.t, args.p, init=True, ssl=args.wss,
+                         auth=args.wss)
+            print('Installing {} in {} ...'.format(args.f, dev_name))
+            dev.wr_cmd("import upip;upip.install('{}');True".format(args.f),
+                       silent=True, long_string=True)
+            if 'Error' not in dev.response:
+                print(dev.response.replace('(\x02ng', 'Installing').replace('True\n', ''),
+                      end='')
+                result = dev.cmd('_', silent=True, rtn_resp=True)
+                if result:
+                    print('Done!')
+            else:
+                print(dev.response.replace('True\n', ''), end='')
+            dev.disconnect()
+            sys.exit()
 
+        elif dt == 'SerialDevice':
+            serialtool(args, dev_name)
+
+        elif dt == 'BleDevice':
+            bletool(args, dev_name)
+
+
+def update_upyutils(args, dt, dev_name):
+    print('Updating device upyutils...')
+    utils_dir = os.path.join(upydev.__path__[0], 'upyutils_dir')
+    args.m = 'put'
+    args.fre = [os.path.join(utils_dir, util) for util in os.listdir(utils_dir)
+                if util.endswith('.py')]
+    args.dir = 'lib'
     if dt == 'WebSocketDevice':
         wstool(args, dev_name)
 
@@ -46,3 +76,23 @@ def fileio_action(args, **kargs):
 
     elif dt == 'BleDevice':
         bletool(args, dev_name)
+
+
+#############################################
+def fileio_action(args, **kargs):
+    dev_name = kargs.get('device')
+    dt = check_device_type(args.t)
+    if args.m == 'put' or args.m == 'get':
+        if dt == 'WebSocketDevice':
+            wstool(args, dev_name)
+
+        elif dt == 'SerialDevice':
+            serialtool(args, dev_name)
+
+        elif dt == 'BleDevice':
+            bletool(args, dev_name)
+    elif args.m == 'update_upyutils':
+        update_upyutils(args, dt, dev_name)
+
+    elif args.m == 'install':
+        install_w_upip(args, dt, dev_name)

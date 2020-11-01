@@ -146,7 +146,8 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
-                 'scan', 'repl', 'rpl', 'shell', 'shl']
+                 'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
+                 'rsa', 'wr', 'keygen']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -332,17 +333,53 @@ parser.add_argument(
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
+multiple_args_fio = ['put', 'get', 'sync', 'install', 'd_sync']
+multiple_args_fw = ['fwr', 'flash', 'mpyx']
+
 if len(args.m) == 1:
     args.m = args.m[0]
 
 elif len(args.m) == 2:
-    args.m, args.f = args.m
-    if args.f == 'cwd' or '*' in args.f or args.f == '.':
-        args.fre = [args.f]
+    second_arg = args.m[1]
+    args.m = args.m[0]
+    if args.m in multiple_args_fio:
+        args.f = second_arg
+        if args.f == 'cwd' or '*' in args.f or args.f == '.':
+            args.fre = [args.f]
+    elif args.m in multiple_args_fw:
+        if args.m == 'fwr':
+            args.md = [second_arg]
+        elif args.m == 'flash' or args.m == 'mpyx':
+            args.f = second_arg
+    elif args.m == 'kg':
+        if second_arg == 'rsa':
+            args.m = 'gen_rsakey'
+        elif second_arg == 'wr':
+            args.m = 'rf_wrkey'
+        elif second_arg == 'ssl':
+            args.m = 'sslgen_key'
+    elif args.m == 'sd':
+        if second_arg == 'enable':
+            args.m == 'sd_enable'
+        elif second_arg == 'init':
+            args.m == 'sd_init'
+        elif second_arg == 'deinit':
+            args.m == 'sd_deinit'
+        elif second_arg == 'auto':
+            args.m == 'sd_auto'
 
 elif len(args.m) > 2:
-    args.m, args.fre = args.m[0], args.m[1:]
-# print(args.m, args.f, args.fre)
+    rest_args = args.m[1:]
+    args.m = args.m[0]
+    if args.m in multiple_args_fio:
+         args.fre = rest_args
+    elif args.m in multiple_args_fw:
+        if args.m == 'fwr':
+            args.md = rest_args
+        elif args.m == 'flash':
+            args.f = rest_args[0]
+            args.port = rest_args[1]
+# print(args.m, args.f, args.fre, args.md)
 # sys.exit()
 
 # DEVICE MANAGEMENT ACTIONS
@@ -375,7 +412,7 @@ DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'diagnose', 'errl
 
 # FILEIO ACTIONS
 
-FILEIO_ACTIONS = ['put', 'get']
+FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -3947,7 +3984,6 @@ if args.m not in keywords_mode:
     dev.disconnect()
     sys.exit()
 
-# PUT:
 # FILEIO ACTIONS
 
 elif args.m in FILEIO_ACTIONS:
@@ -3958,22 +3994,6 @@ elif args.m in FILEIO_ACTIONS:
         dev_name = _dev_name
     fileio_action(args, device=dev_name)
 
-
-# elif args.m == 'put':
-#     if args.fre is None:
-#         put_f(args.t, args.p, rst=args.rst)
-#     else:
-#         put_multiple_f(args.t, args.p)
-#     sys.exit()
-
-# GET :
-#
-# elif args.m == 'get':
-#     if args.fre is None:
-#         get_f(args.t, args.p)
-#     else:
-#         get_multiple_f(args.t, args.p)
-#     sys.exit()
 
 # SYNC :
 
@@ -4018,11 +4038,7 @@ elif args.m in REPL_ACTIONS:
     repl_action(args, device=dev_name)
 
 
-# INSTALL:
-
-elif args.m == 'install':
-    install_f(args.t, args.p)
-    sys.exit()
+# FIRMWARE ACTIONS
 
 elif args.m in FIRMWARE_ACTIONS:
     from upydev.firmwaretools import firmwaretools_action
@@ -4042,26 +4058,6 @@ elif args.m in DEBUGGING_ACTIONS:
     else:
         dev_name = _dev_name
     debugging_action(args, device=dev_name)
-
-
-# # DIAGNOSE
-# elif args.m == 'diagnose':
-#     if args.rst is None:
-#         args.rst = True
-#     else:
-#         args.rst = False
-#     localdev = False
-#     if args.apmd:
-#         localdev = True
-#     diagnose(args.t, args.p, save_rep=args.rep, rst_opt=args.rst,
-#              name_rep=args.n, vers=parser.version, local=localdev)
-#     sys.exit()
-
-
-# UPDATE UPYUTILS
-elif args.m == 'update_upyutils':
-    update_upyutils(args.t, args.p)
-    sys.exit()
 
 
 # KEYGEN ACTIONS
