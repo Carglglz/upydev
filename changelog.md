@@ -17,8 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor firmware actions, `-i` option to check firmware and platform match. (from firmware file name)
 ### Added
 - Autocomplete `shr@` , `ssl@`, `wssl@` and `ble@` commands with saved devices in UPY_G global group
-- `pytest` command in SHELL-REPLS
-- `pytest` command mode in CLI.
+- `pytest` and `pytest-setup` command in SHELL-REPLS
+- `pytest` and `pytest-setup` command mode in CLI.
 - commands that start with `%` or not registered in SHELL-REPLS commands are forwarded to local shell (works with alias too)
 - Ble SHELL-REPL `ble@[device]`
 - `set` command to set current device configuration of a device saved in global group
@@ -35,7 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scan` command to look for devices (serial [-sr], network [-nt] or ble [-bl])
 - `shl` / `shell`, and `rpl` / `repl` commands works with `@` or `-@` and will detect device type, redirecting to the proper SHELL-REPL / REPL type.
 - `put`, `get` file operations now support indicating file/files/cwd/expression as a second argument, e.g, `upydev put this_file.py`, `upydev put demo_*.py`,  `upydev put fileone.py filetwo.py`, `upydev put cwd -dir lib` ...
-## [0.3.3] - 2020-06-07
+- Alias and positional args for keygen/firmware/flash actions `upydev kg/keygen rsa/wr/ssl`, `upydev fwr get/list latest`, `upydev flash esp32-idf4-20200122-v1.12-76-gdccace6f3.bin`,`upydev flash pybv11-20200114-v1.12-63-g1c849d63a.dfu` ...
+- Alias and positional args for `make_group, mg_group` actions `mkgroup/mkg, mggroup/mgg`, and `see`. e.g `upydev see MY_GROUP`, `upydev mkg MY_GROUP -devs mydevtest 192.168.1.40 mypasswd`, `upydev mgg MY_GROUP -add sdev2 /dev/tty.SLAB_USBtoUART 115200`
+- Alias and positional args for SD actions `upydev sd enable/init/deinit/auto`
 ### Fix
 - Fix `git status dev` aware of current branch
 - Fix `d_sync`, in SHELL-REPLS, support root directory `.` will sync local cwd into device cwd

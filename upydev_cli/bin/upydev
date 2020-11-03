@@ -147,7 +147,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
-                 'rsa', 'wr', 'keygen']
+                 'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -333,7 +333,8 @@ parser.add_argument(
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
-multiple_args_fio = ['put', 'get', 'sync', 'install', 'd_sync']
+multiple_args_fio = ['put', 'get', 'sync', 'install', 'd_sync', 'run', 'timeit',
+                     'pytest', 'make_group', 'mg_group']
 multiple_args_fw = ['fwr', 'flash', 'mpyx']
 
 if len(args.m) == 1:
@@ -351,7 +352,7 @@ elif len(args.m) == 2:
             args.md = [second_arg]
         elif args.m == 'flash' or args.m == 'mpyx':
             args.f = second_arg
-    elif args.m == 'kg':
+    elif args.m == 'kg' or args.m == 'keygen':
         if second_arg == 'rsa':
             args.m = 'gen_rsakey'
         elif second_arg == 'wr':
@@ -367,12 +368,20 @@ elif len(args.m) == 2:
             args.m == 'sd_deinit'
         elif second_arg == 'auto':
             args.m == 'sd_auto'
+    elif args.m == 'mkgroup' or args.m == 'mkg':
+        args.m = 'make_group'
+        args.f = second_arg
+    elif args.m == 'mggroup' or args.m == 'mgg':
+        args.m = 'mg_group'
+        args.G = second_arg
+    elif args.m == 'see':
+        args.G = second_arg
 
 elif len(args.m) > 2:
     rest_args = args.m[1:]
     args.m = args.m[0]
     if args.m in multiple_args_fio:
-         args.fre = rest_args
+        args.fre = rest_args
     elif args.m in multiple_args_fw:
         if args.m == 'fwr':
             args.md = rest_args
