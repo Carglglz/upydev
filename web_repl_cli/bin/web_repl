@@ -189,7 +189,7 @@ def enterpress(event):
 
 @kb.add('c-y')
 def gc_collect_press(event):
-    "Send gc collect command to free some memmory"
+    "Send gc collect command to free some Memory"
     ws.send('import gc;gc.collect()')
     event.app.current_buffer.reset()
     ws.send('\x0d')

@@ -210,7 +210,7 @@ def gen_command(cmd, *args, **kargs):
             mem_info = RAM.splitlines()[1]
             mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
                               1]) for elem in mem_info[4:].split(',')}
-            print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memmory',
+            print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memory',
                                                                 'Size', 'Used',
                                                                 'Avail',
                                                                 'Use%']))

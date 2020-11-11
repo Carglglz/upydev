@@ -85,7 +85,7 @@ pyboard@pybV1.1:~ $ df
 Filesystem      Size        Used       Avail        Use%     Mounted on
 Flash         95.0 KB     86.0 KB      9.0 KB     90.5 %     /
 pyboard@pybV1.1:~ $ meminfo
-Memmory         Size        Used       Avail        Use%
+Memory         Size        Used       Avail        Use%
 RAM          100.938 KB  10.828 KB   90.109 KB    10.7 %
 pyboard@pybV1.1:~ $
 ```
@@ -270,7 +270,7 @@ pyboard@pybV1.1:~/flash/lib$ ls
 ffilib.py                   pystone_lowmem.py           sqlite3.py                  time_it.py                  uasyncio                    uping.py
 upylog.py                   upynotify.py                upysh.py                    upysh2.py
 pyboard@pybV1.1:~/flash/lib$ meminfo
-Memmory         Size        Used       Avail        Use%
+Memory         Size        Used       Avail        Use%
 RAM          100.938 KB   7.922 KB   93.016 KB     7.8 %
 pyboard@pybV1.1:~/flash/lib$ cd ..
 pyboard@pybV1.1:~/flash$ du lib

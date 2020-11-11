@@ -240,7 +240,7 @@ lib                          boot.py                      main.py
 wifi_.config                 ap_.config                   webrepl_cfg.py
 upy_pub_rsa30aea4233564.key  test_sync_dir
 esp32@esp_room1:~ $ meminfo
-Memmory         Size        Used       Avail        Use%
+Memory         Size        Used       Avail        Use%
 RAM          116.188 KB  36.531 KB   79.656 KB     31.4 %
 esp32@esp_room1:~ $ tree
 lib <dir>

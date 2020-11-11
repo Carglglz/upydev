@@ -232,7 +232,7 @@ sync_tool.py                upylog.py
 upynotify.py                upysecrets.py
 upysh2.py
 esp32@esp_room1:~/lib$ meminfo
-Memmory         Size        Used       Avail        Use%
+Memory         Size        Used       Avail        Use%
 RAM          116.188 KB  17.984 KB   98.203 KB    15.5 %
 esp32@esp_room1:~/lib$ cd
 esp32@esp_room1:~ $ cd test_sync_dir

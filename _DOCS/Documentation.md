@@ -201,7 +201,7 @@ Done!
 
 *By default upydev sends a reset command after uploading a new file, to disable reset use -rst f*
 
-*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'*)
+*Default target directory in upy device is root directory which is in flash Memory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd'*)
 
 Disabling reset:
 
@@ -377,7 +377,7 @@ Remote WebREPL version: (1, 11, 0)
 Received 44 bytes
 ```
 
-*Default target directory in upy device is root directory which is in flash memmory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd')*
+*Default target directory in upy device is root directory which is in flash Memory, to change target directory to an sd use -s sd (so that means that the sd must be already mounted as 'sd')*
 
 To get a file from sd:
 
