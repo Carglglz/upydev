@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alias and positional args for keygen/firmware/flash actions `upydev kg/keygen rsa/wr/ssl`, `upydev fwr get/list latest`, `upydev flash esp32-idf4-20200122-v1.12-76-gdccace6f3.bin`,`upydev flash pybv11-20200114-v1.12-63-g1c849d63a.dfu` ...
 - Alias and positional args for `make_group, mg_group` actions `mkgroup/mkg, mggroup/mgg`, and `see`. e.g `upydev see MY_GROUP`, `upydev mkg MY_GROUP -devs mydevtest 192.168.1.40 mypasswd`, `upydev mgg MY_GROUP -add sdev2 /dev/tty.SLAB_USBtoUART 115200`
 - Alias and positional args for SD actions `upydev sd enable/init/deinit/auto`
+- upydev pypi version checking on `h`/ `help` command.
+## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch
 - Fix `d_sync`, in SHELL-REPLS, support root directory `.` will sync local cwd into device cwd

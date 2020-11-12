@@ -30,6 +30,7 @@ from pathlib import Path
 import multiprocessing
 from datetime import datetime, timedelta
 from sys import platform as _platform
+from packaging import version
 import argcomplete
 from argcomplete.completers import ChoicesCompleter
 from upydevice import W_UPYDEVICE, BASE_WS_DEVICE
@@ -3578,11 +3579,21 @@ class UPYDEVICE:
 
 
 #############################################
-
 # UPYDEV MODES:
 # HELP
 if args.m == 'h' or args.m == 'help':
     from upydev.helpinfo import HELP_INFO_ARG
+    # UPYDEV CHECK VERSION
+    try:
+        resp = requests.get("https://pypi.org/pypi/%s/json" % ('upydev',), timeout=0.1)
+        upydev_versions = resp.json()["releases"].keys()
+        latest = version.parse(list(upydev_versions)[-1])
+        this_version = version.parse(upydev.version)
+        if latest > this_version:
+            print('\u001b[33mYou are using upydev {} but a new version {} is available\
+ in PyPi\u001b[0m'.format(this_version, latest))
+    except Exception as e:
+        pass
     print(parser.version)
     print(parser.description, end='\n\n')
     print("usage: " + parser.usage.replace('%(prog)s', upydev.name), end='\n\n')
