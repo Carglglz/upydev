@@ -2,6 +2,7 @@
 from upydev.wsio import wstool
 from upydev.serialio import serialtool
 from upydev.bleio import bletool
+from upydev.rsyncio import synctool
 from upydev.helpinfo import see_help
 from upydevice import check_device_type, Device
 import upydev
@@ -96,3 +97,9 @@ def fileio_action(args, **kargs):
 
     elif args.m == 'install':
         install_w_upip(args, dt, dev_name)
+
+    elif args.m == 'sync':
+        if dt == 'WebSocketDevice':
+            synctool(args, dev_name)
+        else:
+            print('Use "get" instead')

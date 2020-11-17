@@ -422,7 +422,7 @@ DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'diagnose', 'errl
 
 # FILEIO ACTIONS
 
-FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install']
+FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'sync']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -4015,14 +4015,14 @@ elif args.m in FILEIO_ACTIONS:
     fileio_action(args, device=dev_name)
 
 
-# SYNC :
-
-elif args.m == 'sync':
-    if args.fre is None:
-        sync(args.t, args.p)
-    else:
-        sync_multiple_f(args.t, args.p)
-    sys.exit()
+# # SYNC :
+#
+# elif args.m == 'sync':
+#     if args.fre is None:
+#         sync(args.t, args.p)
+#     else:
+#         sync_multiple_f(args.t, args.p)
+#     sys.exit()
 
 # D_SYNC:
 elif args.m == 'd_sync':
