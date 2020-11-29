@@ -2,6 +2,71 @@
 
 import os
 import time
+import json
+import hashlib
+from binascii import hexlify
+
+
+# WATCHDOG LOG FILE
+
+def get_hash(file):
+    with open(file, 'rb') as file_to_hash:
+        raw_file = file_to_hash.read()
+    file_hash = hashlib.sha256()
+    file_hash.update(raw_file)
+    hashed_file = file_hash.digest()
+    return hexlify(hashed_file).decode()
+
+
+def get_hash_cwd_dict(path='.'):
+    hash_cwd_dict = {name: get_hash(os.path.join(path, name)) for name in
+                     [file for file in os.listdir(path) if
+                      os.path.isfile(os.path.join(path, file))
+                      and '.upydev_wdlog.json' not in file]}
+    return hash_cwd_dict
+
+
+def check_wdlog(path='.', save_wdlog=True):
+    # WD_LOG EXISTS, CHECK AND COMPARE
+    if '.upydev_wdlog.json' in os.listdir(path):
+        print('Checking upydev cwd watchdog logfile...')
+        with open('{}/'.format(path) + '.upydev_wdlog.json', 'r') as wd_logfile:
+            hash_wdlog_dict = json.loads(wd_logfile.read())
+            files_wdlog_list = list(hash_wdlog_dict.keys())
+            files_cwd = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file]
+            # New files in cwd:
+            new_files_to_upload = [file for file in files_cwd if file not in files_wdlog_list]
+            if len(new_files_to_upload) > 0:
+                print('New files to upload:')
+                for nf in new_files_to_upload:
+                    print('- {}'.format(nf))
+            # Files modified in cwd:
+            modified_files = [file for file in files_wdlog_list if get_hash(os.path.join(path, file)) != hash_wdlog_dict[file]]
+            if len(modified_files) > 0:
+                print('Modified files to upload:')
+                for mf in modified_files:
+                    print('- {}'.format(mf))
+            # MAKE NEW WD_LOG
+            if save_wdlog:
+                with open('{}/'.format(path) + '.upydev_wdlog.json', 'w') as wd_logfile:
+                    hash_cwd_dict = get_hash_cwd_dict(path=path)
+                    wd_logfile.write(json.dumps(hash_cwd_dict))
+            global_files_to_upload = new_files_to_upload + modified_files
+            if len(global_files_to_upload) == 0:
+                print('No new or modified files found')
+            return global_files_to_upload
+    # WD_LOG DO NOT EXISTS, CREATE NEW ONE
+    else:
+        if save_wdlog:
+            print('.upydev_wdlog.json not found, creating new one...')
+            with open('{}/'.format(path) + '.upydev_wdlog.json', 'w') as wd_logfile:
+                hash_cwd_dict = get_hash_cwd_dict(path=path)
+                wd_logfile.write(json.dumps(hash_cwd_dict))
+            print('Done!')
+        global_files_to_upload = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file]
+        for file in global_files_to_upload:
+            print('- {}'.format(file))
+        return global_files_to_upload
 
 
 class LTREE:
@@ -197,9 +262,16 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
         #                            file, print_filesys_info(os.stat(os.path.join(current_dir, file))[6])))
         file_list = os.listdir(directory)
         print('\n')
+        if args.wdl:
+            modified_files = check_wdlog(path=directory)
         for file in file_list:
             if os.path.isfile(os.path.join(current_dir, file)):
-                file_list_abs_path.append(os.path.join(current_dir, file))
+                if args.wdl:
+                    wdl_file = file.split('/')[-1]
+                    if wdl_file != '.upydev_wdlog.json' and wdl_file in modified_files:
+                        file_list_abs_path.append(os.path.join(current_dir, file))
+                else:
+                    file_list_abs_path.append(os.path.join(current_dir, file))
             elif os.path.isdir(os.path.join(current_dir, file)):
                 dir_list_abs_path.append(os.path.join(current_dir, file))
     print('LIST OF FILES TO UPLOAD:')

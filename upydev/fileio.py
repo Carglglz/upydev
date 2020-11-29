@@ -3,7 +3,7 @@ from upydev.wsio import wstool, WebSocketFileIO
 from upydev.serialio import serialtool, SerialFileIO
 from upydev.bleio import bletool, BleFileIO
 from upydev.rsyncio import synctool
-from upydev.dsyncio import d_sync_recursive
+from upydev.dsyncio import d_sync_recursive, check_wdlog
 from upydev.helpinfo import see_help
 from upydevice import check_device_type, Device
 import upydev
@@ -90,6 +90,11 @@ def fileio_action(args, **kargs):
     dev_name = kargs.get('device')
     dt = check_device_type(args.t)
     if args.m == 'put' or args.m == 'get':
+        if args.wdl and args.m == 'put' and args.fre:
+            modified_files = check_wdlog(save_wdlog=True)
+            args.fre = modified_files
+            if not args.fre:
+                sys.exit()
         if dt == 'WebSocketDevice':
             wstool(args, dev_name)
 
