@@ -4,6 +4,7 @@ import sys
 from datetime import timedelta
 from upydevice import Device, DeviceNotFound, DeviceException
 from upydev.helpinfo import see_help
+from upydev.dsyncio import d_sync_recursive
 from upydev import upip_host
 import shutil
 
@@ -159,13 +160,22 @@ class SerialFileIO:
         try:
             dir_lib = 'lib'
             lib = args.f
+            dev_lib = args.dir
+            if not dev_lib:
+                dev_lib = "./"
             pckg_content, pckg_dir = upip_host.install_pkg(lib, ".")
             # sync local lib to device lib
-            print('Installing {} to {} :/lib'.format(pckg_dir, dev_name))
+            print('Installing {} to {}:/lib'.format(pckg_dir, dev_name))
             # cwd_now = self.dev.cmd('os.getcwd()', silent=True, rtn_resp=True)
             # if self.dev.dev_platform == 'pyboard':
             # self.dev.cmd("os.chdir('/flash')")
             # d_sync_recursive(dir_lib, show_tree=True, root_sync_folder=".")
+            d_sync_recursive(dir_lib, devIO=self,
+                             show_tree=True,
+                             rootdir=dev_lib,
+                             root_sync_folder=dir_lib,
+                             args=args,
+                             dev_name=dev_name)
             rm_lib = input('Do you want to remove local lib? (y/n): ')
             if rm_lib == 'y':
                 shutil.rmtree(dir_lib)

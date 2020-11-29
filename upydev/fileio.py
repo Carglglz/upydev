@@ -39,9 +39,9 @@ def install_w_upip(args, dt, dev_name):
         see_help(args.m)
         sys.exit()
     else:
+        dev = Device(args.t, args.p, init=True, ssl=args.wss,
+                     auth=args.wss)
         if dt == 'WebSocketDevice':
-            dev = Device(args.t, args.p, init=True, ssl=args.wss,
-                         auth=args.wss)
             print('Installing {} in {} ...'.format(args.f, dev_name))
             dev.wr_cmd("import upip;upip.install('{}');True".format(args.f),
                        silent=True, long_string=True)
@@ -57,10 +57,15 @@ def install_w_upip(args, dt, dev_name):
             sys.exit()
 
         elif dt == 'SerialDevice':
-            serialtool(args, dev_name)
+            sdevIO = SerialFileIO(dev)
+            sdevIO.upip_install(args, dev_name)
 
         elif dt == 'BleDevice':
-            bletool(args, dev_name)
+            bledevIO = BleFileIO(dev)
+            bledevIO.upip_install(args, dev_name)
+
+        dev.disconnect()
+    sys.exit()
 
 
 def update_upyutils(args, dt, dev_name):
