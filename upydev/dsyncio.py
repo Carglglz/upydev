@@ -161,12 +161,14 @@ def get_dir_size_recursive(dir):
 
 
 def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
-                     show_tree=False):
+                     show_tree=False, args=None, dev_name=None):
     t0 = time.time()
-    type_file_dict = {True: '<f>', False: '<d>'}
+    # type_file_dict = {True: '<f>', False: '<d>'}
     if folder == root_sync_folder:
         print('DIRECTORY TO SYNC: {}'.format(folder))
-        print('DIRECTORY SIZE: {}'.format(print_filesys_info(get_dir_size_recursive(folder))))
+        print('DIRECTORY SIZE: {}'.format(
+                                          print_filesys_info(
+                                              get_dir_size_recursive(folder))))
     if show_tree:
         print('DIRECTORY TREE STRUCTURE:\n')
         tree(path=folder)
@@ -225,9 +227,11 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
     if len(file_list_abs_path) > 1:
         for file in file_list_abs_path:
             print('- {}'.format(file))
-        for file in file_list_abs_path:
-            devIO.put(file, file)
-            time.sleep(0.2)
+        args.fre = file_list_abs_path
+        args.s = os.path.join(*file_list_abs_path[0].split('/')[:-1])
+        devIO.put_files(args, dev_name)
+        args.fre = None
+        time.sleep(0.2)
         # shr_cp.sh_repl("print('Done!')")
         time.sleep(0.2)
     elif len(file_list_abs_path) == 1:
@@ -260,7 +264,7 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
         print('NO MORE SUBDIRS')
     root = directory
     for dir_ in dir_list_abs_path:
-        d_sync_recursive(dir_, devIO, root)
+        d_sync_recursive(dir_, devIO, root, args=args, dev_name=dev_name)
 
     if directory == root_sync_folder:
         print('Done in : {:.2f} seconds'.format(time.time()-t0))

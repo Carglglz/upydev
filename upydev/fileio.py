@@ -116,16 +116,22 @@ def fileio_action(args, **kargs):
             wsdevIO = WebSocketFileIO(dev, args, devname=dev_name)
             d_sync_recursive(dir_lib, devIO=wsdevIO,
                              show_tree=True, rootdir=dev_lib,
-                             root_sync_folder=dir_lib)
+                             root_sync_folder=dir_lib,
+                             args=args,
+                             dev_name=dev_name)
         elif dt == 'SerialDevice':
             sdevIO = SerialFileIO(dev)
             d_sync_recursive(dir_lib, devIO=sdevIO,
                              show_tree=True,
                              rootdir=dev_lib,
-                             root_sync_folder=dir_lib)
+                             root_sync_folder=dir_lib,
+                             args=args,
+                             dev_name=dev_name)
         elif dt == 'BleDevice':
             bledevIO = BleFileIO(dev)
             d_sync_recursive(dir_lib, devIO=bledevIO,
                              show_tree=True,
                              rootdir=dev_lib,
-                             root_sync_folder=dir_lib)
+                             root_sync_folder=dir_lib,
+                             args=args,
+                             dev_name=dev_name)

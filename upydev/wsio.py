@@ -464,6 +464,10 @@ class WebSocketFileIO:
         self.args.s = '/'
         wsfileio(self.args, src, dst_file, self.dev_name, self.dev)
 
+    def put_files(self, args, dev_name):
+        args.m = 'put'
+        wsfileio(args, '', '', dev_name, self.dev)
+
 
 def wstool(args, dev_name):
     if args.m == 'put':

@@ -80,7 +80,7 @@ class BleFileIO:
         self.dev.cmd("f.close()")
         return True
 
-    def getfiles(self, args, dev_name):
+    def get_files(self, args, dev_name):
         files_to_get = args.fre
         for file in files_to_get:
             src_file = file
@@ -138,7 +138,7 @@ class BleFileIO:
         self.dev.flush()
         return True
 
-    def putfiles(self, args, dev_name):
+    def put_files(self, args, dev_name):
         files_to_put = args.fre
         for file in files_to_put:
             src_file = file
@@ -267,11 +267,11 @@ def bletool(args, dev_name):
                         else:
                             if is_dir:
                                 print('\nUploading files @ {}...\n'.format(dev_name))
-                                result = bleio.putfiles(args, dev_name)
+                                result = bleio.put_files(args, dev_name)
                     else:
                         args.s = source
                         print('\nUploading files @ {}...\n'.format(dev_name))
-                        result = bleio.putfiles(args, dev_name)
+                        result = bleio.put_files(args, dev_name)
 
                     # Reset:
                     if result:
@@ -395,7 +395,7 @@ def bletool(args, dev_name):
                                 args.fre = ['/{}/{}'.format(args.dir, file) for file in files_to_get]
                             else:
                                 args.fre = files_to_get
-                            result = bleio.getfiles(args, dev_name)
+                            result = bleio.get_files(args, dev_name)
                             print('Done!')
                         else:
                             if dir == '':
