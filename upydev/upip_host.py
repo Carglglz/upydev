@@ -3,6 +3,8 @@
 #
 # Copyright (c) 2015-2018 Paul Sokolovsky
 #
+# Modified Python 3 version.
+# Copyright (c) Carlos Gil Glez
 # Licensed under the MIT license.
 #
 import sys

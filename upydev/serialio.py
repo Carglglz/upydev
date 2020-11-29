@@ -4,6 +4,8 @@ import sys
 from datetime import timedelta
 from upydevice import Device, DeviceNotFound, DeviceException
 from upydev.helpinfo import see_help
+from upydev import upip_host
+import shutil
 
 
 class SerialFileIO:
@@ -97,7 +99,7 @@ class SerialFileIO:
                 self.dev.cmd("f.close()", silent=True)
         return True
 
-    def put(self, src, dst_file, chunk_size=256, abs_path=True): # from Pyboard.py
+    def put(self, src, dst_file, chunk_size=256, abs_path=True):  # from Pyboard.py
         self.get_pb()
         sz = os.stat(src)[6]
         cnt = 0
@@ -152,6 +154,25 @@ class SerialFileIO:
                 print('KeyboardInterrupt: put Operation Cancelled')
                 self.dev.cmd("f.close()", silent=True)
         return True
+
+    def upip_install(self, args, dev_name):
+        try:
+            dir_lib = 'lib'
+            lib = args.f
+            pckg_content, pckg_dir = upip_host.install_pkg(lib, ".")
+            # sync local lib to device lib
+            print('Installing {} to {} :/lib'.format(pckg_dir, dev_name))
+            # cwd_now = self.dev.cmd('os.getcwd()', silent=True, rtn_resp=True)
+            # if self.dev.dev_platform == 'pyboard':
+            # self.dev.cmd("os.chdir('/flash')")
+            # d_sync_recursive(dir_lib, show_tree=True, root_sync_folder=".")
+            rm_lib = input('Do you want to remove local lib? (y/n): ')
+            if rm_lib == 'y':
+                shutil.rmtree(dir_lib)
+            print("Successfully installed {} to {} :/lib".format(pckg_dir, dev_name))
+            # self.dev.cmd("os.chdir('{}')".format(cwd_now))
+        except Exception as e:
+            print('Please indicate a library to install')
 
 
 def serialtool(args, dev_name):

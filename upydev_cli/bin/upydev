@@ -422,7 +422,7 @@ DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'diagnose', 'errl
 
 # FILEIO ACTIONS
 
-FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'sync']
+FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'sync', 'd_sync']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -4025,26 +4025,26 @@ elif args.m in FILEIO_ACTIONS:
 #     sys.exit()
 
 # D_SYNC:
-elif args.m == 'd_sync':
-    if args.dir is None:
-        if args.tree:
-            print('\nDIRECTORY TREE STRUCTURE:\n')
-            print('        ./')
-            see_local_tree()
-
-        sync_root()
-        if args.rst is None:
-            reset(args.t, args.p)
-        sys.exit()
-    else:
-        dir_to_sync = args.dir
-        args.dir = None
-        esp_dev = W_UPYDEVICE(args.t, args.p)
-        esp_dev.cmd('import uos')
-        uos = UOS(esp_dev)
-        d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
-                         show_tree=args.tree)
-        sys.exit()
+# elif args.m == 'd_sync':
+#     if args.dir is None:
+#         if args.tree:
+#             print('\nDIRECTORY TREE STRUCTURE:\n')
+#             print('        ./')
+#             see_local_tree()
+#
+#         sync_root()
+#         if args.rst is None:
+#             reset(args.t, args.p)
+#         sys.exit()
+#     else:
+#         dir_to_sync = args.dir
+#         args.dir = None
+#         esp_dev = W_UPYDEVICE(args.t, args.p)
+#         esp_dev.cmd('import uos')
+#         uos = UOS(esp_dev)
+#         d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
+#                          show_tree=args.tree)
+#         sys.exit()
 
 
 # REPL ACTIONS

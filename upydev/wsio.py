@@ -453,6 +453,18 @@ def wsfileio(args, file, upyfile, devname, dev=None):
         return True
 
 
+class WebSocketFileIO:
+    def __init__(self, dev, args=None, devname=''):
+        self.dev = dev
+        self.args = args
+        self.dev_name = devname
+
+    def put(self, src, dst_file):
+        self.args.m = 'put'
+        self.args.s = '/'
+        wsfileio(self.args, src, dst_file, self.dev_name, self.dev)
+
+
 def wstool(args, dev_name):
     if args.m == 'put':
         if not args.f and not args.fre:
