@@ -15,33 +15,24 @@ import os
 import shlex
 import ast
 import requests
-import nmap
 import netifaces
-import re
 import upydev
 import socket
 import struct
-import logging
 import glob
 import signal
-import hashlib
-from binascii import hexlify
-from pathlib import Path
 import multiprocessing
-from datetime import datetime, timedelta
-from sys import platform as _platform
+from datetime import datetime
 from packaging import version
 import argcomplete
 from argcomplete.completers import ChoicesCompleter
-from upydevice import W_UPYDEVICE, BASE_WS_DEVICE
-from upydevice.phantom import UOS
+from upydevice import BASE_WS_DEVICE
 from ipaddress import ip_address
 from upydevice import check_device_type, Device
 from upydev.helpinfo import HELP_INFO_ARG, see_help
 
 UPYDEV_PATH = upydev.__path__[0]
-AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
-                    4: 'WPA/WAP2 PSK'}
+
 ADC_PINS_DICT = {'esp32h': [i for i in range(32, 40)]}
 
 ATTEN_DICT = {0: 'ADC.ATTN_0DB', 1: 'ADC.ATTN_2_5DB', 2: 'ADC.ATTN_6DB',
@@ -53,8 +44,6 @@ ATTEN_INFO = """
 3 = ADC.ATTN_11DB: 11dB attenuation, gives a maximum input voltage of approximately 3.6v
 """
 log_levs = ['debug', 'info', 'warning', 'error', 'critical']
-
-bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
 
 def serial_ports():
@@ -444,191 +433,6 @@ SD_UTILS_COMMANDS = ['sd', 'sd_enable', 'sd_init', 'sd_deinit', 'sd_auto']
 PROTOTYPE_COMMANDS = ['pro']
 
 #############################################
-# TERMINAL SIZE
-columns, rows = os.get_terminal_size(0)
-cnt_size = 75
-if columns > cnt_size:
-    bar_size = int((columns - cnt_size))
-    pb = True
-else:
-    bar_size = 1
-    pb = False
-
-
-def sortSecond(val):
-    return val[1]
-
-
-def _dt_format(number):
-        rtc_n = str(number)
-        if len(rtc_n) == 1:
-            rtc_n = "0{}".format(rtc_n)
-            return rtc_n
-        else:
-            return rtc_n
-
-
-def _ft_datetime(t_now):
-    return([_dt_format(i) for i in t_now])
-
-
-class DisplayablePath(object):
-    display_filename_prefix_middle = '├──'
-    display_filename_prefix_last = '└──'
-    display_parent_prefix_middle = '    '
-    display_parent_prefix_last = '│   '
-
-    def __init__(self, path, parent_path, is_last):
-        self.path = Path(str(path))
-        self.parent = parent_path
-        self.is_last = is_last
-        if self.parent:
-            self.depth = self.parent.depth + 1
-        else:
-            self.depth = 0
-
-    @property
-    def displayname(self):
-        if self.path.is_dir():
-            return self.path.name + '/'
-        return self.path.name
-
-    @classmethod
-    def make_tree(cls, root, parent=None, is_last=False, criteria=None):
-        root = Path(str(root))
-        criteria = criteria or cls._default_criteria
-
-        displayable_root = cls(root, parent, is_last)
-        yield displayable_root
-
-        children = sorted(list(path
-                               for path in root.iterdir()
-                               if criteria(path)),
-                          key=lambda s: str(s).lower())
-        count = 1
-        for path in children:
-            is_last = count == len(children)
-            if path.is_dir():
-                yield from cls.make_tree(path,
-                                         parent=displayable_root,
-                                         is_last=is_last,
-                                         criteria=criteria)
-            else:
-                yield cls(path, displayable_root, is_last)
-            count += 1
-
-    @classmethod
-    def _default_criteria(cls, path):
-        return True
-
-    def displayable(self):
-        if self.parent is None:
-            return self.displayname
-
-        _filename_prefix = (self.display_filename_prefix_last
-                            if self.is_last
-                            else self.display_filename_prefix_middle)
-
-        parts = ['{!s} {!s}'.format(_filename_prefix,
-                                    self.displayname)]
-
-        parent = self.parent
-        while parent and parent.parent is not None:
-            parts.append(self.display_parent_prefix_middle
-                         if parent.is_last
-                         else self.display_parent_prefix_last)
-            parent = parent.parent
-
-        return ''.join(reversed(parts))
-
-
-class LTREE:
-
-    def __repr__(self):
-        self.__call__()
-        return ""
-
-    def __call__(self, path=".", level=1, is_last=False, is_root=True,
-                 carrier="    ", hidden=False):
-        os.chdir(path)
-        r_path = path
-        path = "."
-        if hidden:
-            l = os.listdir(path)
-        else:
-            l = [f for f in os.listdir(path) if not f.startswith('.')]
-        nf = len([file for file in l if not os.stat("%s/%s" % (path, file))[0] & 0x4000])
-        nd = len(l) - nf
-        ns_f, ns_d = 0, 0
-        l.sort()
-        if len(l) > 0:
-            last_file = l[-1]
-        else:
-            last_file = ''
-        for f in l:
-            st = os.stat("%s/%s" % (path, f))
-            if st[0] & 0x4000:  # stat.S_IFDIR
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s <dir>" % f)
-                os.chdir(f)
-                level += 1
-                lf = last_file == f
-                if level > 1:
-                    if lf:
-                        carrier += "     "
-                    else:
-                        carrier += "    │"
-                ns_f, ns_d = self.__call__(level=level, is_last=lf,
-                                           is_root=False, carrier=carrier,
-                                           hidden=hidden)
-                if level > 1:
-                    carrier = carrier[:-5]
-                os.chdir('..')
-                level += (-1)
-                nf += ns_f
-                nd += ns_d
-            else:
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s" % (f))
-        if is_root:
-            print('{} directories, {} files'.format(nd, nf))
-            if r_path != ".":
-                os.chdir('..')
-        else:
-            return (nf, nd)
-
-    def _treeindent(self, lev, f, lastfile, is_last=False, carrier=None):
-        if lev == 0:
-            return ""
-        else:
-            if f != lastfile:
-                return carrier + "    ├────"
-            else:
-                return carrier + "    └────"
-
-
-see_local_tree = LTREE()
-
-
-def get_fw_versions(keyword):
-    fw_list = []
-    fw_links = []
-    r = requests.get('https://micropython.org/download/all/')
-    fw_text = [line for line in r.text.split(
-        '\n') if keyword in line and any(x in line for x in ['bin', 'dfu', 'zip']) and 'firmware' in line]
-    for line in fw_text:
-        for element in re.split(r"[=<>]+", line):
-            if 'firmware' in element:
-                fw_links.append('www.micropython.org{}'.format(element[1:-1]))
-                fw_list.append(element[1:-1].split('/')[3])
-    fw_dict = dict(zip(fw_list, fw_links))
-    return fw_dict, fw_list
-
-
-def serial_ports():
-    ls_cmd_str = "/dev/tty.*"
-    # print('Available Serial ports are:')
-    # for port in glob.glob(ls_cmd_str):
-    #     print(port)
-    return glob.glob(ls_cmd_str)
 
 
 def see_groups():
@@ -660,87 +464,6 @@ def run_command_rl(command):
     return rc, lines
 
 
-def old_run_raw_cmd(cmd_str):
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    print(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-
-
-def run_command_rt(command):
-    end = False
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    while end is not True:
-        if process.poll() is None:
-            output = process.stdout.readline()
-            if output == '' and process.poll() is not None:
-                break
-            if output:
-                line = output.strip().decode()
-                print(line)
-                if output.strip() == b'### closed ###':
-                    end = True
-        else:
-            break
-
-
-def run_live(run_cmd, targ, password):
-    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        run_cmd, targ, password)
-    run_live_cmd = shlex.split(run_cmd_str)
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print(resp[4:])
-                else:
-                    print(resp)
-            else:
-                print(resp)
-    except KeyboardInterrupt:
-        try:
-            print('...closing...')
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
-            for i in range(10):
-                proc.stdout.readlines()
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-        except KeyboardInterrupt:
-            print('...wait for closing...')
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-
 
 def get_ip():
     # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
@@ -761,157 +484,40 @@ def get_ip():
             return '0.0.0.0'
 
 
-def get_ssid():
-    if _platform == "linux" or _platform == "linux2":
-        ssid = ''
-        try:
-            output = subprocess.check_output(['sudo', 'iwgetid'])
-            ssid = output.split('"')[1]
-        except Exception as e:
-            print(e)
-        return ssid
-    elif _platform == "darwin":
-       # MAC OS X
-        scanoutput = subprocess.check_output(["airport", "-I"])
-        wifi_info = [data.strip()
-                     for data in scanoutput.decode('utf-8').split('\n')]
-        wifi_info_dic = {data.split(':')[0]: data.split(
-            ':')[1].strip() for data in wifi_info[:-1]}
-        return wifi_info_dic['SSID']
+# def get_ssid():
+#     if _platform == "linux" or _platform == "linux2":
+#         ssid = ''
+#         try:
+#             output = subprocess.check_output(['sudo', 'iwgetid'])
+#             ssid = output.split('"')[1]
+#         except Exception as e:
+#             print(e)
+#         return ssid
+#     elif _platform == "darwin":
+#        # MAC OS X
+#         scanoutput = subprocess.check_output(["airport", "-I"])
+#         wifi_info = [data.strip()
+#                      for data in scanoutput.decode('utf-8').split('\n')]
+#         wifi_info_dic = {data.split(':')[0]: data.split(
+#             ':')[1].strip() for data in wifi_info[:-1]}
+#         return wifi_info_dic['SSID']
 
 
-def read_file_sync_raw(file_tosync, soc):
-    # final_file = b''
-    buff = bytearray(2000)
-    with open(file_tosync, 'rb') as log:
-        while True:
-            try:
-                buff[:] = log.read(2000)  # 2 KB
-                # print(len(chunk))
-                if buff != b'':
-                    # in python use 'i'
-                    soc.sendall(buff)
-                    # final_file += chunk
-                else:
-                    print('END OF FILE')
-                    # soc.sendall
-                    break
-            except Exception as e:
-                print(e)
-                pass
 
 
-def sync_to_dev(file_tosync, dev):
-    source = ''
-    if args.s == 'sd':
-        source = args.s + '/'
-    # START A LOCAL SERVER
-    local_ip = get_ip()
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind((local_ip, 8005))
-    server_socket.listen(1)
-    dev.cmd_nb("sync_to_filesys('{}', '{}', 8005)".format(source+file_tosync, local_ip))
-    conn, addr = server_socket.accept()
-    conn.settimeout(5)
-    read_file_sync_raw(file_tosync, conn)
-    conn.close()
 
 
-# def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l):
-#     l_bloc = bloc_progress[loop_l]
-#     if index == 80:
-#         l_bloc = "█"
-#     sys.stdout.write("\033[K")
-#     print('▏{:<81}▏{:>5}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc,
-#                                                                     wheel[index % 4],
-#                                                                     int((index/80)*100),
-#                                                                     nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][3:]), end='\r')
-#     sys.stdout.flush()
-
-def do_pg_bar(index, wheel, nb_of_total, speed, time_e,
-              loop_l, percentage, size_bar=bar_size):
-    l_bloc = bloc_progress[loop_l]
-    if index == bar_size:
-        l_bloc = "█"
-    sys.stdout.write("\033[K")
-    print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((bar_size+1) - len("█" *index + l_bloc)),
-                                                                    wheel[index % 4],
-                                                                    int((percentage)*100),
-                                                                    nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][2:]), end='\r')
-    sys.stdout.flush()
 
 
-def w_stream_reader(soc, total_size, chunk_rx):
-    buff = bytearray(0)
-    loop_index = 0
-    wheel = ['|', '/', '-', "\\"]
-    t_start = time.time()
-    while True:
-        t0 = time.time()
-        try:
-            chunk = soc.recv(chunk_rx)  # 32 KB
-            if chunk != b'':
-                buff += chunk
-                loop_index_f = ((len(buff))/total_size)*bar_size
-                loop_index = int(loop_index_f)
-                loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), total_size/(1024**2))
-                percentage = len(buff)/total_size
-                t_elapsed = time.time() - t_start
-                t_speed = "{:^2.2f}".format((len(buff)/(1024**2))/t_elapsed)
-                if pb:
-                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
-                              t_elapsed, loop_index_l, percentage)
-                if len(buff) == total_size:
-                    break
-            else:
-                pass
-                #print('END OF FILE')
-                # soc.close()
-                # break
-        except Exception as e:
-            if e == KeyboardInterrupt:
-                break
-            else:
-                print('END OF FILE')
-                break
-    return buff
 
 
-def w_stream_writer(soc):
-    buff = os.urandom(20000)
-    try:
-        soc.sendall(buff)  # 20 kB
-    except Exception as e:
-        if e == KeyboardInterrupt:
-            print(e)
 
 
-def stream_test(dev, mode='download'):
-    if mode == 'download':
-        # START A LOCAL SERVER
-        chunk_size_kb = args.chunk_tx
-        _kB = 1024
-        _MB = 1024*_kB
-        print('DOWNLOAD SPEED TEST:')
-        print('CHUNK TX DATA SIZE: {:>40.2f} kB'.format(chunk_size_kb))
-        print('CHUNK RX DATA SIZE: {:>40.2f} kB'.format(args.chunk_rx))
-        print('TOTAL TX DATA SIZE: {:>40.2f} MB\n'.format(args.total_size))
-        local_ip = get_ip()
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_socket.bind((local_ip, 8005))
-        server_socket.listen(1)
-        dev.cmd_nb("w_stream_writer('{}', 8005, {}, {})".format(local_ip, args.chunk_tx*_kB, args.total_size*_MB ))
-        conn, addr = server_socket.accept()
-        soc_timeout = 1
-        conn.settimeout(soc_timeout)
-        t0 = time.time()
-        data_chunk = w_stream_reader(conn, args.total_size*_MB, args.chunk_rx*_kB)
-        dt = (time.time()-t0)-soc_timeout
-        conn.close()
-        return (data_chunk, dt)
+
+
+
+
+
 
 
 def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
@@ -1423,62 +1029,6 @@ def simple_cmd_r(cmd):
         return resp_info_list[0]
 
 
-def print_sizefile(file_name, filesize, tabs=0):
-    _kB = 1024
-    if filesize < _kB:
-        sizestr = str(filesize) + " by"
-    elif filesize < _kB**2:
-        sizestr = "%0.1f KB" % (filesize / _kB)
-    elif filesize < _kB**3:
-        sizestr = "%0.1f MB" % (filesize / _kB**2)
-    else:
-        sizestr = "%0.1f GB" % (filesize / _kB**3)
-
-    prettyprintname = ""
-    for _ in range(tabs):
-        prettyprintname += "   "
-    prettyprintname += file_name
-    print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
-
-
-def print_sizefile_all(fileslist, tabs=0, frep=None):
-    for filedata in fileslist:
-        namefile = filedata[0]
-        filesize = filedata[1]
-
-        _kB = 1024
-        if filesize < _kB:
-            sizestr = str(filesize) + " by"
-        elif filesize < _kB**2:
-            sizestr = "%0.1f KB" % (filesize / _kB)
-        elif filesize < _kB**3:
-            sizestr = "%0.1f MB" % (filesize / _kB**2)
-        else:
-            sizestr = "%0.1f GB" % (filesize / _kB**3)
-
-        prettyprintname = ""
-        for _ in range(tabs):
-            prettyprintname += "   "
-        prettyprintname += namefile
-        print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
-        if frep is not None:
-            frep.append('{0:<40} Size: {1:>10}'.format(
-                prettyprintname, sizestr))
-
-
-def print_filesys_info(filesize):
-    _kB = 1024
-    if filesize < _kB:
-        sizestr = str(filesize) + " by"
-    elif filesize < _kB**2:
-        sizestr = "%0.1f KB" % (filesize / _kB)
-    elif filesize < _kB**3:
-        sizestr = "%0.1f MB" % (filesize / _kB**2)
-    else:
-        sizestr = "%0.1f GB" % (filesize / _kB**3)
-    return sizestr
-
-
 # LOGGING DATETIME NOW:
 def lognow(filename, sensor):
     if filename == 'now':
@@ -1488,1878 +1038,7 @@ def lognow(filename, sensor):
         return filename
 
 
-#############################################
-# WATCHDOG LOG FILE
 
-
-def get_hash(file):
-    with open(file, 'rb') as file_to_hash:
-        raw_file = file_to_hash.read()
-    file_hash = hashlib.sha256()
-    file_hash.update(raw_file)
-    hashed_file = file_hash.digest()
-
-    return hexlify(hashed_file).decode()
-
-
-def get_hash_cwd_dict(path='.'):
-    # print('wd path: {}'.format(path))
-    # print([file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file])
-    hash_cwd_dict = {name: get_hash(os.path.join(path, name)) for name in
-                     [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file))
-                       and '.upydev_wdlog.json' not in file]}
-    return hash_cwd_dict
-
-
-def check_wdlog(path='.', save_wdlog=True):
-    # WD_LOG EXISTS, CHECK AND COMPARE
-    if '.upydev_wdlog.json' in os.listdir(path):
-        print('Checking upydev cwd watchdog logfile...')
-        with open('{}/'.format(path) + '.upydev_wdlog.json', 'r') as wd_logfile:
-            hash_wdlog_dict = json.loads(wd_logfile.read())
-            files_wdlog_list = list(hash_wdlog_dict.keys())
-            files_cwd = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file]
-            # New files in cwd:
-            new_files_to_upload = [file for file in files_cwd if file not in files_wdlog_list]
-            if len(new_files_to_upload) > 0:
-                print('New files to upload:')
-                for nf in new_files_to_upload:
-                    print('- {}'.format(nf))
-            # Files modified in cwd:
-            modified_files = [file for file in files_wdlog_list if get_hash(os.path.join(path, file)) != hash_wdlog_dict[file]]
-            if len(modified_files) > 0:
-                print('Modified files to upload:')
-                for mf in modified_files:
-                    print('- {}'.format(mf))
-            # MAKE NEW WD_LOG
-            if save_wdlog:
-                with open('{}/'.format(path) + '.upydev_wdlog.json', 'w') as wd_logfile:
-                    hash_cwd_dict = get_hash_cwd_dict(path=path)
-                    wd_logfile.write(json.dumps(hash_cwd_dict))
-            global_files_to_upload = new_files_to_upload + modified_files
-            if len(global_files_to_upload) == 0:
-                print('No new or modified files found')
-            return global_files_to_upload
-    # WD_LOG DO NOT EXISTS, CREATE NEW ONE
-    else:
-        if save_wdlog:
-            print('.upydev_wdlog.json not found, creating new one...')
-            with open('{}/'.format(path) + '.upydev_wdlog.json', 'w') as wd_logfile:
-                hash_cwd_dict = get_hash_cwd_dict(path=path)
-                wd_logfile.write(json.dumps(hash_cwd_dict))
-            print('Done!')
-        global_files_to_upload = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file]
-        for file in global_files_to_upload:
-            print('- {}'.format(file))
-        return global_files_to_upload
-
-
-#############################################
-
-
-def put_f(ip, passwd, rst=None, abs_path=False):
-    dev = W_UPYDEVICE(ip, passwd)
-    source = ''
-    if args.s == 'sd':
-        source = args.s + '/'
-    passwd = passwd
-    file = args.f
-    if args.dir is not None:
-        source = args.dir + '/'
-    file_in_upy = file.split('/')[-1]
-    if abs_path:
-        file_in_upy = file
-    host = ip
-    print('Uploading file {}...'.format(file_in_upy))
-    if not args.wss:
-        copyfile_str = 'upytool {} {}:/{}{} -p {}'.format(
-            file, host, source, file_in_upy, passwd)
-    else:
-        dev = BASE_WS_DEVICE(ip, passwd)
-        copyfile_str = 'upytool {} {}:/{}{} -p {} -wss'.format(
-            file, host, source, file_in_upy, passwd)
-    # reset_str = 'upycmd -c "{}" -t {} -p {}'.format('D', host, passwd)
-    file_uploaded = subprocess.call(shlex.split(copyfile_str))
-    if file_uploaded == 0:
-        print('File Uploaded!')
-        time.sleep(3)
-        if rst is None:
-            print('Rebooting upy device...')
-            if not args.wss:
-                dev.reset(output=False)
-            else:
-                dev.reset(silent=True, ssl=True)
-            print('Done!')
-        else:
-            pass
-
-
-def put_multiple_f(ip, passwd, abs_path=False, wdl_path='./',
-                    save_wdlog=args.swdl):
-    # case 1: -fre is current working directory (cwd)
-    rst = args.rst
-    if args.fre[0] == 'cwd':
-        if args.wdl:
-            print('Files in cwd to upload:')
-            files_in_cwd_wdl = check_wdlog(save_wdlog=save_wdlog)
-            print('')
-            for file in files_in_cwd_wdl:
-                args.f = file
-                put_f(ip, passwd, rst=False, abs_path=abs_path)
-                print('\n')
-            if rst is None and len(files_in_cwd_wdl) > 0:
-                time.sleep(3)
-                reset(ip, passwd)
-        else:
-            print('Files in cwd to upload:')
-            for file in [fname for fname in os.listdir('./') if os.path.isfile(fname)]:
-                print(file)
-            for file in [fname for fname in os.listdir('./') if os.path.isfile(fname)]:
-                args.f = file
-                put_f(ip, passwd, rst=False, abs_path=abs_path)
-                print('\n')
-            if rst is None:
-                time.sleep(3)
-                reset(ip, passwd)
-    else:
-        # case 2: -fre is an expression to match
-        if len(args.fre) == 1:
-            print("Files that match expression '{}' to upload:".format(
-                args.fre[0]))
-            if args.wdl:
-                files_in_cwd_wdl = check_wdlog(path=wdl_path, save_wdlog=save_wdlog)
-                print('')
-                # print(files_in_cwd_wdl)
-                # print(args.fre)
-                if wdl_path != './':
-                    for file in [os.path.join(wdl_path, fl) for fl in
-                                 files_in_cwd_wdl if args.fre[0] in os.path.join(wdl_path, fl)]:
-                        args.f = file
-                        put_f(ip, passwd, rst=False, abs_path=abs_path)
-                        print('\n')
-                else:
-                    for file in [os.path.join('', fl) for fl in
-                                 files_in_cwd_wdl if args.fre[0] in os.path.join('', fl)]:
-                        args.f = file
-                        put_f(ip, passwd, rst=False, abs_path=abs_path)
-                        print('\n')
-                if rst is None and len(files_in_cwd_wdl) > 0:
-                    time.sleep(3)
-                    reset(ip, passwd)
-            else:
-                for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
-                    print(file)
-                for file in [fl for fl in os.listdir('./') if args.fre[0] in fl]:
-                    args.f = file
-                    put_f(ip, passwd, rst=False, abs_path=abs_path)
-                    print('\n')
-                if rst is None:
-                    time.sleep(3)
-                    reset(ip, passwd)
-        else:
-            # case 3: -fre is a list of files
-            print('Files to upload:')
-            if args.wdl:
-                files_in_cwd_wdl = check_wdlog(path=wdl_path, save_wdlog=save_wdlog)
-                print('')
-                # print(files_in_cwd_wdl)
-                # print(args.fre)
-                if wdl_path != './':
-                    for file in [os.path.join(wdl_path, fl) for fl in
-                                  files_in_cwd_wdl if os.path.join(wdl_path, fl) in args.fre]:
-                        args.f = file
-                        put_f(ip, passwd, rst=False, abs_path=abs_path)
-                        print('\n')
-                else:
-                    for file in [os.path.join('', fl) for fl in
-                                  files_in_cwd_wdl if os.path.join('', fl) in args.fre]:
-                        args.f = file
-                        put_f(ip, passwd, rst=False, abs_path=abs_path)
-                        print('\n')
-                if rst is None and len(files_in_cwd_wdl) > 0:
-                    time.sleep(3)
-                    reset(ip, passwd)
-            else:
-                for file in args.fre:
-                    print(file)
-                for file in args.fre:
-                    args.f = file
-                    put_f(ip, passwd, rst=False, abs_path=abs_path)
-                    print('\n')
-                if rst is None:
-                    time.sleep(3)
-                    reset(ip, passwd)
-
-
-def get_f(ip, passwd, id_file='', check_file=True):
-    if args.s is None and args.dir is None:
-        print('Looking for file in upy device root dir')
-        cmd_str = 'upycmd_r -c "uos.listdir()" -t {} -p {}'.format(ip, passwd)
-        dir = 'root'
-    if args.s == 'sd':
-        print('Looking in SD memory...')
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
-            str("'/sd'"), ip, passwd)
-        dir = '/sd'
-    if args.dir is not None:
-        print('Looking for file in upy device {} dir'.format(args.dir))
-        cmd_str = 'upycmd_r -c "uos.listdir({})" -t {} -p {}'.format(
-            "'/{}'".format(args.dir), ip, passwd)
-        dir = '/{}'.format(args.dir)
-    resp = []
-    if check_file:
-        command = shlex.split(cmd_str)
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-        time.sleep(0.1)
-        stdout = process.communicate()
-        try:
-            resp = ast.literal_eval(
-                stdout[0].decode('utf-8').split('\n')[0][4:-1])
-        except Exception as e:
-            try:
-                resp = stdout[0].decode('utf-8').split('\n')[0]
-            except Exception as e:
-                resp = None
-
-            pass
-
-    try:
-        if args.wss:
-            check_file = False
-        if args.f in resp or check_file is False:
-            print('Getting file {}...'.format(args.f))
-            file_to_get = args.f
-            if args.s == 'sd':
-                file_to_get = '/sd/{}'.format(args.f)
-            if args.dir is not None:
-                file_to_get = '/{}/{}'.format(args.dir, args.f)
-            passwd = passwd
-            target = ip
-            if not args.wss:
-                copyfile_str = 'upytool -p {} {}:{} .{}'.format(
-                    passwd, target, file_to_get, id_file)
-            else:
-                copyfile_str = 'upytool -wss -p {} {}:{} .{}'.format(
-                    passwd, target, file_to_get, id_file)
-
-            subprocess.call(shlex.split(copyfile_str))
-            print('Done!')
-        else:
-            if dir == 'root':
-                print('File Not found in upy device {} directory'.format(dir))
-            if dir == '/sd':
-                print(
-                    'File Not found in upy device {} directory or sd unmounted'.format(dir))
-            else:
-                print('File Not found in upy device {} directory'.format(dir))
-
-    except Exception as e:
-        print(e)
-        pass
-
-
-def get_files_list(ip, passwd):
-    if args.s is None and args.dir is None:
-        print('Looking for file in upy device root dir')
-        cmd_str = 'upycmd_r -c "[file for file in uos.listdir() if not(uos.stat(file)[0] & 0x4000)]" -t {} -p {}'.format(ip, passwd)
-        dir = 'root'
-    if args.s == 'sd':
-        print('Looking in SD memory...')
-        cmd_str = 'upycmd_r -c "[file for file in uos.listdir({}) if not(uos.stat(file)[0] & 0x4000)]" -t {} -p {}'.format(
-            str("'/sd'"), ip, passwd)
-        dir = '/sd'
-    if args.dir is not None:
-        print('Looking for file in upy device {} dir'.format(args.dir))
-        cmd_str = 'upycmd_r -c "[file for file in uos.listdir({}) if not(uos.stat(file)[0] & 0x4000)]" -t {} -p {}'.format(
-            "'/{}'".format(args.dir), ip, passwd)
-        dir = '/{}'.format(args.dir)
-
-    command = shlex.split(cmd_str)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    time.sleep(0.1)
-    stdout = process.communicate()
-    try:
-        resp = ast.literal_eval(
-            stdout[0].decode('utf-8').split('\n')[0][4:-1])
-        return resp
-    except Exception as e:
-        try:
-            resp = stdout[0].decode('utf-8').split('\n')[0]
-            return resp
-        except Exception as e:
-            resp = None
-            return resp
-
-        pass
-
-
-def get_multiple_f(ip, passwd, id_file_dev='', device=None):
-    # case 1: -fre is current working directory (cwd)
-    file_list = ast.literal_eval(get_files_list(ip, passwd))
-    if args.fre[0] == 'cwd':
-        print('Files in upy device cwd to get:')
-        for file in file_list:
-            print(file)
-        for file in file_list:
-            args.f = file
-            if id_file_dev != '':
-                id_file_dev = '/{}_{}'.format(device, args.f)
-            get_f(ip, passwd, id_file=id_file_dev, check_file=False)
-            print('\n')
-            time.sleep(0.5)
-    else:
-        # case 2: -fre is an expression to match
-        if len(args.fre) == 1:
-            print("Files in upy device that match expression '{}' to get:".format(
-                args.fre[0]))
-            for file in [fl for fl in file_list if args.fre[0] in fl]:
-                print(file)
-            for file in [fl for fl in file_list if args.fre[0] in fl]:
-                args.f = file
-                if id_file_dev != '':
-                    id_file_dev = '/{}_{}'.format(device, args.f)
-                get_f(ip, passwd, id_file=id_file_dev, check_file=False)
-                print('\n')
-                time.sleep(0.5)
-        else:
-            # case 3: -fre is a list of files
-            print('Files to get:')
-            for file in args.fre:
-                print(file)
-            for file in args.fre:
-                args.f = file
-                if id_file_dev != '':
-                    id_file_dev = '/{}_{}'.format(device, args.f)
-                get_f(ip, passwd, id_file=id_file_dev, check_file=False)
-                print('\n')
-                time.sleep(0.5)
-
-
-def sync(ip, passwd, id_file=None, PORT=8005, resp=None, getfilelist=True):
-    if getfilelist:
-        espdev = W_UPYDEVICE(ip, passwd)
-        espdev.open_wconn()
-        if args.s is None:
-            print('Looking for file in upy device root dir')
-            cmd_str = "'{}' in uos.listdir()".format(args.f)
-            dir = 'root'
-        if args.s == 'sd':
-            print('Looking in SD memory...')
-            cmd_str = "'{}' in uos.listdir('/sd')".format(args.f)
-            dir = '/sd'
-        if getfilelist:
-            if dir == '/sd':
-                while espdev.output is None:
-                    espdev.wr_cmd("'sd' in uos.listdir()", silent=True, follow=False)
-                if espdev.output is True:
-                    print('Found SD memory...')
-                else:
-                    print('SD not mounted, try to mount it first')
-                    sys.exit()
-            espdev.output = None
-            while espdev.output is None:
-                espdev.wr_cmd(cmd_str, silent=True, follow=False)
-            found_file = espdev.output
-            espdev.close_wconn()
-
-    try:
-        if resp is not None:
-            found_file = True
-        if found_file is True:
-            target = ip
-            print('Getting file {}...'.format(args.f))
-            file_to_get = args.f
-            copyfile = 'sync_server -f {} -t {} -p {} -port {}'.format(
-                file_to_get, target, passwd, PORT)
-            if id_file is not None:
-                copyfile = 'sync_server -f {} -t {} -p {} -o {} -port {}'.format(
-                    file_to_get, target, passwd, id_file, PORT)
-            if args.lh is not None:
-                copyfile = 'sync_server -f {} -t {} -p {} -lh {} -port {}'.format(
-                    file_to_get, target, passwd, args.lh, PORT)
-                if id_file is not None:
-                    copyfile = 'sync_server -f {} -t {} -p {} -lh {} -o {} -port {}'.format(
-                        file_to_get, target, passwd, args.lh, id_file, PORT)
-            if args.s == 'sd':
-                copyfile = 'sync_server -f {} -t {} -p {} -s {} -port {}'.format(
-                    file_to_get, target, passwd, 'sd', PORT)
-                if id_file is not None:
-                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -o {} -port {}'.format(
-                        file_to_get, target, passwd, 'sd', id_file, PORT)
-                if args.lh is not None:
-                    copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {} -port {}'.format(
-                        file_to_get, target, passwd, 'sd', args.lh, PORT)
-                    if id_file is not None:
-                        copyfile = 'sync_server -f {} -t {} -p {} -s {} -lh {} -o {} -port {}'.format(
-                            file_to_get, target, passwd, 'sd', args.lh, id_file, PORT)
-
-            # resp = run_command_rt(copyfile)
-            copyfile_cmd = shlex.split(copyfile)
-            subprocess.call(copyfile_cmd)
-            # try:
-            #     proc = subprocess.Popen(
-            #         copyfile_cmd, stdout=subprocess.PIPE,
-            #         stderr=subprocess.STDOUT)
-            #     while proc.poll() is None:
-            #         print(proc.stdout.readline()[:-1].decode())
-            # except KeyboardInterrupt:
-            #     time.sleep(1)
-            #     result = proc.stdout.readlines()
-            #     for message in result:
-            #         print(message[:-1].decode())
-        else:
-            if dir == 'root':
-                print('File Not found in upy device {} directory'.format(dir))
-            if dir == '/sd':
-                print(
-                    'File Not found in upy device {} directory or sd unmounted'.format(dir))
-
-    except Exception as e:
-        print(e)
-        pass
-
-
-def sync_multiple_f(ip, passwd, id_file_dev=None, device=None, PORT_M=8005):
-    # case 1: -fre is current working directory (cwd)
-    file_list = ast.literal_eval(get_files_list(ip, passwd))
-    if args.fre[0] == 'cwd':
-        print('Files in upy device cwd to get:')
-        for file in file_list:
-            print(file)
-        for file in file_list:
-            args.f = file
-            if id_file_dev is not None:
-                id_file_dev = '{}_{}'.format(device, args.f)
-            sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M, resp=file_list,
-                 getfilelist=False)
-            print('\n')
-    else:
-        # case 2: -fre is an expression to match
-        if len(args.fre) == 1:
-            print("Files in that match expression '{}' to get:".format(
-                args.fre[0]))
-            for file in [fl for fl in file_list if args.fre[0] in fl]:
-                print(file)
-            for file in [fl for fl in file_list if args.fre[0] in fl]:
-                args.f = file
-                if id_file_dev is not None:
-                    id_file_dev = '{}_{}'.format(device, args.f)
-                sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M,
-                     resp=file_list, getfilelist=False)
-                print('\n')
-        else:
-            # case 3: -fre is a list of files
-            print('Files to get:')
-            for file in args.fre:
-                print(file)
-            for file in args.fre:
-                args.f = file
-                if id_file_dev is not None:
-                    id_file_dev = '{}_{}'.format(device, args.f)
-                sync(ip, passwd, id_file=id_file_dev, PORT=PORT_M,
-                     resp=file_list, getfilelist=False)
-                print('\n')
-
-
-# DIR_SYNC
-
-
-def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
-                     show_tree=False):
-    t0 = time.time()
-    type_file_dict = {True:'<f>', False:'<d>'}
-    if folder == root_sync_folder:
-        print('DIRECTORY TO SYNC: {}'.format(folder))
-        print('DIRECTORY SIZE: {} kB'.format(os.path.getsize(folder)/1024))
-    if show_tree:
-        print('DIRECTORY TREE STRUCTURE:\n')
-        paths = DisplayablePath.make_tree(Path(folder))
-        for path in paths:
-            print(path.displayable())
-    time.sleep(1)
-    print('\n')
-    print('***** {} *****'.format(folder))
-    print('\n')
-    directory = folder
-    file_list = None
-    file_list_abs_path = []
-    dir_list_abs_path = []
-    current_dir = directory
-    # get directory structure:
-    print('ROOT DIRECTORY: {}'.format(rootdir))
-    print('DIRECTORY TO SYNC: {}'.format(directory))
-    print('\n')
-    print('CHECKING IF DIRECTORY {} IN: {}'.format(
-        directory.split('/')[-1], rootdir))
-    if directory.split('/')[-1] in os.listdir(rootdir):
-        print('DIRECTORY {} FOUND'.format(directory))
-        print('\n')
-        print('FILES/DIRS IN DIRECTORY {}:'.format(directory))
-        for file in os.listdir(directory):
-            if args.wdl:
-                if file != '.upydev_wdlog.json':
-                    print('- {} {}'.format(type_file_dict[os.path.isfile(os.path.join(current_dir, file))],
-                                           file))
-            else:
-                print('- {} {}'.format(type_file_dict[os.path.isfile(os.path.join(current_dir, file))],
-                                       file))
-        file_list = os.listdir(directory)
-        print('\n')
-        for file in file_list:
-            if os.path.isfile(os.path.join(current_dir, file)):
-                file_list_abs_path.append(os.path.join(current_dir, file))
-            elif os.path.isdir(os.path.join(current_dir, file)):
-                dir_list_abs_path.append(os.path.join(current_dir, file))
-    print('LIST OF FILES TO UPLOAD:')
-    for file in file_list_abs_path:
-        if args.wdl:
-            if file.split('/')[-1] != '.upydev_wdlog.json':
-                print('- {}'.format(file.split('/')[-1]))
-        else:
-            print('- {}'.format(file.split('/')[-1]))
-    print('\n')
-    print('LIST OF SUBDIRS TO CREATE:')
-    for subdir in dir_list_abs_path:
-        print('- {}'.format(subdir.split('/')[-1]))
-    print('\n')
-    # Now create the root sync dir:
-    if './' == rootdir:
-        rootdir = ''
-    if args.s == 'sd':
-        rootdir = args.s + '/' + rootdir
-    dev.d.output = None
-    while dev.d.output is None:
-        try:
-            dev_root_list = dev.listdir(rootdir)
-        except Exception as e:
-            pass
-    if args.s == 'sd':
-        current_dir = args.s + '/' + current_dir
-    if current_dir.split('/')[-1] not in dev_root_list:
-    # print('uos = UOS(esp32); {} in uos.listdir("{}")'.format(
-    #     current_dir.split('/')[-1], rootdir))
-    # if dir not in root dir: create dir
-        print('\n')
-        print('MAKING DIR: {}'.format(current_dir))
-        print('\n')
-        dev.mkdir(current_dir)
-        print('\n')
-    print('UPLOADING FILES TO {}'.format(current_dir))
-    # Now put files in dir: ** if dir_list_abs_path empty (len()==0) args.rst = True, else false
-    # print('#upydev: args.fre = file_list_abs_path; put_multiple_f(args.t, args.p, abs_path=True)')
-    # for file in file_list_abs_path:
-    #     print('- {}'.format(file))
-    files_names_too_long = []
-    for file in file_list_abs_path:
-        if len(file) > 64:
-            print('\n')
-            print('WARNING FILE NAME TOO LONG (>64 chr)')
-            print('Using raw sync method instead...')
-            print(file)
-            files_names_too_long.append(file)
-    print('\n')
-    if len(files_names_too_long) > 0:
-        dev.d.output = None
-        while dev.d.output is None:
-            dev.d.cmd('from sync_tool import sync_to_filesys; [1]', silent=True)
-        print('RAW SYNC OF FILES:')
-        print('\n')
-    for file in files_names_too_long:
-        print('- {}'.format(file))
-    print('\n')
-    for file in files_names_too_long:
-        sync_to_dev(file, dev.d)
-        time.sleep(2)
-    for file in files_names_too_long:
-        file_list_abs_path.remove(file)
-    if len(file_list_abs_path) > 1:
-        args.fre = file_list_abs_path
-        args.rst = False
-        put_multiple_f(args.t, args.p, abs_path=True, wdl_path=current_dir)
-    elif len(file_list_abs_path) == 1:
-        if args.wdl:
-            args.fre = file_list_abs_path
-            args.rst = False
-            put_multiple_f(args.t, args.p, abs_path=True, wdl_path=current_dir)
-        else:
-            args.f = file_list_abs_path[0]
-            put_f(args.t, args.p, rst=False, abs_path=True)
-    else:
-        print('NO FILES IN DIR TO UPLOAD')
-    # Now create subdirs:
-    print('\n')
-    print('MAKING SUBDIRS NOW...')
-    for dir_ in dir_list_abs_path:
-        print('\n')
-        current_dir = dir_
-        # Now create the root sync dir:
-        # print('if not {} in uos.listdir("{}")'.format(
-        #     current_dir.split('/')[-1], directory))
-        # if dir not in root dir: create dir; else pass
-        dev.d.output = None
-        while dev.d.output is None:
-            try:
-                dir_to_sync = directory
-                if args.s == 'sd':
-                    dir_to_sync = args.s + '/' + directory
-                dev_directory = dev.listdir(dir_to_sync)
-            except Exception as e:
-                pass
-        if not current_dir.split('/')[-1] in dev_directory:
-            if args.s == 'sd':
-                current_dir = args.s + '/' + current_dir
-            print('Creating dir: {}'.format(current_dir))
-            # print(f'uos.mkdir("{current_dir}")')
-            dev.mkdir(current_dir)
-        else:
-            print('DIRECTORY {} ALREADY EXISTS'.format(current_dir.split('/')[-1]))
-    if len(dir_list_abs_path) == 0:
-        print('NO MORE SUBDIRS')
-    root = directory
-    for dir_ in dir_list_abs_path:
-        d_sync_recursive(dir_, dev, root)
-
-    if directory == root_sync_folder:
-        print('Done in : {:.2f} seconds'.format(time.time()-t0))
-        # reset(args.t, args.p)
-        if args.rst is None:
-            print('Rebooting now...')
-            time.sleep(2)
-            dev.d.reset()
-
-
-def sync_root(save_wdl=True):
-    file = ' '.join([fl for fl in os.listdir() if os.path.isfile(fl)
-                     and not fl.startswith('.')])
-    if args.wdl:
-        if save_wdl:
-            put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -wdl'.format(
-                file, args.t, args.p, '')
-        else:
-            put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -wdl -swdl'.format(
-                file, args.t, args.p, '')
-    else:
-        put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-            file, args.t, args.p, '')
-    put_cmd = shlex.split(put_str)
-    try:
-        put_file = subprocess.call(put_cmd)
-    except KeyboardInterrupt:
-        print('Operation aborted')
-
-    dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl)
-                    and not fl.startswith('.')]
-    if len(dirs_to_sync) > 0:
-        print('Dir/s to sync:')
-    for _dir in dirs_to_sync:
-        print('- {}'.format(_dir))
-        if args.wdl:
-            if save_wdl:
-                d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f -wdl'.format(args.t,
-                                                                           args.p,
-                                                                           _dir)
-            else:
-                d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f -wdl -swdl'.format(args.t,
-                                                                           args.p,
-                                                                           _dir)
-        else:
-            d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
-                                                                       args.p,
-                                                                       _dir)
-
-        d_sync_cmd = shlex.split(d_sync_str)
-        try:
-            dir_sync = subprocess.call(d_sync_cmd)
-        except KeyboardInterrupt:
-            print('Operation aborted')
-
-
-def ping(ip):
-    ping_cmd_str = 'ping {}'.format(ip)
-    ping_cmd = shlex.split(ping_cmd_str)
-    try:
-        proc = subprocess.Popen(
-            ping_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        while proc.poll() is None:
-            print(proc.stdout.readline()[:-1].decode())
-    except KeyboardInterrupt:
-        time.sleep(1)
-        result = proc.stdout.readlines()
-        for message in result:
-            print(message[:-1].decode())
-
-
-def ping_diagnose(ip, rep_file=None):
-    ping_cmd_str = 'ping -c 5 {}'.format(ip)
-    ping_cmd = shlex.split(ping_cmd_str)
-    timeouts = 0
-    try:
-        proc = subprocess.Popen(
-            ping_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            print(resp)
-            if 'timeout' in resp:
-                timeouts += 1
-            if rep_file is not None:
-                rep_file.append(resp)
-
-        time.sleep(1)
-        result = proc.stdout.readlines()
-        for message in result:
-            print(message[:-1].decode())
-            rep_file.append(message[:-1].decode())
-
-    except KeyboardInterrupt:
-        time.sleep(1)
-        result = proc.stdout.readlines()
-        for message in result:
-            print(message[:-1].decode())
-
-    if timeouts >= 3:
-        print('DEVICE IS DOWN OR SIGNAL RSSI IS TO LOW')
-        print('WIRELESS DIAGNOSTICS NOT POSSIBLE, PLEASE RESET THE DEVICE OR PLACE IT NEARER TO THE LOCAL AP')
-        return False
-    else:
-        return True
-
-
-def run_script(ip, passwd, dev=''):
-    dir = ''
-    script_filepy = args.f
-    script_name = script_filepy.split('.')[0]
-    reload = "del(sys.modules['{}'])".format(script_name)
-    run_cmd = "import {};".format(script_name)
-    # print(run_cmd)
-    if args.s is not None:
-        dir = args.s
-        sd_path = "import sys;sys.path.append('/{}')".format(dir)
-        run_cmd = "{};import {}".format(
-            sd_path, script_name)
-    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        run_cmd, ip, passwd)
-    # print(run_cmd_str)
-    run_live_cmd = shlex.split(run_cmd_str)
-    print('Running {}...'.format(args.f))
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print('{}{}'.format(dev, resp[4:]))
-                else:
-                    print('{}{}'.format(dev, resp))
-            else:
-                print(resp)
-    except KeyboardInterrupt:
-        try:
-            print('...closing...')
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
-            for i in range(10):
-                proc.stdout.readlines()
-
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, ip, passwd)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-        except KeyboardInterrupt:
-            print('...wait for closing...')
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, ip, passwd)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-    # Reload sys.modules and sys.path
-    time.sleep(1)
-    reload_cmd = "import sys;{};gc.collect()".format(reload)
-    if args.s is not None:
-        reload_syspath = "sys.path.remove('/{}')".format(dir)
-        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        reload_cmd, ip, passwd)
-    reload_cmd_resp = run_command_rl(cmd_str)
-    print('Done!')
-    # sys.exit()
-
-
-def timeit_script(ip, passwd, dev=''):
-    timeit_import = "from time_it import tzero, tdiff, result;"
-    dir = ''
-    script_filepy = args.f
-    script_name = script_filepy.split('.')[0]
-    reload = "del(sys.modules['{}'])".format(script_name)
-    timeit_cmd = "t_0 = tzero();import {};diff=tdiff(t_0);result('{}',diff);".format(
-        script_name, script_name)
-    timeit_final_cmd = timeit_import + timeit_cmd
-    # print(run_cmd)
-    if args.s is not None:
-        dir = args.s
-        sd_path = "import sys;sys.path.append('/{}')".format(dir)
-        timeit_final_cmd = "{};{}".format(
-            sd_path, timeit_final_cmd)
-    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        timeit_final_cmd, ip, passwd)
-    run_live_cmd = shlex.split(run_cmd_str)
-    print('Running {}...'.format(args.f))
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print('{}{}'.format(dev, resp[4:]))
-                else:
-                    print('{}{}'.format(dev, resp))
-            else:
-                print(resp)
-    except KeyboardInterrupt:
-        try:
-            print('...closing...')
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
-            for i in range(10):
-                proc.stdout.readlines()
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, ip, passwd)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-        except KeyboardInterrupt:
-            print('...wait for closing...')
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, ip, passwd)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-    # Reload sys.modules and sys.path
-    time.sleep(1)
-    reload_cmd = "import sys;{};gc.collect()".format(reload)
-    if args.s is not None:
-        reload_syspath = "sys.path.remove('/{}')".format(dir)
-        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        reload_cmd, ip, passwd)
-    reload_cmd_resp = run_command_rl(cmd_str)
-    print('Done!')
-
-
-def install_f(ip, passwd, dev=''):
-    lib = args.f
-    install_cmd = "import upip;upip.install('{}')".format(lib)
-    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        install_cmd, ip, passwd)
-    run_live_cmd = shlex.split(run_cmd_str)
-    print('{} Looking for {} lib...'.format(dev, args.f))
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    print('{}{}'.format(dev, resp[4:]))
-                else:
-                    print('{}{}'.format(dev, resp))
-            else:
-                print(resp)
-    except Exception as e:
-        print(e)
-
-    print('{}Library {} installed!'.format(dev, args.f))
-
-
-def reset(ip, passwd):  # wait for FILEIO
-    reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
-        'D', ip, passwd)
-    print('Rebooting upy device...')
-    command = shlex.split(reset_str)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    time.sleep(0.1)
-    print('Done!')
-
-
-def kbi(ip, passwd):  # wait for DEBUGGING
-    reset_str = 'upycmd -c "{}" -t {} -p {}'.format(
-        '0x3', ip, passwd)
-    print('Keyboard Interrupt sent!')
-    command = shlex.split(reset_str)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    time.sleep(0.1)
-    print('Done!')
-
-
-def wrepl(ip, passwd):
-    web_repl_cmd_str = 'web_repl {} -p {}'.format(ip, passwd)
-    web_repl_cmd = shlex.split(web_repl_cmd_str)
-    try:
-        web_repl = subprocess.call(web_repl_cmd)
-    except KeyboardInterrupt:
-        pass
-        print('')
-    if args.rkey:
-        # refresh_wrkey(ip, passwd)
-        sys.exit()
-
-
-def wssrepl(ip, passwd):
-    web_repl_cmd_str = 'web_repl {} -p {} -wss'.format(ip, passwd)
-    web_repl_cmd = shlex.split(web_repl_cmd_str)
-    try:
-        web_repl = subprocess.call(web_repl_cmd)
-    except KeyboardInterrupt:
-        pass
-        print('')
-    if args.rkey:
-        # refresh_wrkey(ip, passwd)
-        sys.exit()
-
-
-def srepl(serial_port):
-    serial_repl_cmd_str = 'picocom {} -b115200'.format(serial_port)
-    serial_repl_cmd = shlex.split(serial_repl_cmd_str)
-    try:
-        serial_repl = subprocess.call(serial_repl_cmd)
-    except KeyboardInterrupt:
-        pass
-        print('')
-
-
-def jupyterc():
-    jupyter_cmd_str = 'jupyter console --kernel=micropython-upydevice'
-    jupyter_cmd = shlex.split(jupyter_cmd_str)
-    old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-    def preexec_function(action=old_action):
-        signal.signal(signal.SIGINT, action)
-    try:
-        jupyter_console = subprocess.call(jupyter_cmd, preexec_fn=preexec_function)
-        signal.signal(signal.SIGINT, old_action)
-    except KeyboardInterrupt:
-        pass
-        print('')
-    sys.exit()
-
-
-#############################################
-def diagnose(target, passwd, save_rep=True, rst_opt=True, name_rep=None, vers=None, local=False):
-    t0 = time.time()
-    esp32 = W_UPYDEVICE(target, passwd)
-
-    FILE_REPORT = []
-    # FULL REPORT TEST
-    print('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test', '*'*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format(
-        '*'*20, 'uPydev Diagnostics Test', '*'*20))
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('upydev version : {}'.format(vers))
-    FILE_REPORT.append('upydev version : {}'.format(vers))
-    # CHECK IF DEVICE IS REACHABLE
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
-    device_is_on = ping_diagnose(target, rep_file=FILE_REPORT)
-    print('\n')
-    FILE_REPORT.append('\n')
-    # CHECK IF PORT 8266 IS OPEN(WEBREPL)
-    host_range = target
-    nmScan = nmap.PortScanner()
-    print('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
-    print('\n')
-    FILE_REPORT.append('\n')
-    n_tries = 0
-    while n_tries < 3:
-        my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266 -Pn')
-        hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port': list(
-            nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
-        devs = [host for host in hosts_list if host['status'] == 'open']
-        if len(devs) > 0:
-            n_tries = 3
-            print('DEVICE FOUND')
-            FILE_REPORT.append('DEVICE FOUND')
-            N = 1
-            for dev in devs:
-                try:
-                    print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
-                        N, dev['host'], dev['state'], dev['port'], dev['status']))
-                    FILE_REPORT.append('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
-                        N, dev['host'], dev['state'], dev['port'], dev['status']))
-                    N += 1
-                except Exception as e:
-                    pass
-        else:
-            if n_tries >= 2:
-                print('DEVICE NOT FOUND')
-                FILE_REPORT.append('DEVICE NOT FOUND')
-                n_tries += 1
-            else:
-                n_tries += 1
-    # ISSUE A KBI
-    if device_is_on:
-        esp32.kbi(output=False)
-        while esp32.output is None:
-            esp32.cmd('dir()', silent=True)
-        glo_vars = esp32.output.copy()
-        # ID
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'MACHINE ID', '='*10))
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd(
-                'import machine; machine.unique_id();gc.collect()', silent=True)
-        print('\n')
-        FILE_REPORT.append('\n')
-        print("ID: {}".format(hexlify(esp32.output).decode()))
-        upy_id = hexlify(esp32.output).decode()
-        FILE_REPORT.append("ID: {}".format(hexlify(esp32.output).decode()))
-        print('\n')
-        FILE_REPORT.append('\n')
-        # UNAME
-        print('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'DEVICE INFO', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.response = None
-        while esp32.response is None:
-            esp32.cmd('import uos; uos.uname()', silent=True)
-        info = {data.split('=')[0].strip(): data.split('=')[1].replace(
-            "'", '') for data in esp32.response.strip()[1:-1].split(',')}
-        for key in info.keys():
-            print('{}: {}'.format(key.capitalize(), info[key]))
-            FILE_REPORT.append('{}: {}'.format(key.capitalize(), info[key]))
-        print('\n')
-        FILE_REPORT.append('\n')
-        # CHECK AVAILABLE FIRMWARE
-        if not local:
-            print('{:<10} {} {:>10}'.format(
-                '='*10, 'AVAILABLE FIRMWARE', '='*10))
-            FILE_REPORT.append('{:<10} {} {:>10}'.format(
-                '='*10, 'AVAILABLE FIRMWARE', '='*10))
-            print('\n')
-            FILE_REPORT.append('\n')
-            print('Available firmware found for {}'.format(info['nodename']))
-            FILE_REPORT.append(
-                'Available firmware found for {}'.format(info['nodename']))
-            for vers in get_fw_versions(info['nodename'])[1]:
-                print('  - {}'.format(vers))
-                FILE_REPORT.append('  - {}'.format(vers))
-            print('\n')
-            FILE_REPORT.append('\n')
-        # RAM MEM
-        print('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.long_output = []
-        while len(esp32.long_output) == 0:
-            esp32.cmd('from micropython import mem_info;mem_info();gc.collect()',
-                      silent=True, capture_output=True)
-        for line in esp32.long_output:
-            print(line)
-            FILE_REPORT.append(line)
-        mem = {elem.strip().split(':')[0]: int(elem.strip().split(
-            ':')[1]) for elem in esp32.long_output[1][4:].strip().split(',')}
-        print('RAM INFO:')
-        FILE_REPORT.append('RAM INFO:')
-        for key in mem.keys():
-            print("  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
-            FILE_REPORT.append(
-                "  - {}: {} KB".format(key.capitalize(), mem[key]/1024))
-        print('\n')
-        FILE_REPORT.append('\n')
-        # DIR()
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'GLOBAL SPACE VARIABLES', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'GLOBAL SPACE VARIABLES', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        print(glo_vars)
-        FILE_REPORT.append(glo_vars)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # FLASH MEM
-        print('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'FLASH MEMORY', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd("import uos;uos.statvfs('');gc.collect()", silent=True)
-        filesys_info = esp32.output
-        size_info = filesys_info
-        total_mem = print_filesys_info(size_info[0] * size_info[2])
-        free_mem = print_filesys_info(size_info[0] * size_info[3])
-        used_mem = print_filesys_info(
-            (size_info[0] * size_info[2]) - (size_info[0] * size_info[3]))
-        print('{} Memory'.format('FLASH'))
-        FILE_REPORT.append('{} Memory'.format('FLASH'))
-        print('TOTAL: {} , FREE: {} , USED: {}'.format(
-            total_mem, free_mem, used_mem))
-        FILE_REPORT.append('TOTAL: {} , FREE: {} , USED: {}'.format(
-            total_mem, free_mem, used_mem))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd("import uos;uos.listdir('/')", silent=True)
-        if 'sd' in esp32.output:
-            sd_ismounted = True
-            try:
-                esp32.output = None
-                while esp32.output is None:
-                    esp32.cmd("import uos;uos.statvfs('/sd');gc.collect()",
-                              silent=True, capture_output=True)
-            except Exception as e:
-                pass
-            filesys_info = esp32.output
-            size_info = filesys_info
-            total_mem = print_filesys_info(size_info[0] * size_info[2])
-            free_mem = print_filesys_info(size_info[0] * size_info[3])
-            used_mem = print_filesys_info(
-                (size_info[0] * size_info[2]) - (size_info[0] * size_info[3]))
-            print('{} Memory'.format('SD'))
-            FILE_REPORT.append('{} Memory'.format('SD'))
-            print('TOTAL: {} , FREE: {} , USED: {}'.format(
-                total_mem, free_mem, used_mem))
-            FILE_REPORT.append('TOTAL: {} , FREE: {} , USED: {}'.format(
-                total_mem, free_mem, used_mem))
-            print('\n')
-            FILE_REPORT.append('\n')
-        else:
-            sd_ismounted = False
-            print('SD NOT FOUND')
-            FILE_REPORT.append('SD NOT FOUND')
-        # FILES IN FLASH + SIZE
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'Files in FLASH MEMORY', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'Files in FLASH MEMORY', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd(
-                "[(filename,uos.stat(''+str(filename))[6]) for filename in uos.listdir('')]", silent=True)
-        filesize = esp32.output
-        filesize.sort(key=sortSecond, reverse=True)
-        print('Files in FLASH MEMORY:')
-        FILE_REPORT.append('Files in FLASH MEMORY:')
-        print_sizefile_all(filesize, frep=FILE_REPORT)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # MODULES
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'Frozen Modules in Firmware', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'Frozen Modules in Firmware', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.long_output = []
-        while len(esp32.long_output) == 0:
-            esp32.cmd("help('modules')", silent=True, capture_output=True)
-        for module in esp32.long_output:
-            print(module.strip())
-            FILE_REPORT.append(module.strip())
-        print('\n')
-        FILE_REPORT.append('\n')
-        # /LIB
-        print('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'Modules in /lib', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd("import uos; uos.listdir('/lib')", silent=True)
-        for flib in esp32.output:
-            print(flib)
-            FILE_REPORT.append(flib)
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'Modules/scripts in /', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'Modules/scripts in /', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd("import uos; uos.listdir('/')", silent=True)
-        pyfiles = [pyf for pyf in esp32.output if '.py' in pyf]
-        for flib in pyfiles:
-            print(flib)
-            FILE_REPORT.append(flib)
-
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        # I2C SCAN (config option)
-        print('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'I2C SCAN', '='*10))
-        i2c_scl = "22"
-        i2c_sda = "23"
-        if info['sysname'] == 'esp8266':
-            i2c_scl = "5"
-            i2c_sda = "4"
-        i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
-            i2c_scl, i2c_sda)
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd(i2c_cmd, silent=True)
-        i2c_devs = esp32.output
-        print('Found {} i2c devices'.format(len(i2c_devs)))
-        FILE_REPORT.append('Found {} i2c devices'.format(len(i2c_devs)))
-        print('DEC: ')
-        FILE_REPORT.append('DEC: ')
-        print(i2c_devs)
-        FILE_REPORT.append(i2c_devs)
-        print('HEX:')
-        FILE_REPORT.append('HEX:')
-        print([hex(val) for val in i2c_devs])
-        FILE_REPORT.append([hex(val) for val in i2c_devs])
-
-        print('\n')
-        FILE_REPORT.append('\n')
-        # RTC CHECK LOCAL TIME - HOST TIME DIFF
-        print('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'RTC DATETIME CHECK', '='*10))
-        get_time_cmd = "import time;tnow = time.localtime();"
-        get_time2_cmd = "[tnow[0],tnow[1],tnow[2],tnow[3],tnow[4],tnow[5]];gc.collect()"
-        get_datetime_cmd = get_time_cmd + get_time2_cmd
-        esp32.response = None
-        while esp32.response is None:
-            esp32.cmd(get_datetime_cmd, silent=True)
-        localtime = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-        print('\n')
-        FILE_REPORT.append('\n')
-        devicetime = "{}-{}-{}T{}:{}:{}".format(*_ft_datetime(esp32.output))
-        print('{:<15} :  {:^15}'.format('Device DateTime', devicetime))
-        FILE_REPORT.append('{:<15} :  {:^15}'.format(
-            'Device DateTime', devicetime))
-        print('{:<15} :  {:^15}'.format('Local DateTime', localtime))
-        FILE_REPORT.append('{:<15} :  {:^15}'.format(
-            'Local DateTime', localtime))
-        print('\n')
-        FILE_REPORT.append('\n')
-        # IF NETWORK:
-        is_conn_cmd = 'import network; network.WLAN(network.STA_IF).isconnected()'
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd(is_conn_cmd, silent=True)
-        is_connected = esp32.output
-        # STA (NETINFOT)
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK STA IF CONFIG', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK STA IF CONFIG', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        if is_connected:
-            is_connected = True
-            net_cmd = "import network;network.WLAN(network.STA_IF).ifconfig();"
-            net_info_cmd = "network.WLAN(network.STA_IF).config('essid');"
-            net_signal_cmd = "network.WLAN(network.STA_IF).status('rssi');gc.collect()"
-            net_comp_cmd = '{}{}{}'.format(
-                net_cmd, net_info_cmd, net_signal_cmd)
-            esp32.long_output = []
-            while len(esp32.long_output) == 0:
-                esp32.cmd(net_comp_cmd, silent=True, capture_output=True)
-            net_info_list = esp32.long_output
-            print('=' * 106)
-            FILE_REPORT.append('=' * 106)
-            print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
-            FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'ESSID', 'RSSI (dB)'))
-            try:
-                print('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-                    *ast.literal_eval(net_info_list[0]
-                                      ), net_info_list[1].strip(),
-                    net_info_list[2].strip()))
-                FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} | {4:^15} | {5:^15} '.format(
-                    *ast.literal_eval(net_info_list[0]
-                                      ), net_info_list[1].strip(),
-                    net_info_list[2].strip()))
-            except Exception as e:
-                print(e)
-                pass
-        else:
-            print('STA NOT CONNECTED')
-            FILE_REPORT.append('STA NOT CONNECTED')
-        # STA (NETSCAN)
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK STA SCAN', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        net_cmd = "import network;network.WLAN(network.STA_IF).active(1);network.WLAN(network.STA_IF).scan();gc.collect()"
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd(net_cmd, silent=True)
-        net_scan_list = esp32.output
-        print('=' * 110)
-        FILE_REPORT.append('=' * 110)
-        print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-            'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
-        FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-            'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
-        print('=' * 110)
-        FILE_REPORT.append('=' * 110)
-        for netscan in net_scan_list:
-            auth = AUTHMODE_DICT[netscan[4]]
-            vals = hexlify(netscan[1]).decode()
-            bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
-            print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                netscan[0].decode(), bssid , netscan[2], netscan[3],
-                auth, str(netscan[5])))
-            FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                netscan[0].decode(), bssid , netscan[2], netscan[3],
-                auth, str(netscan[5])))
-        print('\n')
-        FILE_REPORT.append('\n')
-        # AP (APSTAT)
-        esp32.output = None
-        esp32.long_output = []
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK AP IF CONFIG', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK AP IF CONFIG', '='*10))
-        ap_state = "network.WLAN(network.AP_IF).active()"
-        ap_essid = "network.WLAN(network.AP_IF).config('essid')"
-        ap_channel = "network.WLAN(network.AP_IF).config('channel')"
-        ap_authmode = "network.WLAN(network.AP_IF).config('authmode')"
-        ap_ifconfig = "network.WLAN(network.AP_IF).ifconfig()"
-        apstat_cmd = "import network;{};{};{};{};{};gc.collect()".format(
-            ap_state, ap_essid, ap_channel, ap_authmode, ap_ifconfig)
-        while len(esp32.long_output) == 0:
-            esp32.cmd(apstat_cmd, silent=True, capture_output=True)
-        apstat_info = [val.strip() for val in esp32.long_output]
-        auth = AUTHMODE_DICT[int(apstat_info[-2])]
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('=' * 70)
-        FILE_REPORT.append('=' * 70)
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-            'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
-        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-            'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-            *apstat_info[:-2], auth))
-        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-            *apstat_info[:-2], auth))
-        print('=' * 70)
-        FILE_REPORT.append('=' * 70)
-        print('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-            'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
-        FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15} '.format(
-            'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
-        try:
-            print('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-                *ast.literal_eval(apstat_info[-1])))
-            FILE_REPORT.append('{0:^15} | {1:^15} | {2:^15} | {3:^15}'.format(
-                *ast.literal_eval(apstat_info[-1])))
-        except Exception as e:
-            print(e)
-            pass
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        # AP (APSCAN)
-        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK AP SCAN', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        apscan_cmd = "import network;network.WLAN(network.AP_IF).status('stations');gc.collect()"
-        if apstat_info[:-2][0] != 'False':
-            if info['sysname'] != 'esp8266':
-                esp32.output = None
-                while esp32.output is None:
-                    esp32.cmd(apscan_cmd, silent=True)
-                print('Found {} devices'.format(len(esp32.output)))
-                FILE_REPORT.append(
-                    'Found {} devices'.format(len(esp32.output)))
-                mac_addr = []
-                for dev in esp32.output:
-                    # bytdev = bytearray(dev[0])
-                    bytdev = hexlify(dev[0]).decode()
-                    mac_ad = ':'.join([bytdev[i:i+2] for i in range(0, len(bytdev),
-                                                                    2)])
-                    # mac_ad = ':'.join(str(val) for val in bytdev)
-                    mac_addr.append(mac_ad)
-                    print('MAC addres: {}'.format(mac_ad))
-                    FILE_REPORT.append('MAC addres: {}'.format(mac_ad))
-            else:
-                print('ESP8266 NOT SUPPORTED')
-                FILE_REPORT.append('ESP8266 NOT SUPPORTED')
-        else:
-            print('AP DISABLED')
-            FILE_REPORT.append('AP DISABLED')
-        # CAT 'BOOT.PY'
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'boot.py CONTENT', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.long_output = []
-        while len(esp32.long_output) == 0:
-            esp32.cmd('from upysh import *', silent=True, capture_output=True)
-        esp32.long_output = []
-        while len(esp32.long_output) == 0:
-            esp32.cmd("cat('boot.py')", silent=True, capture_output=True)
-        for val in esp32.long_output:
-            print(val)
-            FILE_REPORT.append(val)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # CAT 'MAIN.PY'
-
-        print('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'main.py CONTENT', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.long_output = []
-        while len(esp32.long_output) == 0:
-            esp32.cmd("cat('main.py');gc.collect()",
-                      silent=True, capture_output=True)
-        for val in esp32.long_output:
-            print(val)
-            FILE_REPORT.append(val)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # CAT 'ERROR.LOG'
-
-        print('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'error.log CONTENT', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd("import uos;uos.listdir('/')", silent=True)
-        if 'error.log' in esp32.output:
-            try:
-                esp32.long_output = []
-                while len(esp32.long_output) == 0:
-                    esp32.cmd("cat('error.log');gc.collect()",
-                              silent=True, capture_output=True)
-                for val in esp32.long_output:
-                    print(val)
-                    FILE_REPORT.append(val)
-            except Exception as e:
-                pass
-        else:
-            print('error.log NOT FOUND')
-            FILE_REPORT.append('error.log NOT FOUND')
-        print('\n')
-        FILE_REPORT.append('\n')
-        if sd_ismounted:
-            print('Looking for error.log in SD:')
-            print('\n')
-            FILE_REPORT.append('\n')
-            esp32.output = None
-            while esp32.output is None:
-                esp32.cmd("import uos;uos.listdir('/sd')", silent=True)
-            if 'error.log' in esp32.output:
-                try:
-                    esp32.long_output = []
-                    while len(esp32.long_output) == 0:
-                        esp32.cmd("cat('/sd/error.log');gc.collect()",
-                                  silent=True, capture_output=True)
-                    for val in esp32.long_output:
-                        print(val)
-                        FILE_REPORT.append(val)
-                    print('\n')
-                    FILE_REPORT.append('\n')
-                except Exception as e:
-                    pass
-            else:
-                print('error.log NOT FOUND')
-                FILE_REPORT.append('error.log NOT FOUND')
-
-        # HW
-        # PINS STATE
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'PINS STATE', '='*10))
-        pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
-        if info['sysname'] == 'esp8266':
-            pinlist = "[0,2,4,5,12,13,14,15]"
-        machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
-        status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
-        pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
-            pinlist, machine_pin, status)
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd(pin_status_cmd, silent=True)
-        pin_dict = esp32.output
-        pin_list = list(pin_dict.keys())
-        pin_list.sort()
-        for key in pin_list:
-            if pin_dict[key] == 1:
-                print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-                FILE_REPORT.append(
-                    '{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-            else:
-                print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-                FILE_REPORT.append(
-                    '{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        tdiff = time.time()-t0
-        print('{:<10} {} {:>10}'.format(
-            '*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
-        print('TOTAL TIME: {} s'.format(round(tdiff, 2)))
-        FILE_REPORT.append('TOTAL TIME: {} s'.format(round(tdiff, 2)))
-
-        if save_rep:
-            name_file = 'upyd_{}_{}_report.txt'.format(
-                upy_id, datetime.now().strftime("%m-%d-%Y_at_%H-%M-%S"))
-            if name_rep is not None:
-                name_file = "{}.txt".format(name_rep)
-            with open(name_file, 'w') as rfile:
-                for line in FILE_REPORT:
-                    if isinstance(line, str):
-                        rfile.write(line)
-                        rfile.write('\n')
-                    else:
-                        rfile.write("{}".format(line))
-                        rfile.write('\n')
-        if rst_opt:
-            esp32.reset()
-
-#############################################
-
-
-def get_error_log(target, passwd, source=None):
-    esp32 = W_UPYDEVICE(target, passwd)
-    print('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
-    print('\n')
-    if source is None:
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd(
-                "from upysh import cat;import uos;uos.listdir('/')", silent=True)
-        if 'error.log' in esp32.output:
-            try:
-                esp32.long_output = []
-                while len(esp32.long_output) == 0:
-                    esp32.cmd("cat('error.log');gc.collect()",
-                              silent=True, capture_output=True)
-                for val in esp32.long_output:
-                    print(val)
-            except Exception as e:
-                pass
-        else:
-            print('error.log NOT FOUND')
-    else:
-        print('Looking for error.log in SD:')
-        esp32.output = None
-        while esp32.output is None:
-            esp32.cmd("import uos;uos.listdir('/sd')", silent=True)
-        if 'error.log' in esp32.output:
-            try:
-                esp32.long_output = []
-                while len(esp32.long_output) == 0:
-                    esp32.cmd("cat('/sd/error.log');gc.collect()",
-                              silent=True, capture_output=True)
-                for val in esp32.long_output:
-                    print(val)
-                print('\n')
-            except Exception as e:
-                pass
-        else:
-            print('error.log NOT FOUND')
-
-#############################################
-
-# STREAM TEST
-
-
-def get_stream_test(ip, passwd, mode='download'):
-    espdev = W_UPYDEVICE(ip, passwd)
-    print('*'*10, ' upydev STREAM TEST ', '*'*10)
-    espdev.output = None
-    while espdev.output is None:
-        espdev.cmd('from sync_tool import w_stream_writer; [1]', silent=True)
-    data, total_time = stream_test(espdev, mode=mode)
-    print('\n\nDone!')
-    print('TEST RESULTS ARE:')
-    print('TEST DURATION : {:.3f} (s)'.format(total_time))
-    N_Bytes = len(data)
-    print_sizefile('TEST DATA', N_Bytes)
-    kBs = (N_Bytes/total_time)/1024
-    print('DATA TRANSFER RATE (kBps): {:.3f} kB/s'.format(kBs))
-    print('DATA TRANSFER RATE (Mbps): {:.3f} Mbps'.format((kBs*8)/1000))
-
-
-#############################################
-
-def sysctl(ip, passwd):
-    espdev = W_UPYDEVICE(ip, passwd)
-    sys_cmd = "import {}"
-    if args.start is not None:
-        print('Loading {} script...'.format(args.start))
-        sys_cmd = sys_cmd.format(args.start)
-        espdev.cmd_nb(sys_cmd, block_dev=False)
-        print('Done!')
-    elif args.stop is not None:
-        reload = "del(sys.modules['{}'])".format(args.stop)
-        print('Stopping {} script...'.format(args.stop))
-        espdev.kbi()
-        print('Unloading {} script...'.format(args.stop))
-        reload_cmd = "import sys;{};gc.collect();print('Script unloaded!')".format(reload)
-        time.sleep(1)
-        espdev.cmd(reload_cmd)
-        print('Done!')
-
-#############################################
-
-def log_script(ip, passwd, dev='', log=None):
-    dir = ''
-    script_filepy = args.f
-    script_name = script_filepy.split('.')[0]
-    reload = "del(sys.modules['{}'])".format(script_name)
-    run_cmd = "import {};".format(script_name)
-    e_keywords = ['Traceback', '<module>', 'Error', 'ERROR']
-    # print(run_cmd)
-    if args.s is not None:
-        dir = args.s
-        sd_path = "import sys;sys.path.append('/{}')".format(dir)
-        run_cmd = "{};import {}".format(
-            sd_path, script_name)
-    run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        run_cmd, ip, passwd)
-    # print(run_cmd_str)
-    run_live_cmd = shlex.split(run_cmd_str)
-    log.info('Running {}...'.format(args.f))
-    try:
-        proc = subprocess.Popen(
-            run_live_cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        for i in range(6):
-            proc.stdout.readline()
-        while proc.poll() is None:
-            resp = proc.stdout.readline()[:-1].decode()
-            if len(resp) > 0:
-                if resp[0] == '>':
-                    if any([w in resp[4:] for w in e_keywords]):
-                        log.error('{}{}'.format(dev, resp[4:]))
-                    else:
-                        log.info('{}{}'.format(dev, resp[4:]))
-                else:
-                    if any([w in resp for w in e_keywords]):
-                        log.error('{}{}'.format(dev, resp))
-                    else:
-                        log.info('{}{}'.format(dev, resp))
-            else:
-                print(resp)
-    except KeyboardInterrupt:
-        try:
-            log.info('...closing...')
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print(message[:-1].decode())
-            for i in range(10):
-                proc.stdout.readlines()
-
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, ip, passwd)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-        except KeyboardInterrupt:
-            log.info('...wait for closing...')
-            # Flush error keyboardinterrupt
-            cmd = ''
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, ip, passwd)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-    # Reload sys.modules and sys.path
-    time.sleep(1)
-    reload_cmd = "import sys;{};gc.collect()".format(reload)
-    if args.s is not None:
-        reload_syspath = "sys.path.remove('/{}')".format(dir)
-        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        reload_cmd, ip, passwd)
-    reload_cmd_resp = run_command_rl(cmd_str)
-    log.info('Done!')
-
-
-def get_log_script(ip, passwd):
-    script_filepy = args.f
-    script_name = script_filepy.split('.')[0]
-    filelog_path = "{}/.upydev_logs/".format(os.environ['HOME'])
-    filelog_daemon = ''.join([filelog_path, '{}_daemon.log'.format(script_name)])
-    if not args.daemon:
-        if not args.stopd:
-            if '.upydev_logs' not in os.listdir("{}".format(os.environ['HOME'])):
-                os.mkdir("{}/.upydev_logs".format(os.environ['HOME']))
-
-            # Logging Setup
-            # filelog_path = "{}/.upydev_logs/".format(os.environ['HOME'])
-            # filelog_daemon = ''.join([filelog_path, '{}_daemon.log'.format(script_name)])
-            log_levels = {'debug': logging.DEBUG, 'info': logging.INFO,
-                          'warning': logging.WARNING, 'error': logging.ERROR,
-                          'critical': logging.CRITICAL}
-            handler = logging.StreamHandler(sys.stdout)
-            handler.setLevel(log_levels[args.dslev])
-            logging.basicConfig(
-                level=log_levels['debug'],
-                format="%(asctime)s [%(name)s] [%(process)d] [%(threadName)s] [%(levelname)s]  %(message)s",
-                handlers=[handler])
-            log = logging.getLogger('upydev_{}'.format(script_name))  # setup one logger per device
-            # log.setLevel(log_levels[args.dslev]) # MASTER LOG LEVEL
-            # Filehandler for error
-            fh_err = logging.FileHandler(''.join([filelog_path, '{}_error.log'.format(script_name)]))
-            fh_err.setLevel(log_levels[args.dflev])
-            # Formatter for errors
-            fmt_err = logging.Formatter("%(asctime)s [%(name)s] [%(process)d] [%(threadName)s] [%(levelname)s]  %(message)s")
-            fh_err.setFormatter(fmt_err)
-            log.addHandler(fh_err)
-
-            log_script(ip=ip, passwd=passwd, log=log)
-        else:
-            print('Stopping daemon log...')
-            print(stop_by_pid(proc_name='upydev log'))
-            time.sleep(1)
-            espdev = W_UPYDEVICE(ip, passwd)
-            print('Stopping script...')
-            print(stop_by_pid(proc_name='web_repl_cmd_r'))
-            espdev.kbi(output=False)
-            time.sleep(1)
-            espdev.output = None
-            while espdev.output is None:
-                reload = "import sys;del(sys.modules['{}']);[1]".format(script_name)
-                espdev.cmd(reload, silent=True)
-            print('Done!')
-
-    else:
-        single_command = []
-        for i in range(len(sys.argv[2:])):
-            if sys.argv[2:][i] != '-daemon':
-                single_command.append(sys.argv[2:][i])
-        gcommand = ' '.join(single_command)
-        daemon_cmd = "nohup upydev log {} > {} &".format(gcommand, filelog_daemon)
-        subprocess.call(daemon_cmd, shell=True)  # is this still safe?
-        print('Running upydev log daemon-like mode'.format(parser.version))
-        print('Logging to {} with level: {}'.format('{}_daemon.log'.format(script_name), args.dslev))
-        print("Do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
-
-
-# from https://stackoverflow.com/questions/12523044/how-can-i-tail-a-log-file-in-python
-def follow_daemon_log():
-    script_filepy = args.f
-    script_name = script_filepy.split('.')[0]
-    filelog_path = "{}/.upydev_logs/".format(os.environ['HOME'])
-    filelog_daemon = ''.join([filelog_path, '{}_daemon.log'.format(script_name)])
-
-    f = subprocess.Popen(['tail', '-F', filelog_daemon],
-                         stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-    while True:
-        try:
-            line = f.stdout.readline()
-            print(line[:-1].decode())
-        except KeyboardInterrupt:
-            print("Unfollowing, do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
-            break
-
-
-def get_cmd(raw):
-    shcmd = shlex.split(raw)
-    output = subprocess.check_output(shcmd).decode()
-    return output
-
-
-def stop_by_pid(raw='ps ax', proc_name='upydev log'):  # upydev log, web_repl_cmd_r
-    shcmd = shlex.split(raw)
-    output = subprocess.check_output(shcmd).decode()
-    pline = [line for line in output.split('\n') if proc_name in line]
-    if len(pline) > 0:
-        pid = pline[0].strip().split(' ')[0]
-        k = get_cmd('kill {}'.format(pid))
-        return 'Daemon process {} with PID: {} stopped'.format(proc_name, pid)
-    else:
-        return('NO DAEMON PROCESS FOUND')
-
-
-#############################################
-def update_upyutils(ip, passwd):
-    print('Updating device upyutils...')
-    # sync_tool.py
-    sync_tool = '{}/sync_tool.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # upylog.py
-    upylog = '{}/upylog.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # sync_tool.py
-    upynotify = '{}/upynotify.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # upysecrets.py
-    upysecrets = '{}/upysecrets.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # upysh2.py
-    upysh2 = '{}/upysh2.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # ssl_repl.py
-    ssl_repl = '{}/ssl_repl.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # uping.py
-    uping = '{}/uping.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # time_it.py
-    time_it = '{}/time_it.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # wss_repl.py
-    wss_repl = '{}/wss_repl.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    # wss_helper.py
-    wss_helper = '{}/wss_helper.py'.format(upydev.__path__[0]+'/upyutils_dir')
-    args.fre = [sync_tool, upylog, upynotify, upysecrets, upysh2,
-                ssl_repl, uping, time_it, wss_repl, wss_helper]
-    args.dir = 'lib'
-    put_multiple_f(ip=ip, passwd=passwd)
 
 
 #############################################
@@ -3450,132 +1129,132 @@ kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
 # UPYDEVICE CLASS
 
 
-class UPYDEVICE:
-    def __init__(self, devname, ip, passwd, command, port=8005):
-        self.name = devname
-        self.ip = ip
-        self.password = passwd
-        self.command = command
-        self.port = port
-        self.dev_process = multiprocessing.Process(
-            target=self.run_command_callback)
-        self.dev_process_raw = multiprocessing.Process(
-            target=self.run_command_raw_callback)
-        self.dev_ping = multiprocessing.Process(target=self.ping_callback)
-        self.dev_run_script = multiprocessing.Process(
-            target=run_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
-        self.dev_timeit_script = multiprocessing.Process(
-            target=timeit_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
-        self.dev_put = multiprocessing.Process(
-            target=put_f, args=(self.ip, self.password, args.rst))
-        self.dev_put_multiple = multiprocessing.Process(
-            target=put_multiple_f, args=(self.ip, self.password))
-        self.dev_install = multiprocessing.Process(target=install_f, args=(
-            self.ip, self.password, '{}: '.format(self.name), ))
-        self.dev_get = multiprocessing.Process(target=get_f, args=(
-            self.ip, self.password, '/{}_{}'.format(self.name, args.f)))
-        self.dev_get_multiple = multiprocessing.Process(
-            target=get_multiple_f, args=(self.ip, self.password, 'device_id', self.name))
-        self.dev_sync = multiprocessing.Process(target=sync, args=(
-            self.ip, self.password, '{}_{}'.format(self.name, args.f), self.port))
-        self.dev_sync_multiple = multiprocessing.Process(target=sync_multiple_f, args=(
-            self.ip, self.password, 'device_id', self.name, self.port))
-
-    def run_command_callback(self):
-        group_cmd_str = 'upydev {} -t {} -p {}'.format(
-            self.command, self.ip, self.password)
-        # print(group_cmd_str)
-        group_cmd = shlex.split(group_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                group_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            while proc.poll() is None:
-                print('{}:{}'.format(
-                    self.name, proc.stdout.readline()[:-1].decode()))
-        except KeyboardInterrupt:
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print('{}:{}'.format(self.name, message[:-1].decode()))
-
-    def run_command_raw_callback(self):
-        group_cmd_str = 'web_repl_cmd_r -c {} -t {} -p {} -wt 0.8'.format(
-            self.command, self.ip, self.password)
-        # print(group_cmd_str)
-        group_cmd = shlex.split(group_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                group_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print('{}:{}'.format(self.name, resp[4:]))
-                    else:
-                        print('{}:{}'.format(self.name, resp))
-                else:
-                    print(resp)
-        except KeyboardInterrupt:
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print('{}:{}'.format(self.name, message[:-1].decode()))
-
-    def ping_callback(self):
-        ping_cmd_str = 'ping {}'.format(self.ip)
-        ping_cmd = shlex.split(ping_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                ping_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            while proc.poll() is None:
-                print('{}:{}'.format(
-                    self.name, proc.stdout.readline()[:-1].decode()))
-        except KeyboardInterrupt:
-            time.sleep(1)
-            result = proc.stdout.readlines()
-            for message in result:
-                print('{}:{}'.format(self.name, message[:-1].decode()))
-
-    def run_command(self):
-        self.dev_process.start()
-
-    def run_command_raw(self):
-        self.dev_process_raw.start()
-
-    def ping(self):
-        self.dev_ping.start()
-
-    def run_scrpt(self):
-        self.dev_run_script.start()
-
-    def timeit_scrpt(self):
-        self.dev_timeit_script.start()
-
-    def put_df(self):
-        self.dev_put.start()
-
-    def put_multiple_df(self):
-        self.dev_put_multiple.start()
-
-    def install_df(self):
-        self.dev_install.start()
-
-    def get_df(self):
-        self.dev_get.start()
-
-    def get_multiple_df(self):
-        self.dev_get_multiple.start()
-
-    def sync_df(self):
-        self.dev_sync.start()
-
-    def sync_multiple_df(self):
-        self.dev_sync_multiple.start()
+# class UPYDEVICE:
+#     def __init__(self, devname, ip, passwd, command, port=8005):
+#         self.name = devname
+#         self.ip = ip
+#         self.password = passwd
+#         self.command = command
+#         self.port = port
+#         self.dev_process = multiprocessing.Process(
+#             target=self.run_command_callback)
+#         self.dev_process_raw = multiprocessing.Process(
+#             target=self.run_command_raw_callback)
+#         self.dev_ping = multiprocessing.Process(target=self.ping_callback)
+#         self.dev_run_script = multiprocessing.Process(
+#             target=run_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
+#         self.dev_timeit_script = multiprocessing.Process(
+#             target=timeit_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
+#         self.dev_put = multiprocessing.Process(
+#             target=put_f, args=(self.ip, self.password, args.rst))
+#         self.dev_put_multiple = multiprocessing.Process(
+#             target=put_multiple_f, args=(self.ip, self.password))
+#         self.dev_install = multiprocessing.Process(target=install_f, args=(
+#             self.ip, self.password, '{}: '.format(self.name), ))
+#         self.dev_get = multiprocessing.Process(target=get_f, args=(
+#             self.ip, self.password, '/{}_{}'.format(self.name, args.f)))
+#         self.dev_get_multiple = multiprocessing.Process(
+#             target=get_multiple_f, args=(self.ip, self.password, 'device_id', self.name))
+#         self.dev_sync = multiprocessing.Process(target=sync, args=(
+#             self.ip, self.password, '{}_{}'.format(self.name, args.f), self.port))
+#         self.dev_sync_multiple = multiprocessing.Process(target=sync_multiple_f, args=(
+#             self.ip, self.password, 'device_id', self.name, self.port))
+#
+#     def run_command_callback(self):
+#         group_cmd_str = 'upydev {} -t {} -p {}'.format(
+#             self.command, self.ip, self.password)
+#         # print(group_cmd_str)
+#         group_cmd = shlex.split(group_cmd_str)
+#         try:
+#             proc = subprocess.Popen(
+#                 group_cmd, stdout=subprocess.PIPE,
+#                 stderr=subprocess.STDOUT)
+#             while proc.poll() is None:
+#                 print('{}:{}'.format(
+#                     self.name, proc.stdout.readline()[:-1].decode()))
+#         except KeyboardInterrupt:
+#             time.sleep(1)
+#             result = proc.stdout.readlines()
+#             for message in result:
+#                 print('{}:{}'.format(self.name, message[:-1].decode()))
+#
+#     def run_command_raw_callback(self):
+#         group_cmd_str = 'web_repl_cmd_r -c {} -t {} -p {} -wt 0.8'.format(
+#             self.command, self.ip, self.password)
+#         # print(group_cmd_str)
+#         group_cmd = shlex.split(group_cmd_str)
+#         try:
+#             proc = subprocess.Popen(
+#                 group_cmd, stdout=subprocess.PIPE,
+#                 stderr=subprocess.STDOUT)
+#             for i in range(6):
+#                 proc.stdout.readline()
+#             while proc.poll() is None:
+#                 resp = proc.stdout.readline()[:-1].decode()
+#                 if len(resp) > 0:
+#                     if resp[0] == '>':
+#                         print('{}:{}'.format(self.name, resp[4:]))
+#                     else:
+#                         print('{}:{}'.format(self.name, resp))
+#                 else:
+#                     print(resp)
+#         except KeyboardInterrupt:
+#             time.sleep(1)
+#             result = proc.stdout.readlines()
+#             for message in result:
+#                 print('{}:{}'.format(self.name, message[:-1].decode()))
+#
+#     def ping_callback(self):
+#         ping_cmd_str = 'ping {}'.format(self.ip)
+#         ping_cmd = shlex.split(ping_cmd_str)
+#         try:
+#             proc = subprocess.Popen(
+#                 ping_cmd, stdout=subprocess.PIPE,
+#                 stderr=subprocess.STDOUT)
+#             while proc.poll() is None:
+#                 print('{}:{}'.format(
+#                     self.name, proc.stdout.readline()[:-1].decode()))
+#         except KeyboardInterrupt:
+#             time.sleep(1)
+#             result = proc.stdout.readlines()
+#             for message in result:
+#                 print('{}:{}'.format(self.name, message[:-1].decode()))
+#
+#     def run_command(self):
+#         self.dev_process.start()
+#
+#     def run_command_raw(self):
+#         self.dev_process_raw.start()
+#
+#     def ping(self):
+#         self.dev_ping.start()
+#
+#     def run_scrpt(self):
+#         self.dev_run_script.start()
+#
+#     def timeit_scrpt(self):
+#         self.dev_timeit_script.start()
+#
+#     def put_df(self):
+#         self.dev_put.start()
+#
+#     def put_multiple_df(self):
+#         self.dev_put_multiple.start()
+#
+#     def install_df(self):
+#         self.dev_install.start()
+#
+#     def get_df(self):
+#         self.dev_get.start()
+#
+#     def get_multiple_df(self):
+#         self.dev_get_multiple.start()
+#
+#     def sync_df(self):
+#         self.dev_sync.start()
+#
+#     def sync_multiple_df(self):
+#         self.dev_sync_multiple.start()
 
 
 #############################################
@@ -3766,73 +1445,74 @@ if args.G is not None:
                     for message in result:
                         print(message[:-1].decode())
             else:
-                if group_cmd_str.split()[1] == 'ping':
-                    ping(dev_ip)
-                elif group_cmd_str.split()[1] == 'run':
-                    run_script(dev_ip, dev_pass)
-                elif group_cmd_str.split()[1] == 'timeit':
-                    timeit_script(dev_ip, dev_pass)
-                elif group_cmd_str.split()[1] == 'put':
-                    if args.fre is None:
-                        put_f(dev_ip, dev_pass, rst=args.rst)
-                    else:
-                        if dev == devs[-1]:
-                            put_multiple_f(dev_ip, dev_pass)
-                        else:
-                            put_multiple_f(dev_ip, dev_pass, save_wdlog=False)
-
-                elif group_cmd_str.split()[1] == 'get':
-                    if args.fre is None:
-                        get_f(dev_ip, dev_pass,
-                              id_file='/{}_{}'.format(dev, args.f))
-                    else:
-                        get_multiple_f(dev_ip, dev_pass,
-                                       id_file_dev='device_id', device=dev)
-                elif group_cmd_str.split()[1] == 'sync':
-                    if args.fre is None:
-                        sync(dev_ip, dev_pass, id_file='{}_{}'.format(dev, args.f))
-                    else:
-                        sync_multiple_f(dev_ip, dev_pass,
-                                        id_file_dev='device_id', device=dev)
-                elif group_cmd_str.split()[1] == 'install':
-                    install_f(dev_ip, dev_pass)
-
-                elif group_cmd_str.split()[1] == 'wrepl':
-                    wrepl(dev_ip, dev_pass)
-                elif group_cmd_str.split()[1] == 'diagnose':
-                    if args.rep:
-                        args.rep = True
-                    if args.rst is None:
-                        args.rst = True
-                    else:
-                        args.rst = False
-                    localdev = False
-                    if args.apmd:
-                        localdev = True
-                    diagnose(dev_ip, dev_pass, save_rep=args.rep,
-                             rst_opt=args.rst, name_rep=args.n,
-                             vers=parser.version, local=localdev)
-                elif group_cmd_str.split()[1] == 'd_sync':
-                    args.t, args.p = dev_ip, dev_pass
-                    if args.dir is None:
-                        if args.tree:
-                            print('\nDIRECTORY TREE STRUCTURE:\n')
-                            print('        ./')
-                            see_local_tree()
-                        if dev == devs[-1]:
-                            sync_root()
-                        else:
-                            sync_root(save_wdl=False)
-                        if args.rst is None:
-                            reset(dev_ip, dev_pass)
-                    else:
-                        dir_to_sync = args.dir
-                        args.dir = None
-                        esp_dev = W_UPYDEVICE(dev_ip, dev_pass)
-                        esp_dev.cmd('import uos')
-                        uos = UOS(esp_dev)
-                        d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
-                                         show_tree=args.tree)
+                pass
+                # if group_cmd_str.split()[1] == 'ping':
+                #     ping(dev_ip)
+                # elif group_cmd_str.split()[1] == 'run':
+                #     run_script(dev_ip, dev_pass)
+                # elif group_cmd_str.split()[1] == 'timeit':
+                #     timeit_script(dev_ip, dev_pass)
+                # elif group_cmd_str.split()[1] == 'put':
+                #     if args.fre is None:
+                #         put_f(dev_ip, dev_pass, rst=args.rst)
+                #     else:
+                #         if dev == devs[-1]:
+                #             put_multiple_f(dev_ip, dev_pass)
+                #         else:
+                #             put_multiple_f(dev_ip, dev_pass, save_wdlog=False)
+                #
+                # elif group_cmd_str.split()[1] == 'get':
+                #     if args.fre is None:
+                #         get_f(dev_ip, dev_pass,
+                #               id_file='/{}_{}'.format(dev, args.f))
+                #     else:
+                #         get_multiple_f(dev_ip, dev_pass,
+                #                        id_file_dev='device_id', device=dev)
+                # elif group_cmd_str.split()[1] == 'sync':
+                #     if args.fre is None:
+                #         sync(dev_ip, dev_pass, id_file='{}_{}'.format(dev, args.f))
+                #     else:
+                #         sync_multiple_f(dev_ip, dev_pass,
+                #                         id_file_dev='device_id', device=dev)
+                # elif group_cmd_str.split()[1] == 'install':
+                #     install_f(dev_ip, dev_pass)
+                #
+                # elif group_cmd_str.split()[1] == 'wrepl':
+                #     wrepl(dev_ip, dev_pass)
+                # elif group_cmd_str.split()[1] == 'diagnose':
+                #     if args.rep:
+                #         args.rep = True
+                #     if args.rst is None:
+                #         args.rst = True
+                #     else:
+                #         args.rst = False
+                #     localdev = False
+                #     if args.apmd:
+                #         localdev = True
+                #     diagnose(dev_ip, dev_pass, save_rep=args.rep,
+                #              rst_opt=args.rst, name_rep=args.n,
+                #              vers=parser.version, local=localdev)
+                # elif group_cmd_str.split()[1] == 'd_sync':
+                #     args.t, args.p = dev_ip, dev_pass
+                #     if args.dir is None:
+                #         if args.tree:
+                #             print('\nDIRECTORY TREE STRUCTURE:\n')
+                #             print('        ./')
+                #             see_local_tree()
+                #         if dev == devs[-1]:
+                #             sync_root()
+                #         else:
+                #             sync_root(save_wdl=False)
+                #         if args.rst is None:
+                #             reset(dev_ip, dev_pass)
+                #     else:
+                #         dir_to_sync = args.dir
+                #         args.dir = None
+                #         esp_dev = W_UPYDEVICE(dev_ip, dev_pass)
+                #         esp_dev.cmd('import uos')
+                #         uos = UOS(esp_dev)
+                #         d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
+                #                          show_tree=args.tree)
 
         sys.exit()
     except Exception as e:
@@ -3843,155 +1523,156 @@ if args.G is not None:
 
 # UPYDEV GROUP COMMAND THREADED MODE:
 if args.GP is not None:
-    try:
-        group_file = args.GP
-        # print(group_file)
-        if '{}.config'.format(group_file) not in os.listdir() or args.g:
-            group_file = '{}/{}'.format(upydev.__path__[0], args.GP)
-        print('Sending command to group: {}'.format(group_file.split('/')[-1]))
-        with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-            devices = json.loads(group.read())
-            # print(devices)
-        devs = devices.keys()
-        PORTS = [8005+i for i in range(len(devs))]
-        PORTS_DICT = dict(zip(devs, PORTS))
-        if args.devs is not None:
-            devs = args.devs
-            PORTS = [8005+i for i in range(len(devs))]
-            PORTS_DICT = dict(zip(devs, PORTS))
-        for dev in devs:
-            print('Device Name: {} ; IP: {}'.format(dev, devices[dev][0]))
-        print('Sending command {} ...'.format(args.m))
-        # print(sys.argv[1:])
-        single_command = []
-        for i in range(len(sys.argv[1:])):
-            if sys.argv[1:][i] != '-GP':
-                if i == 0 or sys.argv[1:][i-1] != '-GP':
-                    if sys.argv[1:][i] not in devs and sys.argv[1:][i] != '-devs':
-                        single_command.append(sys.argv[1:][i])
-        gcommand = ' '.join(single_command)
-        # print(gcommand.split())
-        # group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
-        devs_dict = {dev: UPYDEVICE(
-            dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
-        if gcommand.split()[0] not in keywords_mode:
-            devs_dict = {dev: UPYDEVICE(
-                dev, devices[dev][0], devices[dev][1], '"{};gc.collect()"'.format(gcommand)) for dev in devs}
-            for dev in devs_dict.keys():
-                devs_dict[dev].run_command_raw()
-            try:
-                while True:
-                    dev_proc_state = [
-                        devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
-                    if all(state is False for state in dev_proc_state):
-                        time.sleep(1)
-                        print('Done!')
-                        break
-            except KeyboardInterrupt:
-                time.sleep(2)
-                while True:
-                    dev_proc_state = [
-                        devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
-                    if all(state is False for state in dev_proc_state):
-                        time.sleep(1)
-                        for dev in devs_dict.keys():
-                            devs_dict[dev].dev_process_raw.terminate()
-                        break
-
-        elif gcommand.split()[0] not in kw_loc:
-            for dev in devs_dict.keys():
-                devs_dict[dev].run_command()
-            try:
-                while True:
-                    dev_proc_state = [
-                        devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
-                    if all(state is False for state in dev_proc_state):
-                        time.sleep(1)
-                        print('Done!')
-                        break
-            except KeyboardInterrupt:
-                time.sleep(2)
-                while True:
-                    dev_proc_state = [
-                        devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
-                    if all(state is False for state in dev_proc_state):
-                        time.sleep(1)
-                        for dev in devs_dict.keys():
-                            devs_dict[dev].dev_process.terminate()
-                        break
-        else:
-            # print('Mode not implemented yet')
-            if gcommand.split()[0] == 'ping':
-                for dev in devs_dict.keys():
-                    devs_dict[dev].ping()
-
-                try:
-                    while True:
-                        time.sleep(0.1)
-                except KeyboardInterrupt:
-                    time.sleep(1)
-                    for dev in devs_dict.keys():
-                        devs_dict[dev].dev_ping.terminate()
-
-            elif gcommand.split()[0] == 'put':
-                if args.fre is None:
-                    for dev in devs_dict.keys():
-                        devs_dict[dev].put_df()
-                else:
-                    for dev in devs_dict.keys():
-                        devs_dict[dev].put_multiple_df()
-
-            elif gcommand.split()[0] == 'get':
-                    if args.fre is None:
-                        for dev in devs_dict.keys():
-                            devs_dict[dev].get_df()
-                    else:
-                        for dev in devs_dict.keys():
-                            devs_dict[dev].get_multiple_df()
-
-            elif gcommand.split()[0] == 'sync':
-                if args.fre is None:
-                    for dev in devs_dict.keys():
-                        devs_dict[dev].sync_df()
-                else:
-                    for dev in devs_dict.keys():
-                        devs_dict[dev].sync_multiple_df()
-
-            elif gcommand.split()[0] == 'install':
-                for dev in devs_dict.keys():
-                    devs_dict[dev].install_df()
-
-            elif gcommand.split()[0] == 'timeit':
-                for dev in devs_dict.keys():
-                    devs_dict[dev].timeit_scrpt()
-
-            elif gcommand.split()[0] == 'run':
-                for dev in devs_dict.keys():
-                    devs_dict[dev].run_scrpt()
-
-                try:
-                    while True:
-                        dev_proc_state = [
-                            devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
-                        if all(state is False for state in dev_proc_state):
-                            time.sleep(0.1)
-                            break
-                except KeyboardInterrupt:
-                    time.sleep(2)
-                    while True:
-                        dev_proc_state = [
-                            devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
-                        if all(state is False for state in dev_proc_state):
-                            time.sleep(1)
-                            for dev in devs_dict.keys():
-                                devs_dict[dev].dev_run_script.terminate()
-                            break
-
-        sys.exit()
-    except Exception as e:
-        print(e)
-        print('file not found, please create a group first')
-        sys.exit()
+    pass
+    # try:
+    #     group_file = args.GP
+    #     # print(group_file)
+    #     if '{}.config'.format(group_file) not in os.listdir() or args.g:
+    #         group_file = '{}/{}'.format(upydev.__path__[0], args.GP)
+    #     print('Sending command to group: {}'.format(group_file.split('/')[-1]))
+    #     with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+    #         devices = json.loads(group.read())
+    #         # print(devices)
+    #     devs = devices.keys()
+    #     PORTS = [8005+i for i in range(len(devs))]
+    #     PORTS_DICT = dict(zip(devs, PORTS))
+    #     if args.devs is not None:
+    #         devs = args.devs
+    #         PORTS = [8005+i for i in range(len(devs))]
+    #         PORTS_DICT = dict(zip(devs, PORTS))
+    #     for dev in devs:
+    #         print('Device Name: {} ; IP: {}'.format(dev, devices[dev][0]))
+    #     print('Sending command {} ...'.format(args.m))
+    #     # print(sys.argv[1:])
+    #     single_command = []
+    #     for i in range(len(sys.argv[1:])):
+    #         if sys.argv[1:][i] != '-GP':
+    #             if i == 0 or sys.argv[1:][i-1] != '-GP':
+    #                 if sys.argv[1:][i] not in devs and sys.argv[1:][i] != '-devs':
+    #                     single_command.append(sys.argv[1:][i])
+    #     gcommand = ' '.join(single_command)
+    #     # print(gcommand.split())
+    #     # group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
+    #     devs_dict = {dev: UPYDEVICE(
+    #         dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
+    #     if gcommand.split()[0] not in keywords_mode:
+    #         devs_dict = {dev: UPYDEVICE(
+    #             dev, devices[dev][0], devices[dev][1], '"{};gc.collect()"'.format(gcommand)) for dev in devs}
+    #         for dev in devs_dict.keys():
+    #             devs_dict[dev].run_command_raw()
+    #         try:
+    #             while True:
+    #                 dev_proc_state = [
+    #                     devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
+    #                 if all(state is False for state in dev_proc_state):
+    #                     time.sleep(1)
+    #                     print('Done!')
+    #                     break
+    #         except KeyboardInterrupt:
+    #             time.sleep(2)
+    #             while True:
+    #                 dev_proc_state = [
+    #                     devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
+    #                 if all(state is False for state in dev_proc_state):
+    #                     time.sleep(1)
+    #                     for dev in devs_dict.keys():
+    #                         devs_dict[dev].dev_process_raw.terminate()
+    #                     break
+    #
+    #     elif gcommand.split()[0] not in kw_loc:
+    #         for dev in devs_dict.keys():
+    #             devs_dict[dev].run_command()
+    #         try:
+    #             while True:
+    #                 dev_proc_state = [
+    #                     devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
+    #                 if all(state is False for state in dev_proc_state):
+    #                     time.sleep(1)
+    #                     print('Done!')
+    #                     break
+    #         except KeyboardInterrupt:
+    #             time.sleep(2)
+    #             while True:
+    #                 dev_proc_state = [
+    #                     devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
+    #                 if all(state is False for state in dev_proc_state):
+    #                     time.sleep(1)
+    #                     for dev in devs_dict.keys():
+    #                         devs_dict[dev].dev_process.terminate()
+    #                     break
+    #     else:
+    #         # print('Mode not implemented yet')
+    #         if gcommand.split()[0] == 'ping':
+    #             for dev in devs_dict.keys():
+    #                 devs_dict[dev].ping()
+    #
+    #             try:
+    #                 while True:
+    #                     time.sleep(0.1)
+    #             except KeyboardInterrupt:
+    #                 time.sleep(1)
+    #                 for dev in devs_dict.keys():
+    #                     devs_dict[dev].dev_ping.terminate()
+    #
+    #         elif gcommand.split()[0] == 'put':
+    #             if args.fre is None:
+    #                 for dev in devs_dict.keys():
+    #                     devs_dict[dev].put_df()
+    #             else:
+    #                 for dev in devs_dict.keys():
+    #                     devs_dict[dev].put_multiple_df()
+    #
+    #         elif gcommand.split()[0] == 'get':
+    #                 if args.fre is None:
+    #                     for dev in devs_dict.keys():
+    #                         devs_dict[dev].get_df()
+    #                 else:
+    #                     for dev in devs_dict.keys():
+    #                         devs_dict[dev].get_multiple_df()
+    #
+    #         elif gcommand.split()[0] == 'sync':
+    #             if args.fre is None:
+    #                 for dev in devs_dict.keys():
+    #                     devs_dict[dev].sync_df()
+    #             else:
+    #                 for dev in devs_dict.keys():
+    #                     devs_dict[dev].sync_multiple_df()
+    #
+    #         elif gcommand.split()[0] == 'install':
+    #             for dev in devs_dict.keys():
+    #                 devs_dict[dev].install_df()
+    #
+    #         elif gcommand.split()[0] == 'timeit':
+    #             for dev in devs_dict.keys():
+    #                 devs_dict[dev].timeit_scrpt()
+    #
+    #         elif gcommand.split()[0] == 'run':
+    #             for dev in devs_dict.keys():
+    #                 devs_dict[dev].run_scrpt()
+    #
+    #             try:
+    #                 while True:
+    #                     dev_proc_state = [
+    #                         devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
+    #                     if all(state is False for state in dev_proc_state):
+    #                         time.sleep(0.1)
+    #                         break
+    #             except KeyboardInterrupt:
+    #                 time.sleep(2)
+    #                 while True:
+    #                     dev_proc_state = [
+    #                         devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
+    #                     if all(state is False for state in dev_proc_state):
+    #                         time.sleep(1)
+    #                         for dev in devs_dict.keys():
+    #                             devs_dict[dev].dev_run_script.terminate()
+    #                         break
+    #
+    #     sys.exit()
+    # except Exception as e:
+    #     print(e)
+    #     print('file not found, please create a group first')
+    #     sys.exit()
 
 # UPYDEV RAW COMMAND MODE: (WHEN ARGUMENT Mode is not in keyword list)
 if args.apmd:
@@ -4013,38 +1694,6 @@ elif args.m in FILEIO_ACTIONS:
     else:
         dev_name = _dev_name
     fileio_action(args, device=dev_name)
-
-
-# # SYNC :
-#
-# elif args.m == 'sync':
-#     if args.fre is None:
-#         sync(args.t, args.p)
-#     else:
-#         sync_multiple_f(args.t, args.p)
-#     sys.exit()
-
-# D_SYNC:
-# elif args.m == 'd_sync':
-#     if args.dir is None:
-#         if args.tree:
-#             print('\nDIRECTORY TREE STRUCTURE:\n')
-#             print('        ./')
-#             see_local_tree()
-#
-#         sync_root()
-#         if args.rst is None:
-#             reset(args.t, args.p)
-#         sys.exit()
-#     else:
-#         dir_to_sync = args.dir
-#         args.dir = None
-#         esp_dev = W_UPYDEVICE(args.t, args.p)
-#         esp_dev.cmd('import uos')
-#         uos = UOS(esp_dev)
-#         d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
-#                          show_tree=args.tree)
-#         sys.exit()
 
 
 # REPL ACTIONS
@@ -4089,16 +1738,19 @@ elif args.m in KEYGEN_ACTIONS:
         dev_name = _dev_name
     key_dict = keygen_action(args, device=dev_name)
     if key_dict:
+        from upydev.fileio import fileio_action
+        args.m = 'put'
         if key_dict['mode'] == 'SSL':
             key, cert = key_dict['Files']
-            args.f = key
-            put_f(args.t, args.p, rst=False)
-            args.f = cert
-            put_f(args.t, args.p, rst=args.rst)
+            args.fre = [key, cert]
+            fileio_action(args, device=dev_name)
+            # put_f(args.t, args.p, rst=False)
+            # args.f = cert
+            # put_f(args.t, args.p, rst=args.rst)
         elif key_dict['mode'] == 'RSA':
             rsa_key, = key_dict['Files']
             args.f = rsa_key
-            put_f(args.t, args.p, rst=args.rst)
+            fileio_action(args, device=dev_name)
 
     sys.exit()
 
@@ -4115,7 +1767,7 @@ elif args.m in SHELL_REPL_ACTIONS:
 
 
 # * GENERAL COMMANDS *
-# INFO :
+
 elif args.m in GENERAL_COMMANDS:
     from upydev.gencommands import gen_command
     gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
