@@ -267,6 +267,7 @@ def devicemanagement_action(args, **kargs):
 
     if args.gg:
         args.G = 'UPY_G'
+        args.g = True
 
     if args.G is not None:
         try:
