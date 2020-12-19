@@ -432,4 +432,4 @@ def serialtool(args, dev_name):
     except DeviceNotFound as e:
         print('ERROR {}'.format(e))
 
-    sys.exit()
+    return

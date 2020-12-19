@@ -143,7 +143,7 @@ def gen_command(cmd, *args, **kargs):
         except Exception as e:
             print(e)
             pass
-        sys.exit()
+        return
     # ID:
     elif cmd == 'id':
         dev = Device(*args, **kargs)
@@ -156,20 +156,20 @@ def gen_command(cmd, *args, **kargs):
         else:
             print('ID: {}'.format(uid.decode()))
         dev.disconnect()
-        sys.exit()
+        return
     # UPYSH
     elif cmd == 'upysh':
         dev = Device(*args, **kargs)
         dev.cmd(_CMDDICT_['UPYSH'], long_string=True)
         dev.disconnect()
-        sys.exit()
+        return
     # RESET
     elif cmd == 'reset':
         dev = Device(*args, **kargs)
         dev.reset(reconnect=False)
         time.sleep(0.5)
         dev.disconnect()
-        sys.exit()
+        return
 
     # KEYBOARD Interrupt
 
@@ -177,7 +177,7 @@ def gen_command(cmd, *args, **kargs):
         dev = Device(*args, **kargs)
         dev.kbi()
         dev.disconnect()
-        sys.exit()
+        return
 
     # UHELP
 
@@ -185,7 +185,7 @@ def gen_command(cmd, *args, **kargs):
         dev = Device(*args, **kargs)
         dev.cmd(_CMDDICT_['HELP'], long_string=True)
         dev.disconnect()
-        sys.exit()
+        return
 
     # UMODULES
 
@@ -193,7 +193,7 @@ def gen_command(cmd, *args, **kargs):
         dev = Device(*args, **kargs)
         dev.cmd(_CMDDICT_['MOD'], long_string=True)
         dev.disconnect()
-        sys.exit()
+        return
 
     # MEM_INFO
 
@@ -225,7 +225,7 @@ def gen_command(cmd, *args, **kargs):
                                                               used_mem_s, free_mem_s,
                                                               "{:.1f} %".format((used_mem/total_mem)*100)))
         dev.disconnect()
-        sys.exit()
+        return
 
     # FILESIZE
 
@@ -255,7 +255,7 @@ def gen_command(cmd, *args, **kargs):
                 else:
                     print_sizefile_all(du_info)
         dev.disconnect()
-        sys.exit()
+        return
 
     # FILESYS_INFO
 
@@ -305,7 +305,7 @@ def gen_command(cmd, *args, **kargs):
         else:
             print('{} not mounted'.format(filesys))
         dev.disconnect()
-        sys.exit()
+        return
 
     # NETINFO
     elif cmd == 'netinfo':
@@ -326,7 +326,7 @@ def gen_command(cmd, *args, **kargs):
                 print('BSSID: {}'.format(bssid))
                 print('RSSI: {} dBm'.format(net_info_list[3]))
         dev.disconnect()
-        sys.exit()
+        return
 
     # NETINFOT
     elif cmd == 'netinfot':
@@ -362,7 +362,7 @@ def gen_command(cmd, *args, **kargs):
                 except Exception as e:
                     print(e)
         dev.disconnect()
-        sys.exit()
+        return
 
     # NETSCAN
     elif cmd == 'netscan':
@@ -395,7 +395,7 @@ def gen_command(cmd, *args, **kargs):
             print('┗{0}━┻━{1}━┻━{2}━┻━{3}━┻━{4}━┻━{5}━┛'.format(
                         '━'*20, '━'*25, '━'*10, '━'*15, '━'*15, '━'*10))
         dev.disconnect()
-        sys.exit()
+        return
 
     # NETSTAT_ON
 
@@ -412,7 +412,7 @@ def gen_command(cmd, *args, **kargs):
             if stat_on:
                 print('Station Enabled')
         dev.disconnect()
-        sys.exit()
+        return
 
     # NETSTAT_OFF
 
@@ -428,7 +428,7 @@ def gen_command(cmd, *args, **kargs):
         else:
             print('Station Disabled')
         dev.disconnect()
-        sys.exit()
+        return
 
     # NETSTAT_CONN
 
@@ -446,7 +446,7 @@ def gen_command(cmd, *args, **kargs):
         else:
             pass
         dev.disconnect()
-        sys.exit()
+        return
 
     # NETSTAT
     elif cmd == 'netstat':
@@ -464,7 +464,7 @@ def gen_command(cmd, *args, **kargs):
                 print('Station Disabled')
             pass
         dev.disconnect()
-        sys.exit()
+        return
 
     # AP_ON
 
@@ -483,7 +483,7 @@ def gen_command(cmd, *args, **kargs):
                 print('Access Point Disabled')
             pass
         dev.disconnect()
-        sys.exit()
+        return
     #
     # AP_OFF
 
@@ -502,7 +502,7 @@ def gen_command(cmd, *args, **kargs):
                 print('Access Point Enabled')
             pass
         dev.disconnect()
-        sys.exit()
+        return
 
     # APSTAT
 
@@ -537,7 +537,7 @@ def gen_command(cmd, *args, **kargs):
                     print(e)
                     pass
         dev.disconnect()
-        sys.exit()
+        return
 
     # APCONFIG
 
@@ -557,7 +557,7 @@ def gen_command(cmd, *args, **kargs):
         else:
             print('{} Access Point Configured'.format(ssid))
         dev.disconnect()
-        sys.exit()
+        return
 
     # APSCAN
 
@@ -582,7 +582,7 @@ def gen_command(cmd, *args, **kargs):
             else:
                 print('No device found')
         dev.disconnect()
-        sys.exit()
+        return
 
     # I2C_CONFIG # FIX FOR PYBOARD, AUTODETECT
 
@@ -602,7 +602,7 @@ def gen_command(cmd, *args, **kargs):
             print('I2C configured:\nSCL = Pin({}), SDA = Pin({})'.format(scl,
                                                                          sda))
         dev.disconnect()
-        sys.exit()
+        return
 
     # I2C_SCAN
 
@@ -625,7 +625,7 @@ def gen_command(cmd, *args, **kargs):
             else:
                 print('No device found')
         dev.disconnect()
-        sys.exit()
+        return
     #
     # SPI CONFIG
     elif cmd == 'spi_config':
@@ -641,7 +641,7 @@ def gen_command(cmd, *args, **kargs):
             print('SPI configured:\nSCK = Pin({}), MISO = Pin({}), MOSI = Pin({}), CS = Pin({})'.format(
                     *spi_conf))
         dev.disconnect()
-        sys.exit()
+        return
 
     #  * RTC *
 
@@ -665,7 +665,7 @@ def gen_command(cmd, *args, **kargs):
         else:
             print('Done!')
         dev.disconnect()
-        sys.exit()
+        return
     #
     # SET NTP TIME
     elif cmd == 'set_ntptime':
@@ -681,7 +681,7 @@ def gen_command(cmd, *args, **kargs):
         else:
             print('Done!')
         dev.disconnect()
-        sys.exit()
+        return
 
     # GET UPY DEVICE LOCALTIME
     elif cmd == 'get_datetime':
@@ -697,7 +697,7 @@ def gen_command(cmd, *args, **kargs):
             formatted_devtime = _ft_datetime(datetime_dev)
             print('Device RTC time: {}-{}-{} T {}:{}:{}'.format(*formatted_devtime))
         dev.disconnect()
-        sys.exit()
+        return
 
     elif cmd == 'gc':
         print(GENERAL_COMMANDS_HELP)

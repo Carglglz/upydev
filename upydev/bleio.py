@@ -441,4 +441,4 @@ def bletool(args, dev_name):
         dev.disconnect()
         time.sleep(0.1)
 
-    sys.exit()
+    return

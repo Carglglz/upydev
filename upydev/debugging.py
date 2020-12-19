@@ -1354,7 +1354,7 @@ def debugging_action(args, **kargs):
                     else:
                         print('Scanning...')
                 except KeyboardInterrupt:
-                    sys.exit()
+                    return
             if len(devs) == 0:
                 print('No BleDevice found')
             else:
@@ -1384,7 +1384,19 @@ def debugging_action(args, **kargs):
                     '━'*20, '━'*40, '━'*10, '━'*40))
 
     elif args.m == 'ping':
-        ping(args.t)
+        dt = check_device_type(args.t)
+        if dt == 'WebSocketDevice':
+            ping(args.t)
+        else:
+            print('Reaching {}...'.format(dev_name))
+            is_reachable = probe_device(args.t, args.p)
+            if is_reachable:
+                print('{:10} -> {:} @ {:} -> {} {}'.format(dev_name, dt, args.t,
+                                                           OK, CHECK))
+            else:
+                print('{:10} -> {:} @ {:} -> {} {}'.format(dev_name, dt, args.t,
+                                                           FAIL, XF))
+
 
     elif args.m == 'run':
         run_script(args)
@@ -1426,4 +1438,4 @@ def debugging_action(args, **kargs):
         print('Running pytest with Device: {}'.format(dev_name))
         pytest(args, dev_name)
 
-    sys.exit()
+    return

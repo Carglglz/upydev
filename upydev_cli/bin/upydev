@@ -74,11 +74,14 @@ def see_global_devs(ws=True, serial=False, ble=False, all=False):
             devices = json.loads(group.read())
             # print(devices)
         if ws:
-            devs = [dev for dev in devices if check_device_type(devices[dev][0]) == 'WebSocketDevice']
+            devs = [dev for dev in devices if check_device_type(
+                devices[dev][0]) == 'WebSocketDevice']
         if serial:
-            devs = [dev for dev in devices if check_device_type(devices[dev][0]) == 'SerialDevice']
+            devs = [dev for dev in devices if check_device_type(
+                devices[dev][0]) == 'SerialDevice']
         if ble:
-            devs = [dev for dev in devices if check_device_type(devices[dev][0]) == 'BleDevice']
+            devs = [dev for dev in devices if check_device_type(
+                devices[dev][0]) == 'BleDevice']
         if all:
             devs = [dev for dev in devices]
         return devs
@@ -161,7 +164,8 @@ parser = argparse.ArgumentParser(prog=upydev.name,
 parser.version = '{}: {}'.format(upydev.name, upydev.version)
 parser.add_argument(
     "m", metavar='ACTION', help=helparg, nargs='+').completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
-parser.add_argument("-@", help=help_dv, required=False).completer = ChoicesCompleter(see_global_devs(all=True))
+parser.add_argument("-@", help=help_dv,
+                    required=False).completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-gg", help='global group flag', required=False,
                     action='store_true')
 parser.add_argument("-p", help='password', required=False)
@@ -240,11 +244,16 @@ parser.add_argument('-start', help='To start a script with sysctl; use as -start
                     required=False)
 parser.add_argument('-stop', help='To start a script with sysctl; use as -stop [SCRIPT_NAME]',
                     required=False)
-parser.add_argument('-dflev', help='debug file mode level, options [debug, info, warning, error, critical]; default=error', default='error').completer = ChoicesCompleter(log_levs)
-parser.add_argument('-dslev', help='debug sys.stdout mode level, options [debug, info, warning, error, critical]; default=debug', default='debug').completer = ChoicesCompleter(log_levs)
-parser.add_argument('-daemon', help='enable "daemon mode", uses nohup so this means running in background, output if any is redirected to [SCRIPT_NAME]_daemon.log', default=False, action='store_true')
-parser.add_argument('-stopd', help='To stop a log daemon script', default=False, action='store_true')
-parser.add_argument('-follow', help='To follow a daemon log script file, indicate script with -f option', default=False, action='store_true')
+parser.add_argument(
+    '-dflev', help='debug file mode level, options [debug, info, warning, error, critical]; default=error', default='error').completer = ChoicesCompleter(log_levs)
+parser.add_argument(
+    '-dslev', help='debug sys.stdout mode level, options [debug, info, warning, error, critical]; default=debug', default='debug').completer = ChoicesCompleter(log_levs)
+parser.add_argument(
+    '-daemon', help='enable "daemon mode", uses nohup so this means running in background, output if any is redirected to [SCRIPT_NAME]_daemon.log', default=False, action='store_true')
+parser.add_argument('-stopd', help='To stop a log daemon script',
+                    default=False, action='store_true')
+parser.add_argument('-follow', help='To follow a daemon log script file, indicate script with -f option',
+                    default=False, action='store_true')
 parser.add_argument('-rep', help='to save the report in a text file',
                     required=False, default=False, action='store_true')
 parser.add_argument('-apmd', help='set target to 192.168.4.1',
@@ -464,14 +473,13 @@ def run_command_rl(command):
     return rc, lines
 
 
-
 def get_ip():
     # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
     # ip = scanoutput.decode('utf-8').split('\n')[0]
     try:
         ip = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                    iface in netifaces.interfaces() if netifaces.AF_INET in
-                    netifaces.ifaddresses(iface)][-1]
+              iface in netifaces.interfaces() if netifaces.AF_INET in
+              netifaces.ifaddresses(iface)][-1]
         return ip
     except Exception as e:
         try:
@@ -501,23 +509,6 @@ def get_ip():
 #         wifi_info_dic = {data.split(':')[0]: data.split(
 #             ':')[1].strip() for data in wifi_info[:-1]}
 #         return wifi_info_dic['SSID']
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def get_live_stream(run_cmd, targ, password, sensorlib, filename=None,
@@ -1038,9 +1029,6 @@ def lognow(filename, sensor):
         return filename
 
 
-
-
-
 #############################################
 def address_entry_point(entry_point, group_file=''):
     if group_file == '':
@@ -1075,7 +1063,8 @@ def address_entry_point(entry_point, group_file=''):
             return (dev_sport, dev_br)
         elif len(dev_address.split('-')) == 5:
             try:
-                assert [len(s) for s in dev_address.split('-')] == [8, 4, 4, 4, 12], dev_address
+                assert [len(s) for s in dev_address.split(
+                    '-')] == [8, 4, 4, 4, 12], dev_address
                 dev_uuid = devices[entry_point][0]
                 dev_pass = devices[entry_point][1]
                 return (dev_uuid, dev_pass)
@@ -1116,6 +1105,125 @@ def pytest(devname):
 
 
 #############################################
+
+def handle_action(args, exit=True):
+    # UPYDEV RAW COMMAND MODE: (WHEN ARGUMENT Mode is not in keyword list)
+
+    if args.m not in keywords_mode:
+        cmd = args.m
+        dev = Device(args.t, args.p, init=True)
+        dev.wr_cmd(cmd, follow=True)
+        dev.disconnect()
+        if exit:
+            sys.exit()
+
+    # FILEIO ACTIONS
+
+    elif args.m in FILEIO_ACTIONS:
+        from upydev.fileio import fileio_action
+        if vars(args)['@'] is not None:
+            dev_name = entryp
+        else:
+            dev_name = _dev_name
+        fileio_action(args, device=dev_name)
+
+    # REPL ACTIONS
+
+    elif args.m in REPL_ACTIONS:
+        from upydev.repls import repl_action
+        if vars(args)['@'] is not None:
+            dev_name = entryp
+        else:
+            dev_name = _dev_name
+        repl_action(args, device=dev_name)
+
+    # FIRMWARE ACTIONS
+
+    elif args.m in FIRMWARE_ACTIONS:
+        from upydev.firmwaretools import firmwaretools_action
+        if vars(args)['@'] is not None:
+            dev_name = entryp
+        else:
+            dev_name = _dev_name
+        firmwaretools_action(args, device=dev_name)
+
+    # DEBUGGING ACTIONS
+
+    elif args.m in DEBUGGING_ACTIONS:
+        from upydev.debugging import debugging_action
+        if vars(args)['@'] is not None:
+            dev_name = entryp
+        else:
+            dev_name = _dev_name
+        debugging_action(args, device=dev_name)
+
+    # KEYGEN ACTIONS
+    elif args.m in KEYGEN_ACTIONS:
+        from upydev.keygen import keygen_action
+        if vars(args)['@'] is not None:
+            dev_name = entryp
+        else:
+            dev_name = _dev_name
+        key_dict = keygen_action(args, device=dev_name)
+        if key_dict:
+            from upydev.fileio import fileio_action
+            args.m = 'put'
+            if key_dict['mode'] == 'SSL':
+                key, cert = key_dict['Files']
+                args.fre = [key, cert]
+                fileio_action(args, device=dev_name)
+                # put_f(args.t, args.p, rst=False)
+                # args.f = cert
+                # put_f(args.t, args.p, rst=args.rst)
+            elif key_dict['mode'] == 'RSA':
+                rsa_key, = key_dict['Files']
+                args.f = rsa_key
+                fileio_action(args, device=dev_name)
+        if exit:
+            sys.exit()
+
+    # SHELL-REPL ACTIONS
+
+    elif args.m in SHELL_REPL_ACTIONS:
+        from upydev.shellrepls import shell_repl_action
+        if vars(args)['@'] is not None:
+            dev_name = entryp
+        else:
+            dev_name = _dev_name
+        shell_repl_action(args, device=dev_name)
+
+    # * GENERAL COMMANDS *
+
+    elif args.m in GENERAL_COMMANDS:
+        from upydev.gencommands import gen_command
+        gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
+                    ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
+                    init=True, ssl=args.wss, auth=args.wss)
+
+    #############################################
+    # WLAN UTILS COMMANDS
+    elif args.m in WLAN_UTILS_COMMANDS:
+        from upydev.wlancommands import wlan_command
+        wlan_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
+                     init=True, ssl=args.wss, auth=args.wss)
+
+    #############################################
+
+    # SD COMMANDS
+    elif args.m in SD_UTILS_COMMANDS:
+        from upydev.sdcommands import sd_command
+        sd_command(args.m, args.t, args.p, po=args.po,
+                   init=True, ssl=args.wss, auth=args.wss)
+
+    #############################################
+
+    # PROTOTYPE COMMANDS
+    elif args.m in PROTOTYPE_COMMANDS:
+        from upydev.prototypecommands import prototype_command
+        prototype_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
+                          init=True, ssl=args.wss, auth=args.wss)
+
+    #############################################
 
 
 # keyword live output commands:
@@ -1374,7 +1482,7 @@ if args.m == 'gg':
     args.m = 'see'
 
 if args.gg:
-    if args.m not in DEBUGGING_ACTIONS:
+    # if args.m not in DEBUGGING_ACTIONS:
         args.G = 'UPY_G'
 
 if args.G is not None:
@@ -1406,113 +1514,27 @@ if args.G is not None:
         devs = devices.keys()
         if args.devs is not None:
             devs = args.devs
-        for dev in devs:
-            single_command = []
-            print('Device Name: {}'.format(dev))
-            dev_ip = devices[dev][0]
-            dev_pass = devices[dev][1]
-            dev_type = check_device_type(dev_ip)
-            print('{} @ {}'.format(dev_type, dev_ip))
-            print('Sending command {} ...'.format(args.m))
-            # print(sys.argv[1:])
-            for i in range(len(sys.argv[1:])):
-                if sys.argv[1:][i] != '-G':
-                    if i == 0 or sys.argv[1:][i-1] != '-G':
-                        if sys.argv[1:][i] not in devs and sys.argv[1:][i] != '-devs':
-                            single_command.append(sys.argv[1:][i])
-            gcommand = ' '.join(single_command)
-            gcommand = gcommand.replace('-gg', '')
-            # print(gcommand.split())
-            # print(gcommand)
-            group_cmd_str = 'upydev {} -t {} -p {}'.format(
-                gcommand, dev_ip, dev_pass)
-            if group_cmd_str.split()[1] not in keywords_mode:
-                # print(group_cmd_str.split()[1])
-                group_cmd_str = 'upydev "{}" -t {} -p {}'.format(
-                    gcommand, dev_ip, dev_pass)
-            # print(group_cmd_str)
-            group_cmd = shlex.split(group_cmd_str)
-            if group_cmd_str.split()[1] not in kw_loc:
+        if args.m != 'probe' or args.m != 'scan':
+            for dev in devs:
+                columns, rows = os.get_terminal_size(0)
+                single_command = []
+                print('')
+                print('━'*columns)
+                args.t, args.p = address_entry_point(dev, args.G)
+                print('Device Name: {}'.format(dev))
+                dev_addr = devices[dev][0]
+                dev_pass = devices[dev][1]
+                dev_type = check_device_type(dev_addr)
+                _dev_name = dev
+                print('{} @ {}'.format(dev_type, dev_addr))
+                print('Sending command {} ...'.format(args.m))
+
                 try:
-                    proc = subprocess.Popen(
-                        group_cmd, stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT)
-                    while proc.poll() is None:
-                        print(proc.stdout.readline()[:-1].decode())
-                except KeyboardInterrupt:
-                    time.sleep(1)
-                    result = proc.stdout.readlines()
-                    for message in result:
-                        print(message[:-1].decode())
-            else:
-                pass
-                # if group_cmd_str.split()[1] == 'ping':
-                #     ping(dev_ip)
-                # elif group_cmd_str.split()[1] == 'run':
-                #     run_script(dev_ip, dev_pass)
-                # elif group_cmd_str.split()[1] == 'timeit':
-                #     timeit_script(dev_ip, dev_pass)
-                # elif group_cmd_str.split()[1] == 'put':
-                #     if args.fre is None:
-                #         put_f(dev_ip, dev_pass, rst=args.rst)
-                #     else:
-                #         if dev == devs[-1]:
-                #             put_multiple_f(dev_ip, dev_pass)
-                #         else:
-                #             put_multiple_f(dev_ip, dev_pass, save_wdlog=False)
-                #
-                # elif group_cmd_str.split()[1] == 'get':
-                #     if args.fre is None:
-                #         get_f(dev_ip, dev_pass,
-                #               id_file='/{}_{}'.format(dev, args.f))
-                #     else:
-                #         get_multiple_f(dev_ip, dev_pass,
-                #                        id_file_dev='device_id', device=dev)
-                # elif group_cmd_str.split()[1] == 'sync':
-                #     if args.fre is None:
-                #         sync(dev_ip, dev_pass, id_file='{}_{}'.format(dev, args.f))
-                #     else:
-                #         sync_multiple_f(dev_ip, dev_pass,
-                #                         id_file_dev='device_id', device=dev)
-                # elif group_cmd_str.split()[1] == 'install':
-                #     install_f(dev_ip, dev_pass)
-                #
-                # elif group_cmd_str.split()[1] == 'wrepl':
-                #     wrepl(dev_ip, dev_pass)
-                # elif group_cmd_str.split()[1] == 'diagnose':
-                #     if args.rep:
-                #         args.rep = True
-                #     if args.rst is None:
-                #         args.rst = True
-                #     else:
-                #         args.rst = False
-                #     localdev = False
-                #     if args.apmd:
-                #         localdev = True
-                #     diagnose(dev_ip, dev_pass, save_rep=args.rep,
-                #              rst_opt=args.rst, name_rep=args.n,
-                #              vers=parser.version, local=localdev)
-                # elif group_cmd_str.split()[1] == 'd_sync':
-                #     args.t, args.p = dev_ip, dev_pass
-                #     if args.dir is None:
-                #         if args.tree:
-                #             print('\nDIRECTORY TREE STRUCTURE:\n')
-                #             print('        ./')
-                #             see_local_tree()
-                #         if dev == devs[-1]:
-                #             sync_root()
-                #         else:
-                #             sync_root(save_wdl=False)
-                #         if args.rst is None:
-                #             reset(dev_ip, dev_pass)
-                #     else:
-                #         dir_to_sync = args.dir
-                #         args.dir = None
-                #         esp_dev = W_UPYDEVICE(dev_ip, dev_pass)
-                #         esp_dev.cmd('import uos')
-                #         uos = UOS(esp_dev)
-                #         d_sync_recursive(dir_to_sync, uos, root_sync_folder=dir_to_sync,
-                #                          show_tree=args.tree)
+                    handle_action(args, exit=False)
+                except Exception as e:
+                    print(e)
+        else:
+            handle_action(args)
 
         sys.exit()
     except Exception as e:
@@ -1674,128 +1696,10 @@ if args.GP is not None:
     #     print('file not found, please create a group first')
     #     sys.exit()
 
-# UPYDEV RAW COMMAND MODE: (WHEN ARGUMENT Mode is not in keyword list)
 if args.apmd:
     args.t = '192.168.4.1'
 
-if args.m not in keywords_mode:
-    cmd = args.m
-    dev = Device(args.t, args.p, init=True)
-    dev.wr_cmd(cmd, follow=True)
-    dev.disconnect()
-    sys.exit()
-
-# FILEIO ACTIONS
-
-elif args.m in FILEIO_ACTIONS:
-    from upydev.fileio import fileio_action
-    if vars(args)['@'] is not None:
-        dev_name = entryp
-    else:
-        dev_name = _dev_name
-    fileio_action(args, device=dev_name)
-
-
-# REPL ACTIONS
-
-elif args.m in REPL_ACTIONS:
-    from upydev.repls import repl_action
-    if vars(args)['@'] is not None:
-        dev_name = entryp
-    else:
-        dev_name = _dev_name
-    repl_action(args, device=dev_name)
-
-
-# FIRMWARE ACTIONS
-
-elif args.m in FIRMWARE_ACTIONS:
-    from upydev.firmwaretools import firmwaretools_action
-    if vars(args)['@'] is not None:
-        dev_name = entryp
-    else:
-        dev_name = _dev_name
-    firmwaretools_action(args, device=dev_name)
-
-
-# DEBUGGING ACTIONS
-
-elif args.m in DEBUGGING_ACTIONS:
-    from upydev.debugging import debugging_action
-    if vars(args)['@'] is not None:
-        dev_name = entryp
-    else:
-        dev_name = _dev_name
-    debugging_action(args, device=dev_name)
-
-
-# KEYGEN ACTIONS
-elif args.m in KEYGEN_ACTIONS:
-    from upydev.keygen import keygen_action
-    if vars(args)['@'] is not None:
-        dev_name = entryp
-    else:
-        dev_name = _dev_name
-    key_dict = keygen_action(args, device=dev_name)
-    if key_dict:
-        from upydev.fileio import fileio_action
-        args.m = 'put'
-        if key_dict['mode'] == 'SSL':
-            key, cert = key_dict['Files']
-            args.fre = [key, cert]
-            fileio_action(args, device=dev_name)
-            # put_f(args.t, args.p, rst=False)
-            # args.f = cert
-            # put_f(args.t, args.p, rst=args.rst)
-        elif key_dict['mode'] == 'RSA':
-            rsa_key, = key_dict['Files']
-            args.f = rsa_key
-            fileio_action(args, device=dev_name)
-
-    sys.exit()
-
-
-# SHELL-REPL ACTIONS
-
-elif args.m in SHELL_REPL_ACTIONS:
-    from upydev.shellrepls import shell_repl_action
-    if vars(args)['@'] is not None:
-        dev_name = entryp
-    else:
-        dev_name = _dev_name
-    shell_repl_action(args, device=dev_name)
-
-
-# * GENERAL COMMANDS *
-
-elif args.m in GENERAL_COMMANDS:
-    from upydev.gencommands import gen_command
-    gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
-                ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
-                init=True, ssl=args.wss, auth=args.wss)
-
-#############################################
-# WLAN UTILS COMMANDS
-elif args.m in WLAN_UTILS_COMMANDS:
-    from upydev.wlancommands import wlan_command
-    wlan_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
-                 init=True, ssl=args.wss, auth=args.wss)
-
-#############################################
-
-# SD COMMANDS
-elif args.m in SD_UTILS_COMMANDS:
-    from upydev.sdcommands import sd_command
-    sd_command(args.m, args.t, args.p, po=args.po,
-               init=True, ssl=args.wss, auth=args.wss)
-
-#############################################
-
-# PROTOTYPE COMMANDS
-elif args.m in PROTOTYPE_COMMANDS:
-    from upydev.prototypecommands import prototype_command
-    prototype_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
-                      init=True, ssl=args.wss, auth=args.wss)
+handle_action(args)
 
 
 #############################################
@@ -1804,7 +1708,7 @@ elif args.m in PROTOTYPE_COMMANDS:
 #  * ADC *
 
 # ADC CONFIG
-elif args.m == 'adc_config':
+if args.m == 'adc_config':
     if args.att == 'info':
         print(ATTEN_INFO)
     else:

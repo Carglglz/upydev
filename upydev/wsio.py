@@ -594,7 +594,7 @@ def wstool(args, dev_name):
                         # dev.disconnect()
             except KeyboardInterrupt as e:
                 print('KeyboardInterrupt: put Operation Cancelled')
-        sys.exit()
+        return
     elif args.m == 'get':
         if not args.f and not args.fre:
             print('args -f or -fre required:')
@@ -713,4 +713,4 @@ def wstool(args, dev_name):
                 print('ERROR {}'.format(e))
             except KeyboardInterrupt as e:
                 print('KeyboardInterrupt: get Operation Cancelled')
-        sys.exit()
+        return

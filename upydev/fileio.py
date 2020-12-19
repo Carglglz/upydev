@@ -54,7 +54,7 @@ def install_w_upip(args, dt, dev_name):
             else:
                 print(dev.response.replace('True\n', ''), end='')
             dev.disconnect()
-            sys.exit()
+            return
 
         elif dt == 'SerialDevice':
             sdevIO = SerialFileIO(dev)
@@ -65,7 +65,7 @@ def install_w_upip(args, dt, dev_name):
             bledevIO.upip_install(args, dev_name)
 
         dev.disconnect()
-    sys.exit()
+    return
 
 
 def update_upyutils(args, dt, dev_name):
@@ -94,7 +94,8 @@ def fileio_action(args, **kargs):
             modified_files = check_wdlog(save_wdlog=True)
             args.fre = modified_files
             if not args.fre:
-                sys.exit()
+                # sys.exit()
+                return
         if dt == 'WebSocketDevice':
             wstool(args, dev_name)
 
