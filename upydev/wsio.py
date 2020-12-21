@@ -39,10 +39,10 @@ else:
 def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l,
               percentage, ett, size_bar=bar_size):
     l_bloc = bloc_progress[loop_l]
-    if index == bar_size:
+    if index == size_bar:
         l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((bar_size+1) - len("█" *index + l_bloc)),
+    print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((size_bar+1) - len("█" *index + l_bloc)),
                                                                     wheel[index % 4],
                                                                     int((percentage)*100),
                                                                     nb_of_total, speed,
@@ -145,6 +145,14 @@ def get_ver(ws):
 
 
 def put_file(ws, local_file, remote_file):
+    columns, rows = os.get_terminal_size(0)
+    cnt_size = 65
+    if columns > cnt_size:
+        size_bar = int((columns - cnt_size))
+        pb = True
+    else:
+        size_bar = 1
+        pb = False
     wheel = ['|', '/', '-', "\\"]
     sz = os.stat(local_file)[6]
     dest_fname = (SANDBOX + remote_file).encode("utf-8")
@@ -167,7 +175,7 @@ def put_file(ws, local_file, remote_file):
                 break
             ws.write(buf)
             cnt += len(buf)
-            loop_index_f = (cnt/sz)*bar_size
+            loop_index_f = (cnt/sz)*size_bar
             loop_index = int(loop_index_f)
             loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
             nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
@@ -177,7 +185,7 @@ def put_file(ws, local_file, remote_file):
             ett = sz / (cnt / t_elapsed)
             if pb:
                 do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed,
-                          loop_index_l, percentage, ett)
+                          loop_index_l, percentage, ett, size_bar)
             else:
                 sys.stdout.write("Sent %d of %d bytes\r" % (cnt, sz))
                 sys.stdout.flush()
@@ -188,6 +196,14 @@ def put_file(ws, local_file, remote_file):
 
 
 def get_file(ws, local_file, remote_file, file_size):
+    columns, rows = os.get_terminal_size(0)
+    cnt_size = 65
+    if columns > cnt_size:
+        size_bar = int((columns - cnt_size))
+        pb = True
+    else:
+        size_bar = 1
+        pb = False
     sz_r = file_size
     wheel = ['|', '/', '-', "\\"]
     src_fname = (SANDBOX + remote_file).encode("utf-8")
@@ -213,7 +229,7 @@ def get_file(ws, local_file, remote_file, file_size):
                 f.write(buf)
                 sz -= len(buf)
                 if pb:
-                    loop_index_f = (cnt/sz_r)*bar_size
+                    loop_index_f = (cnt/sz_r)*size_bar
                     loop_index = int(loop_index_f)
                     loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
                     nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz_r/(1024))
@@ -222,7 +238,7 @@ def get_file(ws, local_file, remote_file, file_size):
                     t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
                     ett = sz_r / (cnt / t_elapsed)
                     do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
-                              t_elapsed, loop_index_l, percentage, ett)
+                              t_elapsed, loop_index_l, percentage, ett, size_bar)
                 else:
                     sys.stdout.write("Received %d bytes\r" % cnt)
                     sys.stdout.flush()

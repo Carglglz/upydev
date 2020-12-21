@@ -18,6 +18,7 @@ import glob
 import signal
 from packaging import version
 import argcomplete
+import copy
 from argcomplete.completers import ChoicesCompleter
 from ipaddress import ip_address
 from upydevice import check_device_type, Device
@@ -925,6 +926,7 @@ if args.G is not None:
             if args.devs is not None:
                 devs = args.devs
             current_dir = os.getcwd()
+            original_args = copy.deepcopy(args)
             for dev in devs:
                 columns, rows = os.get_terminal_size(0)
                 single_command = []
@@ -950,6 +952,7 @@ if args.G is not None:
                 if args.gf:
                     if args.m == 'get' or args.m == 'put':
                         os.chdir(current_dir)
+                args = original_args
 
         else:
             handle_action(args)
