@@ -150,6 +150,8 @@ parser.add_argument("-@", help=help_dv,
                     required=False).completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-gg", help='global group flag', required=False,
                     action='store_true')
+parser.add_argument("-gf", help='group flag for project files', required=False,
+                    action='store_true')
 parser.add_argument("-p", help='password', required=False)
 parser.add_argument("-f", help='script or file name', required=False)
 parser.add_argument(
@@ -636,6 +638,7 @@ def handle_action(args, exit=True):
 
     #############################################
 
+KW_NOT_GROUP = ['probe', 'scan']
 
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
@@ -913,15 +916,15 @@ if args.G is not None:
                 print('Running pytest with Device: {}'.format(dev))
                 pytest(dev)
             sys.exit()
-
-        print('Sending command to group: {}'.format(group_file.split('/')[-1]))
-        with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-            devices = json.loads(group.read())
-            # print(devices)
-        devs = devices.keys()
-        if args.devs is not None:
-            devs = args.devs
-        if args.m != 'probe' or args.m != 'scan':
+        if args.m not in KW_NOT_GROUP:
+            print('Sending command to group: {}'.format(group_file.split('/')[-1]))
+            with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+                devices = json.loads(group.read())
+                # print(devices)
+            devs = devices.keys()
+            if args.devs is not None:
+                devs = args.devs
+            current_dir = os.getcwd()
             for dev in devs:
                 columns, rows = os.get_terminal_size(0)
                 single_command = []
@@ -935,11 +938,19 @@ if args.G is not None:
                 _dev_name = dev
                 print('{} @ {}'.format(dev_type, dev_addr))
                 print('Sending command {} ...'.format(args.m))
-
+                if args.gf:
+                    if args.m == 'get' or args.m == 'put':
+                        if dev not in os.listdir():
+                            os.mkdir(dev)
+                        os.chdir(dev)
                 try:
                     handle_action(args, exit=False)
                 except Exception as e:
                     print(e)
+                if args.gf:
+                    if args.m == 'get' or args.m == 'put':
+                        os.chdir(current_dir)
+
         else:
             handle_action(args)
 

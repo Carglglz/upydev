@@ -520,7 +520,7 @@ def wstool(args, dev_name):
                                          auth=args.wss)
                             time.sleep(0.2)
                             dev.reset(reconnect=False)
-                            time.sleep(0.2)
+                            time.sleep(0.5)
                 else:
                     print('FileNotFoundError: {} is a directory'.format(file))
             except FileNotFoundError as e:
