@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alias and positional args for `make_group, mg_group` actions `mkgroup/mkg, mggroup/mgg`, and `see`. e.g `upydev see MY_GROUP`, `upydev mkg MY_GROUP -devs mydevtest 192.168.1.40 mypasswd`, `upydev mgg MY_GROUP -add sdev2 /dev/tty.SLAB_USBtoUART 115200`
 - Alias and positional args for SD actions `upydev sd enable/init/deinit/auto`
 - upydev pypi version checking on `h`/ `help` command.
+- `-gf` flag to indicate a group file operation (files are upload/download to/from a directory with the name of the device in the current working directory)
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch

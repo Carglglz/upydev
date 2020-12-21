@@ -941,7 +941,7 @@ if args.G is not None:
                 print('{} @ {}'.format(dev_type, dev_addr))
                 print('Sending command {} ...'.format(args.m))
                 if args.gf:
-                    if args.m == 'get' or args.m == 'put':
+                    if args.m == 'get' or args.m == 'put' or args.m == 'sync':
                         if dev not in os.listdir():
                             os.mkdir(dev)
                         os.chdir(dev)
@@ -950,7 +950,7 @@ if args.G is not None:
                 except Exception as e:
                     print(e)
                 if args.gf:
-                    if args.m == 'get' or args.m == 'put':
+                    if args.m == 'get' or args.m == 'put' or args.m == 'sync':
                         os.chdir(current_dir)
                 args = original_args
 
