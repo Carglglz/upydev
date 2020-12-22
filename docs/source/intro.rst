@@ -13,8 +13,8 @@ upydev
    :width: 25%
 
 
-**Command line tool for wireless MicroPython devices**
---------------------------------------------------------
+Command line tool
+------------------
 **uPydev** is an acronym of '**MicroPy**\ thon **dev**\ ice', and it is intended to be a
 command line tool to make easier the development, prototyping and testing process of
 devices based on boards running MicroPython.
@@ -22,34 +22,28 @@ devices based on boards running MicroPython.
 * Lincense: MIT
 * Documentation: https://upydev.readthedocs.io.
 
+Features
+--------
 
-.. toctree::
-  :maxdepth: 2
-  :caption: Introduction:
+* Command line wireless communication/control of MicroPython devices.
+* Terminal WebREPL and WebSecureREPL protocol
+* Custom commands to automate communication/control
+* Command line autocompletion
+* `SSLWebREPL <https://github.com/Carglglz/upydev/blob/master/DOCS/SSLWebREPL_docs.md>`_: a Terminal SHELL/REPL over SSL
+* `SERIAL SHELL-REPL <https://github.com/Carglglz/upydev/blob/master/DOCS/SERIAL_SHELL_REPL_docs.md>`_: a Terminal SHELL/REPL over USB
 
-  intro
-  gettingstarted
 
-.. toctree::
-  :caption: Usage:
-  :name: usagetoc
+Installing
+----------
 
-  usage
+Install ``upydev`` by running:
 
-.. toctree::
-  :caption: Mode/Tools:
-  :name: modetoolstoc
+.. code-block:: console
 
-  modetools
+    $ pip install upydev
 
-.. toctree::
-  :caption: Upy Commands:
-  :name: upycmdtoc
+Or to update to the last version available:
 
-  upycmd
+.. code-block:: console
 
-.. toctree::
-  :caption: Examples:
-  :name: examplestoc
-
-  examples
+    $ pip install --upgrade upydev
