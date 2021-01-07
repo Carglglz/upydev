@@ -141,7 +141,7 @@ help_dv = "To point the command to a specific device saved in the global group"
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog=upydev.name,
-                                 description='Command line tool for wireless/serial MicroPython devices',
+                                 description='Command line tool for MicroPython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-')
 parser.version = '{}: {}'.format(upydev.name, upydev.version)

@@ -13,11 +13,12 @@ upydev
    :width: 25%
 
 
-**Command line tool for wireless MicroPython devices**
+**Command line tool for MicroPython devices**
 --------------------------------------------------------
 **uPydev** is an acronym of '**MicroPy**\ thon **dev**\ ice', and it is intended to be a
 command line tool to make easier the development, prototyping and testing process of
-devices based on boards running MicroPython.
+devices based on boards running MicroPython. It is intended to be cross-platform and
+connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 
 * Lincense: MIT
 * Documentation: https://upydev.readthedocs.io.
@@ -47,6 +48,23 @@ devices based on boards running MicroPython.
   :name: upycmdtoc
 
   upycmd
+
+.. toctree::
+  :caption: SHELL-REPL:
+  :name: shellrepltoc
+
+  sslwebshellrepl
+  serialshellrepl
+
+.. toctree::
+  :caption: Utils:
+  :name: utilstoc
+
+  upyutilsinfo
+  upylog
+  upynotify
+  howto
+  about
 
 .. toctree::
   :caption: Examples:

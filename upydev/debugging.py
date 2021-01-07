@@ -1397,7 +1397,6 @@ def debugging_action(args, **kargs):
                 print('{:10} -> {:} @ {:} -> {} {}'.format(dev_name, dt, args.t,
                                                            FAIL, XF))
 
-
     elif args.m == 'run':
         run_script(args)
 

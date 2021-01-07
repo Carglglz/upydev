@@ -17,7 +17,8 @@ Command line tool
 ------------------
 **uPydev** is an acronym of '**MicroPy**\ thon **dev**\ ice', and it is intended to be a
 command line tool to make easier the development, prototyping and testing process of
-devices based on boards running MicroPython.
+devices based on boards running MicroPython. It is intended to be cross-platform and
+connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 
 * Lincense: MIT
 * Documentation: https://upydev.readthedocs.io.
@@ -25,12 +26,12 @@ devices based on boards running MicroPython.
 Features
 --------
 
-* Command line wireless communication/control of MicroPython devices.
-* Terminal WebREPL and WebSecureREPL protocol
-* Custom commands to automate communication/control
-* Command line autocompletion
-* `SSLWebREPL <https://github.com/Carglglz/upydev/blob/master/DOCS/SSLWebREPL_docs.md>`_: a Terminal SHELL/REPL over SSL
-* `SERIAL SHELL-REPL <https://github.com/Carglglz/upydev/blob/master/DOCS/SERIAL_SHELL_REPL_docs.md>`_: a Terminal SHELL/REPL over USB
+* Command line for configuration/management/communication/control of MicroPython devices.
+* Autocompletion
+* File IO operations (put, get, sync...)
+* SHELL-REPL modes: Serial, WiFi (SSL/WebREPL), BLE
+* Custom commands for debugging/testing/prototyping
+* Group mode to operate with multiple devices
 
 
 Installing
@@ -42,8 +43,14 @@ Install ``upydev`` by running:
 
     $ pip install upydev
 
-Or to update to the last version available:
+To update to the latest version available:
 
 .. code-block:: console
 
     $ pip install --upgrade upydev
+
+To get development version:
+
+.. code-block:: console
+
+    $ pip install https://github.com/Carglglz/upydev/tree/develop.zip

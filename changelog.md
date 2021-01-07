@@ -182,7 +182,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - sync mode improved
 ## [0.1.6] - 2019-12-08
 ### Added
-- New 'update_upyutils' mode to update the last versions of sync_tool.py,
+- New 'update_upyutils' mode to update the latest versions of sync_tool.py,
   upylog.py and upynotify.py (will be uploaded to '/lib' folder)
 - New 'debug' mode to execute a local script line by line in the target
   upydevice, use -f option to indicate the file
