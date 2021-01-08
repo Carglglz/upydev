@@ -864,36 +864,39 @@ if args.m in DEVICE_MANAGEMENT_ACTIONS:
 
 # UPYDEV LOOKS FOR UPYDEV_.CONFIG FILE
 if args.t is None:
-    try:
-        file_conf = 'upydev_.config'
-        if file_conf not in os.listdir() or args.g:
-            file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
+    if args.m != 'scan':
+        try:
+            file_conf = 'upydev_.config'
+            if file_conf not in os.listdir() or args.g:
+                file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
 
-        with open(file_conf, 'r') as config_file:
-            upy_conf = json.loads(config_file.read())
-        args.t = upy_conf['ip']
-        args.p = upy_conf['passwd']
-        if 'name' in upy_conf:
-            _dev_name = upy_conf['name']
-        else:
-            _dev_name = 'upydevice'
-        # @ ENTRY POINT
-        if args.b is not None:
-            if "@" in args.b:
-                gf, entryp = args.b.split('@')
-                args.t, args.p = address_entry_point(entryp, gf)
-        if vars(args)['@'] is not None:
-                entryp = vars(args)['@']
-                args.t, args.p = address_entry_point(entryp)
-        if args.apmd:
-            args.t = '192.168.4.1'
-        if args.st:
-            print('Target:{}'.format(args.t))
-    except Exception as e:
-        print('upydev_.config file not found, please provide target and \
-        password or create config file with command "config"')
-        see_help('config')
-        sys.exit()
+            with open(file_conf, 'r') as config_file:
+                upy_conf = json.loads(config_file.read())
+            args.t = upy_conf.get('addr')
+            if not args.t:
+                args.t = upy_conf.get('ip')
+            args.p = upy_conf['passwd']
+            if 'name' in upy_conf:
+                _dev_name = upy_conf['name']
+            else:
+                _dev_name = 'upydevice'
+            # @ ENTRY POINT
+            if args.b is not None:
+                if "@" in args.b:
+                    gf, entryp = args.b.split('@')
+                    args.t, args.p = address_entry_point(entryp, gf)
+            if vars(args)['@'] is not None:
+                    entryp = vars(args)['@']
+                    args.t, args.p = address_entry_point(entryp)
+            if args.apmd:
+                args.t = '192.168.4.1'
+            if args.st:
+                print('Target:{}'.format(args.t))
+        except Exception as e:
+            print('upydev_.config file not found, please provide target and \
+            password or create config file with command "config"')
+            see_help('config')
+            sys.exit()
 
 
 if args.G is not None:

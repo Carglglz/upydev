@@ -128,7 +128,7 @@ def devicemanagement_action(args, **kargs):
                 upydev_name = vars(args)['@']
         else:
             upydev_name = 'upydevice'
-        upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
+        upy_conf = {'addr': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
         file_conf = 'upydev_.config'
         dt = check_device_type(args.t)
         if args.gg:
@@ -163,7 +163,9 @@ def devicemanagement_action(args, **kargs):
 
             with open(file_conf, 'r') as config_file:
                 upy_conf = json.loads(config_file.read())
-            args.t = upy_conf['ip']
+            args.t = upy_conf.get('addr')
+            if not args.t:
+                args.t = upy_conf.get('ip')
             args.p = upy_conf['passwd']
             if 'name' in upy_conf:
                 _dev_name = upy_conf['name']
@@ -218,7 +220,7 @@ def devicemanagement_action(args, **kargs):
                 upydev_name = vars(args)['@']
         else:
             upydev_name = _dev_name
-        upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
+        upy_conf = {'addr': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
         file_conf = 'upydev_.config'
         if args.g:
             file_conf = os.path.join(UPYDEV_PATH, file_conf)

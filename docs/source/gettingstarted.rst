@@ -2,6 +2,9 @@
 Getting started
 ================
 
+Follow MicroPython getting started
+
+
 Requirement
 -----------
 **Needs REPL to be accesible.**:
@@ -20,20 +23,129 @@ Requirement
 Create a configuration file
 ---------------------------
 
-upydev will use local working directory configuration unless it does not find any or manually indicated with `-g` option.
+.. note::
 
-- To save configuration in working directory: ``$ upydev config -t [UPYDEVICE IP] -p [PASSWORD]``
+    *If device address is unknown use* ``$ upydev scan [OPTION]`` *where* ``OPTION`` *can be* ``-sr``
+    *for* **SERIAL**, ``-nt`` *for* **WiFi** *or* ``-bl`` *for* **Bluetooth Low Energy**.
+
+  e.g.
+
+    .. code-block:: console
+
+      $ upydev scan -sr
+      Serial Scan:
+      SerialDevice/s found: 2
+      ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+      ┃                  PORT                   ┃               DESCRIPTION                ┃          MANUFACTURER          ┃
+      ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+      ┃     /dev/cu.usbmodem387E386731342       ┃   Pyboard Virtual Comm Port in FS Mode   ┃          MicroPython           ┃
+      ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+      ┃         /dev/cu.SLAB_USBtoUART          ┃  CP2104 USB to UART Bridge Controller    ┃          Silicon Labs          ┃
+      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+
+Upydev will use local working directory configuration unless it does not find any or manually indicated with ``-g`` option.
+
+- To save configuration in working directory:
+
+``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE]``, where ``ADDRESS`` must be a valid **IP** , **SERIAL ADDRESS** [#]_, or **MAC ADDRESS/ UUID** [#]_
 
   e.g.
 
   .. code-block:: console
 
+    # WiFi
     $ upydev config -t 192.168.1.58 -p mypass
 
-- To save configuration globally use -g flag: ``$ upydev config -t [UPYDEVICE IP] -p [PASSWORD] -g``
+    # SERIAL
+    $ upydev config -t /dev/tty.usbmodem387E386731342
+
+    # BLE
+    $ upydev config -t 9998175F-9A91-4CA2-B5EA-482AFC3453B9
+
+
+.. [#] ``-p`` is set to 115200 by default, so it is not necessary unless using a different baudrate
+.. [#] It will depend on OS system (e.g. Linux uses MAC format 'XX:XX:XX:XX:XX:XX', and macOS uses UUID format 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
+
+
+Default device name is ``upydevice``, to set a custom name use ``-@`` flag as
+
+  .. code-block:: console
+
+    $ upydev config -t 192.168.1.58 -p mypass -@ mycustomdevice
+
+
+To check configuration
+
+  .. code-block:: console
+
+    $ upydev check
+    Device: mycustomdevice
+    Address: 192.168.1.40, Device Type: WebSocketDevice
+
+Or to get more information if the device is online
+
+  .. code-block:: console
+
+    $ upydev check -i
+    Device: mycustomdevice
+    WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
+    Firmware: MicroPython v1.13-221-gc8b055717 on 2020-12-05; ESP32 module with ESP32
+    (MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+
+
+- To save configuration globally use -g flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -g``
 
   e.g.
 
   .. code-block:: console
 
     $ upydev config -t 192.168.1.58 -p mypass -g
+
+
+Create a GROUP file
+-------------------
+
+Make a global group of uPy devices named "UPY_G" to enable redirection to a specific device
+so next time any command can be redirected to any device within the group
+
+Use ``make_group`` or ``mkg`` as ``$ upydev mkg -g -f UPY_G -devs [NAME] [ADDRESS] [PASSWORD/BAUDRATE/DUMMY] [NAME2]...`` [#]_
+
+e.g.
+
+  .. code-block:: console
+
+    $ upydev make_group -g -f UPY_G -devs esp_room1 192.168.1.42 mypass esp_room2 192.168.1.54 mypass2
+
+
+.. [#] Every device must have a name, address and password/baudrate/dummy data (in case of ble) so the args can be parsed properly.
+
+To see the devices saved in this global group, use ``gg``.
+
+  .. code-block:: console
+
+      $ upydev gg
+      GROUP NAME: UPY_G
+      # DEVICES: 2
+      ┣━ esp_room1    -> WebSocketDevice @ 192.168.1.42
+      ┗━ esp_room2    -> WebSocketDevice @ 192.168.1.54
+
+
+Now any command can be redirected to one of these devices with the ``-@`` [#]_ option :
+
+  .. code-block:: console
+
+    $ upydev info -@ esp_room1
+    WebSocketDevice @ ws://192.168.1.42:8266, Type: esp32, Class: WebSocketDevice
+    Firmware: MicroPython v1.12-63-g1c849d63a on 2020-01-14; ESP32 module with ESP32
+    (MAC: 80:7d:3a:80:9b:30, RSSI: -51 dBm)
+
+.. [#] Option ``-@`` has autocompletion on tab so hit tab and see what devices are available
+
+.. note::
+
+  To add or remove devices from this group use ``mg_group`` or ``mgg``.
+
+  - Add ``$ upydev mgg -gg -add [NAME] [PASSWORD] [PASSWORD/BAUDRATE/DUMMY] [NAME2]...``
+  - Remove ``$ upydev mgg -gg -rm [NAME] [NAME2]...``

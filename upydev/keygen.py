@@ -259,7 +259,7 @@ def refresh_wrkey(args, device):
         print('Use this token to generate new password in the device:\n', new_token)
     upydev_ip = args.t
     upydev_pass = new_p
-    upy_conf = {'ip': upydev_ip, 'passwd': upydev_pass, 'name': device}
+    upy_conf = {'addr': upydev_ip, 'passwd': upydev_pass, 'name': device}
     file_conf = 'upydev_.config'
     if args.g:
         file_conf = os.path.join(UPYDEV_PATH, 'upydev_.config')
