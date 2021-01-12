@@ -4,8 +4,22 @@ Usage
 
 usage: ``$ upydev ACTION [options]``
 
-This means that if the first argument ACTION is not a Mode keyword or a
-upy command keyword it assumes it is a 'raw' upy command to send to the upy device
+Upydev can handle three types of directives:
+
+	1) An ACTION from Mode / Tools:
+			Utilities to manage/control that not always require a connected device.
+			e.g. ``$ upydev config -t /dev/tty.usbmodem387E386731342 -@ pyblite``,
+			``$ upydev check``, ``$ upydev put my_script.py``
+
+
+	2) A predefined MicroPython command:
+			This always require a connected device and it traduces into MicroPython code snippets.
+			e.g. ``$ upydev info``, ``$ upydev meminfo``, ``$ upydev df``
+
+	3) "Raw" or unregistered commands:
+			Commands that are not registered in upydev are sent directly to the device as in a REPL.
+			e.g. ``$ upydev "led.on()"``, ``$ upydev "print('Hello')"``, ``$ upydev "import mylib; mylib.dothis()"``
+
 
 Mode/Tools
 -----------

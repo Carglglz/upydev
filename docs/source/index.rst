@@ -63,7 +63,18 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
   upyutilsinfo
   upylog
   upynotify
+
+.. toctree::
+  :caption: HOW TO:
+  :name: howtotoc
+
   howto
+
+
+.. toctree::
+  :caption: ABOUT:
+  :name: abouttoc
+
   about
 
 .. toctree::

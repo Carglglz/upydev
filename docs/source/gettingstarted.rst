@@ -2,8 +2,13 @@
 Getting started
 ================
 
-Follow MicroPython getting started
+If using a device with no MicroPython presintalled (esp8266, esp32) first
+follow MicroPython getting started from official docs_ to see how to install it for the
+first time.
 
+.. _docs: http://docs.micropython.org/en/latest/esp32/tutorial/intro.html
+
+After that the device should be up and running for the next step.
 
 Requirement
 -----------
@@ -13,15 +18,26 @@ Requirement
           see `WebREPL: a prompt over-wifi <http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#webrepl-a-prompt-over-wifi>`_
           and `WebREPL: web-browser interactive prompt <http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt>`_
 
-        * *Bluetooth Low Energy*: Needs **BleREPL** enabled in the device
-          see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt
+        * *Bluetooth Low Energy*: Needs **BleREPL** enabled in the device. [#]_
 
     > Serial Devices:
         * *USB*: Connected through USB **data** cable.
 
 
+.. [#] This is still experimental and requires ``ble_advertising.py``, ``ble_uart_peripheral.py``, ``ble_uart_repl.py`` to be uploaded
+       to the device. This scripts can be found in `upyutils <https://github.com/Carglglz/upydev/tree/master/upyutils>`_ directory and comes from `micropython examples <https://github.com/micropython/micropython/tree/master/examples/bluetooth>`_.
+       Finally to enable it add the following to ``main.py``:
+
+       .. code-block:: console
+
+          import ble_uart_repl
+          ble_uart_repl.start()
+
 Create a configuration file
 ---------------------------
+
+  Save the address and password/baudrate of a connected device so this won't be required
+  for future interaction.
 
 .. note::
 
@@ -56,7 +72,7 @@ Upydev will use local working directory configuration unless it does not find an
   .. code-block:: console
 
     # WiFi
-    $ upydev config -t 192.168.1.58 -p mypass
+    $ upydev config -t 192.168.1.40 -p mypass
 
     # SERIAL
     $ upydev config -t /dev/tty.usbmodem387E386731342
@@ -73,7 +89,7 @@ Default device name is ``upydevice``, to set a custom name use ``-@`` flag as
 
   .. code-block:: console
 
-    $ upydev config -t 192.168.1.58 -p mypass -@ mycustomdevice
+    $ upydev config -t 192.168.1.40 -p mypass -@ mycustomdevice
 
 
 To check configuration
@@ -101,7 +117,14 @@ Or to get more information if the device is online
 
   .. code-block:: console
 
-    $ upydev config -t 192.168.1.58 -p mypass -g
+    $ upydev config -t 192.168.1.40 -p mypass -g
+
+
+
+Once the device is configured see :doc:`usage` documentation to check what modes and tools are available.
+
+Or if you are working with more than one device continue with the following section to create group configuration.
+
 
 
 Create a GROUP file
@@ -145,7 +168,8 @@ Now any command can be redirected to one of these devices with the ``-@`` [#]_ o
 
 .. note::
 
-  To add or remove devices from this group use ``mg_group`` or ``mgg``.
+  To add or remove devices from this group use ``mg_group`` or ``mgg``, and ``-gg`` flag which is the same
+  as ``-G UPY_G``.
 
   - Add ``$ upydev mgg -gg -add [NAME] [PASSWORD] [PASSWORD/BAUDRATE/DUMMY] [NAME2]...``
   - Remove ``$ upydev mgg -gg -rm [NAME] [NAME2]...``

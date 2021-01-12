@@ -3925,9 +3925,9 @@ def toggle_shell_mode(event):
             prompt['p'] = shell_prompt['s']
             shell_mode['S'] = True
             if not encrypted_flag['sec']:
-                espdev.wr_cmd('from upysh import *', silent=True)
+                espdev.wr_cmd('import gc;from upysh import *', silent=True)
             else:
-                ssl_cp.ssl_repl('from upysh import *', no_raw_buff=True)
+                ssl_cp.ssl_repl('import gc;from upysh import *', no_raw_buff=True)
             espdev.output = None
 
     run_in_terminal(show_p)
