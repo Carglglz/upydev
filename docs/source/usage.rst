@@ -7,7 +7,7 @@ usage: ``$ upydev ACTION [options]``
 Upydev can handle three types of directives:
 
 	1) An ACTION from Mode / Tools:
-			Utilities to manage/control that not always require a connected device.
+			Utilities to manage/control a device.
 			e.g. ``$ upydev config -t /dev/tty.usbmodem387E386731342 -@ pyblite``,
 			``$ upydev check``, ``$ upydev put my_script.py``
 
@@ -23,45 +23,61 @@ Upydev can handle three types of directives:
 
 Mode/Tools
 -----------
-	> DEVICE MANAGEMENT: '$ upydev dm' to see help on device management.
-	    ACTIONS : config, check, set, make_group, mg_group, see, gg
+	> :ref:`modetools:Device Management`
+			To manage configuration of a device/group of devices.
 
-	> FILEIO: '$ upydev fio' to see help on file input/ouput operations.
-	    ACTIONS: put, get, sync, d_sync, install, update_upyutils
+			ACTIONS : ``config``, ``check``, ``set``, ``make_group``, ``mg_group``, ``see``, ``gg``
 
-	> FIRMWARE: '$ upydev fw' to see help on firmware operations.
-	    ACTIONS: fwr, flash, mpyx
+	> :ref:`modetools:File IO operations`
+			To upload/download files to/from a device.
 
-	> KEYGEN: '$ upydev kg' to see help on keygen operations.
-	    ACTIONS: gen_rsakey, rf_wrkey, sslgen_key
+			ACTIONS: ``put``, ``get``, ``sync``, ``d_sync``, ``install``, ``update_upyutils``
 
-	> REPLS: '$ upydev rp' to see help on repls modes.
-	    ACTIONS: repl, rpl, wrepl, wssrepl, srepl
+	> :ref:`modetools:Firmware`
+			To list, get or flash the firmware of a device.
 
-	> SHELL-REPLS: '$ upydev sh' to see help on shell-repls modes.
-	    ACTIONS: shell, shl, ssl_wrepl, ssl, sh_srepl, shr, wssl, set_wss, ble, jupyterc
+			ACTIONS: ``fwr``, ``flash``, ``mpyx``
 
-	> DEBUGGING: '$ upydev db' to see help on debugging operations.
-	    ACTIONS: ping, probe, scan, run, timeit, diagnose, errlog, stream_test,
-	             sysctl, log, debug, pytest
+	> :ref:`modetools:Keygen`
+			To generate SSL key-certs and random WebREPL passwords.
 
-	> GROUP COMMAND MODE: '$ upydev gp' to see help on group mode options.
-	    OPTIONS: -G, -GP
+			ACTIONS: ``gen_rsakey``, ``rf_wrkey``, ``sslgen_key``
 
-	> HELP: '$ upydev h' or '$ upydev help' to see help (without optional args)
-	        '$ upydev -h' or '$ upydev --help' to see full help info.
 
-	        - To see help about a any ACTION/COMMAND
-	          put % before that ACTION/COMMAND as : $ upydev %ACTION
+	> :ref:`modetools:REPL`
+			To enter the REPL.
 
-	    ACTIONS: help, h, dm, fio, fw, kg, rp, sh, db, gp, gc, wu, sd, pro.
+			ACTIONS: ``repl``, ``rpl``, ``wrepl``, ``wssrepl``, ``srepl``
+
+	> :ref:`modetools:SHELL-REPL`:
+			To enter shell-repl modes.
+
+			ACTIONS: ``shell``, ``shl``, ``ssl_wrepl``, ``ssl``, ``sh_srepl``, ``shr``, ``wssl``, ``set_wss``, ``ble``, ``jupyterc``
+
+	> :ref:`modetools:Debugging`
+			To debug device connection, run scripts or run interactive test with pytest.
+
+			ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``diagnose``, ``errlog``, ``stream_test``, ``sysctl``, ``log``, ``debug``, ``pytest``
+
+	> :ref:`Group Command Mode <modetools:Group Mode>`
+			To operate with a group of devices.
+
+			OPTIONS: ``-G``, ``-GP``
+
+	> :ref:`modetools:HELP`
+			To see help on any mode, tool or command.
+
+			ACTIONS: ``help``, ``h``, ``dm``, ``fio``, ``fw``, ``kg``, ``rp``, ``sh``, ``db``, ``gp``, ``gc``, ``wu``, ``sd``, ``pro``.
+
+					- To see help about a any ACTION/COMMAND put % before that ACTION/COMMAND as ``$ upydev %ACTION``
+
 
 upy Commands
 ------------
-	> GENERAL: do '$ upydev gc' to see General commmands help.
+	> GENERAL: A set of commands to control or configure the device.
 
-	> WIFI UTILS: do '$ upydev wu' to see Wifi utils commands help.
+	> WIFI UTILS: To set or manage WiFi configuration or connection mode.
 
-	> SD: do '$ upydev sd' to see SD utils commands help.
+	> SD: A set of commands to mount/unmount a SD card.
 
-	> PROTOTYPE: do '$ upydev pro' to see Prototype utils commands help.
+	> PROTOTYPE: A set of commands to test/prototype sensors, actuators, networking ...

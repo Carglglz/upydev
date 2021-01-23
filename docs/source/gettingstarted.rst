@@ -2,7 +2,7 @@
 Getting started
 ================
 
-If using a device with no MicroPython presintalled (esp8266, esp32) first
+If using a device with no MicroPython preinstalled (esp8266, esp32) first
 follow MicroPython getting started from official docs_ to see how to install it for the
 first time.
 
@@ -25,7 +25,7 @@ Requirement
 
 
 .. [#] This is still experimental and requires ``ble_advertising.py``, ``ble_uart_peripheral.py``, ``ble_uart_repl.py`` to be uploaded
-       to the device. This scripts can be found in `upyutils <https://github.com/Carglglz/upydev/tree/master/upyutils>`_ directory and comes from `micropython examples <https://github.com/micropython/micropython/tree/master/examples/bluetooth>`_.
+       to the device. These scripts can be found in `upyutils <https://github.com/Carglglz/upydev/tree/master/upyutils>`_ directory and they come from `micropython examples <https://github.com/micropython/micropython/tree/master/examples/bluetooth>`_.
        Finally to enable it add the following to ``main.py``:
 
        .. code-block:: console
@@ -61,7 +61,7 @@ Create a configuration file
 
 
 
-Upydev will use local working directory configuration unless it does not find any or manually indicated with ``-g`` option.
+Upydev will use local working directory configuration unless it does not find any or manually indicated with ``-g`` option which is the global configuration flag.
 
 - To save configuration in working directory:
 
@@ -121,9 +121,9 @@ Or to get more information if the device is online
 
 
 
-Once the device is configured see :doc:`usage` documentation to check what modes and tools are available.
+Once the device is configured see :doc:`usage` documentation to check which modes and tools are available.
 
-Or if you are working with more than one device continue with the following section to create group configuration.
+Or if you are working with more than one device continue with the following section to create a group configuration.
 
 
 
