@@ -74,10 +74,18 @@ Mode/Tools
 
 upy Commands
 ------------
-	> GENERAL: A set of commands to control or configure the device.
+	> :ref:`upycmd:General`
 
-	> WIFI UTILS: To set or manage WiFi configuration or connection mode.
+		A set of commands to control or configure the device.
 
-	> SD: A set of commands to mount/unmount a SD card.
+	> :ref:`upycmd:WiFi Utils`
 
-	> PROTOTYPE: A set of commands to test/prototype sensors, actuators, networking ...
+		To set or manage WiFi configuration or connection mode.
+
+	> :ref:`upycmd:SD`
+
+		A set of commands to mount/unmount a SD card.
+
+	> :ref:`upycmd:Prototype`
+
+		A set of commands to test/prototype sensors, actuators, networking...

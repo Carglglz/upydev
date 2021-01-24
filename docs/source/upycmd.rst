@@ -88,9 +88,10 @@ SD
                    and unmount the sd card when is extracted. See more info in:
                    https://github.com/Carglglz/upydev/blob/master/DOCS/Documentation.md#sd_auto
 
-Protoype
---------
 
+
+Prototype
+----------
 
 > PROTOTYPE: do '$ upydev pro' to see Prototype utils commands help.
 
@@ -108,7 +109,7 @@ Protoype
                 - ads_init : to initialize and configure ADS1115 and the channel to
                             read from (see -ads, -ch)
                 - ads_read : to read from analog pin previously configured
-                        (see -tm option for stream mode, and -f for logging)
+                        (see -tm option for stream mode, and -f for logging*)
                         * for one shot read, logging is also available with -f and
                             -n option (for tagging)
                         * use '-f now' for automatic 'log_mode_datetime.txt' name.
@@ -117,7 +118,7 @@ Protoype
                 - imu_init : initialize IMU, use -imu option to indicate the imu library.
                             (default option is 'lsm9ds1', see sensor requirements for more info')
                 - imuacc : one shot read of the IMU lineal accelerometer (g=-9.8m/s^2),
-                        (see -tm option for stream mode, and -f for logging)
+                        (see -tm option for stream mode, and -f for logging*)
                         * for one shot read, logging is also available with -f and
                             -n option (for tagging)
                         * use '-f now' for automatic 'log_mode_datetime.txt' name.
@@ -132,7 +133,7 @@ Protoype
                 - bme_init: initialize bme, use -bme option to indicate the weather sensor library.
                             (default option is 'bme280', see sensor requirements for more info')
                 - bme_read : to read values from bme (Temp(C), Pressure(Pa), Rel.Hummidity (percentage))
-                        (see -tm option for stream mode, and -f for logging)
+                        (see -tm option for stream mode, and -f for logging*)
                         * for one shot read, logging is also available with -f and
                             -n option (for tagging)
                         * use '-f now' for automatic 'log_mode_datetime.txt' name.
@@ -141,7 +142,7 @@ Protoype
                 - ina_init: initialize ina, use -ina option to indicate the power sensor library.
                             (default option is 'ina219', see sensor requirements for more info')
                 - ina_read : to read values from ina (Pot.Diff (Volts), Current(mA), Power(mW))
-                        (see -tm option for stream mode, and -f for logging)
+                        (see -tm option for stream mode, and -f for logging*)
                         * for one shot read, logging is also available with -f and
                             -n option (for tagging)
                         * use '-f now' for automatic 'log_mode_datetime.txt' name.
@@ -179,7 +180,7 @@ Protoype
                 - servo_angle: to move the servo an angle indicated by -opt option
             * STEPPER MOTOR:
                 - stepper_config: to configure the step and direction pin with -po option
-                                    *( -po [DIR_PIN] [STEP_PIN])*
+                                    *( -po [DIR_PIN] [STEP_PIN])
                 - stepper_move: to move the stepper to right or left, at a velocity and
                                a numbers of steps indicated with -to option: [R or L] [velocity] [# steps]
                                R: right, L:left, velocity (1000-20000) (smaller is faster) and
@@ -221,3 +222,9 @@ Protoype
                    to request a single or a list of pins info use -po option
         - specs : to see the board specs, indicated by -b option
         - pin_status: to see pin state, to request a specific set use -po option ***
+
+        * ESP32: (Not implemented yet)
+            - touch
+            - hall
+            - deepsleep
+            - temp
