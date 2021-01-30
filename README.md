@@ -31,7 +31,7 @@
 
 First be sure that the **WebREPL daemon is enabled** and running see:
 
-* [WebREPL: a prompt over-wifi](http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#webrepl-a-prompt-over-wifi) 
+* [WebREPL: a prompt over-wifi](http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#webrepl-a-prompt-over-wifi)
 * [WebREPL: web-browser interactive prompt](http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt)
 
 #### Installing :
@@ -88,13 +88,13 @@ Example: Raw commands
 #### uPydev Mode/Tools:
 
 - **`upydev config`**: save upy device settings (*see `-p`, `-t`, `-g`)*, so the target and password arguments wont be required any more
-  
+
 - **`upydev put`** : to upload a file to upy device (*see `-f`, `-s` , `-dir`, `-rst`; for multiple files see `-fre` option and  use `-wdl` to put only new or modified files.)*
 
 - **`upydev get`** : to download a file from upy device (*see `-f` , `-dir`, `-s`; for multiple files see `-fre` option*)
 
-- **`upydev sync`** : for a faster transfer of large files (this needs [sync_tool.py](https://github.com/Carglglz/upydev/tree/master/upyutils) in upy device) (*see `-f`, `-s` and `-lh`; for multiple files see `-fre` option*) 
-  
+- **`upydev sync`** : for a faster transfer of large files (this needs [sync_tool.py](https://github.com/Carglglz/upydev/tree/master/upyutils) in upy device) (*see `-f`, `-s` and `-lh`; for multiple files see `-fre` option*)
+
 - **`upydev d_sync`**: to recursively sync a folder in upydevice filesystem use `-dir` to indicate the folder (must be in cwd), use `-tree` to see dir structure, or `-s sd` to sync to an Sd card mounted as 'sd'. Use `-wdl` to sync only new or modified files.
 
 - **`upydev cmd`** : for debugging purpose, to send command to upy device ; (*see -c, -r, -rl*);
@@ -106,7 +106,7 @@ Example: Raw commands
    `$ upydev cmd -r "print('Hello uPy')"`
 
    ` $ upydev cmd -rl "function_that_print_multiple_lines()"`
-   
+
    *  *tip: simple commands can be used without quotes;*
      *but for commands with parenthesis or special characters use quotes,*
      *for example: 'dummy_func()' ; use double quotes "" when the command*
@@ -116,15 +116,15 @@ Example: Raw commands
     To see more keybinding info do CTRL-k
  (Added custom keybindings and autocompletion on tab to the previous work
      see: [Terminal WebREPL](https://github.com/Hermann-SW/webrepl) for the original work)
-    
+
 - **`upydev wssrepl`** : to enter the terminal WebSecureREPL; CTRL-x to exit, CTRL-d to do soft reset To see more keybindings info do CTRL-k. REPL over WebSecureSockets (This needs use of `sslgen_key -tfkey`, `update_upyutils` and enable WebSecureREPL in the device `import wss_repl;wss_repl.start(ssl=True)`)
-  
+
 - **`upydev srepl`** : to enter the terminal serial repl using picocom, indicate port by `-port` option (to exit do CTRL-a, CTRL-x) (see: [Picocom](https://github.com/npat-efault/picocom) for more information)
-  
+
 - **`upydev ping`** : pings the target to see if it is reachable, CTRL-C to stop
 
 - **`upydev run`** : just calls import 'script', where 'script' is indicated by `-f` option (script must be in upy device or in sd card indicated by `-s` option and the sd card must be already mounted as 'sd');
-  
+
      Supports *CTRL-C* to stop the execution and exit nicely.
 
 - **`upydev install`** : install libs to '/lib' path with upip; indicate lib with -f option
@@ -144,7 +144,7 @@ Example: Raw commands
   - to see available serial ports do: `upydev fw -md list serial_ports`
 
 * **`upydev flash`**: to flash a firmware file to the upydevice, a serial port must be indicated to flash do: `upydev flash -port [serial port] -f [firmware file]` (*just for esp8266 and esp32*)
-  
+
 * **`upydev see`**: to get specific command help info indicated with `-c` option
 
 * **`upydev find`**: to get a list of possible upy devices. Scans the local network to find devices with port 8266 (WebREPL) open. Use `-n` option to perform n scans (A single scan may not find all the devices)
@@ -171,23 +171,23 @@ Example: Raw commands
 
 * **`upydev crypto_wrepl`**:To enter the terminal CryptoWebREPL a E2EE wrepl/shell terminal; CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default) To see more keybindings info do CTRL-k. By default resets after exit, use `-rkey` option to refresh the WebREPL password with a new random password, after exit. This passowrd will be stored in the working directory or in global directory with `-g` option. (This mode needs upysecrets.py)
 
-* **`upydev upy`** to acces crypto_wrepl in a 'ssh' style command to be used like e.g.: `upydev upy@192.168.1.42` or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. `upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass`) The device can be accesed as `upydev upy@foo_device` or redirect any command as e.g. `upydev ping -@foo_device`
+* **`upydev upy`** to access crypto_wrepl in a 'ssh' style command to be used like e.g.: `upydev upy@192.168.1.42` or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. `upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass`) The device can be accessed as `upydev upy@foo_device` or redirect any command as e.g. `upydev ping -@foo_device`
 
 * **`upydev sslgen_key`** (This needs openssl available in `$PATH`)
 
      To generate ECDSA key and a self-signed certificate to enable SSL sockets This needs a passphrase, that will be required every time the key is loaded. Use `-tfkey` to upload this key to the device (use only if connected directly to the AP of the device or a "secure" wifi e.g. local/home). If not connected to a "secure" wifi upload the key (it is stored in upydev._*path*_) by USB/Serial connection.
 
 - **`upydev ssl_wrepl`**: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal (SSL sockets); CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default) To see more keybindings info do CTRL-k. By default resets after exit. (This mode needs *ssl_repl.py)* use `-rkey` option to refresh the WebREPL password with a new random password, after exit. This passowrd will be stored in the working directory or in global directory with `-g` option. (This mode needs *ssl_repl.py, upysecrets.py* for `-rfkey`) *(Use `-nem` option to use without encryption (for esp8266))
-  
-- **`upydev ssl`**: to acces ssl_wrepl in a 'ssh' style command to be used like e.g.: `upydev ssl@192.168.1.42` or if a device is stored in a global group called "*UPY_G*" (this needs to be created first doing e.g. `$ upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass`) The device can be accesed as `$ upydev ssl@foo_device` or redirect any command as e.g. `$ upydev ping -@foo_device`
-  
-- **`upydev sh_srepl`**: To enter the serial terminal SHELL-REPL; CTRL-x to exit, To see more keybindings info do CTRL-k. By default resets after exit. To configure a serial device use `-t` for baudrate and `-p` for serial port To acces without previous configuration: `sh_srepl -port [serial port] -b [baudrate]` (default baudrate is 115200) To acces with previous configuration:
+
+- **`upydev ssl`**: to access ssl_wrepl in a 'ssh' style command to be used like e.g.: `upydev ssl@192.168.1.42` or if a device is stored in a global group called "*UPY_G*" (this needs to be created first doing e.g. `$ upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass`) The device can be accessed as `$ upydev ssl@foo_device` or redirect any command as e.g. `$ upydev ping -@foo_device`
+
+- **`upydev sh_srepl`**: To enter the serial terminal SHELL-REPL; CTRL-x to exit, To see more keybindings info do CTRL-k. By default resets after exit. To configure a serial device use `-b` for baudrate and `-t` for serial port To access without previous configuration: `sh_srepl -t [serial port] -b [baudrate]` (default baudrate is 115200) To access with previous configuration:
 
    - `sh_srepl` (if device configured in current working directory)
    - `sh_srepl -@ foo_device` (if foo_device is configured in global group 'UPY_G')
 
-- **`upydev shr`**: to acces the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.: `upydev shr@/dev/tty.usbmodem3370377430372` or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. `upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372`) The device can be accesed as `upydev shr@foo_device`
-  
+- **`upydev shr`**: to access the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.: `upydev shr@/dev/tty.usbmodem3370377430372` or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. `upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372`) The device can be accessed as `upydev shr@foo_device`
+
 - **`upydev wssl`**: to access ssl_wrepl if WebSecureREPL is enabled in a 'ssh' style command to be used like e.g.: `upydev wssl@192.168.1.42` or if a device is stored in a global group called "UPY_G" (this needs to be created first doing e.g. `upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass`) then the device can be accessed as `upydev wssl@foo_device`.
 
 - **`upydev set_wss`**: To toggle between WebSecureREPL and WebREPL, to enable WebSecureREPL do 'set_wss', to disable 'set_wss -wss'
@@ -203,7 +203,7 @@ Example: Raw commands
 
 ------
 
-**GROUP COMMAND MODE (-G option)**: 
+**GROUP COMMAND MODE (-G option)**:
 
 To send a command to multiple devices in a group (made with make_group command) use -G option
 
@@ -213,9 +213,9 @@ To target specific devices within a group add -devs option as `-devs [DEV_1 NAME
 
 *upydev will use local working directory configuration unless it does not find any or manually indicated with -g option*
 
-**GROUP COMMAND PARALLEL MODE (-GP option)**: 
+**GROUP COMMAND PARALLEL MODE (-GP option)**:
 
-To send a command **at the same time** to multiple devices in a group (made with make_group command) use -GP option. 
+To send a command **at the same time** to multiple devices in a group (made with make_group command) use -GP option.
 
 ***Be aware that not all the commands are suitable for parallel execution (wrepl for example)*
 
@@ -270,14 +270,14 @@ uPy commands are organized in:
 
   **A 'Reliable' connection** **means that there is no packet loss**  (use ping or  `upydev ping` command to check)
 
-  See [Received signal strength indication](https://en.wikipedia.org/wiki/Received_signal_strength_indication) and 
+  See [Received signal strength indication](https://en.wikipedia.org/wiki/Received_signal_strength_indication) and
   [Mobile Signal Strength Recommendations](https://wiki.teltonika.lt/view/Mobile_Signal_Strength_Recommendations).
 
 #### TRACKING PACKETS:
 
 To see if "command packets" are sent and received or lost use [Wireshark](https://www.wireshark.org) and filter the ip of the device.
 
-#### SEE WHAT'S GOING ON UNDER THE HOOD: 
+#### SEE WHAT'S GOING ON UNDER THE HOOD:
 
 _ℹ️ Host and the device must be connected._
 
