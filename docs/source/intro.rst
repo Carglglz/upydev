@@ -26,11 +26,11 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 Features
 --------
 
-* Command line for configuration/management/communication/control of MicroPython devices.
-* Autocompletion
-* File IO operations (put, get, sync...)
+* Tools to allow configuration, management, communication and control of MicroPython devices.
+* Command line Autocompletion
+* File IO operations (upload, download one or multiple files, recursively sync directories...)
 * SHELL-REPL modes: Serial, WiFi (SSL/WebREPL), BLE
-* Custom commands for debugging/testing/prototyping
+* Custom commands for debugging, testing and prototyping.
 * Group mode to operate with multiple devices
 
 

@@ -24,7 +24,7 @@ Requirement
         * *USB*: Connected through USB **data** cable.
 
 
-.. [#] This is still experimental and requires ``ble_advertising.py``, ``ble_uart_peripheral.py``, ``ble_uart_repl.py`` to be uploaded
+.. [#] This is still experimental and for esp32 requires ``ble_advertising.py``, ``ble_uart_peripheral.py``, ``ble_uart_repl.py`` to be uploaded
        to the device. These scripts can be found in `upyutils <https://github.com/Carglglz/upydev/tree/master/upyutils>`_ directory and they come from `micropython examples <https://github.com/micropython/micropython/tree/master/examples/bluetooth>`_.
        Finally to enable it add the following to ``main.py``:
 

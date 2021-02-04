@@ -23,6 +23,12 @@ Upydev can handle three types of directives:
 
 Mode/Tools
 -----------
+
+	> :ref:`modetools:HELP`
+			To see help on any mode, tool or command.
+
+			ACTIONS: ``help``, ``h``, ``dm``, ``fio``, ``fw``, ``kg``, ``rp``, ``sh``, ``db``, ``gp``, ``gc``, ``wu``, ``sd``, ``pro``.
+
 	> :ref:`modetools:Device Management`
 			To manage configuration of a device/group of devices.
 
@@ -63,13 +69,6 @@ Mode/Tools
 			To operate with a group of devices.
 
 			OPTIONS: ``-G``, ``-GP``
-
-	> :ref:`modetools:HELP`
-			To see help on any mode, tool or command.
-
-			ACTIONS: ``help``, ``h``, ``dm``, ``fio``, ``fw``, ``kg``, ``rp``, ``sh``, ``db``, ``gp``, ``gc``, ``wu``, ``sd``, ``pro``.
-
-					- To see help about a any ACTION/COMMAND put % before that ACTION/COMMAND as ``$ upydev %ACTION``
 
 
 upy Commands
