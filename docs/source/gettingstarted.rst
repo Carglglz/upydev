@@ -111,13 +111,22 @@ Or to get more information if the device is online
     (MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
 
 
-- To save configuration globally use -g flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -g``
+- To save configuration globally use ``-g`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -g``
 
   e.g.
 
   .. code-block:: console
 
     $ upydev config -t 192.168.1.40 -p mypass -g
+
+
+- To save configuration in a global group use ``-gg`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -gg -@ mydevice``
+
+  e.g.
+
+  .. code-block:: console
+
+    $ upydev config -t 192.168.1.40 -p mypass -gg -@ mydevice
 
 
 
@@ -135,6 +144,7 @@ so next time any command can be redirected to any device within the group
 
 Use ``make_group`` or ``mkg`` as ``$ upydev mkg -g -f UPY_G -devs [NAME] [ADDRESS] [PASSWORD/BAUDRATE/DUMMY] [NAME2]...`` [#]_
 
+to create and add more than one device at once.
 e.g.
 
   .. code-block:: console
@@ -143,6 +153,17 @@ e.g.
 
 
 .. [#] Every device must have a name, address and password/baudrate/dummy data (in case of ble) so the args can be parsed properly.
+
+or use ``config`` and ``-gg`` flag as mentioned above to add one device at a time.
+
+
+.. code-block:: console
+
+  $ upydev config -t 192.168.1.42 -p mypass -gg -@ esp_room1
+  WebSocketDevice esp_room1 settings saved in global group!
+
+  $ upydev config -t 192.168.1.54 -p mypass -gg -@ esp_room2
+  WebSocketDevice esp_room2 settings saved in global group!
 
 To see the devices saved in this global group, use ``gg``.
 

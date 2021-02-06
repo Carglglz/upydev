@@ -122,13 +122,13 @@ def devicemanagement_action(args, **kargs):
                         args.p = 115200
                     else:
                         args.p = 'pass'
-        upydev_ip = args.t
-        upydev_pass = args.p
+        upydev_addr = args.t
+        upydev_mdata = args.p
         if vars(args)['@'] is not None:
                 upydev_name = vars(args)['@']
         else:
             upydev_name = 'upydevice'
-        upy_conf = {'addr': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
+        upy_conf = {'addr': upydev_addr, 'passwd': upydev_mdata, 'name': upydev_name}
         file_conf = 'upydev_.config'
         dt = check_device_type(args.t)
         if args.gg:
@@ -139,7 +139,7 @@ def devicemanagement_action(args, **kargs):
                     group.write(json.dumps({}))
             with open(group_file_path, 'r', encoding='utf-8') as group:
                 devices = json.loads(group.read())
-                devices.update({upydev_name: [upydev_ip, upydev_pass]})
+                devices.update({upydev_name: [upydev_addr, upydev_mdata]})
             with open(group_file_path, 'w', encoding='utf-8') as group:
                 group.write(json.dumps(devices))
             print('{} {} settings saved in global group!'.format(dt, upydev_name))
