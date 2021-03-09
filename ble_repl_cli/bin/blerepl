@@ -2021,7 +2021,7 @@ def custom_sh_cmd(cmd_inp):
 #
 #                             try:
 #                                 print('File to flash: {}'.format(fw_file))
-#                                 resp = input('Do yo wish to continue? (y/n): ')
+#                                 resp = input('Do you wish to continue? (y/n): ')
 #                                 if dev_platform != 'pyboard':
 #                                     if resp == 'y':
 #                                         bin_file = fw_file
