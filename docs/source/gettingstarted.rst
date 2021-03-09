@@ -12,7 +12,7 @@ After that the device should be up and running for the next step.
 
 Requirement
 -----------
-**Needs REPL to be accesible.**:
+**Needs REPL to be accesible**:
     > Wireless Devices:
         * *WiFi*: Needs **WebREPL** enabled in the device
           see `WebREPL: a prompt over-wifi <http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#webrepl-a-prompt-over-wifi>`_

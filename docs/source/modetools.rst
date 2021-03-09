@@ -274,7 +274,7 @@ Debugging
 ---------
 
 
-    ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``diagnose``, ``errlog``, ``stream_test``, ``sysctl``, ``log``, ``debug``, ``pytest``.
+    ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``diagnose``, ``errlog``, ``stream_test``, ``sysctl``, ``log``, ``debug``, ``pytest-setup``, ``pytest``
 
        - ping:
               pings the target to see if it is reachable, CTRL-C to stop
@@ -331,9 +331,12 @@ Debugging
               to indicate the file. To enter next line press ENTER, to finish PRESS C
               then ENTER. To break a while loop do CTRL+C.
 
-       - pytest:
-              To run upydevice test with pytest, do "pytest-setup" first to enable selection
+       - pytest-setup:
+              To set ``pytest.ini`` and ``conftest.py`` in current working directory to enable selection
               of specific device with -@ entry point.
+
+       - pytest:
+              To run upydevice test with pytest, do ``$ upydev pytest-setup`` first.
 
 
 
