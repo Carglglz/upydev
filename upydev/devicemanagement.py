@@ -81,6 +81,9 @@ def see(args):
         for key in group_devs.keys():
             dev_add = group_devs[key][0]
             dev_type = check_device_type(dev_add)
+            if not dev_type:
+                dev_add = group_devs[key][1]
+                dev_type = check_device_type(dev_add)
             if key != list(group_devs.keys())[-1]:
                 tree = '┣━'
             else:

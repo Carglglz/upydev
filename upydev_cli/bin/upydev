@@ -457,7 +457,9 @@ def address_entry_point(entry_point, group_file=''):
         try:
             int(dev_address)
             dev_address = devices[entry_point][1]
+            dev_br = devices[entry_point][0]
         except Exception as e:
+            dev_br = devices[entry_point][1]
             pass
         if '.' in dev_address and dev_address.count('.') == 3:
             # check IP
@@ -469,8 +471,7 @@ def address_entry_point(entry_point, group_file=''):
             except Exception as e:
                 print(e)
         elif 'COM' in dev_address or '/dev/' in dev_address:
-            dev_sport = devices[entry_point][0]
-            dev_br = devices[entry_point][1]
+            dev_sport = dev_address
             return (dev_sport, dev_br)
         elif len(dev_address.split('-')) == 5:
             try:
@@ -940,9 +941,13 @@ if args.G is not None:
                 dev_addr = devices[dev][0]
                 dev_pass = devices[dev][1]
                 dev_type = check_device_type(dev_addr)
+                if not dev_type:
+                    dev_addr = devices[dev][1]
+                    dev_pass = devices[dev][0]
+                    dev_type = check_device_type(dev_addr)
                 _dev_name = dev
                 print('{} @ {}'.format(dev_type, dev_addr))
-                print('Sending command {} ...'.format(args.m))
+                print('Sending command {} ...'.format(args.m), end='\n\n')
                 if args.gf:
                     if args.m == 'get' or args.m == 'put' or args.m == 'sync':
                         if dev not in os.listdir():
