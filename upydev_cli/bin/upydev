@@ -640,6 +640,7 @@ def handle_action(args, exit=True):
 
     #############################################
 
+
 KW_NOT_GROUP = ['probe', 'scan']
 
 # keyword live output commands:

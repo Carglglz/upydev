@@ -90,7 +90,7 @@ def fileio_action(args, **kargs):
     dev_name = kargs.get('device')
     dt = check_device_type(args.t)
     if args.m == 'put' or args.m == 'get':
-        if args.wdl and args.m == 'put' and args.fre:
+        if args.wdl and args.m == 'put':
             modified_files = check_wdlog(save_wdlog=True)
             args.fre = modified_files
             if not args.fre:
@@ -125,6 +125,7 @@ def fileio_action(args, **kargs):
             dev_lib = "./"
         if dt == 'WebSocketDevice':
             wsdevIO = WebSocketFileIO(dev, args, devname=dev_name)
+            print('Synchronizing @ {} '.format(dev_name), end='\n\n')
             d_sync_recursive(dir_lib, devIO=wsdevIO,
                              show_tree=True, rootdir=dev_lib,
                              root_sync_folder=dir_lib,
@@ -132,6 +133,7 @@ def fileio_action(args, **kargs):
                              dev_name=dev_name)
         elif dt == 'SerialDevice':
             sdevIO = SerialFileIO(dev)
+            print('Synchronizing @ {} '.format(dev_name), end='\n\n')
             d_sync_recursive(dir_lib, devIO=sdevIO,
                              show_tree=True,
                              rootdir=dev_lib,
@@ -140,6 +142,7 @@ def fileio_action(args, **kargs):
                              dev_name=dev_name)
         elif dt == 'BleDevice':
             bledevIO = BleFileIO(dev)
+            print('Synchronizing @ {} '.format(dev_name), end='\n\n')
             d_sync_recursive(dir_lib, devIO=bledevIO,
                              show_tree=True,
                              rootdir=dev_lib,

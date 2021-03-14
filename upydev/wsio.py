@@ -442,7 +442,12 @@ def wsfileio(args, file, upyfile, devname, dev=None):
             else:
                 for file in args.fre:
                     src_file = file
-                    dst_file = source + '/' + file.split('/')[-1]
+                    if source != '/':
+                        if source.startswith('.'):
+                            source = source.replace('.', '')
+                        dst_file = source + '/' + file.split('/')[-1]
+                    else:
+                        dst_file = '/' + file.split('/')[-1]
                     if dst_file[-1] == "/":
                         basename = src_file.rsplit("/", 1)[-1]
                         dst_file += basename
@@ -475,9 +480,9 @@ class WebSocketFileIO:
         self.args = args
         self.dev_name = devname
 
-    def put(self, src, dst_file):
+    def put(self, src, dst_file, ppath=False, dev_name=None):
         self.args.m = 'put'
-        self.args.s = '/'
+        self.args.s = ''
         wsfileio(self.args, src, dst_file, self.dev_name, self.dev)
 
     def put_files(self, args, dev_name):

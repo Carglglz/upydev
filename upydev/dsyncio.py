@@ -7,6 +7,11 @@ import hashlib
 from binascii import hexlify
 
 
+# AVOID FILES
+
+_CONFG_FILES = ['.upydev_wdlog.json', 'upydev_.config']
+
+
 # WATCHDOG LOG FILE
 
 def get_hash(file):
@@ -22,7 +27,7 @@ def get_hash_cwd_dict(path='.'):
     hash_cwd_dict = {name: get_hash(os.path.join(path, name)) for name in
                      [file for file in os.listdir(path) if
                       os.path.isfile(os.path.join(path, file))
-                      and '.upydev_wdlog.json' not in file]}
+                      and file not in _CONFG_FILES]}
     return hash_cwd_dict
 
 
@@ -33,7 +38,7 @@ def check_wdlog(path='.', save_wdlog=True):
         with open('{}/'.format(path) + '.upydev_wdlog.json', 'r') as wd_logfile:
             hash_wdlog_dict = json.loads(wd_logfile.read())
             files_wdlog_list = list(hash_wdlog_dict.keys())
-            files_cwd = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file]
+            files_cwd = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and file not in _CONFG_FILES]
             # New files in cwd:
             new_files_to_upload = [file for file in files_cwd if file not in files_wdlog_list]
             if len(new_files_to_upload) > 0:
@@ -63,7 +68,7 @@ def check_wdlog(path='.', save_wdlog=True):
                 hash_cwd_dict = get_hash_cwd_dict(path=path)
                 wd_logfile.write(json.dumps(hash_cwd_dict))
             print('Done!')
-        global_files_to_upload = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and '.upydev_wdlog.json' not in file]
+        global_files_to_upload = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and file not in _CONFG_FILES]
         for file in global_files_to_upload:
             print('- {}'.format(file))
         return global_files_to_upload
@@ -250,16 +255,21 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
     print('ROOT DIRECTORY: {}'.format(rootdir))
     print('DIRECTORY TO SYNC: {}'.format(directory))
     print('\n')
-    print('CHECKING IF DIRECTORY {} IN: {}'.format(
-        directory.split('/')[-1], rootdir))
-    if directory.split('/')[-1] in os.listdir(rootdir):
+    if directory != '.':
+        print('CHECKING IF DIRECTORY {} IN: {}'.format(
+            directory.split('/')[-1], rootdir))
+    if directory.split('/')[-1] in os.listdir(rootdir) or directory == '.':
         print('DIRECTORY {} FOUND'.format(directory))
         print('\n')
         print('FILES/DIRS IN DIRECTORY {}:'.format(directory))
+        if directory == '.':
+            directory = ''
         du(path='./{}'.format(directory), absp=False, hidden=True)
         # for file in os.listdir(directory):
         #     print('- {} {} [{}]'.format(type_file_dict[os.path.isfile(os.path.join(current_dir, file))],
         #                            file, print_filesys_info(os.stat(os.path.join(current_dir, file))[6])))
+        if directory == '':
+            directory = '.'
         file_list = os.listdir(directory)
         print('\n')
         if args.wdl:
@@ -268,10 +278,11 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
             if os.path.isfile(os.path.join(current_dir, file)):
                 if args.wdl:
                     wdl_file = file.split('/')[-1]
-                    if wdl_file != '.upydev_wdlog.json' and wdl_file in modified_files:
+                    if wdl_file not in _CONFG_FILES and wdl_file in modified_files:
                         file_list_abs_path.append(os.path.join(current_dir, file))
                 else:
-                    file_list_abs_path.append(os.path.join(current_dir, file))
+                    if file not in _CONFG_FILES:
+                        file_list_abs_path.append(os.path.join(current_dir, file))
             elif os.path.isdir(os.path.join(current_dir, file)):
                 dir_list_abs_path.append(os.path.join(current_dir, file))
     print('LIST OF FILES TO UPLOAD:')
@@ -289,7 +300,7 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
         devIO.dev.connect()
     dev_root_list = devIO.dev.wr_cmd("os.listdir('{}')".format(rootdir), silent=True,
                                      rtn_resp=True)
-    if current_dir.split('/')[-1] not in dev_root_list:
+    if current_dir.split('/')[-1] not in dev_root_list and current_dir != '.':
         print('\n')
         print('MAKING DIR: {}'.format(current_dir))
         print('\n')
@@ -297,19 +308,29 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
         print('\n')
     print('UPLOADING FILES TO {}'.format(current_dir))
     if len(file_list_abs_path) > 1:
+        if directory == '.':
+            file_list_abs_path = [file.split('/')[-1] for file in file_list_abs_path]
         for file in file_list_abs_path:
             print('- {}'.format(file))
         args.fre = file_list_abs_path
-        args.s = os.path.join(*file_list_abs_path[0].split('/')[:-1])
+        if directory != '.':
+            args.s = os.path.join(*file_list_abs_path[0].split('/')[:-1])
+        else:
+            args.s = '/'
+        print('\n')
         devIO.put_files(args, dev_name)
         args.fre = None
         time.sleep(0.2)
         # shr_cp.sh_repl("print('Done!')")
         time.sleep(0.2)
     elif len(file_list_abs_path) == 1:
+        args.fre = None
         file_to_put = file_list_abs_path[0]
-        print('- {}'.format(file_to_put))
-        devIO.put(file_to_put, file_to_put)
+        if directory == '.':
+            file_to_put = file.split('/')[-1]
+        print('- {}'.format(file_to_put), end='\n\n')
+        file_to_put_in_dev = file_to_put.replace('./', '')
+        devIO.put(file_to_put, file_to_put_in_dev, ppath=True, dev_name=dev_name)
         # shr_cp.sh_repl("print('Done!')")
         time.sleep(0.2)
     else:

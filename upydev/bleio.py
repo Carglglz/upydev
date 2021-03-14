@@ -98,7 +98,8 @@ class BleFileIO:
                 self.dev.cmd("f.close()", silent=True)
         return True
 
-    def put(self, src, dst_file, chunk_size=256, abs_path=True):  # from Pyboard.py
+    def put(self, src, dst_file, chunk_size=256, abs_path=True, ppath=False,
+            dev_name=None):  # from Pyboard.py
         self.get_pb()
         sz = os.stat(src)[6]
         cnt = 0
@@ -106,6 +107,11 @@ class BleFileIO:
         if not abs_path:
             src_ori = src
             src = src.split('/')[-1]
+        if ppath:
+            if not dst_file.startswith('/'):
+                print("{} -> {}:/{}\n".format(src, dev_name, dst_file))
+            else:
+                print("{} -> {}:{}\n".format(src, dev_name, dst_file))
         print("{}  [{:.2f} KB]".format(src, sz / 1024))
         self.dev.cmd("f=open('%s','wb');w=f.write" % dst_file, silent=True)
         if not abs_path:
@@ -147,7 +153,12 @@ class BleFileIO:
             src_file = file
             dst_file = file.split('/')[-1]
             if args.s:
-                dst_file = '/'.join([args.s, dst_file])
+                if args.s.startswith('./'):
+                    args.s = args.s.replace('./', '')
+                if args.s != '/':
+                    dst_file = '/'.join([args.s, dst_file])
+                else:
+                    dst_file = ''.join([args.s, dst_file])
             try:
                 abs_dst_file = dst_file
                 if not dst_file.startswith('/'):
