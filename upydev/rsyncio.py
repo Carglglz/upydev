@@ -226,7 +226,7 @@ def synctool(args, dev_name):
                             is_file = dev.cmd(cmd_str, silent=True, rtn_resp=True)
                     if file_exists is True and is_file:
                         rsyncio.connect(args)
-                        print('Getting file {} @ {}...'.format(args.f, dev_name))
+                        print('Downloading file {} @ {}...'.format(args.f, dev_name))
                         file_to_get = args.f
                         if args.s == 'sd':
                             file_to_get = '/sd/{}'.format(args.f)
@@ -305,7 +305,7 @@ def synctool(args, dev_name):
                                 print('- {} [{}]'.format(file, filesize))
                         if files_to_get:
                             rsyncio.connect(args)
-                            print('Getting files @ {}...'.format(dev_name))
+                            print('Downloading files @ {}...'.format(dev_name))
                             # file_to_get = args.f
                             if args.dir is not None:
                                 args.fre = ['/{}/{}'.format(args.dir, file) for file in files_to_get]

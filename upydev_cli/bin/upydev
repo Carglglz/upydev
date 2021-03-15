@@ -360,7 +360,7 @@ elif len(args.m) == 2:
     elif args.m == 'mggroup' or args.m == 'mgg':
         args.m = 'mg_group'
         args.G = second_arg
-    elif args.m == 'see':
+    elif args.m == 'see' or args.m == 'probe':
         args.G = second_arg
 
 elif len(args.m) > 2:
@@ -857,6 +857,19 @@ if "@" in args.m:
 
 if args.gg:
     # if args.m not in DEBUGGING_ACTIONS:
+        args.G = 'UPY_G'
+
+if args.gf:
+    if glob.glob('*.config'):
+        for config in glob.glob('*.config'):
+            try:
+                with open(config, 'r', encoding='utf-8') as group:
+                    devices = json.loads(group.read())
+                args.G = config.replace('.config', '')
+                break
+            except Exception as e:
+                args.G = 'UPY_G'
+    else:
         args.G = 'UPY_G'
 
 # DEVICE MANAGEMENT

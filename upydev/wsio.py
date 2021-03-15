@@ -10,6 +10,7 @@ from upydev import websocket_helper
 from upydev import wss_helper_host
 from upydevice import Device, DeviceNotFound, DeviceException
 from upydev.helpinfo import see_help
+import glob
 
 
 # Define to 1 to use builtin "uwebsocket" module of MicroPython
@@ -554,6 +555,9 @@ def wstool(args, dev_name):
             if args.fre[0] == 'cwd' or args.fre[0] == '.':
                 args.fre = [fname for fname in os.listdir('./') if os.path.isfile(fname) and not fname.startswith('.')]
                 print('Files in ./{} to put: '.format(os.getcwd().split('/')[-1]))
+            elif '*' in args.fre[0]:
+                args.fre = glob.glob(args.fre[0])
+                print('Files to put: ')
             else:
                 print('Files to put: ')
 
@@ -647,7 +651,7 @@ def wstool(args, dev_name):
                         cmd_str = "import uos; not uos.stat('{}')[0] & 0x4000 ".format(dir + '/' + args.f)
                         is_file = dev.cmd(cmd_str, silent=True, rtn_resp=True)
                 if file_exists is True and is_file:
-                    print('Getting file {} @ {}...'.format(args.f, dev_name))
+                    print('Downloading file {} @ {}...'.format(args.f, dev_name))
                     file_to_get = args.f
                     if args.s == 'sd':
                         file_to_get = '/sd/{}'.format(args.f)
@@ -718,7 +722,7 @@ def wstool(args, dev_name):
                             filesize = 'FileNotFoundError'
                             print('- {} [{}]'.format(file, filesize))
                     if files_to_get:
-                        print('Getting files @ {}...'.format(dev_name))
+                        print('Downloading files @ {}...'.format(dev_name))
                         # file_to_get = args.f
                         if args.dir is not None:
                             args.fre = ['/{}/{}'.format(args.dir, file) for file in files_to_get]

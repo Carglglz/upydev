@@ -1244,19 +1244,26 @@ def debugging_action(args, **kargs):
     dev_name = kargs.get('device')
 
     if args.m == 'probe':
-        if args.gg:
+        if args.gg or args.G:
             if not args.devs:
-                print('Reaching UPY_G group...')
+                print('Reaching {} group...'.format(args.G))
             else:
                 print('Reaching : {} ...'.format(', '.join(args.devs)))
-            group_file = '{}.config'.format('UPY_G')
-            if group_file not in os.listdir(UPYDEV_PATH):
+            group_file = '{}.config'.format(args.G)
+            if args.gg and group_file not in os.listdir(UPYDEV_PATH):
                 print('No global group available')
                 sys.exit()
+            elif not args.gg and group_file not in os.listdir():
+                print('No group available')
+                sys.exit()
             else:
-                with open(os.path.join(UPYDEV_PATH, group_file), 'r') as group:
-                    group_devs = (json.loads(group.read()))
-                print('# UPY_G:')
+                if args.gg:
+                    with open(os.path.join(UPYDEV_PATH, group_file), 'r') as group:
+                        group_devs = (json.loads(group.read()))
+                else:
+                    with open(group_file, 'r') as group:
+                        group_devs = (json.loads(group.read()))
+                print('# {}:'.format(args.G))
                 if args.devs:
                     group_devs = {k: v for k, v in group_devs.items() if k in args.devs}
                 for key in group_devs.keys():
