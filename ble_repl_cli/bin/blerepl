@@ -453,7 +453,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'set_localtime', 'tree', 'l_ifconfig',
                     'l_ifconfig_t', 'reload', 'docs', 'flush_soc',
                     'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
-                    'batl', 'fw', 'flash', 'du', 'ldu', 'd_sync', 'upipl',
+                    'batl', 'fw', 'flash', 'du', 'ldu', 'dsync', 'upipl',
                     'uping', 'lping', 'pkg_info', 'update_upyutils',
                     'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle',
                     'upy-config', 'tig', 'get_services', 'pytest']
@@ -1600,7 +1600,7 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print('Indicate a file to show')
 
-    if cmd_inp.split(' ')[0] == 'd_sync':
+    if cmd_inp.split(' ')[0] == 'dsync':
         if len(cmd_inp.split()) == 1: # root_dir
             dir_to_sync = os.getcwd().split('/')[-1]
             # print('Directory to sync: {}'.format(dir_to_sync))

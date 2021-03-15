@@ -94,7 +94,7 @@ Requirements: Needs REPL to be accesible.
         * USB: Connected through USB data cable. """
 
 # UPY MODE KEYWORDS AND COMMANDS
-keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
+keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'netscan', 'i2c_scan', 'id', 'reset', 'upysh', 'wrepl',
                  'battery', 'meminfo', 'ping', 'du', 'df',
                  'uhelp', 'umodules', 'netinfot', 'netstat_on', 'netstat_off',
@@ -116,7 +116,7 @@ keywords_mode = ['put', 'get', 'sync', 'cmd', 'config', 'info', 'netinfo',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
                  'ina_batt', 'make_group', 'srepl', 'mg_group', 'find',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
-                 'wap_conn', 'kbi', 'diagnose', 'errlog', 'd_sync',
+                 'wap_conn', 'kbi', 'diagnose', 'errlog', 'dsync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey',
                  'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
@@ -317,7 +317,7 @@ parser.add_argument(
 argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
-multiple_args_fio = ['put', 'get', 'sync', 'install', 'd_sync', 'run', 'timeit',
+multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
                      'pytest', 'make_group', 'mg_group']
 multiple_args_fw = ['fwr', 'flash', 'mpyx']
 
@@ -407,7 +407,7 @@ DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'diagnose', 'errl
 
 # FILEIO ACTIONS
 
-FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'sync', 'd_sync']
+FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'fget', 'dsync']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -645,7 +645,7 @@ KW_NOT_GROUP = ['probe', 'scan']
 
 # keyword live output commands:
 kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
-          'see', 'sync', 'wrepl', 'srepl', 'find', 'diagnose', 'd_sync',
+          'see', 'fget', 'wrepl', 'srepl', 'find', 'diagnose', 'dsync',
           'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy'
           'ssl', 'shr', 'wssl', 'wssrepl', 'jupyterc', 'pytest',
           'pytest-setup', 'ble', 'set']  # implemented till sync in GP
@@ -963,7 +963,7 @@ if args.G is not None:
                 print('{} @ {}'.format(dev_type, dev_addr))
                 print('Sending command {} ...'.format(args.m), end='\n\n')
                 if args.gf:
-                    if args.m == 'get' or args.m == 'put' or args.m == 'sync':
+                    if args.m == 'get' or args.m == 'put' or args.m == 'fget':
                         if dev not in os.listdir():
                             os.mkdir(dev)
                         os.chdir(dev)
@@ -972,7 +972,7 @@ if args.G is not None:
                 except Exception as e:
                     print(e)
                 if args.gf:
-                    if args.m == 'get' or args.m == 'put' or args.m == 'sync':
+                    if args.m == 'get' or args.m == 'put' or args.m == 'fget':
                         os.chdir(current_dir)
                 args = original_args
 
@@ -1095,7 +1095,7 @@ if args.GP is not None:
     #                     for dev in devs_dict.keys():
     #                         devs_dict[dev].get_multiple_df()
     #
-    #         elif gcommand.split()[0] == 'sync':
+    #         elif gcommand.split()[0] == 'fget':
     #             if args.fre is None:
     #                 for dev in devs_dict.keys():
     #                     devs_dict[dev].sync_df()

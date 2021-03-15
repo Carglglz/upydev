@@ -18,10 +18,10 @@ FILEIO_HELP = """
 
         - get : to download a file from upy device (see -f, -s, -fre, -dir)
 
-        - sync : for a faster transfer of large files
+        - fget : for a faster transfer of large files
             (this needs sync_tool.py in upy device) (see -f, -s and -lh)
 
-        - d_sync: to recursively sync a folder in upydevice filesystem use -dir
+        - dsync: to recursively sync a folder in upydevice filesystem use -dir
                     to indicate the folder (must be in cwd), use -tree to see dir
                     structure, to sync to an Sd card mounted as 'sd' use -s sd
 
@@ -110,12 +110,12 @@ def fileio_action(args, **kargs):
     elif args.m == 'install':
         install_w_upip(args, dt, dev_name)
 
-    elif args.m == 'sync':
+    elif args.m == 'fget':
         if dt == 'WebSocketDevice':
             synctool(args, dev_name)
         else:
             print('Use "get" instead')
-    elif args.m == 'd_sync':
+    elif args.m == 'dsync':
         dir_lib = args.f
         dev_lib = args.dir
         dev = Device(args.t, args.p, init=True, ssl=args.wss,

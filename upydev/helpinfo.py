@@ -11,7 +11,7 @@ HELP_INFO_ARG = '''Mode/Tools:
     ACTIONS : config, check, set, make_group, mg_group, see, gg
 
 > FILEIO: '$ upydev fio' to see help on file input/ouput operations.
-    ACTIONS: put, get, sync, d_sync, install, update_upyutils
+    ACTIONS: put, get, fget, dsync, install, update_upyutils
 
 > FIRMWARE: '$ upydev fw' to see help on firmware operations.
     ACTIONS: fwr, flash, mpyx

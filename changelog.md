@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * `filesize` --> `du`,
   * `filesys_info` --> `df`
   * `fw` --> `fwr`
+  * `d_sync` --> `dsync`
+  * `sync` --> `fget`
+
 - Catching passwords too short for AP configuration
 - Refactor help info organisation for easy reading.
 - Refactor device management actions (configuration, groups...)
@@ -115,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - fw , flash (and fw update which is 'fw get' + 'flash') commands for SERIAL SHELL
 - 'du' command for disk usage statistics (unix like) (SSL/SERIAL SHELLS)
-- 'd_sync' command to recursively sync directories for (SSL/SERIAL SHELLS)
+- 'dsync' command to recursively sync directories for (SSL/SERIAL SHELLS)
 - 'uping' and 'lping' commands for device and host pings commands (SSL/SERIAL SHELLS)
 - wildcard "\*" or [dir] for 'ls' and 'lsl' command e.g. "ls \*.py" or "ls my_dir" (SSL/SERIAL SHELLS)
 - install available for pyboard too (experimental) (SERIAL SHELL)

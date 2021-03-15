@@ -194,7 +194,7 @@ def synctool(args, dev_name):
     try:
         dev = Device(args.t, args.p, init=True, autodetect=True)
         rsyncio = SyncFileIO(dev, port=8005)
-        if args.m == 'sync':
+        if args.m == 'fget':
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
                 see_help(args.m)

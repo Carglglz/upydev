@@ -370,7 +370,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'crypto_buffsize', 'apscan', 'touch', 'edit', 'wrepl',
                     'whoami', 'exit', 'pwdl', 'lsl', 'cdl', 'put', 'get',
                     'catl', 'l_micropython', 'ls', 'python', 'vim',
-                    'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
+                    'set_localtime', 'tree', 'fget', 'dsync', 'l_ifconfig',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -875,7 +875,7 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print('Indicate a file to get')
 
-    if cmd_inp.split(' ')[0] == 'sync':
+    if cmd_inp.split(' ')[0] == 'fget':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
         espdev.close_wconn()
         if dev_path['p'] != ' ':
@@ -960,7 +960,7 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print('Indicate a file to show')
 
-    if cmd_inp.split(' ')[0] == 'd_sync':
+    if cmd_inp.split(' ')[0] == 'dsync':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
         espdev.close_wconn()
         if dev_path['p'] != ' ':

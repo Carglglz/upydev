@@ -950,7 +950,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'apscan', 'touch', 'edit', 'wrepl',
                     'whoami', 'exit', 'pwdl', 'lsl', 'cdl', 'put', 'get',
                     'catl', 'l_micropython', 'ls', 'python', 'python3', 'vim',
-                    'set_localtime', 'tree', 'sync', 'd_sync', 'l_ifconfig',
+                    'set_localtime', 'tree', 'fget', 'dsync', 'l_ifconfig',
                     'l_ifconfig_t', 'lsof', 'reload', 'docs', 'flush_soc',
                     'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'du', 'ldu', 'upipl', 'pkg_info', 'uping', 'lping',
@@ -2160,7 +2160,7 @@ def custom_sh_cmd(cmd_inp):
                 # print(e)
                 print('File not Found\nIndicate a file to get')
 
-    if cmd_inp.split(' ')[0] == 'sync':
+    if cmd_inp.split(' ')[0] == 'fget':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
         try:
             ssl_cp.enable_wrepl_io()
@@ -2319,7 +2319,7 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print('Indicate a file to show')
 
-    if cmd_inp.split(' ')[0] == 'd_sync':
+    if cmd_inp.split(' ')[0] == 'dsync':
 
         if not encrypted_flag['sec']:
             print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
