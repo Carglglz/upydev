@@ -312,6 +312,8 @@ parser.add_argument('-bl', help='Bluetooth Low Energy scan flag for scan command
                     default=False, action='store_true')
 parser.add_argument('-nt', help='Local Area Network scan flag for scan command',
                     default=False, action='store_true')
+parser.add_argument('-rf', help='remove files or directories in dsync mode',
+                    default=False, action='store_true')
 parser.add_argument(
     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)

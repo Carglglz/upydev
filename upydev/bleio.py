@@ -201,6 +201,10 @@ class BleFileIO:
 
 
 def bletool(args, dev_name):
+    if not args.f and not args.fre:
+        print('args -f or -fre required:')
+        see_help(args.m)
+        sys.exit()
     try:
         dev = Device(args.t, args.p, init=True)
         bleio = BleFileIO(dev)

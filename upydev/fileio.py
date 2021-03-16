@@ -91,7 +91,7 @@ def fileio_action(args, **kargs):
     dt = check_device_type(args.t)
     if args.m == 'put' or args.m == 'get':
         if args.wdl and args.m == 'put':
-            modified_files = check_wdlog(save_wdlog=True)
+            modified_files, deleted_files = check_wdlog(save_wdlog=True)
             args.fre = modified_files
             if not args.fre:
                 # sys.exit()

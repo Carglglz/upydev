@@ -33,6 +33,7 @@ def get_hash_cwd_dict(path='.'):
 
 def check_wdlog(path='.', save_wdlog=True):
     # WD_LOG EXISTS, CHECK AND COMPARE
+    deleted_files = []
     if '.upydev_wdlog.json' in os.listdir(path):
         print('Checking upydev cwd watchdog logfile...')
         with open('{}/'.format(path) + '.upydev_wdlog.json', 'r') as wd_logfile:
@@ -45,12 +46,19 @@ def check_wdlog(path='.', save_wdlog=True):
                 print('New files to upload:')
                 for nf in new_files_to_upload:
                     print('- {}'.format(nf))
+            # Files deleted in cwd:
+            deleted_files = [file for file in files_wdlog_list if file not in files_cwd]
             # Files modified in cwd:
+            files_wdlog_list = [file for file in files_wdlog_list if file not in deleted_files]
             modified_files = [file for file in files_wdlog_list if get_hash(os.path.join(path, file)) != hash_wdlog_dict[file]]
             if len(modified_files) > 0:
                 print('Modified files to upload:')
                 for mf in modified_files:
                     print('- {}'.format(mf))
+            if len(deleted_files) > 0:
+                print('Deleted files to remove:')
+                for df in deleted_files:
+                    print('- {}'.format(df))
             # MAKE NEW WD_LOG
             if save_wdlog:
                 with open('{}/'.format(path) + '.upydev_wdlog.json', 'w') as wd_logfile:
@@ -59,7 +67,7 @@ def check_wdlog(path='.', save_wdlog=True):
             global_files_to_upload = new_files_to_upload + modified_files
             if len(global_files_to_upload) == 0:
                 print('No new or modified files found')
-            return global_files_to_upload
+            return global_files_to_upload, deleted_files
     # WD_LOG DO NOT EXISTS, CREATE NEW ONE
     else:
         if save_wdlog:
@@ -71,7 +79,7 @@ def check_wdlog(path='.', save_wdlog=True):
         global_files_to_upload = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and file not in _CONFG_FILES]
         for file in global_files_to_upload:
             print('- {}'.format(file))
-        return global_files_to_upload
+        return global_files_to_upload, deleted_files
 
 
 class LTREE:
@@ -273,7 +281,7 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
         file_list = os.listdir(directory)
         print('\n')
         if args.wdl:
-            modified_files = check_wdlog(path=directory)
+            modified_files, deleted_files = check_wdlog(path=directory)
         for file in file_list:
             if os.path.isfile(os.path.join(current_dir, file)):
                 if args.wdl:
@@ -285,76 +293,130 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
                         file_list_abs_path.append(os.path.join(current_dir, file))
             elif os.path.isdir(os.path.join(current_dir, file)):
                 dir_list_abs_path.append(os.path.join(current_dir, file))
-    print('LIST OF FILES TO UPLOAD:')
-    for file in file_list_abs_path:
-        print('- {}'.format(file.split('/')[-1]))
-    print('\n')
-    print('LIST OF SUBDIRS TO CREATE:')
-    for subdir in dir_list_abs_path:
-        print('- {}'.format(subdir.split('/')[-1]))
-    print('\n')
+
+    if file_list_abs_path:
+        print('LIST OF FILES TO UPLOAD:')
+        for file in file_list_abs_path:
+            print('- {}'.format(file.split('/')[-1]))
+        print('\n')
+    else:
+        pass
+        # print('NO FILES TO UPLOAD')
+
+    if dir_list_abs_path:
+        print('LIST OF SUBDIRS TO CREATE:')
+        for subdir in dir_list_abs_path:
+            print('- {}'.format(subdir.split('/')[-1]))
+        print('\n')
+    else:
+        # print('NO SUBDIRS TO CREATE')
+        pass
     # Now create the root sync dir:
     if './' == rootdir:
         rootdir = ''
     if not devIO.dev.connected:
         devIO.dev.connect()
-    dev_root_list = devIO.dev.wr_cmd("os.listdir('{}')".format(rootdir), silent=True,
-                                     rtn_resp=True)
-    if current_dir.split('/')[-1] not in dev_root_list and current_dir != '.':
+    dev_root_list = devIO.dev.wr_cmd("import os;'{}' in os.listdir('{}')".format(current_dir.split('/')[-1],
+                                     rootdir), silent=True, rtn_resp=True)
+    if not dev_root_list and current_dir != '.':
         print('\n')
         print('MAKING DIR: {}'.format(current_dir))
         print('\n')
         devIO.dev.wr_cmd("os.mkdir('{}')".format(current_dir), silent=True)
         print('\n')
-    print('UPLOADING FILES TO {}'.format(current_dir))
-    if len(file_list_abs_path) > 1:
-        if directory == '.':
-            file_list_abs_path = [file.split('/')[-1] for file in file_list_abs_path]
-        for file in file_list_abs_path:
-            print('- {}'.format(file))
-        args.fre = file_list_abs_path
-        if directory != '.':
-            args.s = os.path.join(*file_list_abs_path[0].split('/')[:-1])
-        else:
-            args.s = '/'
-        print('\n')
-        devIO.put_files(args, dev_name)
-        args.fre = None
-        time.sleep(0.2)
-        # shr_cp.sh_repl("print('Done!')")
-        time.sleep(0.2)
-    elif len(file_list_abs_path) == 1:
-        args.fre = None
-        file_to_put = file_list_abs_path[0]
-        if directory == '.':
-            file_to_put = file.split('/')[-1]
-        print('- {}'.format(file_to_put), end='\n\n')
-        file_to_put_in_dev = file_to_put.replace('./', '')
-        devIO.put(file_to_put, file_to_put_in_dev, ppath=True, dev_name=dev_name)
-        # shr_cp.sh_repl("print('Done!')")
-        time.sleep(0.2)
+
+    if file_list_abs_path:
+        print('UPLOADING FILES TO {}'.format(current_dir))
+        if len(file_list_abs_path) > 1:
+            if directory == '.':
+                file_list_abs_path = [file.split('/')[-1] for file in file_list_abs_path]
+            for file in file_list_abs_path:
+                print('- {}'.format(file))
+            args.fre = file_list_abs_path
+            if directory != '.':
+                args.s = os.path.join(*file_list_abs_path[0].split('/')[:-1])
+            else:
+                args.s = '/'
+            print('\n')
+            devIO.put_files(args, dev_name)
+            args.fre = None
+            time.sleep(0.2)
+        elif len(file_list_abs_path) == 1:
+            args.fre = None
+            file_to_put = file_list_abs_path[0]
+            if directory == '.':
+                file_to_put = file.split('/')[-1]
+            print('- {}'.format(file_to_put), end='\n\n')
+            file_to_put_in_dev = file_to_put.replace('./', '')
+            devIO.put(file_to_put, file_to_put_in_dev, ppath=True, dev_name=dev_name)
+            time.sleep(0.2)
     else:
-        print('NO FILES IN DIR TO UPLOAD')
+        print('NO FILES TO UPLOAD')
     # Now create subdirs:
     print('\n')
-    print('MAKING SUBDIRS NOW...')
-    for dir_ in dir_list_abs_path:
-        print('\n')
-        current_dir = dir_
-        # Now create the root sync dir:
-        try:
-            dir_to_sync = directory
-            dev_directory = devIO.dev.cmd("os.listdir('{}')".format(dir_to_sync),
-                                          silent=True, rtn_resp=True)
-        except Exception as e:
-            pass
-        if not current_dir.split('/')[-1] in dev_directory:
-            print('Creating dir: {}'.format(current_dir))
-            devIO.dev.cmd("os.mkdir('{}')".format(current_dir))
+    if dir_list_abs_path:
+        print('MAKING DIRS NOW...')
+        for dir_ in dir_list_abs_path:
+            print('\n')
+            current_dir = dir_
+            # Now create the root sync dir:
+            try:
+                dir_to_sync = directory
+                dir_to_find = current_dir.split('/')[-1]
+                dev_directory = devIO.dev.cmd("'{}' in os.listdir('{}')".format(dir_to_find, dir_to_sync),
+                                              silent=True, rtn_resp=True)
+            except Exception as e:
+                pass
+            if not dev_directory:
+                print('Creating dir: {}'.format(current_dir))
+                devIO.dev.cmd("os.mkdir('{}')".format(current_dir))
+            else:
+                print('DIRECTORY {} ALREADY EXISTS'.format(dir_to_find))
+    else:
+        print('NO DIRS TO MAKE')
+
+    if args.rf:
+        # remove dirs and files? -rf?
+        # Deleted Files
+        if args.wdl:
+            if deleted_files:
+                print('FILES TO REMOVE:')
+                for dfile in deleted_files:
+                    try:
+                        devIO.dev.cmd("os.remove('{}/{}')".format(directory, dfile), silent=True, rtn_resp=True)
+                        if directory != '.':
+                            print('- {}/{}'.format(directory, dfile))
+                        else:
+                            print('- {}'.format(dfile))
+                    except Exception as e:
+                        print(e)
+                print('\nFILES DELETED')
+
         else:
-            print('DIRECTORY {} ALREADY EXISTS'.format(current_dir.split('/')[-1]))
-    if len(dir_list_abs_path) == 0:
-        print('NO MORE SUBDIRS')
+            pass
+
+        # Deleted Directories
+
+        if directory != '.':
+            dirs_in_dev = devIO.dev.cmd("['{0}/'+dir for dir in os.listdir('{0}') if os.stat('{0}/'+dir)[0] & 0x4000]".format(directory),
+                                        silent=True, rtn_resp=True)
+
+            deleted_dirs = [dir for dir in dirs_in_dev if dir not in dir_list_abs_path]
+
+            if deleted_dirs:
+                print('\nDIRS TO REMOVE:')
+                for ddir in deleted_dirs:
+                    print('- {} '.format(ddir))
+                    is_dir_empty = devIO.dev.cmd("from upysh2 import rmrf;not len(os.listdir('{}')) > 0".format(ddir),
+                                                 silent=True, rtn_resp=True)
+                    if is_dir_empty:
+                        devIO.dev.cmd("os.rmdir('{}')".format(ddir), silent=True,
+                                      rtn_resp=True)
+                    else:
+                        devIO.dev.cmd("rmrf('{}')".format(ddir), silent=True,
+                                      rtn_resp=True)
+
+
     root = directory
     for dir_ in dir_list_abs_path:
         d_sync_recursive(dir_, devIO, root, args=args, dev_name=dev_name)

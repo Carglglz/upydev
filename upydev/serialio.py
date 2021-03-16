@@ -198,6 +198,10 @@ class SerialFileIO:
 
 
 def serialtool(args, dev_name):
+    if not args.f and not args.fre:
+        print('args -f or -fre required:')
+        see_help(args.m)
+        sys.exit()
     try:
         dev = Device(args.t, args.p, init=True, autodetect=True)
         serialio = SerialFileIO(dev)
