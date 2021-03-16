@@ -105,7 +105,7 @@ class DISK_USAGE:
                                 self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
                                 dlev += (-1)
                             else:
-                                print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir, '<dir>'))
+                                print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
                             gc.collect()
 
         else:
@@ -124,7 +124,7 @@ class DISK_USAGE:
                         self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
                         dlev += (-1)
                     else:
-                        print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir, '<dir>'))
+                        print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
 
                     gc.collect()
 

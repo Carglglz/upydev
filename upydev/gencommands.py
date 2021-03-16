@@ -11,7 +11,7 @@ AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
 
 KEY_N_ARGS = {'du': ['f', 's'], 'df': ['s'], 'netstat_conn': ['wp'],
               'apconfig': ['ap'], 'i2c_config': ['i2c'],
-              'spi_config': ['spi'], 'set_ntptime': ['utc']}
+              'spi_config': ['spi'], 'set_ntptime': ['utc'], 'tree': ['f']}
 
 VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc']
 
@@ -33,6 +33,7 @@ GENERAL_COMMANDS_HELP = """
                     if no file name indicated with -f option, prints all files
         - df : to get memory info of the file system, (total capacity, free, used),
                     (default root dir, -s option to change)
+        - tree: to get directory structure in tree format (requires upysh2.py)
         - netinfo : for upy device network info if station is enabled and connected to an AP
         - netinfot : same as netinfo but in table format
         - netscan : for upy device network scan
@@ -233,27 +234,37 @@ def gen_command(cmd, *args, **kargs):
         file_name = kargs.pop('f')
         source = kargs.pop('s')
         dev = Device(*args, **kargs)
-        if source is not None:
-            file_name = '/{}/{}'.format(source, file_name)
-        cmd_str = _CMDDICT_['OS_STAT'].format(file_name)
-        if file_name is None:
-            dir = ''
-            if source is not None:
-                dir = '/{}/'.format(source)
-            cmd_str = _CMDDICT_['FILE_STAT'].format(dir)
-        du_info = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-        if dev._traceback.decode() in dev.response:
-            try:
-                raise DeviceException(dev.response)
-            except Exception as e:
-                print(e)
+        # check upysh2:
+        is_upysh2 = dev.cmd(_CMDDICT_['CHECK_UPYSH2'], silent=True, rtn_resp=True)
+        if is_upysh2:
+            if file_name:
+                cmd_str = "from upysh2 import du; du('{}')".format(file_name)
+            else:
+                cmd_str = "from upysh2 import du; du"
+            dev.wr_cmd(cmd_str, follow=True)
         else:
-            if len(du_info) > 0:
-                if file_name is not None:
-                    size = du_info[6]
-                    print_sizefile(file_name, size)
-                else:
-                    print_sizefile_all(du_info)
+
+            if source is not None:
+                file_name = '/{}/{}'.format(source, file_name)
+            cmd_str = _CMDDICT_['OS_STAT'].format(file_name)
+            if file_name is None:
+                dir = ''
+                if source is not None:
+                    dir = '/{}/'.format(source)
+                cmd_str = _CMDDICT_['FILE_STAT'].format(dir)
+            du_info = dev.cmd(cmd_str, silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+            else:
+                if len(du_info) > 0:
+                    if file_name is not None:
+                        size = du_info[6]
+                        print_sizefile(file_name, size)
+                    else:
+                        print_sizefile_all(du_info)
         dev.disconnect()
         return
 
@@ -304,6 +315,23 @@ def gen_command(cmd, *args, **kargs):
                                                                         "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
         else:
             print('{} not mounted'.format(filesys))
+        dev.disconnect()
+        return
+
+    # TREE
+    elif cmd == 'tree':
+        dir_name = kargs.pop('f')
+        dev = Device(*args, **kargs)
+        # check upysh2:
+        is_upysh2 = dev.cmd(_CMDDICT_['CHECK_UPYSH2'], silent=True, rtn_resp=True)
+        if is_upysh2:
+            if dir_name:
+                cmd_str = "from upysh2 import tree; tree('{}')".format(dir_name)
+            else:
+                cmd_str = "from upysh2 import tree; tree"
+            dev.wr_cmd(cmd_str, follow=True)
+        else:
+            pass
         dev.disconnect()
         return
 

@@ -89,7 +89,9 @@ class LTREE:
         return ""
 
     def __call__(self, path=".", level=0, is_last=False, is_root=True,
-                 carrier="    ", hidden=False):
+                 carrier="│   ", hidden=False):
+        if is_root:
+            print('\u001b[34;1m{}\033[0m'.format(path))
         os.chdir(path)
         r_path = path
         path = "."
@@ -108,7 +110,9 @@ class LTREE:
         for f in l:
             st = os.stat("%s/%s" % (path, f))
             if st[0] & 0x4000:  # stat.S_IFDIR
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s <dir>" % f)
+                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  \u001b[34;1m%s\033[0m" % f)
+                if f == last_file and level == 0:
+                    carrier = "    "
                 os.chdir(f)
                 level += 1
                 lf = last_file == f
@@ -127,9 +131,15 @@ class LTREE:
                 nf += ns_f
                 nd += ns_d
             else:
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s" % (f))
+                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + " %s" % (f))
         if is_root:
-            print('{} directories, {} files'.format(nd, nf))
+            nd_str = 'directories'
+            nf_str = 'files'
+            if nd == 1:
+                nd_str = 'directory'
+            if nf == 1:
+                nf_str = 'file'
+            print('\n{} {}, {} {}'.format(nd, nd_str, nf, nf_str))
             if r_path != ".":
                 os.chdir('..')
         else:
@@ -137,7 +147,10 @@ class LTREE:
 
     def _treeindent(self, lev, f, lastfile, is_last=False, carrier=None):
         if lev == 0:
-            return ""
+            if f != lastfile:
+                return "├──"
+            else:
+                return "└──"
         else:
             if f != lastfile:
                 return carrier + "    ├────"
@@ -178,9 +191,9 @@ class DISK_USAGE:
                                 dlev += (-1)
                             else:
                                 if absp:
-                                    print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir, '<dir>'))
+                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
                                 else:
-                                    print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir.split('/')[-1], '<dir>'))
+                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
 
         else:
             if hidden:
@@ -198,7 +211,7 @@ class DISK_USAGE:
                         self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
                         dlev += (-1)
                     else:
-                        print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir, '<dir>'))
+                        print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
 
     def print_filesys_info(self, filesize):
         _kB = 1024

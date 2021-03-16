@@ -104,6 +104,8 @@ SD_INIT = SD_SDINIT + SD_MOUNT
 SD_DEINIT = "import os;os.umount('/sd');sd_enable.off();sd_enable.value();gc.collect()"
 SD_AUTO = "import SD_AM;gc.collect()"
 
+CHECK_UPYSH2 = "import os;'upysh2.py' in os.listdir('lib');gc.collect()"
+
 CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'MEM': MEM, 'OS_STAT': OS_STAT, 'FILE_STAT': FILE_STAT,
             'CHECK_DIR': CHECK_DIR, 'STAT_FS': STAT_FS,
@@ -119,6 +121,6 @@ CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'WLAN_CONFIG': WLAN_CONFIG, 'WLAN_AP_CONFIG': WLAN_AP_CONFIG,
             'WLAN_CONN': WLAN_CONN, 'WLAN_AP_CONN': WLAN_AP_CONN,
             'SD_ENABLE': SD_ENABLE, 'SD_INIT': SD_INIT,
-            'SD_DEINIT': SD_DEINIT, 'SD_AUTO': SD_AUTO}
+            'SD_DEINIT': SD_DEINIT, 'SD_AUTO': SD_AUTO, 'CHECK_UPYSH2': CHECK_UPYSH2}
 
 _CMDDICT_ = {k: 'import gc;' + v for k, v in CMDDICT_.items()}

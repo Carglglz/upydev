@@ -105,7 +105,7 @@ class DISK_USAGE:
                                 self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
                                 dlev += (-1)
                             else:
-                                print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir, '<dir>'))
+                                print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
                             gc.collect()
 
         else:
@@ -124,7 +124,7 @@ class DISK_USAGE:
                         self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
                         dlev += (-1)
                     else:
-                        print('{:9} {} {}'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir, '<dir>'))
+                        print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
 
                     gc.collect()
 
@@ -142,6 +142,7 @@ class DISK_USAGE:
 
     def get_dir_size_recursive(self, dir):
         return sum([os.stat(dir+'/'+f)[6] if not os.stat(dir+'/'+f)[0] & 0x4000 else self.get_dir_size_recursive(dir+'/'+f) for f in os.listdir(dir)])
+
 
 
 # from @Roberthh #https://forum.micropython.org/viewtopic.php?f=2&t=7512

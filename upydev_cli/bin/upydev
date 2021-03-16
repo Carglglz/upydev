@@ -123,7 +123,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
-                 'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup']
+                 'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -320,7 +320,7 @@ argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
-                     'pytest', 'make_group', 'mg_group']
+                     'pytest', 'make_group', 'mg_group', 'du', 'tree']
 multiple_args_fw = ['fwr', 'flash', 'mpyx']
 
 if len(args.m) == 1:
@@ -413,7 +413,7 @@ FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'fget', 'dsync']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
-                    'uhelp', 'umodules', 'meminfo', 'du', 'df',
+                    'uhelp', 'umodules', 'meminfo', 'du', 'df', 'tree',
                     'netinfo', 'netinfot', 'netscan', 'netstat_on',
                     'netstat_off', 'netstat_conn', 'netstat', 'ap_on',
                     'ap_off', 'apstat', 'apconfig', 'apscan', 'i2c_config',
