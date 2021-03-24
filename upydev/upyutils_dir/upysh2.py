@@ -52,7 +52,7 @@ class LTREE:
                 nf += ns_f
                 nd += ns_d
             else:
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  %s" % (f))
+                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + " %s" % (f))
         if is_root:
             nd_str = 'directories'
             nf_str = 'files'

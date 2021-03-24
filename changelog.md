@@ -33,12 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `sd` command to see help about SD UTILS COMMANDS
 - `pro` command to see help about PROTOTYPE COMMANDS
 - `gg` to see global group
-- `-gg` flag to set -G flag to global group (-gg == -G UPY_G)
+- `-gg` flag to set -G flag to global group (`-gg` == `-G UPY_G`)
 - `%` before any command e.g. `%config` display help info about that command.
 - `probe` command to test if a device/group is reachable
 - `scan` command to look for devices (serial [-sr], network [-nt] or ble [-bl])
 - `shl` / `shell`, and `rpl` / `repl` commands works with `@` or `-@` and will detect device type, redirecting to the proper SHELL-REPL / REPL type.
-- `put`, `get`, `install`, `sync`, `d_sync`, file operations now support indicating file/files/cwd/expression as a second argument, e.g, `upydev put this_file.py`, `upydev put demo_*.py`,  `upydev put fileone.py filetwo.py`, `upydev put cwd -dir lib` ...
+- `put`, `get`, `install`, `fget`, `dsync`, file operations now support indicating file/files/cwd/expression as a second argument, e.g, `upydev put this_file.py`, `upydev put demo_*.py`,  `upydev put fileone.py filetwo.py`, `upydev put cwd -dir lib` ...
 - Alias and positional args for keygen/firmware/flash actions `upydev kg/keygen rsa/wr/ssl`, `upydev fwr get/list latest`, `upydev flash esp32-idf4-20200122-v1.12-76-gdccace6f3.bin`,`upydev flash pybv11-20200114-v1.12-63-g1c849d63a.dfu` ...
 - Alias and positional args for `make_group, mg_group` actions `mkgroup/mkg, mggroup/mgg`, and `see`. e.g `upydev see MY_GROUP`, `upydev mkg MY_GROUP -devs mydevtest 192.168.1.40 mypasswd`, `upydev mgg MY_GROUP -add sdev2 /dev/tty.SLAB_USBtoUART 115200`
 - Alias and positional args for SD actions `upydev sd enable/init/deinit/auto`

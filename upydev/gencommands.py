@@ -395,7 +395,10 @@ def gen_command(cmd, *args, **kargs):
     # NETSCAN
     elif cmd == 'netscan':
         dev = Device(*args, **kargs)
-        net_scan_list = dev.cmd(_CMDDICT_['NET_SCAN'], silent=True,
+        if dev.dev_class == 'SerialDevice':
+            dev.cmd(_CMDDICT_['NET_STAT_ON'], silent=True)
+        net_scan_list = dev.cmd(_CMDDICT_['NET_SCAN'],
+                                silent=True,
                                 rtn_resp=True)
         if dev._traceback.decode() in dev.response:
             try:
@@ -405,7 +408,10 @@ def gen_command(cmd, *args, **kargs):
         else:
             # FIX FOR SERIAL ESP DEBUGGING INFO
             if isinstance(net_scan_list, str):
-                net_scan_list = ast.literal_eval(net_scan_list.split('[0m')[1])
+                try:
+                    net_scan_list = ast.literal_eval(net_scan_list.split('[0m')[1])
+                except Exception as e:
+                    net_scan_list = []
             print('┏{0}━┳━{1}━┳━{2}━┳━{3}━┳━{4}━┳━{5}━┓'.format(
                             '━'*20, '━'*25, '━'*10, '━'*15, '━'*15, '━'*10))
             print('┃{0:^20} ┃ {1:^25} ┃ {2:^10} ┃ {3:^15} ┃ {4:^15} ┃ {5:^10} ┃'.format(
@@ -416,9 +422,12 @@ def gen_command(cmd, *args, **kargs):
                 netscan = net
                 auth = AUTHMODE_DICT[netscan[4]]
                 vals = hexlify(netscan[1]).decode()
+                ap_name = netscan[0].decode()
+                if len(ap_name) > 20:
+                    ap_name = ap_name[:17] + '...'
                 bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
                 print('┃{0:^20} ┃ {1:^25} ┃ {2:^10} ┃ {3:^15} ┃ {4:^15} ┃ {5:^10} ┃'.format(
-                    netscan[0].decode(), bssid, netscan[2], netscan[3],
+                    ap_name, bssid, netscan[2], netscan[3],
                     auth, str(netscan[5])))
             print('┗{0}━┻━{1}━┻━{2}━┻━{3}━┻━{4}━┻━{5}━┛'.format(
                         '━'*20, '━'*25, '━'*10, '━'*15, '━'*15, '━'*10))

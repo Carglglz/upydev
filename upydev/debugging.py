@@ -668,13 +668,16 @@ def diagnose(args):
         FILE_REPORT.append('=' * 110)
         for netscan in net_scan_list:
             auth = AUTHMODE_DICT[netscan[4]]
+            ap_name = netscan[0].decode()
+            if len(ap_name) > 20:
+                ap_name = ap_name[:17] + '...'
             vals = hexlify(netscan[1]).decode()
             bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
             print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                netscan[0].decode(), bssid , netscan[2], netscan[3],
+                ap_name, bssid, netscan[2], netscan[3],
                 auth, str(netscan[5])))
             FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                netscan[0].decode(), bssid , netscan[2], netscan[3],
+                ap_name, bssid, netscan[2], netscan[3],
                 auth, str(netscan[5])))
         print('\n')
         FILE_REPORT.append('\n')
