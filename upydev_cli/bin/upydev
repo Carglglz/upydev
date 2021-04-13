@@ -428,7 +428,7 @@ WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
 SD_UTILS_COMMANDS = ['sd', 'sd_enable', 'sd_init', 'sd_deinit', 'sd_auto']
 
 # PROTOTYPE
-PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs']
+PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs', *[cmd for cmd in keywords_mode if 'buzz' in cmd], ]
 
 #############################################
 

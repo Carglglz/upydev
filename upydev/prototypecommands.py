@@ -1773,118 +1773,46 @@ def prototype_command(args, **kargs):
     #############################################
     # * BUZZER *
     # BUZZ CONFIG
-    elif args.m == 'buzz_config':
-        BUZZ_pin = args.po[0]
-        buzz_cmd = "from buzzertools import BUZZER;my_buzz = BUZZER({});".format(
-            BUZZ_pin)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            buzz_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
+    elif 'buzz' in args.m:
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        if args.m == 'buzz_config':
+            BUZZ_pin = args.po[0]
+            buzz_cmd = "from buzzertools import BUZZER;my_buzz = BUZZER({});".format(
+                BUZZ_pin)
+
+            dev.wr_cmd(buzz_cmd, silent=True)
+            print('Pin {} configured as PWM to drive the buzzer'.format(
+                BUZZ_pin))
+
+        # BUZZ SET_ALARM
+        elif args.m == 'buzz_set_alarm':
+            if len(args.at) < 3:
+                hour, minute = args.at
+                seconds = 0
             else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
+                hour, minute, seconds = args.at
+            buzz_cmd = "my_buzz.set_alarm_at({},{},{});".format(hour, minute, seconds)
 
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
-        print('Pin {} configured as PWM to drive the buzzer'.format(
-            BUZZ_pin))
-        sys.exit()
+            dev.wr_cmd(buzz_cmd, silent=True)
+            print('Alarm set at {}:{}:{}'.format(hour, minute, seconds))
+    
+        # BUZZ INTERRUPT
+        elif args.m == 'buzz_interrupt':
+            buzz_cmd = "my_buzz.active_button({},{});".format(*args.po)
+            if args.md is not None:
+                if args.md[0] == 'rev':
+                    buzz_cmd = "my_buzz.active_button_rev({},{});".format(*args.po)
 
-    # BUZZ SET_ALARM
-    elif args.m == 'buzz_set_alarm':
-        if len(args.at) < 3:
-            hour, minute = args.at
-            seconds = 0
-        else:
-            hour, minute, seconds = args.at
-        buzz_cmd = "my_buzz.set_alarm_at({},{},{});".format(hour, minute, seconds)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            buzz_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
+            dev.wr_cmd(buzz_cmd, silent=True)
+            print('Button interrupt set at Pins; {},{}'.format(*args.po))
 
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
-        print('Alarm set at {}:{}:{}'.format(hour, minute, seconds))
-        sys.exit()
+        # BUZZ BEEP
+        elif args.m == 'buzz_beep':
+            buzz_cmd = "my_buzz.buzz_beep({},{},{},{});".format(*args.opt)
 
-    # BUZZ INTERRUPT
-    elif args.m == 'buzz_interrupt':
-        buzz_cmd = "my_buzz.active_button({},{});".format(*args.po)
-        if args.md is not None:
-            if args.md[0] == 'rev':
-                buzz_cmd = "my_buzz.active_button_rev({},{});".format(*args.po)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            buzz_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
-        print('Button interrupt set at Pins; {},{}'.format(*args.po))
-        sys.exit()
-
-    # BUZZ BEEP
-    elif args.m == 'buzz_beep':
-        buzz_cmd = "my_buzz.buzz_beep({},{},{},{});".format(*args.opt)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            buzz_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
-        print('Beep! '*args.opt[1])
+            dev.wr_cmd(buzz_cmd, silent=True)
+            print('Beep! '*args.opt[1])
+        dev.disconnect()
         sys.exit()
 
     #############################################
