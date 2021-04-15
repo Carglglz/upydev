@@ -1,15 +1,11 @@
-from upydevice import Device, DeviceException, check_device_type
-from upydev.commandlib import _CMDDICT_
+from upydevice import Device
 import sys
 import socket
-import subprocess
-import shlex
 import struct
 import time
 from datetime import datetime
 import netifaces
 import json
-import ast
 import os
 import upydev
 
@@ -167,24 +163,24 @@ PROTOTYPE_COMMANDS_HELP = """
 """
 
 
-def run_command_rl(command):
-    end = False
-    lines = []
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    while end is not True:
-        if process.poll() is None:
-            output = process.stdout.readline()
-            if output == '' and process.poll() is not None:
-                break
-            if output:
-                line = output.strip().decode()
-                lines.append(line)
-                if output.strip() == b'### closed ###':
-                    end = True
-        else:
-            break
-    rc = process.poll()
-    return rc, lines
+# def run_command_rl(command):
+#     end = False
+#     lines = []
+#     process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
+#     while end is not True:
+#         if process.poll() is None:
+#             output = process.stdout.readline()
+#             if output == '' and process.poll() is not None:
+#                 break
+#             if output:
+#                 line = output.strip().decode()
+#                 lines.append(line)
+#                 if output.strip() == b'### closed ###':
+#                     end = True
+#         else:
+#             break
+#     rc = process.poll()
+#     return rc, lines
 
 
 def get_ip():
@@ -218,10 +214,10 @@ def get_live_stream(args, run_cmd, targ, password, sensorlib, filename=None,
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((local_ip, 8005))
     server_socket.listen(1)
-    connect_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        '{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
-                                                     local_ip)), args.t, args.p)
-    cmd_resp = run_command_rl(connect_cmd_str)
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    dev.wr_cmd('{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
+                                                 local_ip)), silent=True, follow=False)
+    # dev.disconnect()
     conn, addr = server_socket.accept()
     conn.settimeout(1)
     flushed = 0
@@ -232,10 +228,7 @@ def get_live_stream(args, run_cmd, targ, password, sensorlib, filename=None,
             flushed = 1
     if args.tm > 500:
         conn.settimeout((args.tm/1000)*3)  # for long periodic shots
-    run_cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(
-        run_cmd, targ, password)
-    run_live_cmd = shlex.split(run_cmd_str)
-    comm = subprocess.call(run_live_cmd)
+    dev.wr_cmd(run_cmd, silent=True, follow=False)
     print(('{:^15}'*len(variables)).format(*variables))
     try:
         if log:
@@ -284,14 +277,7 @@ def get_live_stream(args, run_cmd, targ, password, sensorlib, filename=None,
             time.sleep(1)
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
+            dev.wr_cmd(cmd, silent=True)
             print('Done!')
             conn.close()
         except KeyboardInterrupt:
@@ -299,12 +285,11 @@ def get_live_stream(args, run_cmd, targ, password, sensorlib, filename=None,
             conn.shutdown(socket.SHUT_RDWR)
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
+            dev.wr_cmd(cmd, silent=True)
             time.sleep(1)
             conn.close()
             print('Done!')
+        dev.disconnect()
 
 
 def test_stream(args, run_cmd, targ, password, sensorlib, filename=None,
@@ -319,10 +304,9 @@ def test_stream(args, run_cmd, targ, password, sensorlib, filename=None,
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((local_ip, 8005))
     server_socket.listen(1)
-    connect_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        '{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
-                                                     local_ip)), args.t, args.p)
-    cmd_resp = run_command_rl(connect_cmd_str)
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    dev.wr_cmd('{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
+                                                 local_ip)), silent=True, follow=False)
     conn, addr = server_socket.accept()
     conn.settimeout(1)
     flushed = 0
@@ -333,10 +317,7 @@ def test_stream(args, run_cmd, targ, password, sensorlib, filename=None,
             flushed = 1
     if args.tm > 500:
         conn.settimeout((args.tm/1000)*3)  # for long periodic shots
-    run_cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(
-        run_cmd, targ, password)
-    run_live_cmd = shlex.split(run_cmd_str)
-    subprocess.call(run_live_cmd)
+    dev.wr_cmd(run_cmd, silent=True, follow=False)
     print(('{:^15}'*len(variables)).format(*variables))
     t0 = time.time()
     test_val = []
@@ -394,14 +375,7 @@ def test_stream(args, run_cmd, targ, password, sensorlib, filename=None,
             time.sleep(1)
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
+            dev.wr_cmd(cmd, silent=True)
             print('Done!')
             print('TEST RESULTS ARE:')
             print('TEST DURATION : {} (s)'.format(final_time))
@@ -430,12 +404,11 @@ def test_stream(args, run_cmd, targ, password, sensorlib, filename=None,
             print('...wait for closing...')
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
+            dev.wr_cmd(cmd, silent=True)
             time.sleep(1)
             conn.close()
             print('Done!')
+        dev.disconnect()
 
 
 def get_live_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
@@ -450,10 +423,9 @@ def get_live_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=Non
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((local_ip, 8005))
     server_socket.listen(1)
-    connect_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        '{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
-                                                     local_ip)), args.t, args.p)
-    cmd_resp = run_command_rl(connect_cmd_str)
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    dev.wr_cmd('{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
+                                                 local_ip)), silent=True, follow=False)
     conn, addr = server_socket.accept()
     conn.settimeout(1)
     flushed = 0
@@ -464,10 +436,7 @@ def get_live_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=Non
             flushed = 1
     if args.tm > 500:
         conn.settimeout((args.tm/1000)*3)  # for long periodic shots
-    run_cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(
-        run_cmd, targ, password)
-    run_live_cmd = shlex.split(run_cmd_str)
-    subprocess.call(run_live_cmd)
+    dev.wr_cmd(run_cmd, silent=True)
     time.sleep(0.5)
     print(('{:^15}'*len(variables)).format(*variables))
     try:
@@ -528,14 +497,7 @@ def get_live_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=Non
             time.sleep(1)
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
+            dev.wr_cmd(cmd, silent=True)
             print('Done!')
             conn.close()
         except KeyboardInterrupt:
@@ -543,12 +505,11 @@ def get_live_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=Non
             print('...wait for closing...')
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
+            dev.wr_cmd(cmd, silent=True)
             time.sleep(1)
             conn.close()
             print('Done!')
+        dev.disconnect()
 
 
 def test_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
@@ -563,10 +524,9 @@ def test_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((local_ip, 8005))
     server_socket.listen(1)
-    connect_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        '{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
-                                                     local_ip)), args.t, args.p)
-    cmd_resp = run_command_rl(connect_cmd_str)
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    dev.wr_cmd('{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
+                                                 local_ip)), silent=True, follow=False)
     conn, addr = server_socket.accept()
     conn.settimeout(1)
     flushed = 0
@@ -577,10 +537,7 @@ def test_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
             flushed = 1
     if args.tm > 500:
         conn.settimeout((args.tm/1000)*3)  # for long periodic shots
-    run_cmd_str = 'upycmd_r -c "{}" -t {} -p {}'.format(
-        run_cmd, targ, password)
-    run_live_cmd = shlex.split(run_cmd_str)
-    subprocess.call(run_live_cmd)
+    dev.wr_cmd(run_cmd, silent=True)
     time.sleep(0.5)
     t0 = time.time()
     test_val = []
@@ -645,14 +602,7 @@ def test_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
             time.sleep(1)
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
-            time.sleep(1)
-            cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
+            dev.wr_cmd(cmd, silent=True)
             print('Done!')
             print('TEST RESULTS ARE:')
             print('TEST DURATION : {} (s)'.format(final_time))
@@ -681,38 +631,12 @@ def test_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
             print('...wait for closing...')
             # Flush error keyboardinterrupt
             cmd = '{}.stop_send();gc.collect()'.format(sensorlib)
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, targ, password)
-            cmd_resp = run_command_rl(cmd_str)
+            dev.wr_cmd(cmd, silent=True)
             time.sleep(1)
             conn.close()
             print('Done!')
 
-
-def simple_cmd_r(args, cmd):
-    cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-        cmd, args.t, args.p)
-    cmd_resp = run_command_rl(cmd_str)
-    resp = cmd_resp[1]
-    resp_info_list = []
-    for line in resp[6:]:
-        if line == '### closed ###':
-            pass
-        else:
-            try:
-                if line[0] == '>':
-                    resp_info_list.append(line[4:])
-                else:
-                    print(line)
-
-            except Exception as e:
-                if len(line) == 0:
-                    pass
-                else:
-                    print(e)
-                    pass
-    if len(resp_info_list) > 0:
-        return resp_info_list[0]
+        dev.disconnect()
 
 
 # LOGGING DATETIME NOW:
@@ -750,57 +674,21 @@ def prototype_command(args, **kargs):
                 analog_atten = "analog_pin.atten({});gc.collect()".format(
                     ATTEN_DICT[int(args.att)])
                 adc_cmd = analog_cmd + analog_atten
-                cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                    adc_cmd, args.t, args.p)
-                cmd_resp = run_command_rl(cmd_str)
-                resp = cmd_resp[1]
-                net_info_list = []
-                for line in resp[6:]:
-                    if line == '### closed ###':
-                        pass
-                    else:
-                        try:
-                            if line[0] == '>':
-                                print(line[4:])
-                            else:
-                                print(line)
-
-                        except Exception as e:
-                            if len(line) == 0:
-                                pass
-                            else:
-                                print(e)
-                                pass
+                dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+                dev.wr_cmd(adc_cmd)
+                dev.disconnect()
                 print('Pin {} configured as Analog Input with {} attenuation'.format(
                     adc_pin, ATTEN_DICT[int(args.att)][4:]))
             sys.exit()
 
     # ADC READ
     elif args.m == 'aread':
-        analog_read = "((analog_pin.read())/4095)*3.6;gc.collect()"
-        adc_cmd = analog_read
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            adc_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        adclev = []
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        adclev.append(line[4:])
-                    else:
-                        adclev.append(line)
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
-        if len(adclev) > 0:
-            volts = ast.literal_eval(adclev[0])
+        adc_cmd = "((analog_pin.read())/4095)*3.6;gc.collect()"
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        analog_info = dev.wr_cmd(adc_cmd, silent=True, rtn_resp=True)
+        dev.disconnect()
+        if analog_info:
+            volts = analog_info
             print('Volts: {}'.format(volts))
         sys.exit()
 
@@ -818,56 +706,22 @@ def prototype_command(args, **kargs):
                 'from machine import I2C', args.ads.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c), args.ch)
         ads_final_init = "my_ads.init();gc.collect()"
         ads_init_cmd_str = import_ads_cmd + ads_init_cmd + ads_final_init
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            ads_init_cmd_str, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        net_info_list = []
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev.wr_cmd(ads_init_cmd_str)
+        dev.disconnect()
         sys.exit()
 
     # ADS_READ
     elif args.m == 'ads_read':
         if args.tm is None:
-            cmd = "my_ads.read_V();"
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            ads_info_list = []
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            ads_info_list.append(line[4:])
-                        else:
-                            print(line)
+            ads_cmd = "my_ads.read_V();"
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
-            if len(ads_info_list) > 0:
-                my_read = round(ast.literal_eval(ads_info_list[0]), 2)
+            ads_info = dev.wr_cmd(ads_cmd, silent=True, rtn_resp=True)
+            dev.disconnect()
+            if ads_info:
+                my_read = round(ads_info, 2)
                 print('{} V'.format(my_read))
                 if args.f is not None:
                     data_shot = [my_read]
@@ -897,7 +751,9 @@ def prototype_command(args, **kargs):
             # run_live(stream_acc, args.t, args.p)
             # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
             fq = 1/(args.tm/1000)
-            ch = simple_cmd_r('my_ads.channel')
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            ch = dev.wr_cmd('my_ads.channel', silent=True, rtn_resp=True)
+            dev.disconnect()
             print('Streaming ADS: A{} (voltage),fq={}Hz'.format(ch, fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -922,7 +778,9 @@ def prototype_command(args, **kargs):
             # run_live(stream_acc, args.t, args.p)
             # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
             fq = 1/(args.tm/1000)
-            ch = simple_cmd_r('my_ads.channel')
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            ch = dev.wr_cmd('my_ads.channel', silent=True, rtn_resp=True)
+            dev.disconnect()
             print('Streaming ADS: A{} (voltage),fq={}Hz'.format(ch, fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -956,59 +814,24 @@ def prototype_command(args, **kargs):
                 'from machine import I2C', args.imu.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c))
         imu_final_init = "my_imu.init()"
         imu_init_cmd_str = import_imu_cmd + imu_init_cmd + imu_final_init
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            imu_init_cmd_str, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        net_info_list = []
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(imu_init_cmd_str)
+        dev.disconnect()
         sys.exit()
 
     #  IMUACC
 
     elif args.m == 'imuacc':
         if args.tm is None:
-            cmd = "my_imu.read_acc()"
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            acc_info_list = []
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            acc_info_list.append(line[4:])
-                        else:
-                            print(line)
+            imu_cmd = "my_imu.read_acc()"
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
-            if len(acc_info_list) > 0:
-                print('X:{},Y:{},Z:{}'.format(*ast.literal_eval(acc_info_list[0])))
+            imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
+            dev.disconnect()
+            if imu_info:
+                print('X:{},Y:{},Z:{}'.format(*imu_info))
                 if args.f is not None:
-                    data_shot = [*ast.literal_eval(acc_info_list[0])]
+                    data_shot = [*imu_info]
                     tag_tstamp = datetime.now().strftime("%H:%M:%S")
                     time_stamp = tag_tstamp
                     if args.n is not None:
@@ -1095,32 +918,15 @@ def prototype_command(args, **kargs):
 
     elif args.m == 'imugy':
         if args.tm is None:
-            cmd = "my_imu.read_gy()"
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            acc_info_list = []
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            acc_info_list.append(line[4:])
-                        else:
-                            print(line)
+            imu_cmd = "my_imu.read_gy()"
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
-            if len(acc_info_list) > 0:
-                print('X:{},Y:{},Z:{}'.format(*ast.literal_eval(acc_info_list[0])))
+            imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
+            dev.disconnect()
+            if imu_info:
+                print('X:{},Y:{},Z:{}'.format(*imu_info))
                 if args.f is not None:
-                    data_shot = [*ast.literal_eval(acc_info_list[0])]
+                    data_shot = [*imu_info]
                     tag_tstamp = datetime.now().strftime("%H:%M:%S")
                     time_stamp = tag_tstamp
                     if args.n is not None:
@@ -1168,32 +974,15 @@ def prototype_command(args, **kargs):
 
     elif args.m == 'imumag':
         if args.tm is None:
-            cmd = "my_imu.read_mag()"
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            acc_info_list = []
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            acc_info_list.append(line[4:])
-                        else:
-                            print(line)
+            imu_cmd = "my_imu.read_mag()"
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
-            if len(acc_info_list) > 0:
-                print('X:{},Y:{},Z:{}'.format(*ast.literal_eval(acc_info_list[0])))
+            imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
+            dev.disconnect()
+            if imu_info:
+                print('X:{},Y:{},Z:{}'.format(*imu_info))
                 if args.f is not None:
-                    data_shot = [*ast.literal_eval(acc_info_list[0])]
+                    data_shot = [*imu_info]
                     tag_tstamp = datetime.now().strftime("%H:%M:%S")
                     time_stamp = tag_tstamp
                     if args.n is not None:
@@ -1254,60 +1043,25 @@ def prototype_command(args, **kargs):
                 'from machine import I2C', args.bme.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c))
         bme_final_init = "my_bme.init()"
         bme_init_cmd_str = import_bme_cmd + bme_init_cmd + bme_final_init
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            bme_init_cmd_str, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        net_info_list = []
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev.wr_cmd(bme_init_cmd_str)
+        dev.disconnect()
         sys.exit()
 
     #  BME_READ
 
     elif args.m == 'bme_read':
         if args.tm is None:
-            cmd = "my_bme.read_values()"
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            bme_info_list = []
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            bme_info_list.append(line[4:])
-                        else:
-                            print(line)
+            bme_cmd = "my_bme.read_values()"
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
-            if len(bme_info_list) > 0:
-                print('{} C, {} Pa , {} % RH '.format(
-                    *ast.literal_eval(bme_info_list[0])))
+            bme_info = dev.wr_cmd(bme_cmd, silent=True, rtn_resp=True)
+            dev.disconnect()
+            if bme_info:
+                print('{} C, {} Pa , {} % RH '.format(*bme_info))
                 if args.f is not None:
-                    data_shot = [*ast.literal_eval(bme_info_list[0])]
+                    data_shot = [*bme_info]
                     tag_tstamp = datetime.now().strftime("%H:%M:%S")
                     time_stamp = tag_tstamp
                     if args.n is not None:
@@ -1393,60 +1147,24 @@ def prototype_command(args, **kargs):
                 'from machine import I2C', args.ina.upper(), 'I2C(scl=Pin({}), sda=Pin({}))'.format(*args.i2c))
         ina_final_init = "my_ina.init()"
         ina_init_cmd_str = import_ina_cmd + ina_init_cmd + ina_final_init
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            ina_init_cmd_str, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        net_info_list = []
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(ina_init_cmd_str)
+        dev.disconnect()
         sys.exit()
 
     #  INA_READ
 
     elif args.m == 'ina_read':
         if args.tm is None:
-            cmd = "my_ina.read_values()"
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            ina_info_list = []
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            ina_info_list.append(line[4:])
-                        else:
-                            print(line)
+            ina_cmd = "my_ina.read_values()"
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
-            if len(ina_info_list) > 0:
-                print('{} V, {} mA , {} mW '.format(
-                    *ast.literal_eval(ina_info_list[0])))
+            ina_info = dev.wr_cmd(ina_cmd, silent=True, rtn_resp=True)
+            dev.disconnect()
+            if ina_info:
+                print('{} V, {} mA , {} mW '.format(*ina_info))
                 if args.f is not None:
-                    data_shot = [*ast.literal_eval(ina_info_list[0])]
+                    data_shot = [*ina_info]
                     tag_tstamp = datetime.now().strftime("%H:%M:%S")
                     time_stamp = tag_tstamp
                     if args.n is not None:
@@ -1521,31 +1239,13 @@ def prototype_command(args, **kargs):
     elif args.m == 'ina_batt':
         print('\n')
         print(' {:>15}'.format('Battery Life expectancy profiling... '))
-        cmd = "my_ina.batt_ts_raw()"
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        ina_info_list = []
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        ina_info_list.append(line[4:])
-                    else:
-                        print(line)
+        ina_cmd = "my_ina.batt_ts_raw()"
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
-        if len(ina_info_list) > 0:
-            result_dict = json.loads(ast.literal_eval(ina_info_list[0]))
-            volts_v, current_v, power_v = result_dict['V'], result_dict['C'], result_dict['P']
+        ina_info = dev.wr_cmd(ina_cmd, silent=True, rtn_resp=True)
+        dev.disconnect()
+        if ina_info:
+            volts_v, current_v, power_v = ina_info['V'], ina_info['C'], ina_info['P']
             volts = sum(volts_v)/len(volts_v)
             current = sum(current_v)/len(current_v)
             power = sum(power_v)/len(power_v)
@@ -1617,26 +1317,9 @@ def prototype_command(args, **kargs):
             analog_cmd = "from machine import DAC;analogdac_pin = DAC(Pin({}));".format(
                 dac_pin)
             dac_cmd = analog_cmd
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                dac_cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            print(line[4:])
-                        else:
-                            print(line)
-
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            dev.wr_cmd(dac_cmd)
+            dev.disconnect()
             print('Pin {} configured as Analog Output'.format(
                 dac_pin))
         sys.exit()
@@ -1646,25 +1329,9 @@ def prototype_command(args, **kargs):
         val_from_v = int((float(args.sig[0])/3.3)*255)
         analog_write = "analogdac_pin.write({});gc.collect()".format(val_from_v)
         dac_cmd = analog_write
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            dac_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(dac_cmd)
+        dev.disconnect()
         sys.exit()
 
 
@@ -1677,97 +1344,30 @@ def prototype_command(args, **kargs):
             signal_cmd = "sig=SIGNAL_GENERATOR(analogdac_pin,'{}',{},{})".format(
                 *args.sig)
             conf_dac_sig = signal_class + signal_cmd
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                conf_dac_sig, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            print(line[4:])
-                        else:
-                            print(line)
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            dev.wr_cmd(conf_dac_sig)
             print('Signal type {} with Amplitude {} V and fq {} Hz configured'.format(
                 *args.sig))
         elif args.sig[0] == cmds[0]:
             signal_cmd = "sig.start()"
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                signal_cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            print(line[4:])
-                        else:
-                            print(line)
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            dev.wr_cmd(signal_cmd)
             print('Signal started!')
 
         elif args.sig[0] == cmds[1]:
             signal_cmd = "sig.stop()"
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                signal_cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            print(line[4:])
-                        else:
-                            print(line)
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            dev.wr_cmd(signal_cmd)
             print('Signal stopped!')
 
         elif args.sig[0] == cmds[2]:
             signal_cmd = "sig.modsig({},{})".format(args.sig[1], args.sig[2])
-            cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-                signal_cmd, args.t, args.p)
-            cmd_resp = run_command_rl(cmd_str)
-            resp = cmd_resp[1]
-            for line in resp[6:]:
-                if line == '### closed ###':
-                    pass
-                else:
-                    try:
-                        if line[0] == '>':
-                            print(line[4:])
-                        else:
-                            print(line)
-                    except Exception as e:
-                        if len(line) == 0:
-                            pass
-                        else:
-                            print(e)
-                            pass
+            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            dev.wr_cmd(signal_cmd)
             print('Signal modified to Amplitude: {} V, fq: {} Hz'.format(
                 args.sig[1], args.sig[2]))
 
+        dev.disconnect()
         sys.exit()
 
     #############################################
@@ -1795,7 +1395,7 @@ def prototype_command(args, **kargs):
 
             dev.wr_cmd(buzz_cmd, silent=True)
             print('Alarm set at {}:{}:{}'.format(hour, minute, seconds))
-    
+
         # BUZZ INTERRUPT
         elif args.m == 'buzz_interrupt':
             buzz_cmd = "my_buzz.active_button({},{});".format(*args.po)
@@ -1824,26 +1424,9 @@ def prototype_command(args, **kargs):
         servo_pin = args.po[0]
         servo_cmd = "from servo import Servo;my_servo = Servo(Pin({}));".format(
             servo_pin)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            servo_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(servo_cmd)
+        dev.disconnect()
         print('Pin {} configured as PWM to drive the Servo motor'.format(
             servo_pin))
         sys.exit()
@@ -1852,26 +1435,9 @@ def prototype_command(args, **kargs):
         servo_angle = args.opt[0]
         servo_cmd = "my_servo.write_angle({});".format(
             servo_angle)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            servo_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(servo_cmd)
+        dev.disconnect()
         print('Servo moved to {} degrees!'.format(
             servo_angle))
         sys.exit()
@@ -1885,26 +1451,9 @@ def prototype_command(args, **kargs):
         dir_pin, oppo_pin = args.po
         dcmotor_cmd = "from dcmotor import DCMOTOR;my_dcmotor = DCMOTOR({},{});".format(
             dir_pin, oppo_pin)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            dcmotor_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(dcmotor_cmd)
+        dev.disconnect()
         print('DC motor configured: Direction Pin:{}, Opposite direction Pin: {}'.format(
             dir_pin, oppo_pin))
         sys.exit()
@@ -1915,52 +1464,18 @@ def prototype_command(args, **kargs):
         dcmotor_direction, velocity = args.to
         dcmotor_cmd = "my_dcmotor.move({},{});".format(
             dcmotor_dir_dic[dcmotor_direction], velocity)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            dcmotor_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(dcmotor_cmd)
+        dev.disconnect()
         print('DC motor moving to {}!'.format(dcmotor_direction))
         sys.exit()
 
     # DCMOTOR_STOP
     elif args.m == 'dcmotor_stop':
         dcmotor_cmd = "my_dcmotor.stop();"
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            dcmotor_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(dcmotor_cmd)
+        dev.disconnect()
         print('DC motor stopped')
         sys.exit()
     # * STEPPER MOTOR *
@@ -1971,26 +1486,9 @@ def prototype_command(args, **kargs):
         dir_pin, step_pin = args.po
         stepper_cmd = "from stepper import STEPPER;my_stepper = STEPPER({},{});".format(
             dir_pin, step_pin)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            stepper_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(stepper_cmd)
+        dev.disconnect()
         print('Stepper motor configured: Direction Pin:{}, Step Pin: {}'.format(
             dir_pin, step_pin))
         sys.exit()
@@ -2002,26 +1500,9 @@ def prototype_command(args, **kargs):
         step_direction, velocity, steps = args.to
         stepper_cmd = "my_stepper.move_n_steps({},{},{});".format(
             step_dir_dic[step_direction], velocity, steps)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            stepper_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(stepper_cmd)
+        dev.disconnect()
         print('Stepper moved {} steps to {} !'.format(
             steps, step_direction))
         sys.exit()
@@ -2044,26 +1525,9 @@ def prototype_command(args, **kargs):
             client_cmd = "from mqtt_client import mqtt_client ;my_mqtt = mqtt_client('{}','{}',user = '{}', password = '{}');".format(
                 id, b_addr, user, passwd)
 
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            client_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(client_cmd)
+        dev.disconnect()
         print('MQTT Client configured: ID: {}, BROKER: {}'.format(
             id, b_addr))
         sys.exit()
@@ -2071,52 +1535,18 @@ def prototype_command(args, **kargs):
     # MQTT_CONN
     elif args.m == 'mqtt_conn':
         conn_cmd = "my_mqtt.connect();my_mqtt.set_def_callback();gc.collect()"
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            conn_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(conn_cmd)
+        dev.disconnect()
         print('MQTT Client connected!')
         sys.exit()
 
     # MQTT_SUB
     elif args.m == 'mqtt_sub':
         sub_cmd = "my_mqtt.subs('{}');gc.collect()".format(*args.to)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            sub_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(sub_cmd)
+        dev.disconnect()
         print('MQTT Client subscribed to TOPIC: {}'.format(*args.to))
         sys.exit()
 
@@ -2127,26 +1557,9 @@ def prototype_command(args, **kargs):
                 *args.to)
         else:
             pub_cmd = "my_mqtt.pub('{}');gc.collect()".format(*args.to)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            pub_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(pub_cmd)
+        dev.disconnect()
         if len(args.to) > 1:
             print('MQTT Client published message: {} to TOPIC: {}'.format(*args.to))
         else:
@@ -2157,26 +1570,9 @@ def prototype_command(args, **kargs):
 
     elif args.m == 'mqtt_check':
         check_cmd = "my_mqtt.check_msg();gc.collect()"
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            check_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        print(line[4:])
-                    else:
-                        print(line)
-
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(check_cmd)
+        dev.disconnect()
         sys.exit()
 
     # * SOCKETS *
@@ -2192,53 +1588,18 @@ def prototype_command(args, **kargs):
             socli_init_cmd = "my_cli=socket_client('{}',{})".format(host, port)
         socli_imp_cmd = "from socket_client_server import socket_client;"
         socli_comp_cmd = '{}{}'.format(socli_imp_cmd, socli_init_cmd)
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            socli_comp_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(socli_comp_cmd)
+        dev.disconnect()
         print('Initialized client socket to connect to server :{} on port {}'.format(host, port))
         sys.exit()
 
     # SOCLI_CONN
     elif args.m == 'socli_conn':
         socli_conn_cmd = "my_cli.connect_SOC();"
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            socli_conn_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(socli_conn_cmd)
+        dev.disconnect()
 
         print('Client connected!')
         sys.exit()
@@ -2246,80 +1607,26 @@ def prototype_command(args, **kargs):
     # SOCLI_SEND
     elif args.m == 'socli_send':
         socli_send_cmd = "my_cli.send_message('{}');".format(args.n)
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            socli_send_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(socli_send_cmd)
+        dev.disconnect()
         print('Message sent!')
         sys.exit()
 
     # SOCLI_RECV
     elif args.m == 'socli_recv':
         socli_recv_cmd = "my_cli.recv_message();"
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            socli_recv_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(socli_recv_cmd)
+        dev.disconnect()
         sys.exit()
 
     # SOCLI_CLOSE
     elif args.m == 'socli_close':
         socli_close_cmd = "my_cli.cli_soc.close();"
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            socli_close_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(socli_close_cmd)
+        dev.disconnect()
         print('Client Socket closed!')
         sys.exit()
 
@@ -2333,133 +1640,45 @@ def prototype_command(args, **kargs):
             sosrv_init_cmd = "my_serv=socket_server({})".format(port)
         sosrv_imp_cmd = "from socket_client_server import socket_server;"
         sosrv_comp_cmd = '{}{}'.format(sosrv_imp_cmd, sosrv_init_cmd)
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            sosrv_comp_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(run_cmd_str)
-        resp = cmd_resp[1]
-        serv_info = []
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        serv_info.append(line[4:])
-                    else:
-                        serv_info.append(line)
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        serv_info = dev.wr_cmd(sosrv_comp_cmd, silent=True, rtn_resp=True)
+        dev.disconnect()
         if len(serv_info) > 0:
-            print('Server initialized. IP: {} PORT:{}'.format(serv_info[0], port))
+            print('Server initialized. IP: {} PORT:{}'.format(serv_info, port))
         sys.exit()
 
     # SOSRV_START
     elif args.m == 'sosrv_start':
         sosrv_start_cmd = "my_serv.start_SOC();"
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            sosrv_start_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(sosrv_start_cmd)
+        dev.disconnect()
 
         sys.exit()
 
     # SOSRV_SEND
     elif args.m == 'sosrv_send':
-        sosrv_send_cmd = "my_serv.send_message('{}');".format(args.n)
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            sosrv_send_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        sosrv_send_cmd = "my_serv.send_message('{}')".format(args.n)
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(sosrv_send_cmd)
+        dev.disconnect()
         print('Message sent!')
         sys.exit()
 
     # SOSRV_RECV
     elif args.m == 'sosrv_recv':
-        sosrv_recv_cmd = "my_serv.recv_message();"
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            sosrv_recv_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        sosrv_recv_cmd = "my_serv.recv_message()"
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(sosrv_recv_cmd)
+        dev.disconnect()
         sys.exit()
 
     # SOSRV_CLOSE
     elif args.m == 'sosrv_close':
-        sosrv_close_cmd = "my_serv.serv_soc.close();"
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            sosrv_close_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        sosrv_close_cmd = "my_serv.serv_soc.close()"
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(sosrv_close_cmd)
+        dev.disconnect()
         print('Server Socket closed!')
         sys.exit()
 
@@ -2470,27 +1689,9 @@ def prototype_command(args, **kargs):
         rq_query_cmd = "resp=requests.get('{}');".format(args.f)
         rq_json_cmd = "resp.json()"
         rq_comp_cmd = "{}{}{}".format(rq_import_cmd, rq_query_cmd, rq_json_cmd)
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            rq_comp_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(rq_comp_cmd)
+        dev.disconnect()
         sys.exit()
 
     # RGET_TEXT
@@ -2499,27 +1700,9 @@ def prototype_command(args, **kargs):
         rq_query_cmd = "resp=requests.get('{}');".format(args.f)
         rq_text_cmd = "resp.text"
         rq_comp_cmd = "{}{}{}".format(rq_import_cmd, rq_query_cmd, rq_text_cmd)
-        run_cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            rq_comp_cmd, args.t, args.p)
-        run_live_cmd = shlex.split(run_cmd_str)
-        try:
-            proc = subprocess.Popen(
-                run_live_cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            for i in range(6):
-                proc.stdout.readline()
-            while proc.poll() is None:
-                resp = proc.stdout.readline()[:-1].decode()
-                if len(resp) > 0:
-                    if resp[0] == '>':
-                        print(resp[4:])
-                    else:
-                        print(resp)
-                else:
-                    print(resp)
-        except Exception as e:
-            print(e)
-
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+        dev.wr_cmd(rq_comp_cmd)
+        dev.disconnect()
         sys.exit()
     #############################################
     #  * PORT SPECIFIC COMMANDS *
@@ -2583,33 +1766,15 @@ def prototype_command(args, **kargs):
         sys.exit()
 
     elif args.m == 'pin_status':
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
         machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
         status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
         pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
             pinlist, machine_pin, status)
-        cmd_str = 'web_repl_cmd_r -c "{}" -t {} -p {}'.format(
-            pin_status_cmd, args.t, args.p)
-        cmd_resp = run_command_rl(cmd_str)
-        resp = cmd_resp[1]
-        pin_status_resp = []
-        for line in resp[6:]:
-            if line == '### closed ###':
-                pass
-            else:
-                try:
-                    if line[0] == '>':
-                        pin_status_resp.append(line[4:])
-                    else:
-                        pin_status_resp.append(line)
-                except Exception as e:
-                    if len(line) == 0:
-                        pass
-                    else:
-                        print(e)
-                        pass
-        if len(pin_status_resp) > 0:
-            pin_dict = ast.literal_eval(pin_status_resp[0])
+        pin_dict = dev.wr_cmd(pin_status_cmd, silent=True, rtn_resp=True)
+        dev.disconnect()
+        if pin_dict:
             if args.po is not None:
                 pin_rqst = ['Pin({})'.format(po) for po in args.po]
                 for key in pin_dict.keys():

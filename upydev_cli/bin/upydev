@@ -428,8 +428,22 @@ WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
 SD_UTILS_COMMANDS = ['sd', 'sd_enable', 'sd_init', 'sd_deinit', 'sd_auto']
 
 # PROTOTYPE
-PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs', *[cmd for cmd in keywords_mode if 'buzz' in cmd], ]
+PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs',
+                      'pin_status', 'rget_text', 'rget_json',
+                      'mqtt_config', 'mqtt_conn',
+                      'mqtt_pub', 'mqtt_sub', 'mqtt_check', 'socli_init',
+                      'socli_conn', 'socli_send', 'socli_recv', 'socli_close',
+                      'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
+                      'sosrv_close', 'dac_config', 'dac_write', 'dac_sig',
+                      'buzz_config', 'buzz_set_alarm', 'buzz_interrupt',
+                      'buzz_beep', 'servo_config', 'servo_angle', 'stepper_config',
+                      'stepper_move', 'dcmotor_config', 'dcmotor_move',
+                      'dcmotor_stop', 'imu_init',
+                      'imuacc', 'imugy', 'imumag', 'imuacc_sd', 'ads_init',
+                      'ads_read', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
+                      'ina_batt']
 
+# *[cmd for cmd in keywords_mode if 'buzz' in cmd]
 #############################################
 
 
