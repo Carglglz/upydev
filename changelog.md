@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor device management actions (configuration, groups...)
 - Refactor firmware actions, `-i` option to check firmware and platform match. (from firmware file name)
 - `tree` command in upysh2.py unix/linux like.
+- drop ``mpy-cross`` dependency, better to build from source.
 ### Added
 - Autocomplete `shr@` , `ssl@`, `wssl@` and `ble@` commands with saved devices in UPY_G global group
 - `pytest` and `pytest-setup` command in SHELL-REPLS

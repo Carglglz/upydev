@@ -1,4 +1,4 @@
-from upydevice import Device
+from upydevice import Device, DeviceException
 import sys
 import socket
 import struct
@@ -202,7 +202,7 @@ def get_ip():
             return '0.0.0.0'
 
 
-def get_live_stream(args, run_cmd, targ, password, sensorlib, filename=None,
+def get_live_stream(args, run_cmd, dev, sensorlib, filename=None,
                     r_format='fff', nb=12, log=False, variables=None):
     if args.lh is None:
         local_ip = get_ip()
@@ -214,7 +214,6 @@ def get_live_stream(args, run_cmd, targ, password, sensorlib, filename=None,
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((local_ip, 8005))
     server_socket.listen(1)
-    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
     dev.wr_cmd('{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
                                                  local_ip)), silent=True, follow=False)
     # dev.disconnect()
@@ -292,7 +291,7 @@ def get_live_stream(args, run_cmd, targ, password, sensorlib, filename=None,
         dev.disconnect()
 
 
-def test_stream(args, run_cmd, targ, password, sensorlib, filename=None,
+def test_stream(args, run_cmd, dev, sensorlib, filename=None,
                 r_format='fff', nb=12, log=False, variables=None, BUFFERSIZE=1):
     if args.lh is None:
         local_ip = get_ip()
@@ -304,7 +303,6 @@ def test_stream(args, run_cmd, targ, password, sensorlib, filename=None,
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((local_ip, 8005))
     server_socket.listen(1)
-    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
     dev.wr_cmd('{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
                                                  local_ip)), silent=True, follow=False)
     conn, addr = server_socket.accept()
@@ -411,7 +409,7 @@ def test_stream(args, run_cmd, targ, password, sensorlib, filename=None,
         dev.disconnect()
 
 
-def get_live_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
+def get_live_stream_chunk(args, run_cmd, dev, sensorlib, filename=None,
                           r_format='h'*20, nb=40, log=False, variables=None):
     if args.lh is None:
         local_ip = get_ip()
@@ -423,7 +421,6 @@ def get_live_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=Non
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((local_ip, 8005))
     server_socket.listen(1)
-    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
     dev.wr_cmd('{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
                                                  local_ip)), silent=True, follow=False)
     conn, addr = server_socket.accept()
@@ -512,7 +509,7 @@ def get_live_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=Non
         dev.disconnect()
 
 
-def test_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
+def test_stream_chunk(args, run_cmd, dev, sensorlib, filename=None,
                       r_format='h'*20, nb=40, log=False, variables=None, BUFFERSIZE=20):
     if args.lh is None:
         local_ip = get_ip()
@@ -524,7 +521,6 @@ def test_stream_chunk(args, run_cmd, targ, password, sensorlib, filename=None,
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((local_ip, 8005))
     server_socket.listen(1)
-    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
     dev.wr_cmd('{}.connect_SOC({})'.format(sensorlib, "'{}'".format(
                                                  local_ip)), silent=True, follow=False)
     conn, addr = server_socket.accept()
@@ -719,6 +715,11 @@ def prototype_command(args, **kargs):
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             ads_info = dev.wr_cmd(ads_cmd, silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
             dev.disconnect()
             if ads_info:
                 my_read = round(ads_info, 2)
@@ -753,7 +754,14 @@ def prototype_command(args, **kargs):
             fq = 1/(args.tm/1000)
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
             ch = dev.wr_cmd('my_ads.channel', silent=True, rtn_resp=True)
-            dev.disconnect()
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
+            # dev.disconnect()
             print('Streaming ADS: A{} (voltage),fq={}Hz'.format(ch, fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -763,13 +771,13 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                test_stream_chunk(stream_ads, args.t, args.p, 'my_ads',
+                test_stream_chunk(args, stream_ads, dev, 'my_ads',
                                   filename=args.f, log=True,
                                   r_format='f'*20, nb=80, variables=header['VAR'])
             else:
                 header = {'VAR': ['V'], 'UNIT': 'VOLTS',
                           'fq(hz)': fq}
-                test_stream_chunk(stream_ads, args.t, args.p, 'my_ads',
+                test_stream_chunk(args, stream_ads, dev, 'my_ads',
                                   variables=header['VAR'], r_format='f'*20, nb=80)
         else:
             # Do connect
@@ -780,7 +788,14 @@ def prototype_command(args, **kargs):
             fq = 1/(args.tm/1000)
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
             ch = dev.wr_cmd('my_ads.channel', silent=True, rtn_resp=True)
-            dev.disconnect()
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
+            # dev.disconnect()
             print('Streaming ADS: A{} (voltage),fq={}Hz'.format(ch, fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -790,13 +805,13 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                get_live_stream_chunk(stream_ads, args.t, args.p, 'my_ads',
+                get_live_stream_chunk(args, stream_ads, dev, 'my_ads',
                                       filename=args.f, log=True,
                                       r_format='f'*20, nb=80, variables=header['VAR'])
             else:
                 header = {'VAR': ['V'], 'UNIT': 'VOLTS',
                           'fq(hz)': fq}
-                get_live_stream_chunk(stream_ads, args.t, args.p, 'my_ads',
+                get_live_stream_chunk(args, stream_ads, dev, 'my_ads',
                                       variables=header['VAR'], r_format='f'*20, nb=80)
         sys.exit()
     # * IMU *
@@ -827,6 +842,12 @@ def prototype_command(args, **kargs):
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+
             dev.disconnect()
             if imu_info:
                 print('X:{},Y:{},Z:{}'.format(*imu_info))
@@ -858,6 +879,14 @@ def prototype_command(args, **kargs):
             # run_live(stream_acc, args.t, args.p)
             # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
             fq = 1/(args.tm/1000)
+            dev.wr_cmd("my_imu", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
             print('Streaming IMU ACCELEROMETER: X, Y, Z (g=-9.8m/s^2),fq={}Hz'.format(fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -867,12 +896,12 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                test_stream(stream_acc, args.t, args.p, 'my_imu',
+                test_stream(args, stream_acc, dev, 'my_imu',
                             filename=args.f, log=True, variables=header['VAR'])
             else:
                 header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'g=-9.8m/s^2',
                           'fq(hz)': fq}
-                test_stream(stream_acc, args.t, args.p, 'my_imu',
+                test_stream(args, stream_acc, dev, 'my_imu',
                             variables=header['VAR'])
 
         else:
@@ -881,6 +910,14 @@ def prototype_command(args, **kargs):
                 args.tm)
             # run_live(stream_acc, args.t, args.p)
             # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+            dev.wr_cmd("my_imu", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
             fq = 1/(args.tm/1000)
             print('Streaming IMU ACCELEROMETER: X, Y, Z (g=-9.8m/s^2),fq={}Hz'.format(fq))
             if args.f is not None:
@@ -891,12 +928,12 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                get_live_stream(stream_acc, args.t, args.p, 'my_imu',
+                get_live_stream(args, stream_acc, dev, 'my_imu',
                                 filename=args.f, log=True, variables=header['VAR'])
             else:
                 header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'g=-9.8m/s^2',
                           'fq(hz)': fq}
-                get_live_stream(stream_acc, args.t, args.p, 'my_imu',
+                get_live_stream(args, stream_acc, dev, 'my_imu',
                                 variables=header['VAR'])
 
         sys.exit()
@@ -911,8 +948,16 @@ def prototype_command(args, **kargs):
             header['UNIT'], args.tm)
         # run_live(stream_acc, args.t, args.p)
         # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+        dev.wr_cmd("my_imu", silent=True, rtn_resp=True)
+        if dev._traceback.decode() in dev.response:
+            try:
+                raise DeviceException(dev.response)
+            except Exception as e:
+                print(e)
+                dev.disconnect()
+                sys.exit()
         print('Streaming IMU ACCELEROMETER: X, Y, Z (g=-9.8m/s^2),fq={}Hz'.format(fq))
-        get_live_stream(stream_acc, args.t, args.p, 'my_imu',
+        get_live_stream(args, stream_acc, dev, 'my_imu',
                         variables=header['VAR'])
     # IMUGY
 
@@ -922,6 +967,11 @@ def prototype_command(args, **kargs):
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
             dev.disconnect()
             if imu_info:
                 print('X:{},Y:{},Z:{}'.format(*imu_info))
@@ -951,6 +1001,14 @@ def prototype_command(args, **kargs):
             stream_ = "my_imu.start_send(my_imu.sample_send_gy,timeout={})".format(
                 args.tm)
             fq = 1/(args.tm/1000)
+            dev.wr_cmd("my_imu", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
             print('Streaming IMU GYRO: X, Y, Z (deg/s),fq={}Hz'.format(fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -960,12 +1018,12 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                get_live_stream(stream_, args.t, args.p, 'my_imu',
+                get_live_stream(args, stream_, dev, 'my_imu',
                                 filename=args.f, log=True, variables=header['VAR'])
             else:
                 header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'deg/s',
                           'fq(hz)': fq}
-                get_live_stream(stream_, args.t, args.p, 'my_imu',
+                get_live_stream(args, stream_, dev, 'my_imu',
                                 variables=header['VAR'])
 
         sys.exit()
@@ -978,6 +1036,13 @@ def prototype_command(args, **kargs):
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
+
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+
             dev.disconnect()
             if imu_info:
                 print('X:{},Y:{},Z:{}'.format(*imu_info))
@@ -1009,6 +1074,14 @@ def prototype_command(args, **kargs):
             # run_live(stream_acc, args.t, args.p)
             # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
             fq = 1/(args.tm/1000)
+            dev.wr_cmd("my_imu", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
             print('Streaming IMU MAGNETOMETER: X, Y, Z (gauss),fq={}Hz'.format(fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -1018,12 +1091,12 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                get_live_stream(stream_, args.t, args.p, 'my_imu',
+                get_live_stream(args, stream_, dev, 'my_imu',
                                 filename=args.f, log=True, variables=header['VAR'])
             else:
                 header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'gauss',
                           'fq(hz)': fq}
-                get_live_stream(stream_, args.t, args.p, 'my_imu',
+                get_live_stream(args, stream_, dev, 'my_imu',
                                 variables=header['VAR'])
 
         sys.exit()
@@ -1057,6 +1130,13 @@ def prototype_command(args, **kargs):
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             bme_info = dev.wr_cmd(bme_cmd, silent=True, rtn_resp=True)
+            dev.wr_cmd("my_bme", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+
             dev.disconnect()
             if bme_info:
                 print('{} C, {} Pa , {} % RH '.format(*bme_info))
@@ -1089,6 +1169,14 @@ def prototype_command(args, **kargs):
             # run_live(stream_acc, args.t, args.p)
             # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
             fq = 1/(args.tm/1000)
+            dev.wr_cmd("my_bme", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
             print('Streaming BME280: Temp (C), Pressure (Pa), Rel. Hummidity (%) ,fq={}Hz'.format(fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -1098,12 +1186,12 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                test_stream(stream_bme, args.t, args.p, 'my_bme',
+                test_stream(args, stream_bme, dev, 'my_bme',
                             filename=args.f, log=True, variables=header['VAR'])
             else:
                 header = {'VAR': ['Temp(C)', 'Pressure(Pa)', 'RH(%)', 'TS'], 'UNIT': 'T: C; P: Pa; RH: %',
                           'fq(hz)': fq}
-                test_stream(stream_bme, args.t, args.p, 'my_bme',
+                test_stream(args, stream_bme, dev, 'my_bme',
                             variables=header['VAR'])
 
         else:
@@ -1113,6 +1201,14 @@ def prototype_command(args, **kargs):
             # run_live(stream_acc, args.t, args.p)
             # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
             fq = 1/(args.tm/1000)
+            dev.wr_cmd("my_bme", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
             print('Streaming BME280: Temp (C), Pressure (Pa), Rel. Hummidity (%) ,fq={}Hz'.format(fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -1122,12 +1218,12 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                get_live_stream(stream_bme, args.t, args.p, 'my_bme',
+                get_live_stream(args, stream_bme, dev, 'my_bme',
                                 filename=args.f, log=True, variables=header['VAR'])
             else:
                 header = {'VAR': ['Temp(C)', 'Pressure(Pa)', 'RH(%)'], 'UNIT': 'T: C; P: Pa; RH: %',
                           'fq(hz)': fq}
-                get_live_stream(stream_bme, args.t, args.p, 'my_bme',
+                get_live_stream(args, stream_bme, dev, 'my_bme',
                                 variables=header['VAR'])
 
         sys.exit()
@@ -1160,6 +1256,13 @@ def prototype_command(args, **kargs):
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             ina_info = dev.wr_cmd(ina_cmd, silent=True, rtn_resp=True)
+            dev.wr_cmd("my_ina", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+
             dev.disconnect()
             if ina_info:
                 print('{} V, {} mA , {} mW '.format(*ina_info))
@@ -1192,6 +1295,14 @@ def prototype_command(args, **kargs):
             # run_live(stream_acc, args.t, args.p)
             # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
             fq = 1/(args.tm/1000)
+            dev.wr_cmd("my_ina", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
             print('Streaming ina219: Volts (V), Current (mA), Power (mW) ,fq={}Hz'.format(fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -1201,21 +1312,28 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                test_stream(stream_ina, args.t, args.p, 'my_ina',
+                test_stream(args, stream_ina, dev, 'my_ina',
                             filename=args.f, log=True, variables=header['VAR'])
             else:
                 header = {'VAR': ['Voltage(V)', 'Current(mA)', 'Power(mW)'], 'UNIT': 'V: v; C: mA; P: mW',
                           'fq(hz)': fq}
-                test_stream(stream_ina, args.t, args.p, 'my_ina',
+                test_stream(args, stream_ina, dev, 'my_ina',
                             variables=header['VAR'])
 
         else:
             # Do connect
             stream_ina = "my_ina.start_send(my_ina.sample_send_data,timeout={})".format(
                 args.tm)
-            # run_live(stream_acc, args.t, args.p)
-            # "imu.stream_acc(soc=cli_soc, timeout={})".format(args.tm)
+
             fq = 1/(args.tm/1000)
+            dev.wr_cmd("my_ina", silent=True, rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+                    dev.disconnect()
+                    sys.exit()
             print('Streaming ina219: Volts (V), Current (mA), Power (mW) ,fq={}Hz'.format(fq))
             if args.f is not None:
                 args.f = lognow(args.f, args.m)
@@ -1225,12 +1343,12 @@ def prototype_command(args, **kargs):
                 with open(args.f, 'w') as file_log:
                     file_log.write(json.dumps(header))
                     file_log.write('\n')
-                get_live_stream(stream_ina, args.t, args.p, 'my_ina',
+                get_live_stream(args, stream_ina, dev, 'my_ina',
                                 filename=args.f, log=True, variables=header['VAR'])
             else:
                 header = {'VAR': ['Voltage(V)', 'Current(mA)', 'Power(mW)'], 'UNIT': 'V: v; C: mA; P: mW',
                           'fq(hz)': fq}
-                get_live_stream(stream_ina, args.t, args.p, 'my_ina',
+                get_live_stream(args, stream_ina, dev, 'my_ina',
                                 variables=header['VAR'])
 
         sys.exit()
@@ -1243,6 +1361,11 @@ def prototype_command(args, **kargs):
         dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
         ina_info = dev.wr_cmd(ina_cmd, silent=True, rtn_resp=True)
+        if dev._traceback.decode() in dev.response:
+            try:
+                raise DeviceException(dev.response)
+            except Exception as e:
+                print(e)
         dev.disconnect()
         if ina_info:
             volts_v, current_v, power_v = ina_info['V'], ina_info['C'], ina_info['P']

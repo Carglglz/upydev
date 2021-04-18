@@ -1392,6 +1392,21 @@ def debugging_action(args, **kargs):
                             '━'*20, '━'*40, '━'*10, '━'*40))
                 print('┗{0}━┻━{1}━┻━{2}━┻━{3}━┛'.format(
                     '━'*20, '━'*40, '━'*10, '━'*40))
+        else:
+            scan_sr = 'upydev scan -sr'
+            scan_sr_cmd = shlex.split(scan_sr)
+            scan_nt = 'upydev scan -nt'
+            scan_nt_cmd = shlex.split(scan_nt)
+            scan_bl = 'upydev scan -bl'
+            scan_bl_cmd = shlex.split(scan_bl)
+            all_scan = [scan_sr_cmd, scan_nt_cmd, scan_bl_cmd]
+            for scan in all_scan:
+                try:
+                    subprocess.call(scan)
+
+                except Exception as e:
+                    print(e)
+
 
     elif args.m == 'ping':
         dt = check_device_type(args.t)

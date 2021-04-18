@@ -73,7 +73,7 @@ Mode/Tools
 
 upy Commands
 ------------
-	> :ref:`upycmd:General`
+	> :ref:`upycmd:General Commands`
 
 		A set of commands to control or configure the device.
 

@@ -54,6 +54,8 @@ Upyutils
 
 **upysecrets.py**: a module to enable end-to-end-encryption and random password generation
 
+**upysh2.py**: upysh extesion with tree, du, and rm -r commands.
+
 **ssl_repl.py**: a module to enable SSL repl
 
 **ssl_socket_client_server.py**: a tiny wrapper to test clients/servers with SSL wrapped tcp sockets
