@@ -1868,7 +1868,7 @@ def custom_sh_cmd(cmd_inp):
                 shr_htool.stop_SOC()
             elif '*' in file:
                 files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl)]
-                files_to_put_re = [fl for fl in files_to_put if file.replace('*', '') in fl]
+                files_to_put_re = [fl for fl in files_to_put if fl in glob.glob(file)]
                 for file in files_to_put_re:
                     print('- {}'.format(file))
                 shr_htool.start_SOC()
