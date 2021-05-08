@@ -2219,7 +2219,7 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print('File not Found\nIndicate a file to get')
 
-    if cmd_inp.split(' ')[0] == 'put':
+    if cmd_inp.split(' ')[0] == 'put': # FIXME: * wildcard with glob, webrepl put with wsio.py
         if not encrypted_flag['sec']:
             print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
             try:
@@ -2234,6 +2234,7 @@ def custom_sh_cmd(cmd_inp):
                 # file = cmd_inp.split(' ')[1]
                 # put_str = 'upydev put -f {} -t {} -p {} -rst f'.format(file, args.t, args.p)
                 # put_cmd = shlex.split(put_str)
+
                 file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
                 if file == 'cwd':
                     put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
