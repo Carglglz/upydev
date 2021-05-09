@@ -1,4 +1,4 @@
-UID = "import gc;from machine import unique_id;\
+UID = "from machine import unique_id;\
 from ubinascii import hexlify;hexlify(unique_id());gc.collect()"
 
 UPYSH = "from upysh import *;gc.collect()"

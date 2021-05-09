@@ -5,6 +5,7 @@ from upydev.keygen import keygen_action
 from upydevice import check_device_type
 import signal
 from upydevice import Device
+import time
 
 SHELL_REPLS_HELP = """
 > SHELL-REPLS: Usage '$ upydev ACTION [opts]'
@@ -251,6 +252,7 @@ def shell_repl_action(args, **kargs):
             wss_repl_cmd = 'import wss_repl;wss_repl.stop();wss_repl.start(ssl=True);wss_repl.set_ssl(True)\r'
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
             bytes_sent = dev.write(wss_repl_cmd)
+            time.sleep(2)
             dev.disconnect()
             print('\rWebSecureREPL enabled!')
 
@@ -259,6 +261,7 @@ def shell_repl_action(args, **kargs):
             wrepl_cmd = 'import wss_repl;wss_repl.stop();wss_repl.start(ssl=False);wss_repl.set_ssl(False)\r'
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
             bytes_sent = dev.write(wrepl_cmd)
+            time.sleep(2)
             dev.disconnect()
             print('\rWebREPL enabled!, WebSecureREPL disabled!')
         sys.exit()

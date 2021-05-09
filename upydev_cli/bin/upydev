@@ -596,6 +596,11 @@ def handle_action(args, exit=True):
         if key_dict:
             from upydev.fileio import fileio_action
             args.m = 'put'
+            if len(args.to) == 1 and isinstance(args.to[0], str):
+                addr, baudr = address_entry_point(args.to[0])
+                if check_device_type(addr):
+                    args.t = addr
+                    args.p = baudr
             if key_dict['mode'] == 'SSL':
                 key, cert = key_dict['Files']
                 args.fre = [key, cert]
