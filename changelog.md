@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `-to [devname]` flag now can be used with `-tfkey` to transfer keys by USB/Serial
 - `-d ` flag for `dsync` to sync from device to host.
 - `backup` command == `dsync . -d` to make a backup of the device filesystem
+- `rsync` command == `dsync [DIR] -rf -wdl` to recursively sync (deleting files too)
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch

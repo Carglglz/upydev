@@ -124,7 +124,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
-                 'backup']
+                 'backup', 'rsync']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -324,7 +324,7 @@ argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
-                     'pytest', 'make_group', 'mg_group', 'du', 'tree']
+                     'pytest', 'make_group', 'mg_group', 'du', 'tree', 'rsync']
 multiple_args_fw = ['fwr', 'flash', 'mpyx']
 
 if len(args.m) == 1:

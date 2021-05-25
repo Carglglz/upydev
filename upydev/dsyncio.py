@@ -12,6 +12,21 @@ from binascii import hexlify
 _CONFG_FILES = ['.upydev_wdlog.json', 'upydev_.config']
 
 
+# from @Roberthh #https://forum.micropython.org/viewtopic.php?f=2&t=7512
+def rmrf(d):  # Remove file or tree
+    try:
+        if os.path.isdir(d):  # Dir
+            for f in os.listdir(d):
+                if f not in ('.', '..'):
+                    rmrf(os.path.join(d, f))  # File or Dir
+            os.rmdir(d)
+        else:  # File
+            os.remove(d)
+    except Exception as e:
+        print(e)
+        print("rm of '%s' failed" % d)
+
+
 # WATCHDOG LOG FILE
 
 def get_hash(file):
@@ -543,6 +558,7 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
         os.mkdir(current_dir)
         print('\n')
 
+    _files_to_delete_in_host = []
     if file_list_abs_path:
         print('DOWNLOADING FILES TO {}'.format(current_dir))
         os.chdir(current_dir)
@@ -557,6 +573,10 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
             else:
                 args.s = '/'
             print('\n')
+            if args.rf:
+                # print(args.fre)
+                _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir() if os.path.isfile(_file) and os.path.join(current_dir, _file) not in file_list_abs_path]
+                # print(_files_to_delete_in_host)
             devIO.get_files(args, dev_name)
             args.fre = None
             time.sleep(0.2)
@@ -569,16 +589,30 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
             file_to_get_from_dev = file_to_get.replace('./', '')
             devIO.get(file_to_get, file_to_get_from_dev, ppath=True, dev_name=dev_name)
             time.sleep(0.2)
+            if args.rf:
+                # print(file_to_get, file_to_get_from_dev)
+                _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir() if os.path.isfile(_file) and os.path.join(current_dir, _file) != file_to_get]
+                # print(_files_to_delete_in_host)
         if current_dir != '.':
             for level in current_dir.split('/'):
                 if level != '.':
                     os.chdir('..')
     else:
         print('NO FILES TO DOWNLOAD')
+        # if args.rf check files to delete
+        if args.rf:
+            _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir(current_dir) if os.path.isfile(os.path.join(current_dir, _file))]
+            # print(_files_to_delete_in_host)
     # Now create subdirs:
     print('\n')
+    _dirs_to_delete_in_host = []
     if dir_list_abs_path:
         print('MAKING DIRS NOW...')
+        if args.rf:
+            # print(current_dir, os.listdir(current_dir))
+            if current_dir in os.listdir():
+                _dirs_to_delete_in_host += [os.path.join(current_dir, _dir) for _dir in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, _dir)) and os.path.join(current_dir, _dir) not in dir_list_abs_path]
+            # print(_dirs_to_delete_in_host)
         for dir_ in dir_list_abs_path:
             print('\n')
             current_dir = dir_
@@ -586,7 +620,7 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
             try:
                 dir_to_sync = directory
                 dir_to_find = current_dir.split('/')[-1]
-                print(os.getcwd())
+                # print(os.getcwd())
                 dev_directory = dir_to_find in os.listdir(dir_to_sync)
             except Exception as e:
                 print(e, dir_to_sync)
@@ -597,47 +631,41 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
                 print('DIRECTORY {} ALREADY EXISTS'.format(dir_to_find))
     else:
         print('NO DIRS TO MAKE')
+        # if args.rf check dirs to delete
+        # print(current_dir, os.listdir(current_dir))
+        if args.rf:
+            _dirs_to_delete_in_host += [os.path.join(current_dir, _dir) for _dir in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, _dir))]
+        # print(_dirs_to_delete_in_host)
 
-    # if args.rf:
-    #     # remove dirs and files? -rf?
-    #     # Deleted Files
-    #     if args.wdl:
-    #         if deleted_files:
-    #             print('FILES TO REMOVE:')
-    #             for dfile in deleted_files:
-    #                 try:
-    #                     devIO.dev.cmd("os.remove('{}/{}')".format(directory, dfile), silent=True, rtn_resp=True)
-    #                     if directory != '.':
-    #                         print('- {}/{}'.format(directory, dfile))
-    #                     else:
-    #                         print('- {}'.format(dfile))
-    #                 except Exception as e:
-    #                     print(e)
-    #             print('\nFILES DELETED')
-    #
-    #     else:
-    #         pass
-    #
-    #     # Deleted Directories
-    #
-    #     if directory != '.':
-    #         dirs_in_dev = devIO.dev.cmd("['{0}/'+dir for dir in os.listdir('{0}') if os.stat('{0}/'+dir)[0] & 0x4000]".format(directory),
-    #                                     silent=True, rtn_resp=True)
-    #
-    #         deleted_dirs = [dir for dir in dirs_in_dev if dir not in dir_list_abs_path]
-    #
-    #         if deleted_dirs:
-    #             print('\nDIRS TO REMOVE:')
-    #             for ddir in deleted_dirs:
-    #                 print('- {} '.format(ddir))
-    #                 is_dir_empty = devIO.dev.cmd("from upysh2 import rmrf;not len(os.listdir('{}')) > 0".format(ddir),
-    #                                              silent=True, rtn_resp=True)
-    #                 if is_dir_empty:
-    #                     devIO.dev.cmd("os.rmdir('{}')".format(ddir), silent=True,
-    #                                   rtn_resp=True)
-    #                 else:
-    #                     devIO.dev.cmd("rmrf('{}')".format(ddir), silent=True,
-    #                                   rtn_resp=True)
+    if args.rf:
+        # Delete Files
+
+        if _files_to_delete_in_host:
+            print('FILES TO REMOVE:')
+            for dfile in _files_to_delete_in_host:
+                try:
+                    os.remove(dfile)
+                    if directory != '.':
+                        print('- {}'.format(dfile))
+                    else:
+                        print('- {}'.format(dfile))
+                except Exception as e:
+                    print(e)
+            print('\nFILES DELETED')
+
+        # Deleted Directories
+
+        if _dirs_to_delete_in_host:
+
+            print('\nDIRS TO REMOVE:')
+            for ddir in _dirs_to_delete_in_host:
+                print('- {} '.format(ddir))
+                is_dir_empty = not len(os.listdir(ddir)) > 0
+                if is_dir_empty:
+                    os.rmdir(ddir)
+                else:
+                    rmrf(ddir)
+            print('\nDIRS DELETED')
 
 
     root = directory
