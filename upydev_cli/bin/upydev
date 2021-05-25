@@ -123,7 +123,8 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
-                 'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree']
+                 'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
+                 'backup']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -174,9 +175,12 @@ parser.add_argument(
     "-c", help='command to send to upy device, do not wait for a response',
     required=False, type=str).completer = ChoicesCompleter(keywords_mode)
 parser.add_argument(
-    "-r", help='command to send to upy device, waits for a short response (one line)', required=False)
-parser.add_argument(
-    "-rl", help='command to send to upy device, waits for a longer response (multiple lines), so it can catch tracebacks messages', required=False)
+    "-d", help='dsync from device to host flag', required=False, default=False,
+    action='store_true')
+# parser.add_argument(
+#     "-r", help='command to send to upy device, waits for a short response (one line)', required=False)
+# parser.add_argument(
+#     "-rl", help='command to send to upy device, waits for a longer response (multiple lines), so it can catch tracebacks messages', required=False)
 parser.add_argument(
     "-g", help='to store/read the configuration file globally, if there is no config file in working directory, \n it uses the global file',
     required=False, default=False, action='store_true')
@@ -409,7 +413,8 @@ DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'diagnose', 'errl
 
 # FILEIO ACTIONS
 
-FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'fget', 'dsync']
+FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'fget', 'dsync', 'rsync',
+                  'backup']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
@@ -540,6 +545,7 @@ def handle_action(args, exit=True):
     if args.m not in keywords_mode:
         cmd = args.m
         dev = Device(args.t, args.p, init=True)
+        # TODO: args.c to not follow/wait for response
         dev.wr_cmd(cmd, follow=True)
         dev.disconnect()
         if exit:

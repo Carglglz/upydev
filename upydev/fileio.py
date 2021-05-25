@@ -3,7 +3,7 @@ from upydev.wsio import wstool, WebSocketFileIO
 from upydev.serialio import serialtool, SerialFileIO
 from upydev.bleio import bletool, BleFileIO
 from upydev.rsyncio import synctool
-from upydev.dsyncio import d_sync_recursive, check_wdlog
+from upydev.dsyncio import d_sync_recursive, check_wdlog, dev2host_sync_recursive
 from upydev.helpinfo import see_help
 from upydevice import check_device_type, Device
 import upydev
@@ -115,7 +115,10 @@ def fileio_action(args, **kargs):
             synctool(args, dev_name)
         else:
             print('Use "get" instead')
-    elif args.m == 'dsync':
+    elif args.m == 'dsync' or args.m == 'backup':
+        if args.m == 'backup':
+            args.d = True
+            args.f = '.'
         dir_lib = args.f
         dev_lib = args.dir
         dev = Device(args.t, args.p, init=True, ssl=args.wss,
@@ -123,29 +126,54 @@ def fileio_action(args, **kargs):
         dev.wr_cmd('import os')
         if not dev_lib:
             dev_lib = "./"
+        dev_to_host = args.d
         if dt == 'WebSocketDevice':
             wsdevIO = WebSocketFileIO(dev, args, devname=dev_name)
-            print('Synchronizing @ {} '.format(dev_name), end='\n\n')
-            d_sync_recursive(dir_lib, devIO=wsdevIO,
-                             show_tree=True, rootdir=dev_lib,
-                             root_sync_folder=dir_lib,
-                             args=args,
-                             dev_name=dev_name)
+            print('Syncing @ {} '.format(dev_name), end='\n\n')
+            if not dev_to_host:
+                d_sync_recursive(dir_lib, devIO=wsdevIO,
+                                 show_tree=True, rootdir=dev_lib,
+                                 root_sync_folder=dir_lib,
+                                 args=args,
+                                 dev_name=dev_name)
+            else:
+                dev2host_sync_recursive(dir_lib, devIO=wsdevIO,
+                                 show_tree=True, rootdir=dev_lib,
+                                 root_sync_folder=dir_lib,
+                                 args=args,
+                                 dev_name=dev_name)
         elif dt == 'SerialDevice':
             sdevIO = SerialFileIO(dev)
-            print('Synchronizing @ {} '.format(dev_name), end='\n\n')
-            d_sync_recursive(dir_lib, devIO=sdevIO,
-                             show_tree=True,
-                             rootdir=dev_lib,
-                             root_sync_folder=dir_lib,
-                             args=args,
-                             dev_name=dev_name)
+            print('Syncing @ {} '.format(dev_name), end='\n\n')
+            if not dev_to_host:
+                d_sync_recursive(dir_lib, devIO=sdevIO,
+                                 show_tree=True,
+                                 rootdir=dev_lib,
+                                 root_sync_folder=dir_lib,
+                                 args=args,
+                                 dev_name=dev_name)
+            else:
+                dev2host_sync_recursive(dir_lib, devIO=sdevIO,
+                                 show_tree=True,
+                                 rootdir=dev_lib,
+                                 root_sync_folder=dir_lib,
+                                 args=args,
+                                 dev_name=dev_name)
+
         elif dt == 'BleDevice':
             bledevIO = BleFileIO(dev)
-            print('Synchronizing @ {} '.format(dev_name), end='\n\n')
-            d_sync_recursive(dir_lib, devIO=bledevIO,
-                             show_tree=True,
-                             rootdir=dev_lib,
-                             root_sync_folder=dir_lib,
-                             args=args,
-                             dev_name=dev_name)
+            print('Syncing @ {} '.format(dev_name), end='\n\n')
+            if not dev_to_host:
+                d_sync_recursive(dir_lib, devIO=bledevIO,
+                                 show_tree=True,
+                                 rootdir=dev_lib,
+                                 root_sync_folder=dir_lib,
+                                 args=args,
+                                 dev_name=dev_name)
+            else:
+                dev2host_sync_recursive(dir_lib, devIO=bledevIO,
+                                 show_tree=True,
+                                 rootdir=dev_lib,
+                                 root_sync_folder=dir_lib,
+                                 args=args,
+                                 dev_name=dev_name)

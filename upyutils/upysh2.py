@@ -10,7 +10,7 @@ class LTREE:
         return ""
 
     def __call__(self, path=".", level=0, is_last=False, is_root=True,
-                 carrier="│   ", hidden=False):
+                 carrier="│", hidden=False):
         if is_root:
             print('\u001b[34;1m{}\033[0m'.format(path))
         os.chdir(path)
@@ -31,22 +31,22 @@ class LTREE:
         for f in l:
             st = os.stat("%s/%s" % (path, f))
             if st[0] & 0x4000:  # stat.S_IFDIR
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  \u001b[34;1m%s\033[0m" % f)
+                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + " \u001b[34;1m%s\033[0m" % f)
                 if f == last_file and level == 0:
-                    carrier = "    "
+                    carrier = "   "
                 os.chdir(f)
                 level += 1
                 lf = last_file == f
                 if level > 1:
                     if lf:
-                        carrier += "     "
+                        carrier += "    "
                     else:
-                        carrier += "    │"
+                        carrier += "   │"
                 ns_f, ns_d = self.__call__(level=level, is_last=lf,
                                            is_root=False, carrier=carrier,
                                            hidden=hidden)
                 if level > 1:
-                    carrier = carrier[:-5]
+                    carrier = carrier[:-4]
                 os.chdir('..')
                 level += (-1)
                 nf += ns_f
@@ -74,9 +74,9 @@ class LTREE:
                 return "└──"
         else:
             if f != lastfile:
-                return carrier + "    ├────"
+                return carrier + "   ├──"
             else:
-                return carrier + "    └────"
+                return carrier + "   └──"
 
 
 class DISK_USAGE:
@@ -142,7 +142,6 @@ class DISK_USAGE:
 
     def get_dir_size_recursive(self, dir):
         return sum([os.stat(dir+'/'+f)[6] if not os.stat(dir+'/'+f)[0] & 0x4000 else self.get_dir_size_recursive(dir+'/'+f) for f in os.listdir(dir)])
-
 
 
 # from @Roberthh #https://forum.micropython.org/viewtopic.php?f=2&t=7512

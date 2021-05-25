@@ -218,7 +218,7 @@ def synctool(args, dev_name):
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} do NOT exists'.format(dev_name, dir))
+                            print('Directory {}:{} does NOT exist'.format(dev_name, dir))
                             result = False
                     else:
                         if file_exists is True:
@@ -275,7 +275,7 @@ def synctool(args, dev_name):
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} do NOT exists'.format(dev_name, dir))
+                            print('Directory {}:{} does NOT exist'.format(dev_name, dir))
                             result = False
                     else:
                         files_to_get = []

@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - upydev pypi version checking on `h`/ `help` command.
 - `-gf` flag to indicate a group file operation (files are upload/download to/from a directory with the name of the device in the current working directory). It uses local group configuration file if available (unless -gg flag is indicated), otherwise it falls back to global group configuration
 - `-rf` flag for `dsync` mode, to remove files or directories deleted in local dir.
+- `-to [devname]` flag now can be used with `-tfkey` to transfer keys by USB/Serial
+- `-d ` flag for `dsync` to sync from device to host.
+- `backup` command == `dsync . -d` to make a backup of the device filesystem
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch

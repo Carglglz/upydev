@@ -490,6 +490,15 @@ class WebSocketFileIO:
         args.m = 'put'
         wsfileio(args, '', '', dev_name, self.dev)
 
+    def get(self, src, dst_file, ppath=False, dev_name=None):
+        self.args.m = 'get'
+        self.args.s = ''
+        wsfileio(self.args, src, dst_file, self.dev_name, self.dev)
+
+    def get_files(self, args, dev_name):
+        args.m = 'get'
+        wsfileio(args, '', '', dev_name, self.dev)
+
 
 def wstool(args, dev_name):
     if not args.f and not args.fre:
@@ -527,7 +536,7 @@ def wstool(args, dev_name):
                                 raise DeviceException(dev.response)
                             except Exception as e:
                                 print(e)
-                                print('Directory {}:{} do NOT exists'.format(dev_name, source))
+                                print('Directory {}:{} does NOT exist'.format(dev_name, source))
                                 result = False
                         else:
                             if is_dir:
@@ -601,7 +610,7 @@ def wstool(args, dev_name):
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} do NOT exists'.format(dev_name, source))
+                            print('Directory {}:{} does NOT exist'.format(dev_name, source))
                             result = False
                     else:
                         if is_dir:
@@ -648,7 +657,7 @@ def wstool(args, dev_name):
                         raise DeviceException(dev.response)
                     except Exception as e:
                         print(e)
-                        print('Directory {}:{} do NOT exists'.format(dev_name, dir))
+                        print('Directory {}:{} does NOT exist'.format(dev_name, dir))
                         result = False
                 else:
                     if file_exists is True:
@@ -697,7 +706,7 @@ def wstool(args, dev_name):
                         raise DeviceException(dev.response)
                     except Exception as e:
                         print(e)
-                        print('Directory {}:{} do NOT exists'.format(dev_name, dir))
+                        print('Directory {}:{} does NOT exist'.format(dev_name, dir))
                         result = False
                 else:
                     files_to_get = []

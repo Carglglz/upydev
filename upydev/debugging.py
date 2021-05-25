@@ -1215,6 +1215,8 @@ def probe_device(addr, passwd):
     if dt == 'SerialDevice':
         if addr.replace('tty', 'cu') in serial_scan():
             return True
+        elif addr in serial_scan():
+            return True
         else:
             return False
     elif dt == 'WebSocketDevice':

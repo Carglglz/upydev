@@ -46,7 +46,7 @@ class SerialFileIO:
                                                                         str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
         sys.stdout.flush()
 
-    def get(self, src, chunk_size=256):  # from Pyboard.py
+    def get(self, src, dst_file, chunk_size=256, ppath=False, dev_name=None):  # from Pyboard.py
         self.get_pb()
         cnt = 0
         t_start = time.time()
@@ -54,9 +54,12 @@ class SerialFileIO:
         sz = self.dev.cmd("import uos;uos.stat('{}')[6]".format(src), silent=True, rtn_resp=True)
         # self.dev.dev.get_output()
         # sz = self.dev.dev.output
+        dst_file = src.split('/')[-1]
+        if ppath:
+            print('{}:{} -> {}'.format(dev_name, src, dst_file), end='\n\n')
         print("{}  [{:.2f} KB]".format(src, sz / 1024))
         self.dev.flush_conn()
-        dst_file = src.split('/')[-1]
+        # dst_file = src.split('/')[-1]
         # self.start_SOC()
         self.dev.cmd("f=open('%s','rb');r=f.read" % src, silent=True)
         with open(dst_file, 'wb') as f:
@@ -95,7 +98,7 @@ class SerialFileIO:
                 if not src_file.startswith('/'):
                     src_file = '/{}'.format(src_file)
                 print("{}:{} -> {}\n".format(dev_name, src_file, dst_file))
-                self.get(file)
+                self.get(file, dst_file)
             except KeyboardInterrupt as e:
                 print('KeyboardInterrupt: get Operation Cancelled')
                 self.dev.cmd("f.close()", silent=True)
@@ -234,7 +237,7 @@ def serialtool(args, dev_name):
                                     raise DeviceException(dev.response)
                                 except Exception as e:
                                     print(e)
-                                    print('Directory {}:{} do NOT exists'.format(dev_name, source))
+                                    print('Directory {}:{} does NOT exist'.format(dev_name, source))
                                     result = False
                             else:
                                 if is_dir:
@@ -309,7 +312,7 @@ def serialtool(args, dev_name):
                                 raise DeviceException(dev.response)
                             except Exception as e:
                                 print(e)
-                                print('Directory {}:{} do NOT exists'.format(dev_name, source))
+                                print('Directory {}:{} does NOT exist'.format(dev_name, source))
                                 result = False
                         else:
                             if is_dir:
@@ -352,7 +355,7 @@ def serialtool(args, dev_name):
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} do NOT exists'.format(dev_name, dir))
+                            print('Directory {}:{} does NOT exist'.format(dev_name, dir))
                             result = False
                     else:
                         if file_exists is True:
@@ -375,7 +378,7 @@ def serialtool(args, dev_name):
                         if not src_file.startswith('/'):
                             src_file = '/'.join([dir, dst_file])
                         print("{}:{} -> ./{}\n".format(dev_name, src_file, dst_file))
-                        result = serialio.get(file_to_get)
+                        result = serialio.get(file_to_get, dst_file)
                         print('Done!')
                     else:
                         if file_exists is False:
@@ -406,7 +409,7 @@ def serialtool(args, dev_name):
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} do NOT exists'.format(dev_name, dir))
+                            print('Directory {}:{} does NOT exist'.format(dev_name, dir))
                             result = False
                     else:
                         files_to_get = []
