@@ -544,7 +544,7 @@ def handle_action(args, exit=True):
 
     if args.m not in keywords_mode:
         cmd = args.m
-        dev = Device(args.t, args.p, init=True)
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         # TODO: args.c to not follow/wait for response
         dev.wr_cmd(cmd, follow=True)
         dev.disconnect()
