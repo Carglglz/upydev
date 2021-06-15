@@ -18,6 +18,7 @@ DEVICE_MANAGEMENT_HELP = """
             (-t target -p password -g global directory -@ device name -gg global group)
 
     - check: to check current device information or with -@ entry point if stored in the global group.
+             (Use -i option to see additional info if the device is reachable/connected)
 
     - set: to set current device configuration from a device saved in the global group with -@ entry point
 

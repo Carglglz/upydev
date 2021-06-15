@@ -13,17 +13,26 @@ import sys
 FILEIO_HELP = """
 > FILEIO: Usage '$ upydev ACTION [opts]'
     ACTIONS:
-        - put : to upload a file to upy device (see -f, -s, -fre, -dir, -rst)
+        - put: to upload a file to upy device (see -f, -s, -fre, -dir, -rst, -wdl, -gf)
                 e.g. $ upydev put myfile.py, $ upydev put cwd, $ upydev put test_*.py
 
-        - get : to download a file from upy device (see -f, -s, -fre, -dir)
+        - get: to download a file from upy device (see -f, -s, -fre, -dir, -gf)
 
-        - fget : for a faster transfer of large files
-            (this needs sync_tool.py in upy device) (see -f, -s and -lh)
+        - fget: for a faster transfer of large files
+            (this needs sync_tool.py in upy device) (see -f, -s, -lh, -wdl, -gf)
 
-        - dsync: to recursively sync a folder in upydevice filesystem use -dir
-                    to indicate the folder (must be in cwd), use -tree to see dir
-                    structure, to sync to an Sd card mounted as 'sd' use -s sd
+        - dsync: to recursively sync a folder in upydevice filesystem
+                 where second arg is the directory (can be current working directory too '.',
+                 Otherwise use -dir to indicate the folder (must be in cwd).
+                 To sync to an Sd card mounted as 'sd' use -s sd.
+                 Use -rf to remove files or directories deleted in local dir.
+                 Use -d flag to sync from device to host.
+                 Use -wdl flag to sync only modified files.
+
+        - rsync: same as "dsync [DIR] -rf -wdl". To recursively sync only modified files.
+                 (deleting files too)
+
+        - backup: same as "dsync . -d" to make a backup of the device filesystem.
 
         - install : install libs to '/lib' path with upip; indicate lib with -f option
 

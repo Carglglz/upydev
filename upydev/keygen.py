@@ -50,6 +50,7 @@ KEYGEN_HELP = """
                        (use only if connected directly to the AP of the device or a
                        "secure" wifi e.g. local/home). If not connected to a "secure" wifi
                        upload the key (it is stored in upydev.__path__) by USB/Serial connection.
+                       Use -to [serial devname] flag with -tfkey to transfer keys by USB/Serial
 """
 
 

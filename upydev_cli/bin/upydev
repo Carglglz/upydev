@@ -88,7 +88,7 @@ Requirements: Needs REPL to be accesible.
         see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt
 
         * Bluetooth Low Energy: Needs BleREPL enabled in the device.
-        see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt
+        see https://upydev.readthedocs.io/en/latest/gettingstarted.html#id1
 
     > Serial Devices:
         * USB: Connected through USB data cable. """

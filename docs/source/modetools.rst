@@ -67,7 +67,7 @@ Device Management
 
 
       - check:
-          To check current device information or with ``-@`` entry point if stored in the global group. Use ``-i`` flag if device is online to get more info.
+          To check current device information or with ``-@`` entry point if stored in the global group. Use ``-i`` flag if device is online/connected to get more info.
 
       - set:
           To set current device configuration from a device saved in the global group with ``-@`` entry point
@@ -95,19 +95,29 @@ File IO operations
 
 
       - put:
-          To upload a file to upy device (see ``-f``, ``-s``, ``-fre``, ``-dir``, ``-rst``)
+          To upload a file to upy device (see ``-f``, ``-s``, ``-fre``, ``-dir``, ``-rst``, ``-wdl``)
           e.g. ``$ upydev put myfile.py``, ``$ upydev put cwd``, ``$ upydev put \test_\*.py``
 
       - get:
-          To download a file from upy device (see ``-f``, ``-s``, ``-fre``, ``-dir``)
+          To download a file from upy device (see ``-f``, ``-s``, ``-fre``, ``-dir``, ``-wdl``)
 
       - fget:
-          For a faster transfer of large files (this needs sync_tool.py in upy device) (see ``-f``, ``-s`` and ``-lh``)
+          For a faster transfer of large files (this needs sync_tool.py in upy device) (see ``-f``, ``-s``, ``-lh``, ``-wdl``)
 
       - dsync:
-          To recursively sync a folder in upydevice filesystem use -dir
-          to indicate the folder (must be in cwd), use ``-tree`` to see dir
-          structure, to sync to an Sd card mounted as ``sd`` use ``-s sd``
+          To recursively sync a folder in upydevice filesystem
+          where second arg is the directory (can be current working directory too ``.``),
+          Otherwise use ``-dir`` to indicate the folder (must be in cwd).
+          To sync to an Sd card mounted as ``sd`` use ``-s sd``.
+          Use ``-rf`` to remove files or directories deleted in local dir.
+          Use ``-d`` flag to sync from device to host.
+          Use ``-wdl`` flag to sync only modified files.
+
+      - rsync:
+          Same as ``dsync [DIR] -rf -wdl``. To recursively sync only modified files. (deleting files too)
+
+      - backup:
+          Same as ``dsync . -d`` to make a backup of the device filesystem.
 
       - install:
           Install libs to '/lib' path with upip; indicate lib with ``-f`` option
@@ -164,7 +174,7 @@ Keygen
         the same password from the RSA key previously uploaded. This won't leave
         any clues in the TCP Websocekts packages of the current WebREPL password.
         (Only the token will be visible; check this using wireshark)
-        (This needs upysecrets.py)
+        (This needs upysecrets.py).
         Alternative alias, ``$ upydev kg wr``, ``$ upydev keygen wr``
 
     - sslgen_key:
@@ -174,6 +184,7 @@ Keygen
         Use ``-tfkey`` to upload this key to the device
         (use only if connected directly by USB, the AP of the device or a
         "secure" wifi e.g. local/home).
+        Use ``-to [serial devname]`` flag with ``-tfkey`` to transfer keys by USB/Serial.
         Alternative alias, ``$ upydev kg ssl``, ``$ upydev keygen ssl``
 
 

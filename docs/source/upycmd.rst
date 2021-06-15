@@ -15,6 +15,7 @@ General Commands
         - **meminfo**: to get device RAM memory info
         - **du**: to get the size of file in root dir (default) or sd with ``-s sd`` option. If no file name indicated with ``-f`` option, prints all files
         - **df**: to get memory info of the file system, (total capacity, free, used) (default root dir, ``-s`` option to change)
+        - **tree**: to get directory structure in tree format (requires ``upysh2.py``)
         - **netinfo**: to get device network interface configuration info if station is enabled and connected to an AP
         - **netinfot**: same as ``netinfo`` but in table format
         - **netscan**: to do a WiFi scan and get available AP nearby.
