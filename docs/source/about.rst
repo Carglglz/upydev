@@ -46,45 +46,32 @@ Tested on
 - OS:
 
   - MacOS X (Mojave 10.14.5-6)
-
-  - Raspbian GNU/Linux 10 (Buster) *(through ssh session)*
+  - Raspbian GNU/Linux 10 (Buster)
+  - Ubuntu 20.04.2 LTS (GNU/Linux 5.8.0-55-generic x86_64)
 
 
 
 BOARDS
 ------
 
-  - Esp32 Huzzah feather
+  - Esp32 (Huzzah feather, Geekcreit)
 
   - Esp8266 Huzzah feather
 
-  - Pyboard Lite (SERIAL SHELL-REPL only)
+  - Pyboard Lite v1.0
 
-  - Pyboard V1.1 (SERIAL SHELL-REPL only)
-
-
-
-
-
-Commands Documentation
-----------------------
-
-For an extensive explanation and commands demo see Examples
-
-**Addiontal Scripts for some commands:**
-
-
-The commands that need additional scripts in the upy device are under the [uPyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) folder.
-
-For more info see upyutils
-
+  - Pyboard v1.1
 
 
 
 DEVELOPER TOOLS
 ----------------
-*Under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) folder*
+*Under* `Upyutils <https://github.com/Carglglz/upydev/tree/master/upyutils>`_
+*folder*
 
 
-* [**upylog**](https://github.com/Carglglz/upydev/tree/master/DOCS/upylog.md): MicroPython logging module with time format (predefined) and log to file support.
-* [**upynotify**](https://github.com/Carglglz/upydev/tree/master/DOCS/upynotify.md) : module with NOTIFYER class to notify events with beeps and blinks.
+:ref:`upylog:Upylog`
+MicroPython logging module with time format (predefined) and log to file support.
+
+:ref:`upynotify:Upynotify`
+MicroPython module with NOTIFYER class to notify events with beeps (needs buzzer) and blinks.

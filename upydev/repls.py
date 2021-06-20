@@ -119,10 +119,20 @@ def repl_action(args, **kargs):
     # SERIAL REPL:
 
     elif args.m == 'srepl':
-        if dt == 'SerialDevice':
-            print('Initiating Serial REPL terminal for {} ...'.format(dev_name))
+        if dt == 'SerialDevice' or args.port:
+
+            if args.port:
+                print('Initiating Serial REPL terminal for {} ...'.format(args.port))
+                if isinstance(args.b, int):
+                    args.p = args.b
+                else:
+                    args.p = 115200
+
+                dev = Device(args.port, args.p, init=True)
+            else:
+                print('Initiating Serial REPL terminal for {} ...'.format(dev_name))
+                dev = Device(args.t, args.p, init=True)
             print('Do C-a, C-x to exit')
-            dev = Device(args.t, args.p, init=True)
             srepl(args, dev_name)
         else:
             print('{} is NOT a SerialDevice'.format(dev_name))

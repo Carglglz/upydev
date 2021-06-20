@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'upydev'
-copyright = '2020, Carlos G. Gonzalez'
+copyright = '2020-2021, Carlos G. Gonzalez'
 author = 'Carlos G. Gonzalez'
 
 # The full version, including alpha/beta/rc tags

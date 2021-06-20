@@ -91,7 +91,7 @@ Device Management
 File IO operations
 ------------------
 
-    ACTIONS: ``put``, ``get``, ``fget``, ``dsync``, ``install``, ``update_upyutils``
+    ACTIONS: ``put``, ``get``, ``fget``, ``dsync``, ``rsync``, ``backup``, ``install``, ``update_upyutils``
 
 
       - put:

@@ -37,7 +37,7 @@ Mode/Tools
 	> :ref:`modetools:File IO operations`
 			To upload/download files to/from a device.
 
-			ACTIONS: ``put``, ``get``, ``sync``, ``d_sync``, ``install``, ``update_upyutils``
+			ACTIONS: ``put``, ``get``, ``fget``, ``dsync``, ``rsync``, ``backup``, ``install``, ``update_upyutils``
 
 	> :ref:`modetools:Firmware`
 			To list, get or flash the firmware of a device.
