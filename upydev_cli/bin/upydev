@@ -19,9 +19,12 @@ import signal
 from packaging import version
 import argcomplete
 import copy
+import time
+import traceback
+import multiprocessing
 from argcomplete.completers import ChoicesCompleter
 from ipaddress import ip_address
-from upydevice import check_device_type, Device
+from upydevice import check_device_type, Device, DEVGROUP
 from upydev.helpinfo import HELP_INFO_ARG, see_help
 
 UPYDEV_PATH = upydev.__path__[0]
@@ -128,7 +131,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
-                'gc', 'wu', 'sd', 'pro']
+                'gc', 'wu', 'sd', 'pro', 'docs', 'udocs', 'mdocs']
 
 keywords_mode += help_actions
 
@@ -151,6 +154,8 @@ parser.add_argument(
 parser.add_argument("-@", help=help_dv,
                     required=False).completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-gg", help='global group flag', required=False,
+                    action='store_true')
+parser.add_argument("-ggp", help='global group parallel flag', required=False,
                     action='store_true')
 parser.add_argument("-gf", help='group flag for project files', required=False,
                     action='store_true')
@@ -324,7 +329,8 @@ argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
-                     'pytest', 'make_group', 'mg_group', 'du', 'tree', 'rsync']
+                     'pytest', 'make_group', 'mg_group', 'du', 'tree', 'rsync',
+                     'docs', 'udocs', 'mdocs']
 multiple_args_fw = ['fwr', 'flash', 'mpyx']
 
 if len(args.m) == 1:
@@ -539,9 +545,11 @@ def pytest(devname):
 
 #############################################
 
-def handle_action(args, exit=True):
+def handle_action(args, exit=True, device_name=None):
     # UPYDEV RAW COMMAND MODE: (WHEN ARGUMENT Mode is not in keyword list)
-
+    global _dev_name
+    if device_name:
+        _dev_name = device_name
     if args.m not in keywords_mode:
         cmd = args.m
         dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
@@ -670,144 +678,6 @@ def handle_action(args, exit=True):
 
 KW_NOT_GROUP = ['probe', 'scan']
 
-# keyword live output commands:
-kw_loc = ['ping', 'run', 'get', 'put', 'timeit', 'install',
-          'see', 'fget', 'wrepl', 'srepl', 'find', 'diagnose', 'dsync',
-          'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy'
-          'ssl', 'shr', 'wssl', 'wssrepl', 'jupyterc', 'pytest',
-          'pytest-setup', 'ble', 'set']  # implemented till sync in GP
-# diagnose in G
-
-# UPYDEVICE CLASS
-
-
-# class UPYDEVICE:
-#     def __init__(self, devname, ip, passwd, command, port=8005):
-#         self.name = devname
-#         self.ip = ip
-#         self.password = passwd
-#         self.command = command
-#         self.port = port
-#         self.dev_process = multiprocessing.Process(
-#             target=self.run_command_callback)
-#         self.dev_process_raw = multiprocessing.Process(
-#             target=self.run_command_raw_callback)
-#         self.dev_ping = multiprocessing.Process(target=self.ping_callback)
-#         self.dev_run_script = multiprocessing.Process(
-#             target=run_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
-#         self.dev_timeit_script = multiprocessing.Process(
-#             target=timeit_script, args=(self.ip, self.password, '{}: '.format(self.name), ))
-#         self.dev_put = multiprocessing.Process(
-#             target=put_f, args=(self.ip, self.password, args.rst))
-#         self.dev_put_multiple = multiprocessing.Process(
-#             target=put_multiple_f, args=(self.ip, self.password))
-#         self.dev_install = multiprocessing.Process(target=install_f, args=(
-#             self.ip, self.password, '{}: '.format(self.name), ))
-#         self.dev_get = multiprocessing.Process(target=get_f, args=(
-#             self.ip, self.password, '/{}_{}'.format(self.name, args.f)))
-#         self.dev_get_multiple = multiprocessing.Process(
-#             target=get_multiple_f, args=(self.ip, self.password, 'device_id', self.name))
-#         self.dev_sync = multiprocessing.Process(target=sync, args=(
-#             self.ip, self.password, '{}_{}'.format(self.name, args.f), self.port))
-#         self.dev_sync_multiple = multiprocessing.Process(target=sync_multiple_f, args=(
-#             self.ip, self.password, 'device_id', self.name, self.port))
-#
-#     def run_command_callback(self):
-#         group_cmd_str = 'upydev {} -t {} -p {}'.format(
-#             self.command, self.ip, self.password)
-#         # print(group_cmd_str)
-#         group_cmd = shlex.split(group_cmd_str)
-#         try:
-#             proc = subprocess.Popen(
-#                 group_cmd, stdout=subprocess.PIPE,
-#                 stderr=subprocess.STDOUT)
-#             while proc.poll() is None:
-#                 print('{}:{}'.format(
-#                     self.name, proc.stdout.readline()[:-1].decode()))
-#         except KeyboardInterrupt:
-#             time.sleep(1)
-#             result = proc.stdout.readlines()
-#             for message in result:
-#                 print('{}:{}'.format(self.name, message[:-1].decode()))
-#
-#     def run_command_raw_callback(self):
-#         group_cmd_str = 'web_repl_cmd_r -c {} -t {} -p {} -wt 0.8'.format(
-#             self.command, self.ip, self.password)
-#         # print(group_cmd_str)
-#         group_cmd = shlex.split(group_cmd_str)
-#         try:
-#             proc = subprocess.Popen(
-#                 group_cmd, stdout=subprocess.PIPE,
-#                 stderr=subprocess.STDOUT)
-#             for i in range(6):
-#                 proc.stdout.readline()
-#             while proc.poll() is None:
-#                 resp = proc.stdout.readline()[:-1].decode()
-#                 if len(resp) > 0:
-#                     if resp[0] == '>':
-#                         print('{}:{}'.format(self.name, resp[4:]))
-#                     else:
-#                         print('{}:{}'.format(self.name, resp))
-#                 else:
-#                     print(resp)
-#         except KeyboardInterrupt:
-#             time.sleep(1)
-#             result = proc.stdout.readlines()
-#             for message in result:
-#                 print('{}:{}'.format(self.name, message[:-1].decode()))
-#
-#     def ping_callback(self):
-#         ping_cmd_str = 'ping {}'.format(self.ip)
-#         ping_cmd = shlex.split(ping_cmd_str)
-#         try:
-#             proc = subprocess.Popen(
-#                 ping_cmd, stdout=subprocess.PIPE,
-#                 stderr=subprocess.STDOUT)
-#             while proc.poll() is None:
-#                 print('{}:{}'.format(
-#                     self.name, proc.stdout.readline()[:-1].decode()))
-#         except KeyboardInterrupt:
-#             time.sleep(1)
-#             result = proc.stdout.readlines()
-#             for message in result:
-#                 print('{}:{}'.format(self.name, message[:-1].decode()))
-#
-#     def run_command(self):
-#         self.dev_process.start()
-#
-#     def run_command_raw(self):
-#         self.dev_process_raw.start()
-#
-#     def ping(self):
-#         self.dev_ping.start()
-#
-#     def run_scrpt(self):
-#         self.dev_run_script.start()
-#
-#     def timeit_scrpt(self):
-#         self.dev_timeit_script.start()
-#
-#     def put_df(self):
-#         self.dev_put.start()
-#
-#     def put_multiple_df(self):
-#         self.dev_put_multiple.start()
-#
-#     def install_df(self):
-#         self.dev_install.start()
-#
-#     def get_df(self):
-#         self.dev_get.start()
-#
-#     def get_multiple_df(self):
-#         self.dev_get_multiple.start()
-#
-#     def sync_df(self):
-#         self.dev_sync.start()
-#
-#     def sync_multiple_df(self):
-#         self.dev_sync_multiple.start()
-
 
 #############################################
 # UPYDEV MODES:
@@ -870,6 +740,11 @@ if args.m in help_actions:
             print(GROUP_MODE_HELP)
             sys.exit()
 
+        elif args.m in ['docs', 'udocs', 'mdocs']:
+            from upydev.helpinfo import see_docs
+            see_docs(args)
+            sys.exit()
+
 if args.m not in keywords_mode and args.m.startswith('%'):
     action = args.m.replace('%', '')
     see_help(action)
@@ -885,6 +760,10 @@ if "@" in args.m:
 if args.gg:
     # if args.m not in DEBUGGING_ACTIONS:
         args.G = 'UPY_G'
+
+if args.ggp:
+    # if args.m not in DEBUGGING_ACTIONS:
+        args.GP = 'UPY_G'
 
 if args.gf:
     if glob.glob('*.config'):
@@ -1014,157 +893,70 @@ if args.G is not None:
 
 
 # UPYDEV GROUP COMMAND THREADED MODE:
+
+# keyword live output commands:
+kw_loc = ['run', 'get', 'put', 'timeit', 'install',
+          'see', 'fget', 'wrepl', 'srepl', 'find', 'diagnose', 'dsync',
+          'stream_test', 'log', 'debug', 'gen_rsakey', 'rf_wrkey', 'upy'
+          'ssl', 'shr', 'wssl', 'wssrepl', 'jupyterc', 'pytest',
+          'pytest-setup', 'ble', 'set']
+
 if args.GP is not None:
     pass
-    # try:
-    #     group_file = args.GP
-    #     # print(group_file)
-    #     if '{}.config'.format(group_file) not in os.listdir() or args.g:
-    #         group_file = '{}/{}'.format(upydev.__path__[0], args.GP)
-    #     print('Sending command to group: {}'.format(group_file.split('/')[-1]))
-    #     with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-    #         devices = json.loads(group.read())
-    #         # print(devices)
-    #     devs = devices.keys()
-    #     PORTS = [8005+i for i in range(len(devs))]
-    #     PORTS_DICT = dict(zip(devs, PORTS))
-    #     if args.devs is not None:
-    #         devs = args.devs
-    #         PORTS = [8005+i for i in range(len(devs))]
-    #         PORTS_DICT = dict(zip(devs, PORTS))
-    #     for dev in devs:
-    #         print('Device Name: {} ; IP: {}'.format(dev, devices[dev][0]))
-    #     print('Sending command {} ...'.format(args.m))
-    #     # print(sys.argv[1:])
-    #     single_command = []
-    #     for i in range(len(sys.argv[1:])):
-    #         if sys.argv[1:][i] != '-GP':
-    #             if i == 0 or sys.argv[1:][i-1] != '-GP':
-    #                 if sys.argv[1:][i] not in devs and sys.argv[1:][i] != '-devs':
-    #                     single_command.append(sys.argv[1:][i])
-    #     gcommand = ' '.join(single_command)
-    #     # print(gcommand.split())
-    #     # group_cmd_str = 'upydev {} -t {} -p {}'.format(gcommand, dev_ip, dev_pass)
-    #     devs_dict = {dev: UPYDEVICE(
-    #         dev, devices[dev][0], devices[dev][1], gcommand, PORTS_DICT[dev]) for dev in devs}
-    #     if gcommand.split()[0] not in keywords_mode:
-    #         devs_dict = {dev: UPYDEVICE(
-    #             dev, devices[dev][0], devices[dev][1], '"{};gc.collect()"'.format(gcommand)) for dev in devs}
-    #         for dev in devs_dict.keys():
-    #             devs_dict[dev].run_command_raw()
-    #         try:
-    #             while True:
-    #                 dev_proc_state = [
-    #                     devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
-    #                 if all(state is False for state in dev_proc_state):
-    #                     time.sleep(1)
-    #                     print('Done!')
-    #                     break
-    #         except KeyboardInterrupt:
-    #             time.sleep(2)
-    #             while True:
-    #                 dev_proc_state = [
-    #                     devs_dict[dev].dev_process_raw.is_alive() for dev in devs_dict.keys()]
-    #                 if all(state is False for state in dev_proc_state):
-    #                     time.sleep(1)
-    #                     for dev in devs_dict.keys():
-    #                         devs_dict[dev].dev_process_raw.terminate()
-    #                     break
-    #
-    #     elif gcommand.split()[0] not in kw_loc:
-    #         for dev in devs_dict.keys():
-    #             devs_dict[dev].run_command()
-    #         try:
-    #             while True:
-    #                 dev_proc_state = [
-    #                     devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
-    #                 if all(state is False for state in dev_proc_state):
-    #                     time.sleep(1)
-    #                     print('Done!')
-    #                     break
-    #         except KeyboardInterrupt:
-    #             time.sleep(2)
-    #             while True:
-    #                 dev_proc_state = [
-    #                     devs_dict[dev].dev_process.is_alive() for dev in devs_dict.keys()]
-    #                 if all(state is False for state in dev_proc_state):
-    #                     time.sleep(1)
-    #                     for dev in devs_dict.keys():
-    #                         devs_dict[dev].dev_process.terminate()
-    #                     break
-    #     else:
-    #         # print('Mode not implemented yet')
-    #         if gcommand.split()[0] == 'ping':
-    #             for dev in devs_dict.keys():
-    #                 devs_dict[dev].ping()
-    #
-    #             try:
-    #                 while True:
-    #                     time.sleep(0.1)
-    #             except KeyboardInterrupt:
-    #                 time.sleep(1)
-    #                 for dev in devs_dict.keys():
-    #                     devs_dict[dev].dev_ping.terminate()
-    #
-    #         elif gcommand.split()[0] == 'put':
-    #             if args.fre is None:
-    #                 for dev in devs_dict.keys():
-    #                     devs_dict[dev].put_df()
-    #             else:
-    #                 for dev in devs_dict.keys():
-    #                     devs_dict[dev].put_multiple_df()
-    #
-    #         elif gcommand.split()[0] == 'get':
-    #                 if args.fre is None:
-    #                     for dev in devs_dict.keys():
-    #                         devs_dict[dev].get_df()
-    #                 else:
-    #                     for dev in devs_dict.keys():
-    #                         devs_dict[dev].get_multiple_df()
-    #
-    #         elif gcommand.split()[0] == 'fget':
-    #             if args.fre is None:
-    #                 for dev in devs_dict.keys():
-    #                     devs_dict[dev].sync_df()
-    #             else:
-    #                 for dev in devs_dict.keys():
-    #                     devs_dict[dev].sync_multiple_df()
-    #
-    #         elif gcommand.split()[0] == 'install':
-    #             for dev in devs_dict.keys():
-    #                 devs_dict[dev].install_df()
-    #
-    #         elif gcommand.split()[0] == 'timeit':
-    #             for dev in devs_dict.keys():
-    #                 devs_dict[dev].timeit_scrpt()
-    #
-    #         elif gcommand.split()[0] == 'run':
-    #             for dev in devs_dict.keys():
-    #                 devs_dict[dev].run_scrpt()
-    #
-    #             try:
-    #                 while True:
-    #                     dev_proc_state = [
-    #                         devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
-    #                     if all(state is False for state in dev_proc_state):
-    #                         time.sleep(0.1)
-    #                         break
-    #             except KeyboardInterrupt:
-    #                 time.sleep(2)
-    #                 while True:
-    #                     dev_proc_state = [
-    #                         devs_dict[dev].dev_run_script.is_alive() for dev in devs_dict.keys()]
-    #                     if all(state is False for state in dev_proc_state):
-    #                         time.sleep(1)
-    #                         for dev in devs_dict.keys():
-    #                             devs_dict[dev].dev_run_script.terminate()
-    #                         break
-    #
-    #     sys.exit()
-    # except Exception as e:
-    #     print(e)
-    #     print('file not found, please create a group first')
-    #     sys.exit()
+    try:
+        group_file = args.GP
+        # print(group_file)
+        if '{}.config'.format(group_file) not in os.listdir() or args.g:
+            group_file = '{}/{}'.format(upydev.__path__[0], args.GP)
+
+        print('Sending command to group: {}'.format(group_file.split('/')[-1]))
+        with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+            devices = json.loads(group.read())
+            # print(devices)
+        devs = devices.keys()
+        if args.devs is not None:
+            devs = args.devs
+        if args.m not in keywords_mode:
+            dev_list = [Device(devices[dev][0], devices[dev][1], init=True, name=dev) for dev in devs]
+            devices_group = DEVGROUP(dev_list)
+            cmd = args.m
+            devices_group.cmd_p(cmd, follow=True)
+        else:
+            args_devices = {dev: copy.deepcopy(args) for dev in devs}
+            for dev in devs:
+                args_devices[dev].t = devices[dev][0]
+                args_devices[dev].p = devices[dev][1]
+            # TODO: add args.gf
+            # override print with [device name] ?
+            # redirect ouput to /tmp/dev_x_output
+            # parse output and clean/organized presentation ?
+            process_devices = {dev: multiprocessing.Process(target=handle_action, args=(args_devices[dev], False, dev)) for dev in devs}
+
+            for dev in devs:
+                process_devices[dev].start()
+
+            while True:
+                try:
+                    dev_proc_state = [process_devices[dev].is_alive(
+                    ) for dev in devs]
+                    if all(state is False for state in dev_proc_state):
+                        time.sleep(0.1)
+                        break
+                except KeyboardInterrupt:
+                    while True:
+                        dev_proc_state = [process_devices[dev].is_alive() for dev in devs]
+                        if all(state is False for state in dev_proc_state):
+                            time.sleep(1)
+                            for dev in devs:
+                                process_devices[dev].terminate()
+                            break
+
+    except Exception as e:
+        print(traceback.format_exc())
+        print('file not found, please create a group first')
+        sys.exit()
+
+    sys.exit()
 
 if args.apmd:
     args.t = '192.168.4.1'

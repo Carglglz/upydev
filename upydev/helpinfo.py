@@ -2,6 +2,7 @@ import upydev
 import json
 import os
 import textwrap
+import webbrowser
 
 UPYDEV_PATH = upydev.__path__[0]
 
@@ -38,7 +39,8 @@ HELP_INFO_ARG = '''Mode/Tools:
         - To see help about a any ACTION/COMMAND
           put %% before that ACTION/COMMAND as : $ upydev %%ACTION
 
-    ACTIONS: help, h, dm, fio, fw, kg, rp, sh, db, gp, gc, wu, sd, pro.
+    ACTIONS: help, h, dm, fio, fw, kg, rp, sh, db, gp, gc, wu, sd, pro, docs,
+             udocs, mdocs.
 
 upy Commands:
 > GENERAL: do '$ upydev gc' to see General commmands help.
@@ -63,3 +65,18 @@ def see_help(cmd):
             print('Help info not available for "{}" command'.format(cmd))
     else:
         pass
+
+
+def see_docs(args):
+    if args.m == 'mdocs':
+        docs_url = "docs.micropython.org"
+    elif args.m == 'docs':
+        docs_url = "upydev.readthedocs.io"
+    elif args.m == 'udocs':
+        docs_url = "upydevice.readthedocs.io"
+    if args.f:
+        key_word = args.f
+        search = f'https://{docs_url}/en/latest/search.html?q={key_word}&check_keywords=yes&area=default'
+        webbrowser.open(search)
+    else:
+        webbrowser.open(f'https://{docs_url}/en/latest/')

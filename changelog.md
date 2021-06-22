@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pro` command to see help about PROTOTYPE COMMANDS
 - `gg` to see global group
 - `-gg` flag to set -G flag to global group (`-gg` == `-G UPY_G`)
+- `-ggp` flag to set -GP flag to global group (`-ggp` == `-GP UPY_G`)
 - `%` before any command e.g. `%config` display help info about that command.
 - `probe` command to test if a device/group is reachable
 - `scan` command to look for devices (serial [-sr], network [-nt] or ble [-bl])

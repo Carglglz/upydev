@@ -260,4 +260,4 @@ BOARD [#]_
 
 - **pin_status**: to see pin state, to request a specific set use ``-po`` option.
 
-.. [#] Esp32 Huzzah only for the moment.
+.. [#] Esp32 Huzzah only at the moment.

@@ -5,7 +5,7 @@ Mode/Tools
 
 Help
 ----
-  ACTIONS: ``help``, ``h``, ``dm``, ``fio``, ``fw``, ``kg``, ``rp``, ``sh``, ``db``, ``gp``, ``gc``, ``wu``, ``sd``, ``pro``.
+  ACTIONS: ``help``, ``h``, ``dm``, ``fio``, ``fw``, ``kg``, ``rp``, ``sh``, ``db``, ``gp``, ``gc``, ``wu``, ``sd``, ``pro``, ``docs``, ``udocs``, ``mdocs``.
 
         - help:
               to see help about upydev. (Same as ``h``, or use ``-h`` to see information about optional args too)
@@ -52,6 +52,10 @@ Help
           Use ``%`` before that ACTION/COMMAND as : ``$ upydev %ACTION``
 
 
+.. note::
+
+         To see docs about upydev, upydevice or MicroPython use ``docs``, ``udocs``,
+         ``mdocs``, respectively. Use a keyword as second argument for keyword search.
 
 
 
@@ -379,5 +383,5 @@ COMMAND MODE OPTION:
       This sends the command to one device at a time
 
     -GP:
-      ``$ upydev ACTION -GP GROUPNAME opts]`` or ``$ upydev ACTION -ggp [opts]`` for global group.
+      ``$ upydev ACTION -GP GROUPNAME [opts]`` or ``$ upydev ACTION -ggp [opts]`` for global group.
       For parallel/non-blocking command execution using multiprocessing
