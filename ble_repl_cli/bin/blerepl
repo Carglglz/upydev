@@ -3107,8 +3107,10 @@ def send_KBI(event):
             else:
                 ble_cp.dev.output = None
                 print('^C')
-                await ble_cp.as_sh_repl(ble_cp.dev._kbi,
-                                        follow=True)
+                # await ble_cp.as_sh_repl(ble_cp.dev._kbi, follow=True)
+                # await ble_cp.dev.as_kbi()
+                data = bytes(ble_cp.dev._kbi + '\r', 'utf-8')
+                await ble_cp.dev.ble_client.write_gatt_char(ble_cp.dev.writeables['Nordic UART RX'], data)
 
                 paste_flag['p'] = False
                 if not shell_mode['S']:
@@ -3138,6 +3140,8 @@ def send_KBI(event):
 
     loop = asyncio.get_event_loop()
     loop.create_task(f())
+    # pending = asyncio.all_tasks()
+    # print(pending)
 
 
 @kb.add('c-e')

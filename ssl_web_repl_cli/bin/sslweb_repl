@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from upydevice import W_UPYDEVICE, BASE_WS_DEVICE
+from upydevice import Device, BASE_WS_DEVICE
 from binascii import hexlify
 import getpass
 import socket
@@ -807,8 +807,8 @@ parser.add_argument("-wss",
 args = parser.parse_args()
 
 # HANDSHAKE
-espdev = W_UPYDEVICE(args.t, args.p)
-ws_upydevice = BASE_WS_DEVICE(args.t, args.p)
+espdev = Device(args.t, args.p)
+ws_upydevice = espdev
 base_ws = True
 if args.ping:
     if espdev.is_reachable():
@@ -823,7 +823,7 @@ if not args.nem:
         print('Initiating SECURE HANDSHAKE...')
 # espdev.kbi(output=False)
 if base_ws:
-    ws_upydevice.open_wconn(ssl=args.wss, auth=True)
+    ws_upydevice.connect(ssl=args.wss, auth=True)
     ws_upydevice.wr_cmd(ws_upydevice._kbi)
     # espdev.wr_cmd("from machine import unique_id; unique_id()",
     #               silent=True)
@@ -840,18 +840,19 @@ if base_ws:
     ws_upydevice.wr_cmd("import sys; sys.platform", silent=True)
     # dev_platform = espdev.output
     dev_platform = ws_upydevice.output
-    espdev.platform = dev_platform
+    # espdev.platform = dev_platform
     ws_upydevice.platform = dev_platform
 else:
-    espdev.open_wconn()
-    espdev.wr_cmd('C')
-    espdev.wr_cmd("from machine import unique_id; unique_id()",
-                  silent=True)
-    unique_id = hexlify(espdev.output).decode()
-    espdev.wr_cmd("import sys; sys.platform",
-                  silent=True)
-    dev_platform = espdev.output
-    espdev.platform = dev_platform
+    pass
+    # espdev.open_wconn()
+    # espdev.wr_cmd('C')
+    # espdev.wr_cmd("from machine import unique_id; unique_id()",
+    #               silent=True)
+    # unique_id = hexlify(espdev.output).decode()
+    # espdev.wr_cmd("import sys; sys.platform",
+    #               silent=True)
+    # dev_platform = espdev.output
+    # espdev.platform = dev_platform
 if args.v:
     print('{}@{}'.format(dev_platform, unique_id))
 # rk = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=False,
@@ -871,12 +872,13 @@ if not args.nem:
 #     print('SSLWebREPL connected')
 if args.nem:
     if base_ws:
-        ws_upydevice.close_wconn()
-        espdev.open_wconn()
+        pass
+        # ws_upydevice.close_wconn()
+        # espdev.connect(ssl=args.wss)
     ssl_cp = WBREPL_IO(dev=espdev)
     print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
     print('')
-    espdev.wr_cmd('B')
+    espdev.banner()
     print('')
 # espdev.wr_cmd('B')
 if not args.nem:
@@ -1002,10 +1004,11 @@ else:
         espdev.output = None
     else:
         espdev.wr_cmd('import gc;import os;from upysh import *;gc.collect()', silent=True)
-        espdev.close_wconn()
-        espdev.cmd("help('modules')", silent=True, capture_output=True)
-        espdev.open_wconn()
-        frozen_modules['FM'] = '\n'.join(espdev.long_output).split()[:-6]
+        # espdev.close_wconn()
+        espdev.wr_cmd("help('modules')", silent=True, long_string=True)
+        # espdev.open_wconn()
+        frozen_modules['FM'] = espdev.output.split()[:-6]
+
         # print(frozen_modules['FM'])
     espdev.output = None
 
@@ -1506,15 +1509,17 @@ def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
         print('Done in : {:.2f} seconds'.format(time.time()-t0))
 
 
-def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True, collect=False):
+def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True, collect=False,
+                       follow=False):
     if not encrypted_flag['sec']:
         if not capture_output:
-            espdev.wr_cmd(cmd, silent=sh_silent)
+            espdev.wr_cmd(cmd, silent=sh_silent, follow=follow)
         else:
-            espdev.close_wconn()
-            espdev.cmd(cmd, silent=sh_silent, capture_output=True)
-            espdev.output = espdev.long_output
-            espdev.open_wconn()
+            # espdev.close_wconn()
+            espdev.wr_cmd(cmd, silent=sh_silent, long_string=True,
+            follow=follow)
+            # espdev.output = espdev.long_output
+            # espdev.open_wconn()
     else:
         ssl_cp.ssl_repl(cmd)
         espdev.get_output()
@@ -1557,7 +1562,7 @@ def get_rprompt():
             else:
                 RAM = send_custom_sh_cmd(
                     'from micropython import mem_info;mem_info()', True)
-                mem_info = RAM[1].strip()
+                mem_info = RAM.splitlines()[1]
             mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
                               1]) for elem in mem_info[4:].split(',')}
             used_mem = mem['used']/1024
@@ -1672,7 +1677,7 @@ def custom_sh_cmd(cmd_inp):
                 ssl_cp.ssl_repl('from upysh2 import du;du();gc.collect()', follow=True)
                 ssl_cp.flush_conn()
             else:
-                send_custom_sh_cmd('from upysh2 import du;du();gc.collect()', sh_silent=False)
+                send_custom_sh_cmd('from upysh2 import du;du();gc.collect()', sh_silent=False, follow=True)
 
         elif len(cmd_inp.split()) == 2:
             if cmd_inp.split()[1] != '-o':
@@ -1681,7 +1686,7 @@ def custom_sh_cmd(cmd_inp):
                     ssl_cp.ssl_repl("from upysh2 import du;du(path='./{}');gc.collect()".format(file), follow=True)
                     ssl_cp.flush_conn()
                 else:
-                    send_custom_sh_cmd("from upysh2 import du;du(path='./{}');gc.collect()".format(file), sh_silent=False)
+                    send_custom_sh_cmd("from upysh2 import du;du(path='./{}');gc.collect()".format(file), sh_silent=False, follow=True)
 
             elif cmd_inp.split()[1] == '-o':
                 resp = send_custom_sh_cmd("{dir:os.stat(dir)[6] for dir in os.listdir()}")
@@ -1714,7 +1719,7 @@ def custom_sh_cmd(cmd_inp):
                         ssl_cp.ssl_repl("from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), follow=True)
                         ssl_cp.flush_conn()
                     else:
-                        send_custom_sh_cmd("from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), sh_silent=False)
+                        send_custom_sh_cmd("from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), sh_silent=False, follow=True)
 
                 except Exception as e:
                     print(e)
@@ -1728,7 +1733,7 @@ def custom_sh_cmd(cmd_inp):
                         ssl_cp.ssl_repl("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), follow=True)
                         ssl_cp.flush_conn()
                     else:
-                        send_custom_sh_cmd("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), sh_silent=False)
+                        send_custom_sh_cmd("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), sh_silent=False, follow=True)
 
                 except Exception as e:
                     print(e)
@@ -1773,7 +1778,7 @@ def custom_sh_cmd(cmd_inp):
             print('STA interface not connected')
 
     if cmd_inp == 'netscan':
-        if espdev.platform == 'esp8266':
+        if espdev.dev_platform == 'esp8266':
             enable_sta = send_custom_sh_cmd(
                 "import network;network.WLAN(network.STA_IF).active()")
         else:
@@ -1840,7 +1845,7 @@ def custom_sh_cmd(cmd_inp):
             print('AP interface not connected')
 
     if cmd_inp == 'apscan':
-        if espdev.platform == 'esp8266':
+        if espdev.dev_platform == 'esp8266':
             enable_sta = send_custom_sh_cmd(
                 "import network;network.WLAN(network.AP_IF).active()")
         else:
@@ -1867,7 +1872,7 @@ def custom_sh_cmd(cmd_inp):
         else:
             RAM = send_custom_sh_cmd(
                 'from micropython import mem_info;mem_info()', True)
-            mem_info = RAM[1].strip()
+            mem_info = RAM.splitlines()[1]
         mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
                           1]) for elem in mem_info[4:].split(',')}
         print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memory',
@@ -1891,9 +1896,9 @@ def custom_sh_cmd(cmd_inp):
                 'from micropython import mem_info;mem_info(1)')
             print(RAM_dump)
         else:
-            RAM_dump = send_custom_sh_cmd(
-                'from micropython import mem_info;mem_info(1)', True)
-            print('\n'.join([line.replace('\r', '') for line in RAM_dump]))
+            RAM_dump = espdev.wr_cmd('from micropython import mem_info;mem_info(1)',
+                                      follow=True)
+            # print(RAM_dump)
 
     if cmd_inp.split(' ')[0] == 'install':
         try:
@@ -2015,7 +2020,7 @@ def custom_sh_cmd(cmd_inp):
         if encrypted_flag['sec']:
             dev_info = sysinfo.split("'")
         else:
-            dev_info = sysinfo[0].split("'")
+            dev_info = sysinfo.split("'")
         print('SYSTEM NAME: {}'.format(dev_info[1]))
         print('NODE NAME: {}'.format(dev_info[3]))
         print('RELEASE: {}'.format(dev_info[5]))
@@ -2189,17 +2194,17 @@ def custom_sh_cmd(cmd_inp):
         try:
             file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
             if file == 'cwd':
-                get_str = 'upydev sync -fre {} -t {} -p {} {}'.format(
+                get_str = 'upydev fget -fre {} -t {} -p {} {}'.format(
                     file, args.t, args.p, dev_dir)
             elif '*' in file:
-                get_str = 'upydev sync -fre {} -t {} -p {} {}'.format(
+                get_str = 'upydev fget -fre {} -t {} -p {} {}'.format(
                     file.replace('*', ''), args.t, args.p, dev_dir)
             elif len(cmd_inp.split(' ')) > 2:
                 file = ' '.join(cmd_inp.split(' ')[1:])
-                get_str = 'upydev sync -fre {} -t {} -p {} {}'.format(
+                get_str = 'upydev fget -fre {} -t {} -p {} {}'.format(
                     file, args.t, args.p, dev_dir)
             else:
-                get_str = 'upydev sync -f {} -t {} -p {} {}'.format(
+                get_str = 'upydev fget -f {} -t {} -p {} {}'.format(
                     file, args.t, args.p, dev_dir)
 
             sync_cmd = shlex.split(get_str)
@@ -2373,7 +2378,7 @@ def custom_sh_cmd(cmd_inp):
                 for _dir in dirs_to_sync:
                     print('- {}'.format(_dir))
 
-                    d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
+                    d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f'.format(args.t,
                                                                                args.p,
                                                                                _dir)
 
@@ -2400,7 +2405,7 @@ def custom_sh_cmd(cmd_inp):
                 try:
                     dir_to_sync = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
 
-                    d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
+                    d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f'.format(args.t,
                                                                                args.p,
                                                                                dir_to_sync)
 
@@ -2607,7 +2612,7 @@ def custom_sh_cmd(cmd_inp):
                     ssl_cp.ssl_repl('from upysh2 import tree;tree(hidden=True);gc.collect()', follow=True)
                     ssl_cp.flush_conn()
                 else:
-                    send_custom_sh_cmd('from upysh2 import tree;tree(hidden=True);gc.collect()', sh_silent=False)
+                    send_custom_sh_cmd('from upysh2 import tree;tree(hidden=True);gc.collect()', sh_silent=False, follow=True)
             else:
                 if len(cmd_inp.split(' ')) == 2:
                     dir = cmd_inp.split(' ')[1]
@@ -2615,7 +2620,7 @@ def custom_sh_cmd(cmd_inp):
                         ssl_cp.ssl_repl("from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), follow=True)
                         ssl_cp.flush_conn()
                     else:
-                        send_custom_sh_cmd("from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), sh_silent=False)
+                        send_custom_sh_cmd("from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), sh_silent=False, follow=True)
                 else:
                     if cmd_inp.split(' ')[2] == '-a':
                         dir = cmd_inp.split(' ')[1]
@@ -2623,7 +2628,7 @@ def custom_sh_cmd(cmd_inp):
                             ssl_cp.ssl_repl("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), follow=True)
                             ssl_cp.flush_conn()
                         else:
-                            send_custom_sh_cmd("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), sh_silent=False)
+                            send_custom_sh_cmd("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), sh_silent=False, follow=True)
 
         else:
             # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
@@ -2631,7 +2636,7 @@ def custom_sh_cmd(cmd_inp):
                 ssl_cp.ssl_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
                 ssl_cp.flush_conn()
             else:
-                send_custom_sh_cmd('from upysh2 import tree;tree();gc.collect()', sh_silent=False)
+                send_custom_sh_cmd('from upysh2 import tree;tree();gc.collect()', sh_silent=False, follow=True)
 
     if cmd_inp == 'l_ifconfig':
         ifconfig_local = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]
@@ -2792,7 +2797,8 @@ def custom_sh_cmd(cmd_inp):
                 if encrypted_flag['sec']:
                     ssl_cp.ssl_repl("cat('{}')".format(color_file), silent=False, color=True)
                 else:
-                    color_f = '\n'.join(send_custom_sh_cmd("cat('{}')".format(color_file), capture_output=True))
+                    color_f = send_custom_sh_cmd("cat('{}')".format(color_file), capture_output=True)
+                    # print(color_f)
                     if batstyle['style'] == 'one_dark':
                         result = highlight(color_f, Python3Lexer(), Terminal256Formatter(style=one_darkStyle))
                         lines = result.split('\n')
@@ -2861,7 +2867,7 @@ def custom_sh_cmd(cmd_inp):
                 ping_dir = ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
             inp = "import uping;uping.ping('{}', loop=True, rtn=False)".format(ping_dir)
             if not encrypted_flag['sec']:
-                espdev.wr_cmd(inp)
+                espdev.wr_cmd(inp, follow=True, long_string=True)
             else:
                 try:
                     ssl_cp.ssl_repl(inp, follow=True)
@@ -3710,7 +3716,7 @@ def bannerpress(event):
         if encrypted_flag['sec']:
             ssl_cp.ssl_repl("\x02", banner=True)
         else:
-            espdev.wr_cmd('B')
+            espdev.banner()
     run_in_terminal(upy_sysversion)
 
 
@@ -3813,7 +3819,7 @@ def autocomppress(event):
                 inp, frst_cmd = map_upysh(last_cmd)
                 if frst_cmd == 'run':
                     if not encrypted_flag['sec']:
-                        espdev.wr_cmd(inp)
+                        espdev.wr_cmd(inp, follow=True)
                     else:
                         try:
                             ssl_cp.ssl_repl(inp, follow=True)
@@ -3830,7 +3836,7 @@ def autocomppress(event):
                             pass
                 else:
                     if not encrypted_flag['sec']:
-                        espdev.wr_cmd(inp)
+                        espdev.wr_cmd(inp, follow=True)
                     else:
                         if inp == 'ls()' or frst_cmd == 'tree' or frst_cmd == 'cat':
                             ssl_cp.ssl_repl(inp+';gc.collect()', follow=True)
@@ -3842,7 +3848,7 @@ def autocomppress(event):
         else:
             print('>>> {}'.format(last_cmd))
             if not encrypted_flag['sec']:
-                espdev.wr_cmd(last_cmd)
+                espdev.wr_cmd(last_cmd, follow=True)
             else:
                 try:
                     ssl_cp.ssl_repl(last_cmd, follow=True)
@@ -3869,7 +3875,7 @@ def testpress(event):
         test_cmd = 'import test_code'
         print('>>> {}'.format(test_cmd))
         if not encrypted_flag['sec']:
-            espdev.wr_cmd(test_cmd)
+            espdev.wr_cmd(test_cmd, follow=True)
         else:
             try:
                 ssl_cp.ssl_repl(test_cmd, follow=True)
@@ -4656,24 +4662,25 @@ def listen_SSL_WREPL(event):
         run_in_terminal(echo_ouput)
 
     if not encrypted_flag['sec']:
+        pass
         # block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
         # espdev.wr_cmd(block_commad)
         # print(block_commad.splitlines())
-        def echo_ouput_nem():
-            buff_text = "import time\nwhile True:\n    time.sleep(1)"
-            espdev._wconn.child.sendline('E')
-            time.sleep(0.2)
-            for line in buff_text.split('\n'):
-                espdev._wconn.child.sendline(line)
-                cmd_echo = espdev._wconn.child.readline()
-                # time.sleep(0.2)
-            # espdev._wconn.child.sendline('D')
-            try:
-                cmd_echo = espdev._wconn.child.read_nonblocking(2**16, 0.2)
-            except Exception as e:
-                pass
-            espdev.wr_cmd('D')
-        run_in_terminal(echo_ouput_nem)
+        # def echo_ouput_nem():
+        #     buff_text = "import time\nwhile True:\n    time.sleep(1)"
+        #     espdev._wconn.child.sendline('E')
+        #     time.sleep(0.2)
+        #     for line in buff_text.split('\n'):
+        #         espdev._wconn.child.sendline(line)
+        #         cmd_echo = espdev._wconn.child.readline()
+        #         # time.sleep(0.2)
+        #     # espdev._wconn.child.sendline('D')
+        #     try:
+        #         cmd_echo = espdev._wconn.child.read_nonblocking(2**16, 0.2)
+        #     except Exception as e:
+        #         pass
+        #     espdev.wr_cmd('D')
+        # run_in_terminal(echo_ouput_nem)
 
 
 def check_prompt():
@@ -4710,7 +4717,7 @@ while repl:
                         if frst_cmd == 'run':
                             if not encrypted_flag['sec']:
 
-                                espdev.wr_cmd(inp)
+                                espdev.wr_cmd(inp, follow=True)
                             else:
                                 try:
                                     ssl_cp.ssl_repl(inp, follow=True)
@@ -4732,11 +4739,11 @@ while repl:
                                     if frst_cmd not in shell_commands:
                                         custom_sh_cmd(shell_inp)
                                     else:
-                                        espdev.wr_cmd(inp)
+                                        espdev.wr_cmd(inp, follow=True)
                                 else:
-                                    espdev.close_wconn()
-                                    espdev.cmd(inp)
-                                    espdev.open_wconn()
+                                    # espdev.close_wconn()
+                                    espdev.wr_cmd(inp, follow=True)
+                                    # espdev.open_wconn()
                             else:
                                 if inp == 'ls()' or frst_cmd == 'cat' or frst_cmd == 'tree' or 'help' in frst_cmd:
                                     ssl_cp.ssl_repl(inp+';gc.collect()', follow=True)
@@ -4776,7 +4783,7 @@ while repl:
                                 prompt['p'] = shell_prompt['s']
                 else:  # REPL
                     if not encrypted_flag['sec']:
-                        espdev.wr_cmd(inp)
+                        espdev.wr_cmd(inp, follow=True)
                     else:
                         try:
                             ssl_cp.ssl_repl(inp, follow=True)

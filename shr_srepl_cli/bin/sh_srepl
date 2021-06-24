@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from upydevice import S_UPYDEVICE
+from upydevice import Device
 import serial
 from binascii import hexlify
 import getpass
@@ -660,10 +660,10 @@ parser.add_argument("-r", help='reset on exit',
 args = parser.parse_args()
 
 # HANDSHAKE
-basedev = BASE_SERIAL_DEVICE(args.p, args.t)
-espdev = S_UPYDEVICE(args.p, timeout=1000, baudrate=args.t, reset=False)
+basedev = Device(args.p, args.t, autodetect=True, init=True)
+espdev = basedev
 if args.ping:
-    if basedev.serial.writable():
+    if basedev.is_reachable():
         pass
     else:
         print('DEVICE NOT REACHABLE')
@@ -672,15 +672,17 @@ if args.v:
     print('Welcome to SERIAL SHELL-REPL 0.0.1!')
 
 time.sleep(0.2)
-kbi = basedev.cmd('\x03\r')
-uid = basedev.cmd("from machine import unique_id; unique_id()")
+# kbi = basedev.cmd('\x03\r', silent=True, rtn_resp=True)
+uid = basedev.cmd("from machine import unique_id; unique_id()", silent=True,
+                  rtn_resp=True)
 try:
     unique_id = hexlify(uid).decode()
 except Exception as e:
     unique_id = uid
-devp = basedev.cmd("import sys; sys.platform")
-dev_platform = devp
-espdev.platform = dev_platform
+# devp = basedev.cmd("import sys; sys.platform", silent=True,
+#                    rtn_resp=True)
+dev_platform = basedev.dev_platform
+# espdev.platform = dev_platform
 if args.v:
     print('{}@{}'.format(dev_platform, unique_id))
 shr_cp = SERIAL_REPL_server(dev=espdev, dev_id=unique_id)
