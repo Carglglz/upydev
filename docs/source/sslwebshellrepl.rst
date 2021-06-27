@@ -1,5 +1,5 @@
-SSLWebREPL
-==========
+SSL/WebSocket
+=============
 
 A Terminal SHELL-REPL over SSL (TLSv1.2)
 

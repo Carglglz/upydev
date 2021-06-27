@@ -53,8 +53,10 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
   :caption: SHELL-REPL:
   :name: shellrepltoc
 
-  sslwebshellrepl
   serialshellrepl
+  sslwebshellrepl
+  bleshellrepl
+
 
 .. toctree::
   :caption: Utils:

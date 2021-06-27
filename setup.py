@@ -14,7 +14,7 @@ def readme():
 
 setup(name='upydev',
       version='0.3.4',
-      description='Command line tool for wireless MicroPython devices',
+      description='Command line tool for wired/wireless MicroPython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',
       url='http://github.com/Carglglz/upydev',

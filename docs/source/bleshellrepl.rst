@@ -1,29 +1,21 @@
-SERIAL
-========
+BLE
+====================
 
-A Terminal SHELL-REPL over Serial
+A Terminal SHELL-REPL over Bluetooth Low Energy
 
 
-To use this mode connect the device by USB to the computer and use one of the following commands:
-
-If the device is not previously configured do:
-
-.. code-block:: console
-
-    $ upydev sh_srepl -port [serial port] -b [baudrate] #(-b default is 115200)
-
-To configure a serial device see
+To configure a ble device see
 
 :ref:`gettingstarted:Create a configuration file`
 
-To access SERIAL SHELL-REPL
+To access BLE SHELL-REPL
 
 .. code-block:: console
 
-    $ upydev sh_srepl # shl works too
+    $ upydev ble # shl works too
 
 
-To configure a serial device in the global group 'UPY_G' see
+To configure a ble device in the global group 'UPY_G' see
 
 :ref:`gettingstarted:Create a GROUP file`
 
@@ -32,76 +24,67 @@ Then the device can be accessed with:
 
 .. code-block:: console
 
-    $ upydev sh_srepl -@ foo_device # shl works too
+    $ upydev ble -@ ble_device # shl works too
 
 or
 
 .. code-block:: console
 
-    $ upydev shl@foo_device
+    $ upydev shl@ble_device
 
-Example: For a *pyboard 1.1* saved as ``pybV1.1``
+Example: For a *esp32* saved as ``bledev``
 
 .. code-block:: console
 
-    $ upydev shl@pybV1.1
-    SERIAL SHELL-REPL connected
+    $ upydev shl@bledev
+    BLE SHELL-REPL @ bledev
+    BLE SHELL-REPL connected
 
-    MicroPython v1.12-87-g96716b46e on 2020-01-26; PYBv1.1 with STM32F405RG
+    MicroPython v1.16 on 2021-06-24; ESP32 module with ESP32
     Type "help()" for more information.
 
-    Use CTRL-x to exit, Use CTRL-s,ENTER to toggle shell/repl mode
+    Use CTRL-x to exit, Use CTRL-s to toggle shell/repl mode
     Use CTRL-k to see more info
-    pyboard@pybV1.1:~ $ whoami
-    DEVICE: pybV1.1, SERIAL PORT: /dev/tty.usbmodem3370377430372 , BAUDRATE: 9600,  ID: 3c003d000247373038373333
-    SYSTEM NAME: pyboard
-    NODE NAME: pyboard
-    RELEASE: 1.12.0
-    VERSION: v1.12-87-g96716b46e on 2020-01-26
-    MACHINE: PYBv1.1 with STM32F405RG
-    pyboard@pybV1.1:~ $ tree
-      DIR_TEST <dir>
-            └────  example_code.py
-      README.txt
-      boot.py
-      lib <dir>
-            ├────  ffilib.py
-            ├────  pystone_lowmem.py
-            ├────  sqlite3.py
-            ├────  time_it.py
-            ├────  uasyncio <dir>
-            │    ├────  __init__.py
-            │    └────  core.py
-            ├────  uping.py
-            ├────  upylog.py
-            ├────  upynotify.py
-            ├────  upysh.py
-            └────  upysh2.py
-      lsm9ds1.py
-      main.py
-      main_test.py
-      new_dir <dir>
-            └────  udummy.py
-      pybcdc.inf
-      servo_serial.py
-      test_code.py
-      test_file.txt
-      udummy.py
-    4 directories, 23 files
-    pyboard@pybV1.1:~ $ df
+    esp32@bledev:~ $ df
     Filesystem      Size        Used       Avail        Use%     Mounted on
-    Flash         95.0 KB     86.0 KB      9.0 KB     90.5 %     /
-    pyboard@pybV1.1:~ $ meminfo
-    Memory         Size        Used       Avail        Use%
-    RAM          100.938 KB  10.828 KB   90.109 KB    10.7 %
-    pyboard@pybV1.1:~ $
+    Flash          2.0 MB      1.6 MB     400.0 KB    80.2 %     /
+    esp32@bledev:~ $ meminfo
+    Memory          Size        Used       Avail        Use%
+    RAM          108.562 KB  93.516 KB   15.047 KB    86.1 %
+    esp32@bledev:~ $ tree test_sync_dir
+    test_sync_dir
+    ├── ATEXTFILE.txt
+    ├── THETESTCODE.py
+    ├── ble_test_file.txt
+    ├── dummy_time.py
+    ├── logACC_6_7_2019_0_28_43.txt
+    ├── my_other_dir_sync
+    │   └── another_file.txt
+    ├── new_tree_test_dir
+    │   ├── example_code.py
+    │   ├── foo_file.txt
+    │   ├── sub_foo_test_dir
+    │   │   ├── file_code.py
+    │   │   └── foo2.txt
+    │   ├── w_name_dir
+    │   │   └── dummy_file.txt
+    │   └── zfile.py
+    └── test_subdir_sync
+          ├── SUBTEXT.txt
+          └── sub_sub_dir_test_sync
+              ├── level_2_subtext.txt
+              ├── level_3_subtext.txt
+              └── ultimate_file.py
+
+    6 directories, 16 files
+    esp32@bledev:~ $
 
 
 
-SERIAL : SHELL-REPL
+BLE : SHELL-REPL
 --------------------
 
-The SERIAL SHELL-REPL allows to toggle between SHELL and REPL mode (Use *CTRL-s* to do this)
+The BLE SHELL-REPL allows to toggle between SHELL and REPL mode (Use *CTRL-s* to do this)
 
 The REPL mode has two limitations:
 
@@ -109,43 +92,6 @@ The REPL mode has two limitations:
 
 - To define a function/class or make a loop use the paste mode. (CTRL-E)
 
-  *However the original Serial REPL can be accessed from shell with* ``srepl`` *command* (This needs Picocom)
-
-  e.g.
-
-  .. code-block:: console
-
-      pyboard@pybV1.1:~ $ srepl
-      <-- Device pyboard MicroPython -->
-      Use CTRL-a,CTRL-x to exit
-      picocom v3.1
-
-      port is        : /dev/tty.usbmodem3370377430372
-      flowcontrol    : none
-      baudrate is    : 115200
-      parity is      : none
-      databits are   : 8
-      stopbits are   : 1
-      escape is      : C-a
-      local echo is  : no
-      noinit is      : no
-      noreset is     : no
-      hangup is      : no
-      nolock is      : no
-      send_cmd is    : sz -vv
-      receive_cmd is : rz -vv -E
-      imap is        :
-      omap is        :
-      emap is        : crcrlf,delbs,
-      logfile is     : none
-      initstring     : none
-      exit_after is  : not set
-      exit is        : no
-
-      Type [C-a] [C-h] to see available commands
-      Terminal ready
-
-      >>>
 
 .. note::
 
@@ -267,59 +213,3 @@ The REPL mode has two limitations:
         - Use 'git repo' to open the remote repo in the web browser if remote repo exists
         - Any other git command will be echoed directly to git
       - tig: to use the 'Text mode interface for git' tool. Must be available in $PATH
-
-Some examples of these commands:
-
-.. code-block:: console
-
-    pyboard@pybV1.1:~ $ df
-    Filesystem      Size        Used       Avail        Use%     Mounted on
-    Flash         95.0 KB     86.0 KB      9.0 KB     90.5 %     /
-    pyboard@pybV1.1:~ $ cd lib
-    pyboard@pybV1.1:~/flash/lib$ ls
-    ffilib.py                   pystone_lowmem.py           sqlite3.py                  time_it.py                  uasyncio                    uping.py
-    upylog.py                   upynotify.py                upysh.py                    upysh2.py
-    pyboard@pybV1.1:~/flash/lib$ meminfo
-    Memory         Size        Used       Avail        Use%
-    RAM          100.938 KB   7.922 KB   93.016 KB     7.8 %
-    pyboard@pybV1.1:~/flash/lib$ cd ..
-    pyboard@pybV1.1:~/flash$ du lib
-    1.5 KB    ./lib/upysh.py
-    4.8 KB    ./lib/upysh2.py
-    7.7 KB    ./lib/pystone_lowmem.py
-    4.0 KB    ./lib/sqlite3.py
-    523 by    ./lib/time_it.py
-    17.5 KB   ./lib/uasyncio <dir>
-    8.1 KB    ./lib/uping.py
-    1006 by   ./lib/ffilib.py
-    4.9 KB    ./lib/upylog.py
-    2.7 KB    ./lib/upynotify.py
-    pyboard@pybV1.1:~/flash$ run udummy.py
-    hello dummy!
-    bye bye! hello again
-    This line is edited
-    This line is edited via serial
-    Another edited line
-    bye bye! hello again
-    This line is edited
-    This line is edited via serial
-    Another edited line
-    bye bye! hello again
-    This line is edited
-    This line is edited via serial
-    Another edited line
-    bye bye! hello again
-    This line is edited
-    This line is edited via serial
-    ^CTraceback (most recent call last):
-      File "<stdin>", line 1, in <module>
-      File "udummy.py", line 13, in <module>
-    KeyboardInterrupt:
-    >>>
-    >>>
-    pyboard@pybV1.1:~/flash$ reload udummy.py
-    pyboard@pybV1.1:~/flash$ exit
-    Rebooting device...
-    Done!
-    logout
-    Connection to pybV1.1 closed.
