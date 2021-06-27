@@ -50,7 +50,7 @@ upydev will use local working directory configuration unless it does not find an
 
 #### uPydev Usage:
 
-*Requirement* : **Needs REPL to be accesible** (see [Getting Started](https://upydev.readthedocs.io/en/latest/gettingstarted.html))
+*Requirement* : **Needs REPL to be accessible** (see [Getting Started](https://upydev.readthedocs.io/en/latest/gettingstarted.html))
 
 Usage:
 

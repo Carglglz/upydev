@@ -93,7 +93,7 @@ class WIFI_UTIL:
         self.ap.config(essid=ap_config['ssid'],
                        authmode=network.AUTH_WPA_WPA2_PSK,
                        password=ap_config['password'])
-        print('Acces point configured: {}'.format(ap_config['ssid']))
+        print('access point configured: {}'.format(ap_config['ssid']))
         print(self.ap.ifconfig())
         webrepl.start()
         for i in range(10):

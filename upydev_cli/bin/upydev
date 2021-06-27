@@ -85,7 +85,7 @@ helparg = HELP_INFO_ARG
 usag = """%(prog)s ACTION [options]\n
 This means that if the first argument ACTION is not a Mode keyword or a
 upy command keyword it assumes it is a 'raw' upy command to send to the upy device \n
-Requirements: Needs REPL to be accesible.
+Requirements: Needs REPL to be accessible.
     > Wireless Devices:
         * WiFi: Needs WebREPL enabled in the device;
         see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt

@@ -109,7 +109,7 @@ The repl mode has some limitations:
 
 - To define a function/class or make a loop use the paste mode. (CTRL-E)
 
-  *However the original WebREPL Terminal can be accesed from shell with 'wrepl' command*
+  *However the original WebREPL Terminal can be accessed from shell with 'wrepl' command*
 
   e.g.
 
@@ -197,8 +197,8 @@ Custom keybindings:
         - ifconfig_t: to see STATION interface configuration in table format
                       (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
         - netscan: to scan WLANs available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
-        - apconfig: to see ACCESS POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
-        - apconfig_t: to see ACCESS POINT (AP) interface configuration in table format
+        - apconfig: to see access POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
+        - apconfig_t: to see access POINT (AP) interface configuration in table format
                      (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)
         - install: to install a library into the device with upip.
         - touch  : to create a new file (e.g. touch test.txt)

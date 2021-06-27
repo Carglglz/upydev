@@ -8,13 +8,13 @@ SERIAL DEVICES
 ^^^^^^^^^^^^^^
 While working with new serial devices be aware of:
 
-  * Use a USB data cable, otherwise the device will be powered on but won't be accesible.
+  * Use a USB data cable, otherwise the device will be powered on but won't be accessible.
 
   * If using a device with no native USB support (e.g. esp32, esp8266) most likely it will have a
     CP210x USB to UART Bridge Virtual COM Port (VCP) chip (or something similar), so the up to date drivers will be needed.
     (e.g. `Silicon labs VCP Drivers <https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers>`_) [#]_
 
-  * If using Linux, it may be necessary to add user to dialout group to allow acces to the USB device. [#]_
+  * If using Linux, it may be necessary to add user to dialout group to allow access to the USB device. [#]_
 
 
   .. code-block:: console

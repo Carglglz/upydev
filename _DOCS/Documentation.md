@@ -1616,7 +1616,7 @@ ID: 30aea4233564
 ### upysh
 
 to enable the upy shell in the upy device (then do 'upydev man' to
-acces upysh manual info)
+access upysh manual info)
 
 ```
 $ upydev upysh
@@ -1641,7 +1641,7 @@ Rebooting upy device...
 
 ### kbi
 
-To send CTRL-C signal to stop an ongoing (for/while) loop, to be able to acces repl again
+To send CTRL-C signal to stop an ongoing (for/while) loop, to be able to access repl again
 
 ```
 $ upydev kbi
@@ -2012,7 +2012,7 @@ Enables the upydevice AP configured with the command wap_config
 
 ```
 $ upydev wap_conn
-Acces point configured: ESP_32
+access point configured: ESP_32
 ('192.168.4.1', '255.255.255.0', '192.168.4.1', '0.0.0.0')
 ```
 

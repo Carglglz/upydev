@@ -73,7 +73,7 @@ def wlan_command(cmd, *args, **kargs):
             except Exception as e:
                 print(e)
         else:
-            print('Access Point {} configured'.format(ssid))
+            print('access Point {} configured'.format(ssid))
         dev.disconnect()
         sys.exit()
 

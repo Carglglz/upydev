@@ -156,8 +156,8 @@ The REPL mode has two limitations:
             (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
       - netscan: to scan WLANs available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
       - uping : to make the device send ICMP ECHO_REQUEST packets to network hosts (do 'uping host' to ping local machine)
-      - apconfig: to see ACCESS POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
-      - apconfig_t: to see ACCESS POINT (AP) interface configuration in table format
+      - apconfig: to see access POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
+      - apconfig_t: to see access POINT (AP) interface configuration in table format
             (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)
       - install: to install a library into the device with upip.
       - touch  : to create a new file (e.g. touch test.txt)

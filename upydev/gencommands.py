@@ -515,9 +515,9 @@ def gen_command(cmd, *args, **kargs):
                 print(e)
         else:
             if ap_on:
-                print('Access Point Enabled')
+                print('access Point Enabled')
             else:
-                print('Access Point Disabled')
+                print('access Point Disabled')
             pass
         dev.disconnect()
         return
@@ -534,9 +534,9 @@ def gen_command(cmd, *args, **kargs):
                 print(e)
         else:
             if not ap_off:
-                print('Access Point Disabled')
+                print('access Point Disabled')
             else:
-                print('Access Point Enabled')
+                print('access Point Enabled')
             pass
         dev.disconnect()
         return
@@ -580,7 +580,7 @@ def gen_command(cmd, *args, **kargs):
 
     elif cmd == 'apconfig':
         ssid, passwd = kargs.pop('ap')
-        print('Configuring {} Access Point ...'.format(ssid))
+        print('Configuring {} access Point ...'.format(ssid))
         apconfig = _CMDDICT_['AP_CONFIG'].format(ssid, passwd)
         if len(passwd) < 8:
             print('[WARNING]: Password too short (less than 8 characters)')
@@ -592,7 +592,7 @@ def gen_command(cmd, *args, **kargs):
             except Exception as e:
                 print(e)
         else:
-            print('{} Access Point Configured'.format(ssid))
+            print('{} access Point Configured'.format(ssid))
         dev.disconnect()
         return
 

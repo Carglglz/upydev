@@ -445,8 +445,8 @@ shell_commands_info = """
         - ifconfig_t: to see STATION interface configuration in table format
                       (IP, SUBNET, GATEAWAY, DNS, ESSID, RSSI)
         - netscan: to scan WLAN's available, (ESSID, MAC ADDRESS, CHANNEL, RSSI, AUTH MODE, HIDDEN)
-        - apconfig: to see ACCESS POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
-        - apconfig_t: to see ACCESS POINT (AP) interface configuration in table format
+        - apconfig: to see access POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
+        - apconfig_t: to see access POINT (AP) interface configuration in table format
                      (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)
         - install: to install a library into the device with upip.
         - touch  : to create a new file (e.g. touch test.txt)
