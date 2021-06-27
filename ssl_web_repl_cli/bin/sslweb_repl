@@ -3661,15 +3661,15 @@ def custom_sh_cmd(cmd_inp):
             if len(cmd_inp.split(' ')) > 1:
                 if cmd_inp.split(' ')[1] == '-r':
                     print('Rebooting device...')
-                    espdev.reset(output=False)
+                    espdev.reset(silent=True, reconnect=False)
                     print('Done!')
                 elif cmd_inp.split(' ')[1] == '-hr':
                     print('Device Hard Reset...')
-                    espdev.cmd_nb("import machine;machine.reset()", block_dev=False)
+                    espdev.reset(silent=True, reconnect=False, hr=True)
                     print('Done!')
             if reset_flag['R']:
                 print('Rebooting device...')
-                espdev.reset(output=False)
+                espdev.reset(silent=True, reconnect=False)
                 print('Done!')
         exit_flag['exit'] = True
 
