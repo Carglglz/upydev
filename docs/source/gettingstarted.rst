@@ -6,7 +6,7 @@ If using a device with no MicroPython preinstalled (esp8266, esp32) first
 follow MicroPython getting started from official docs_ to see how to install it for the
 first time.
 
-.. _docs: http://docs.micropython.org/en/latest/esp32/tutorial/intro.html
+.. _docs: https://docs.micropython.org/en/latest/esp32/tutorial/intro.html
 
 After that the device should be up and running for the next step.
 
