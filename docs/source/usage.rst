@@ -13,7 +13,7 @@ Upydev can handle three types of directives:
 
 
 	2) A predefined MicroPython command:
-			This always require a connected device and it translates into MicroPython code snippets.
+			This always requires a connected device and it translates into MicroPython code snippets.
 			e.g. ``$ upydev info``, ``$ upydev meminfo``, ``$ upydev df``
 
 	3) "Raw" or unregistered commands:
