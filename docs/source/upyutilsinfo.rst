@@ -6,7 +6,7 @@ Upyutils
 
 
 
-**SD_AM.py:** This script is used with sd_auto command, see [documentation](Documentation.md#sd_auto) for more info
+**SD_AM.py:** This script is used with ``sd_auto`` command, see `sd_auto <https://upydev.readthedocs.io/en/latest/upycmd.html>`_ for more info
 
 **bme280.py**: This lib is for the 'weather' sensor BME280 , source: `@robert-hh <https://github.com/robert-hh/BME280>`_
 

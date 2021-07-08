@@ -54,7 +54,7 @@ Help
 
 .. note::
 
-         To see docs about upydev, upydevice or MicroPython use ``docs``, ``udocs``,
+         To see docs about ``upydev``, ``upydevice`` or ``MicroPython`` use ``docs``, ``udocs``,
          ``mdocs``, respectively. Use a keyword as second argument for keyword search.
 
 
@@ -106,7 +106,7 @@ File IO operations
           To download a file from upy device (see ``-f``, ``-s``, ``-fre``, ``-dir``, ``-wdl``)
 
       - fget:
-          For a faster transfer of large files (this needs sync_tool.py in upy device) (see ``-f``, ``-s``, ``-lh``, ``-wdl``)
+          For a faster transfer of large files (this needs `sync_tool.py <https://upydev.readthedocs.io/en/latest/upyutilsinfo.html>`_ in upy device) (see ``-f``, ``-s``, ``-lh``, ``-wdl``)
 
       - dsync:
           To recursively sync a folder in upydevice filesystem
