@@ -23,6 +23,8 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 * Group mode to operate with multiple devices
 ------
 
+### [Docs](https://upydev.readthedocs.io/en/latest/)
+
 ### Getting Started
 
 
@@ -49,10 +51,10 @@ upydev will use local working directory configuration unless it does not find an
   ```bash
   # WiFi
   $ upydev config -t 192.168.1.40 -p mypass
-  
+
   # SERIAL
   $ upydev config -t /dev/tty.usbmodem387E386731342
-  
+
   # BLE
   $ upydev config -t 9998175F-9A91-4CA2-B5EA-482AFC3453B9
   ```
