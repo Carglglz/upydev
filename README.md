@@ -34,17 +34,75 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 
 upydev will use local working directory configuration unless it does not find any or manually indicated with `-g` option.
 
-- To save configuration in working directory: `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD]`
+- To save configuration in working directory:
 
-  e.g:
+  ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE]``, where ``ADDRESS`` must be a valid **IP** , **SERIAL ADDRESS**
 
-  `$ upydev config -t 192.168.1.58 -p mypass`
+  > ``-p`` is set to 115200 by default, so it is not necessary unless using a different baudrate
 
-* To save configuration globally use -g flag: `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD] -g`
+  , or **MAC ADDRESS/ UUID**
+
+  > It will depend on OS system (e.g. Linux uses MAC format 'XX:XX:XX:XX:XX:XX', and macOS uses UUID format 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
+
+    e.g.
+
+  ```bash
+  # WiFi
+  $ upydev config -t 192.168.1.40 -p mypass
+  
+  # SERIAL
+  $ upydev config -t /dev/tty.usbmodem387E386731342
+  
+  # BLE
+  $ upydev config -t 9998175F-9A91-4CA2-B5EA-482AFC3453B9
+  ```
+
+
+  Default device name is ``upydevice``, to set a custom name use ``-@`` flag as
+
+```bash
+ $ upydev config -t 192.168.1.40 -p mypass -@ mycustomdevice
+```
+
+
+  To check configuration
+
+```bash
+$ upydev check
+Device: mycustomdevice
+Address: 192.168.1.40, Device Type: WebSocketDevice
+```
+
+  Or to get more information if the device is online
+
+```bash
+$ upydev check -i
+Device: mycustomdevice
+WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
+Firmware: MicroPython v1.13-221-gc8b055717 on 2020-12-05; ESP32 module with ESP32
+(MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+```
+
+- To save configuration globally use ``-g`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -g``
 
   e.g.
 
-  `$ upydev config -t 192.168.1.58 -p mypass -g `
+```bash
+$ upydev config -t 192.168.1.40 -p mypass -g
+```
+
+- To save configuration in a global group use ``-gg`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -gg -@ mydevice``
+
+  e.g.
+
+```bash
+$ upydev config -t 192.168.1.40 -p mypass -gg -@ mydevice
+```
+
+
+Once the device is configured see next section or read  [Usage documentation](https://upydev.readthedocs.io/en/latest/usage.html) to check which modes and tools are available.
+
+Or if you are working with more than one device continue with this [section](https://upydev.readthedocs.io/en/latest/gettingstarted.html#create-a-group-file) to create a group configuration.
 
 ------
 
