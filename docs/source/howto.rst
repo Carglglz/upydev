@@ -63,6 +63,84 @@ See `Bleak Troubleshooting <https://bleak.readthedocs.io/en/latest/troubleshooti
 ------
 
 
+TESTING DEVICES WITH PYTEST
+---------------------------
+
+`upydevice <https://github.com/Carglglz/upydevice/tree/master>`_ device classes allow to test MicroPython code in devices interactively with pytest, e.g. button press, screen swipes, sensor calibration, actuators, servo/stepper/dc motors , etc.
+Under `test <https://github.com/Carglglz/upydevice/tree/master/test>`_ directory there are example tests to run with devices.
+e.g.
+
+.. code-block:: console
+
+    $ upydev pytest test_esp_serial.py -@ sdev
+    Running pytest with Device: sdev
+    ============================================================= test session starts =============================================================
+    platform darwin -- Python 3.7.9, pytest-6.1.0, py-1.9.0, pluggy-0.13.1
+    rootdir: /Users/carlosgilgonzalez/Desktop/MICROPYTHON/TOOLS/upydevice/test, configfile: pytest.ini
+    collected 7 items
+
+    test_esp_serial.py::test_devname PASSED
+    test_esp_serial.py::test_platform
+    ---------------------------------------------------------------- live log call ----------------------------------------------------------------
+    22:34:14 [pytest] [ESP32] : Running SerialDevice test...
+    22:34:14 [pytest] [ESP32] : DEV PLATFORM: esp32
+    SerialDevice @ /dev/tty.SLAB_USBtoUART, Type: esp32, Class: SerialDevice
+    Firmware: MicroPython v1.16 on 2021-06-24; ESP32 module with ESP32
+    CP2104 USB to UART Bridge Controller, Manufacturer: Silicon Labs
+    (MAC: 30:ae:a4:23:35:64)
+    22:34:14 [pytest] [ESP32] : DEV PLATFORM TEST: [✔]
+    Test Result: PASSED
+    test_esp_serial.py::test_blink_led LED: ON
+    LED: OFF
+    LED: ON
+    LED: OFF
+
+    ---------------------------------------------------------------- live log call ----------------------------------------------------------------
+    22:34:17 [pytest] [ESP32] : BLINK LED TEST: [✔]
+    Test Result: PASSED
+    test_esp_serial.py::test_run_script
+    ---------------------------------------------------------------- live log call ----------------------------------------------------------------
+    22:34:17 [pytest] [ESP32] : RUN SCRIPT TEST: test_code.py
+    2000-01-01 00:53:30 [log_test] [INFO] Test message2: 100(foobar)
+    2000-01-01 00:53:30 [log_test] [WARN] Test message3: %d(%s)
+    2000-01-01 00:53:30 [log_test] [ERROR] Test message4
+    2000-01-01 00:53:30 [log_test] [CRIT] Test message5
+    2000-01-01 00:53:30 [None] [INFO] Test message6
+    2000-01-01 00:53:30 [log_test] [ERROR] Exception Ocurred
+    Traceback (most recent call last):
+    File "test_code.py", line 14, in <module>
+    ZeroDivisionError: divide by zero
+    2000-01-01 00:53:30 [errorlog_test] [ERROR] Exception Ocurred
+    Traceback (most recent call last):
+    File "test_code.py", line 20, in <module>
+    ZeroDivisionError: divide by zero
+    22:34:18 [pytest] [ESP32] : RUN SCRIPT TEST: [✔]
+    Test Result: PASSED
+    test_esp_serial.py::test_raise_device_exception
+    ---------------------------------------------------------------- live log call ----------------------------------------------------------------
+    22:34:18 [pytest] [ESP32] : DEVICE EXCEPTION TEST: b = 1/0
+    [DeviceError]:
+    Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+    ZeroDivisionError: divide by zero
+
+    22:34:18 [pytest] [ESP32] : DEVICE EXCEPTION TEST: [✔]
+    Test Result: PASSED
+    test_esp_serial.py::test_reset
+    ---------------------------------------------------------------- live log call ----------------------------------------------------------------
+    22:34:18 [pytest] [ESP32] : DEVICE RESET TEST
+    Rebooting device...
+    Done!
+    22:34:18 [pytest] [ESP32] : DEVICE RESET TEST: [✔]
+    Test Result: PASSED
+    test_esp_serial.py::test_disconnect
+    ---------------------------------------------------------------- live log call ----------------------------------------------------------------
+    22:34:18 [pytest] [ESP32] : DEVICE DISCONNECT TEST
+    22:34:18 [pytest] [ESP32] : DEVICE DISCONNECT TEST: [✔]
+    Test Result: PASSED
+
+    ============================================================== 7 passed in 5.20s ==============================================================
+
 IDE INTEGRATION with PLATFORMIO TERMINAL
 ----------------------------------------
 
