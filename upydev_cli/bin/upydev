@@ -359,13 +359,13 @@ elif len(args.m) == 2:
             args.m = 'sslgen_key'
     elif args.m == 'sd':
         if second_arg == 'enable':
-            args.m == 'sd_enable'
+            args.m = 'sd_enable'
         elif second_arg == 'init':
-            args.m == 'sd_init'
+            args.m = 'sd_init'
         elif second_arg == 'deinit':
-            args.m == 'sd_deinit'
+            args.m = 'sd_deinit'
         elif second_arg == 'auto':
-            args.m == 'sd_auto'
+            args.m = 'sd_auto'
     elif args.m == 'mkgroup' or args.m == 'mkg':
         args.m = 'make_group'
         args.f = second_arg
