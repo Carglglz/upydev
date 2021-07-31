@@ -837,9 +837,10 @@ def prototype_command(args, **kargs):
     #  IMUACC
 
     elif args.m == 'imuacc':
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         if args.tm is None:
             imu_cmd = "my_imu.read_acc()"
-            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            # dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
             if dev._traceback.decode() in dev.response:
@@ -941,6 +942,7 @@ def prototype_command(args, **kargs):
     # IMUACC SD
     elif args.m == 'imuacc_sd':
         # Do connect
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         fq = 1/(args.tm/1000)
         header = {'VAR': ['X', 'Y', 'Z'], 'UNIT': 'g=-9.8m/s^2',
                   'fq(hz)': fq}
@@ -962,9 +964,10 @@ def prototype_command(args, **kargs):
     # IMUGY
 
     elif args.m == 'imugy':
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         if args.tm is None:
             imu_cmd = "my_imu.read_gy()"
-            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            # dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
             if dev._traceback.decode() in dev.response:
@@ -1031,9 +1034,10 @@ def prototype_command(args, **kargs):
     # IMUMAG
 
     elif args.m == 'imumag':
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         if args.tm is None:
             imu_cmd = "my_imu.read_mag()"
-            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            # dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             imu_info = dev.wr_cmd(imu_cmd, silent=True, rtn_resp=True)
 
@@ -1125,9 +1129,10 @@ def prototype_command(args, **kargs):
     #  BME_READ
 
     elif args.m == 'bme_read':
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         if args.tm is None:
             bme_cmd = "my_bme.read_values()"
-            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            # dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             bme_info = dev.wr_cmd(bme_cmd, silent=True, rtn_resp=True)
             dev.wr_cmd("my_bme", silent=True, rtn_resp=True)
@@ -1251,9 +1256,10 @@ def prototype_command(args, **kargs):
     #  INA_READ
 
     elif args.m == 'ina_read':
+        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
         if args.tm is None:
             ina_cmd = "my_ina.read_values()"
-            dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+            # dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
 
             ina_info = dev.wr_cmd(ina_cmd, silent=True, rtn_resp=True)
             dev.wr_cmd("my_ina", silent=True, rtn_resp=True)
