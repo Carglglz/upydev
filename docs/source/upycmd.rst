@@ -79,7 +79,7 @@ Sensors
 ADC
 ****
     * ON BOARD ADC:
-              - **adc_config**: to config analog pin to read from (see pinout, ``-po`` and ``-att``)
+              - **adc_config**: to configure analog pin to read from (see pinout, ``-po`` and ``-att``)
               - **aread**: to read from an analog pin previously configured
 
     * EXTERNAL ADC: (I2C) ADS1115 [#]_
@@ -161,7 +161,7 @@ OUTPUT
 ^^^^^^
 DAC
 """
-    - **dac_config** : to config analog pin to write to (use ``-po`` option)
+    - **dac_config** : to configure analog pin to write to (use ``-po`` option)
     - **dac_write**: to write a value in volts (0-3.3V)
     - **dac_sig**:
             to write a signal use ``-sig`` for different options.
@@ -172,7 +172,7 @@ DAC
 
 BUZZER
 """""""
-    - **buzz_config**: to config PWM pin to drive the buzzer (use ``-po`` option)
+    - **buzz_config**: to configure PWM pin to drive the buzzer (use ``-po`` option)
 
     - **buzz_set_alarm**: to set an alarm at time indicated with option ``-at``. [#]_
 
@@ -186,7 +186,7 @@ BUZZER
 DC MOTOR
 """""""""
 
-    - **dcmotor_config**: to config PWM pins to drive a DC motor (use ``-po`` option as ``-po [DIR1] [DIR2]``)
+    - **dcmotor_config**: to configure PWM pins to drive a DC motor (use ``-po`` option as ``-po [DIR1] [DIR2]``)
 
     - **dcmotor_move**: to move the motor to one direction ['R'] or the opposite ['L'], use ``-to`` option as ``-to [R or L] [VELOCITY]`` where ``VELOCITY`` can be ``60-512``
 

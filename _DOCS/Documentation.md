@@ -1904,7 +1904,7 @@ Found 1 devices:
 
 ### i2c_config
 
-to configurate the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
+to configure the i2c pins (see -i2c, defaults are SCL=22, SDA=23)
 
 Usage: upydev i2c_config -i2c [SCL] [SDA]
 
@@ -1927,7 +1927,7 @@ Hex:
 
 ### spi_config
 
-to configurate the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
+to configure the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
 
 Usage: upydev spi_config -spi [SCK] [MISO] [MOSI] [CS]
 
@@ -2121,7 +2121,7 @@ Volts: 3.6
 
 #### ads_init
 
-to initialize and configurate ADS1115 and the channel to read from (see -ads, -ch) default channel is A0
+to initialize and configure ADS1115 and the channel to read from (see -ads, -ch) default channel is A0
 
 ```
 $ upydev ads_init
@@ -2526,7 +2526,7 @@ $ upydev dac_write -sig 0.5
 
 to write a signal use -sig for different options:
 
-To configurate signal do:
+To configure signal do:
 
 `upydev dac_sig -sig [type] [Amp] [frequency]`
 
@@ -2684,7 +2684,7 @@ DC motor stopped
 
 #### servo_config
 
-to configurate the servo pin with -po option
+to configure the servo pin with -po option
 
 ```
 $ upydev servo_config -po 5
@@ -2712,7 +2712,7 @@ Servo moved to 25 degrees!
 
 #### stepper_config
 
-to configurate the stepper direction and step pin with -po option *( -po [DIR_PIN] [STEP_PIN])
+to configure the stepper direction and step pin with -po option *( -po [DIR_PIN] [STEP_PIN])
 
 ```
 $ upydev stepper_config -po 18 5

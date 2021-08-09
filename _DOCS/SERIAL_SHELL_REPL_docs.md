@@ -6,7 +6,7 @@ If the device is not previously configured do:
 
 `$ upydev sh_srepl -port [serial port] -b [baudrate]` (-b default is 115200)
 
-To configurate a serial device use in current working directory:
+To configure a serial device use in current working directory:
 
 `$ upydev config -t [baudrate] -p [serial port]` 
 
@@ -14,7 +14,7 @@ Then
 
 `$ upydev sh_srepl` to access the device
 
-To configurate a serial device in the global group 'UPY_G':
+To configure a serial device in the global group 'UPY_G':
 
 If the group does not exists already:
 

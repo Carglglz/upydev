@@ -26,8 +26,9 @@ FIRMWARE_HELP = """
         - flash: to flash a firmware file to the upydevice, a serial port must be indicated
                     to flash do: "upydev flash -port [serial port] -f [firmware file]"
 
-        - mpyx : to froze a module/script indicated with -f option, and save some RAM,
-                 it uses mpy-cross tool (see https://gitlab.com/alelec/mpy_cross)"""
+        - mpyx : To froze a module/script , and save some RAM, it uses mpy-cross tool
+                 (mpy-cross must be available in $PATH) e.g. $ upydev mpyx [FILE].py,
+                 $ upydev mpyx [FILE].py [FILE2].py, $ upydev mpyx *.py"""
 
 
 def get_fw_versions(keyword):
