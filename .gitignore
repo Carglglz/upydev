@@ -3,9 +3,11 @@
 
 # Setuptools distribution folder.
 /dist/
+*/dist/*
 
 # Setuptools build folder.
 /build/
+*/build/*
 
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
@@ -15,4 +17,5 @@
 .DS_Store
 
 SSL_CUSTOM_AUTH.py
-/upyutils/ble*
+
+TODO.*

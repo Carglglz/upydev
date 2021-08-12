@@ -8,40 +8,40 @@
 
 ### Command line tool for wireless MicroPython devices
 
-**uPydev** is an acronym of '**MicroPy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running MicroPython.
+**uPydev** is an acronym of '**MicroPy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running MicroPython. It is intended to be cross-platform and
+connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 
 ⚠️ ***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything*** ⚠️
 
 ### Features:
 
-* Command line wireless communication/control of MicroPython devices.
-* Terminal WebREPL and WebSecureREPL protocol
-* Custom commands to automate communication/control
-* Command line autocompletion
-* [SSLWebREPL](https://github.com/Carglglz/upydev/blob/master/DOCS/SSLWebREPL_docs.md) (a Terminal SHELL/REPL over SSL)
-* [SERIAL SHELL-REPL](https://github.com/Carglglz/upydev/blob/master/DOCS/SERIAL_SHELL_REPL_docs.md) (a Terminal SHELL/REPL over USB)
-
-#### See what is [NEW](https://github.com/Carglglz/upydev/blob/master/DOCS/WHATSNEW.md)
-
-ℹ️ For Bluetooth Low Energy devices check [uPyble](https://github.com/Carglglz/upyble)
-
+* Tools to allow configuration, management, communication and control of MicroPython devices.
+* Command line Autocompletion
+* File IO operations (upload, download one or multiple files, recursively sync directories...)
+* SHELL-REPL modes: Serial, WiFi (SSL/WebREPL), BLE
+* Custom commands for debugging, testing and prototyping.
+* Group mode to operate with multiple devices
 ------
+
+### [Docs](https://upydev.readthedocs.io/en/latest/)
 
 ### Getting Started
 
-First be sure that the **WebREPL daemon is enabled** and running see:
-
+<<<<<<< HEAD
 * [WebREPL: a prompt over-wifi](http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#webrepl-a-prompt-over-wifi)
 * [WebREPL: web-browser interactive prompt](http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt)
+=======
+>>>>>>> develop
 
 #### Installing :
 
-`$ pip install upydev` or ``$ pip install --upgrade upydev`` to update to the last version available
+`$ pip install upydev` or ``$ pip install --upgrade upydev`` to update to the latest version available
 
 #### Create a configuration file:
 
 upydev will use local working directory configuration unless it does not find any or manually indicated with `-g` option.
 
+<<<<<<< HEAD
 - To save configuration in working directory: `$ upydev config -t [UPYDEVICE IP] -p [PASSWORD]`
 
   e.g:
@@ -126,43 +126,66 @@ Example: Raw commands
 - **`upydev run`** : just calls import 'script', where 'script' is indicated by `-f` option (script must be in upy device or in sd card indicated by `-s` option and the sd card must be already mounted as 'sd');
 
      Supports *CTRL-C* to stop the execution and exit nicely.
+=======
+- To save configuration in working directory:
 
-- **`upydev install`** : install libs to '/lib' path with upip; indicate lib with -f option
+  ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE]``, where ``ADDRESS`` must be a valid **IP** , **SERIAL ADDRESS**
+>>>>>>> develop
 
-- **`upydev mpyx`** : to froze a module/script indicated with -f option, and save some RAM,
-         it uses mpy-cross tool (see [mpy-cross](https://gitlab.com/alelec/micropython/tree/gitlab_build/mpy-cross) for more information)
+  > ``-p`` is set to 115200 by default, so it is not necessary unless using a different baudrate
 
-- **`upydev timeit`** : to measure execution time of a module/script indicated with -f option.
+  , or **MAC ADDRESS/ UUID**
 
-  source: [timed_function](https://github.com/peterhinch/micropython-samples/tree/master/timed_function)
+  > It will depend on OS system (e.g. Linux uses MAC format 'XX:XX:XX:XX:XX:XX', and macOS uses UUID format 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
 
+    e.g.
 
-* **`upydev fw`**: to list or get available firmware versions, use `-md` option to indicate operation:
+  ```bash
+  # WiFi
+  $ upydev config -t 192.168.1.40 -p mypass
 
-  - to list do: `upydev fw -md list -b [BOARD]` , board could be 'esp32', 'esp8266' or 'PYBD' for example (web scraping from [micropython downloads page](https://www.micropython.org/download/all) ) (use `list latest -b [BOARD]` to see the latest available firmware) *results can be filtered further with `-n` option, e.g. `-n idf3`
-  - to get do: `upydev fw -md get [firmware file]` or `upydev fw -md get latest -b [BOARD]` to get the latest available firmware. (this uses curl) *results can be filtered further with `-n` option, e.g. `-n idf3`
-  - to see available serial ports do: `upydev fw -md list serial_ports`
+  # SERIAL
+  $ upydev config -t /dev/tty.usbmodem387E386731342
 
+  # BLE
+  $ upydev config -t 9998175F-9A91-4CA2-B5EA-482AFC3453B9
+  ```
+
+<<<<<<< HEAD
 * **`upydev flash`**: to flash a firmware file to the upydevice, a serial port must be indicated to flash do: `upydev flash -port [serial port] -f [firmware file]` (*just for esp8266 and esp32*)
 
 * **`upydev see`**: to get specific command help info indicated with `-c` option
+=======
+>>>>>>> develop
 
-* **`upydev find`**: to get a list of possible upy devices. Scans the local network to find devices with port 8266 (WebREPL) open. Use `-n` option to perform n scans (A single scan may not find all the devices)
+  Default device name is ``upydevice``, to set a custom name use ``-@`` flag as
 
-* **`upydev diagnose`** to make a diagnostic test of the device (sends useful commands to get device state info)
+```bash
+ $ upydev config -t 192.168.1.40 -p mypass -@ mycustomdevice
+```
 
-*  **`upydev errlog`**: if `error.log` is present in the upydevice, this shows the content (`cat('error.log')`).
 
-     If `error.log` in sd use `-s sd` (This command needs `upysh` installed, do `upydev install -f upysh`)
+  To check configuration
 
-* **`upydev stream_test`**: to test download speed (from device to host). Default test is 10 MB of random bytes are sent in chunks of 20 kB and received in chunks of 32 kB. To change test parameters use `-chunk_tx` , `-chunk_rx`, and `-total_size`.
+```bash
+$ upydev check
+Device: mycustomdevice
+Address: 192.168.1.40, Device Type: WebSocketDevice
+```
 
-* **`upydev sysctl`** to start/stop a script without following the output. To follow initiate wrepl/srepl as normal, and exit with CTRL-x (webrepl) or CTRL-A,X (srepl) TO START: use `-start[SCRIPT_NAME]`, TO STOP: use `-stop [SCRIPT_NAME]`
+  Or to get more information if the device is online
 
-* **`upydev log`** to log the output of a upydevice script, indicate script with `-f` option, and the `sys.stdout` log level and file log level with `-dslev` and `-dflev` (defaults are debug for sys.stdout and error for file). To log in background use `-daemon` option, then the log will be redirected to a file with level `-dslev`. To stop the 'daemon' log mode use `-stopd` and indicate script with `-f` option. 'Normal' file log and 'Daemon' file log are under .upydev_logs folder in `$HOME` directory, named after the name of the script. To follow an on going 'daemon' mode log, use `-follow` option and indicate the script with `-f` option.
+```bash
+$ upydev check -i
+Device: mycustomdevice
+WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
+Firmware: MicroPython v1.13-221-gc8b055717 on 2020-12-05; ESP32 module with ESP32
+(MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+```
 
-* **`upydev update_upyutils`**: to update the latest versions of *sync_tool.py, upylog.py, upynotify.py, upysh2.py, upysecrets.py, ssl_repl.py, uping.py, time_it.py, wss_repl.py and wss_helper.py* (these are uploaded to the '/lib' folder of the upydevice)
+- To save configuration globally use ``-g`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -g``
 
+<<<<<<< HEAD
 * **`upydev debug`**: to execute a local script line by line in the target upydevice, use `-f` option to indicate the file. To enter next line press ENTER, to finish PRESS C then ENTER. To break a while loop do CTRL-C.
 
 * **`upydev gen_rsakey`** To generate RSA-2048 bit key that will be shared with the device (it is unique for each device) use -tfkey to send this key to the device (use only if connected directly to the AP of the device or a "secure" wifi e.g. local/home). If not connected to a "secure" wifi upload the key (it is stored in upydev._*path*_) by USB/Serial connection.
@@ -226,42 +249,30 @@ To target specific devices within a group add -devs option as `-devs [DEV_1 NAME
 *upydev will use local working directory configuration unless it does not find any or manually indicated with -g option*
 
 ------
+=======
+  e.g.
+>>>>>>> develop
 
-#### uPydev Commands:
+```bash
+$ upydev config -t 192.168.1.40 -p mypass -g
+```
 
-uPy commands are organized in:
+- To save configuration in a global group use ``-gg`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -gg -@ mydevice``
 
-* **General**: These commands should work 'out of the box' in any MicroPython running board with WebREPL daemon enabled.
-* **Wifi utils** : This commands make easier to save/load wifi configuration (STA and AP ) and connect to an access point or enable its own (needs wifiutils.py in upydevice, see [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)
-* **SD:** These commands need *sdcard.py* in the upy device, and a sd module/shield at least.
-* **INPUT**: These commands need a specific sensor module and the appropriate script in the upydevice (All these scripts are under [upyutils](https://github.com/Carglglz/upydev/tree/master/upyutils) directory)
-    * ***ADC***: commands that make use of the ADCs from the board, or an external ADC module (ADS1115) (for external module needs 'ads1115.py' and 'init_ADS.py')
-    * ***IMU***: commands that make use of the LSM9DS1 module, although other IMU modules could be easily implemented (needs 'lsm9ds1.py' and 'init_MY_IMU.py')
-    * ***WEATHER***: commands that make use of the BME280 module, although other weather sensor modules could be easily implemented (needs 'bme280.py' and 'init_BME280.py')
-    * ***POWER:*** commands that make use of the INA219 module.(needs 'ina219.py' and 'init_INA219.py')
-* **OUTPUT:** These commands use the DAC or PWM of the board, some needs an actuator module (buzzer or motor driver and a motor) at least and the appropriate script in the upydevice.
+  e.g.
 
-  * ***DAC:*** to generate an analog signal (dc value, sine wave or square wave at the momment) (needs 'dac_signal_gen.py')
-  * ***BUZZER***: to drive a buzzer with PWM (needs 'buzzertools.py')
-  * ***DC MOTOR***: to control a DC motor (needs a motor driver and the appropriate script) (needs 'dcmotor.py')
-  * ***SERVO:*** to drive a servo motor (needs 'servo.py')
-  * ***STEPPER MOTOR***: to drive stepper motor (needs a motor driver and 'stepper.py')
-* **NETWORKING:**
-    * ***MQTT:*** commands to connect to a broker, subscribe to topic, publish and receive messages (needs 'mqtt_client.py')
-    * ***SOCKETS:*** commands to start client/server socket and send/receive messages (needs 'socket_client_server.py')
-    * ***UREQUEST:*** commands to make http requests, and get json or text output
-* **PORT/BOARD SPECIFIC COMMANDS**:
-
-    * battery : if running on battery, gets battery voltage (esp32 huzzah feather)
-    * pinout : to see the pinout reference/info of a board, indicated by -b option,
-             to request a single or a list of pins info use -po option (currently just esp32 huzzah feather)
-    * specs : to see the board specs, indicated by -b option (currently just esp32 huzzah feather)
-    * pin_status: to see pin state, to request a specific set use -po option
+```bash
+$ upydev config -t 192.168.1.40 -p mypass -gg -@ mydevice
+```
 
 
+Once the device is configured see next section or read  [Usage documentation](https://upydev.readthedocs.io/en/latest/usage.html) to check which modes and tools are available.
+
+Or if you are working with more than one device continue with this [section](https://upydev.readthedocs.io/en/latest/gettingstarted.html#create-a-group-file) to create a group configuration.
 
 ------
 
+<<<<<<< HEAD
 ### DEBUG
 
 #### RECOMMENDATION:
@@ -278,27 +289,36 @@ uPy commands are organized in:
 To see if "command packets" are sent and received or lost use [Wireshark](https://www.wireshark.org) and filter the ip of the device.
 
 #### SEE WHAT'S GOING ON UNDER THE HOOD:
+=======
+#### uPydev Usage:
 
-_ℹ️ Host and the device must be connected._
+*Requirement* : **Needs REPL to be accessible** (see [Getting Started](https://upydev.readthedocs.io/en/latest/gettingstarted.html))
+>>>>>>> develop
 
-  In a terminal window open a 'serial repl' with `upydev srepl --port [USBPORT]` command
+Usage:
 
-  In another window use upydev normally. Now in the terminal window with the serial repl you can see which commands are sent.
+`$ upydev [Mode] [options] or upydev [upy command] [options]`
+
+This means that if the first argument is not a Mode keyword or a
+upy command keyword it assumes it is a 'raw' upy command to send to the upy device
+
+##### Help: `$ upydev h`, `$ upydev help`, `$ upydev -h` or `$ upydev %[command]`
+
+Example: Mode
+
+`$ upydev put dummy.py`, `$ upydev get dummpy.py`
+
+Example: uPy command
+
+`$ upydev info`
+
+Example: Raw commands
+
+`$ upydev "my_func()"`
+
+`$ upydev 2+1`
+
+`$ upydev "import my_lib;foo();my_var=2*3"`
 
 
-
-------
-
-### HOW TO
-
-- #### [ATOM / VISUAL STUDIO CODE INTEGRATION](https://github.com/Carglglz/upydev/blob/master/DOCS/HOWTO.md)
-
-- #### [GLOBAL GROUP CONFIGURATION](https://github.com/Carglglz/upydev/blob/master/DOCS/HOWTO.md)
-
-
-
-____
-
-### ABOUT
-
-To see more information about upydev toolbox sources, requirements, tested devices, etc see [ABOUT](https://github.com/Carglglz/upydev/blob/master/DOCS/ABOUT.md) doc.
+Too see documentation check [Upydev readthedocs](https://upydev.readthedocs.io/en/latest/)

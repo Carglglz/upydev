@@ -93,7 +93,7 @@ class WIFI_UTIL:
         self.ap.config(essid=ap_config['ssid'],
                        authmode=network.AUTH_WPA_WPA2_PSK,
                        password=ap_config['password'])
-        print('Acces point configurated: {}'.format(ap_config['ssid']))
+        print('access point configured: {}'.format(ap_config['ssid']))
         print(self.ap.ifconfig())
         webrepl.start()
         for i in range(10):
@@ -106,11 +106,11 @@ class WIFI_UTIL:
         with open(self.AP_FILE, 'w') as ap_file:
             ap_file.write(json.dumps(ap_conf))
         if not self.silent:
-            print('AP: {} configurated'.format(ssid))
+            print('AP: {} configured'.format(ssid))
 
     def sta_config(self, ssid, passw):
         sta_conf = dict(ssid=ssid, password=passw)
         with open(self.STA_FILE, 'w') as sta_file:
             sta_file.write(json.dumps(sta_conf))
         if not self.silent:
-            print('DEFAULT WLAN: {} configurated'.format(ssid))
+            print('DEFAULT WLAN: {} configured'.format(ssid))
