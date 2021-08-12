@@ -5,4 +5,5 @@
 # @Last modified time: 2019-07-12T02:50:43+01:00
 name = 'upydev'
 # include upydev/upydev_.config
+version = '0.3.4'
 from .websocket_helper import *

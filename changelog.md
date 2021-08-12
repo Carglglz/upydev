@@ -6,7 +6,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.4] Unreleased [Github Repo]
 ### Fix
-- Fix autocomplete on tab in REPL while `import` or `from X import`
+- Fix autocomplete on tab in REPL while `import` or `from X import` in SERIAL REPL
+- Command names change:
+  * `filesize` --> `du`,
+  * `filesys_info` --> `df`
+  * `fw` --> `fwr`
+  * `d_sync` --> `dsync`
+  * `sync` --> `fget`
+
+- Catching passwords too short for AP configuration
+- Refactor help info organisation for easy reading.
+- Refactor device management actions (configuration, groups...)
+- Refactor firmware actions, `-i` option to check firmware and platform match. (from firmware file name)
+- `tree` command in upysh2.py unix/linux like.
+- drop ``mpy-cross`` dependency, better to build from source.
+### Added
+- Autocomplete `shr@` , `ssl@`, `wssl@` and `ble@` commands with saved devices in UPY_G global group
+- `pytest` and `pytest-setup` command in SHELL-REPLS
+- `pytest` and `pytest-setup` command mode in CLI.
+- commands that start with `%` or not registered in SHELL-REPLS commands are forwarded to local shell (works with alias too)
+- Ble SHELL-REPL `ble@[device]`
+- `set` command to set current device configuration of a device saved in global group
+- `check` command to see device configuration (`-i` to see more info if device available)
+- `dm` command to see help about DEVICE MANAGEMENT
+- `gc` command to see help about GENERAL COMMANDS
+- `wu` command to see help about WLAN UTILS COMMANDS
+- `sd` command to see help about SD UTILS COMMANDS
+- `pro` command to see help about PROTOTYPE COMMANDS
+- `gg` to see global group
+- `-gg` flag to set -G flag to global group (`-gg` == `-G UPY_G`)
+- `-ggp` flag to set -GP flag to global group (`-ggp` == `-GP UPY_G`)
+- `%` before any command e.g. `%config` display help info about that command.
+- `probe` command to test if a device/group is reachable
+- `scan` command to look for devices (serial [-sr], network [-nt] or ble [-bl])
+- `shl` / `shell`, and `rpl` / `repl` commands works with `@` or `-@` and will detect device type, redirecting to the proper SHELL-REPL / REPL type.
+- `put`, `get`, `install`, `fget`, `dsync`, file operations now support indicating file/files/cwd/expression as a second argument, e.g, `upydev put this_file.py`, `upydev put demo_*.py`,  `upydev put fileone.py filetwo.py`, `upydev put cwd -dir lib` ...
+- Alias and positional args for keygen/firmware/flash actions `upydev kg/keygen rsa/wr/ssl`, `upydev fwr get/list latest`, `upydev flash esp32-idf4-20200122-v1.12-76-gdccace6f3.bin`,`upydev flash pybv11-20200114-v1.12-63-g1c849d63a.dfu` ...
+- Alias and positional args for `make_group, mg_group` actions `mkgroup/mkg, mggroup/mgg`, and `see`. e.g `upydev see MY_GROUP`, `upydev mkg MY_GROUP -devs mydevtest 192.168.1.40 mypasswd`, `upydev mgg MY_GROUP -add sdev2 /dev/tty.SLAB_USBtoUART 115200`
+- Alias and positional args for SD actions `upydev sd enable/init/deinit/auto`
+- upydev pypi version checking on `h`/ `help` command.
+- `-gf` flag to indicate a group file operation (files are upload/download to/from a directory with the name of the device in the current working directory). It uses local group configuration file if available (unless -gg flag is indicated), otherwise it falls back to global group configuration
+- `-rf` flag for `dsync` mode, to remove files or directories deleted in local dir.
+- `-to [devname]` flag now can be used with `-tfkey` to transfer keys by USB/Serial
+- `-d ` flag for `dsync` to sync from device to host.
+- `backup` command == `dsync . -d` to make a backup of the device filesystem
+- `rsync` command == `dsync [DIR] -rf -wdl` to recursively sync (deleting files too)
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch
@@ -82,7 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - fw , flash (and fw update which is 'fw get' + 'flash') commands for SERIAL SHELL
 - 'du' command for disk usage statistics (unix like) (SSL/SERIAL SHELLS)
-- 'd_sync' command to recursively sync directories for (SSL/SERIAL SHELLS)
+- 'dsync' command to recursively sync directories for (SSL/SERIAL SHELLS)
 - 'uping' and 'lping' commands for device and host pings commands (SSL/SERIAL SHELLS)
 - wildcard "\*" or [dir] for 'ls' and 'lsl' command e.g. "ls \*.py" or "ls my_dir" (SSL/SERIAL SHELLS)
 - install available for pyboard too (experimental) (SERIAL SHELL)
@@ -149,7 +193,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - sync mode improved
 ## [0.1.6] - 2019-12-08
 ### Added
-- New 'update_upyutils' mode to update the last versions of sync_tool.py,
+- New 'update_upyutils' mode to update the latest versions of sync_tool.py,
   upylog.py and upynotify.py (will be uploaded to '/lib' folder)
 - New 'debug' mode to execute a local script line by line in the target
   upydevice, use -f option to indicate the file
