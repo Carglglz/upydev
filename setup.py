@@ -53,4 +53,4 @@ setup(name='upydev',
                         'esptool', 'prompt_toolkit', 'python-nmap',
                         'netifaces', 'requests', 'cryptography', 'Pygments',
                         'pyusb', 'packaging', 'upydevice>=0.3.0',
-                        'jupyter_micropython_upydevice>=0.0.4'])
+                        'jupyter_micropython_upydevice>=0.0.5'])
