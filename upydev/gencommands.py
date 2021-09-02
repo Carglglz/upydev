@@ -223,8 +223,8 @@ def gen_command(cmd, *args, **kargs):
             free_mem_s = "{:.3f} KB".format(free_mem)
 
             print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
-                                                              used_mem_s, free_mem_s,
-                                                              "{:.1f} %".format((used_mem/total_mem)*100)))
+                                                             used_mem_s, free_mem_s,
+                                                             "{:.1f} %".format((used_mem/total_mem)*100)))
         dev.disconnect()
         return
 
@@ -311,8 +311,8 @@ def gen_command(cmd, *args, **kargs):
                                                                            'Avail',
                                                                            'Use%', 'Mounted on']))
                 print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                        used_mem, free_mem,
-                                                                        "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+                                                                             used_mem, free_mem,
+                                                                             "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
         else:
             print('{} not mounted'.format(filesys))
         dev.disconnect()
@@ -709,14 +709,15 @@ def gen_command(cmd, *args, **kargs):
         utc = kargs.pop('utc')
         print('Setting time UTC+{} from NTP Server'.format(utc))
         dev = Device(*args, **kargs)
-        dev.cmd(_CMDDICT_['SET_RTC_NT'].format(utc), silent=True)
-        if dev._traceback.decode() in dev.response:
-            try:
-                raise DeviceException(dev.response)
-            except Exception as e:
-                print(e)
-        else:
-            print('Done!')
+        for ntp_cmd in _CMDDICT_['SET_RTC_NT'].format(utc).split(';'):
+            dev.cmd(ntp_cmd, silent=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+
+        print('Done!')
         dev.disconnect()
         return
 
