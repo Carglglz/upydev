@@ -13,7 +13,7 @@ def readme():
 
 
 setup(name='upydev',
-      version='0.3.4',
+      version='0.3.5',
       description='Command line tool for wired/wireless MicroPython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',
@@ -52,5 +52,5 @@ setup(name='upydev',
       install_requires=['websocket-client', 'argcomplete',
                         'esptool', 'prompt_toolkit', 'python-nmap',
                         'netifaces', 'requests', 'cryptography', 'Pygments',
-                        'pyusb', 'packaging', 'upydevice>=0.3.0',
+                        'pyusb', 'packaging', 'upydevice>=0.3.1',
                         'jupyter_micropython_upydevice>=0.0.5'])

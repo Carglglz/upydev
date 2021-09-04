@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.5] Ureleased [Github Repo]
 ## Fix
 - `set_ntptime` with WebSocket Devices
+- blerepl paste command
+- paste command in sslweb_repl -nem mode
 
 >>>>>>> e316c59 (fix set_ntptime, update changelog latest release)
 ## [0.3.4] 2021-08-12

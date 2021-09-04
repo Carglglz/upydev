@@ -4221,9 +4221,6 @@ def paste_mode_exit(event):
                         time.sleep(0.2)
                         for i in range(1):
                             espdev.wr_cmd('\x0d', silent=True)
-                            
-                        pass
-
 
                 else:
                     # espdev.wr_cmd("cp.gbls = globals()", silent=True)
