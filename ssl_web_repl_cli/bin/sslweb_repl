@@ -54,7 +54,8 @@ def parse_bash_profile():
         bash_rc = os.path.join(os.environ['HOME'], '.bash_rc')
         with open(bash_rc, 'r') as bf:
             bf_content = bf.read()
-            bf_alias = [alias_line for alias_line in bf_content.splitlines() if alias_line.startswith('alias')]
+            bf_alias = [alias_line for alias_line in bf_content.splitlines()
+                        if alias_line.startswith('alias')]
 
         for alias in bf_alias:
             alias_key = alias.split('=')[0].replace('alias', '').strip()
@@ -68,7 +69,8 @@ def parse_bash_profile():
         profile = os.path.join(os.environ['HOME'], '.profile')
         with open(profile, 'r') as pf:
             pf_content = pf.read()
-            pf_alias = [alias_line for alias_line in pf_content.splitlines() if alias_line.startswith('alias')]
+            pf_alias = [alias_line for alias_line in pf_content.splitlines()
+                        if alias_line.startswith('alias')]
 
         for alias in pf_alias:
             alias_key = alias.split('=')[0].replace('alias', '').strip()
@@ -189,7 +191,7 @@ class SSL_REPL_server:
     """
 
     def __init__(self, dev=None, port=8443, buff=1024, key=None,
-                 cert=None, init=True, client_key=None, dev_id = None):
+                 cert=None, init=True, client_key=None, dev_id=None):
         self.host = self.find_localip()
         self.port = port
         self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -257,8 +259,8 @@ class SSL_REPL_server:
             return local_ip
         except Exception as e:
             return [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                        iface in netifaces.interfaces() if netifaces.AF_INET in
-                        netifaces.ifaddresses(iface)][-1]
+                    iface in netifaces.interfaces() if netifaces.AF_INET in
+                    netifaces.ifaddresses(iface)][-1]
 
     def start_SOC(self):
         while True:
@@ -275,7 +277,8 @@ class SSL_REPL_server:
         #     print(c['name'])
         while True:
             try:
-                my_p = getpass.getpass(prompt="Enter passphrase for key 'SSL_key{}.pem':".format(self.dev_id), stream=None)
+                my_p = getpass.getpass(
+                    prompt="Enter passphrase for key 'SSL_key{}.pem':".format(self.dev_id), stream=None)
                 self.passph = my_p
                 self.context.load_cert_chain(keyfile=self.key,
                                              certfile=self.cert,
@@ -293,7 +296,8 @@ class SSL_REPL_server:
             # for c in self.context.get_ciphers():
             #     print(c['name'])
             # self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {}, auth=False)".format(self.host, self.port))
-            self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
+            self.dev.wr_cmd(
+                "import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
             if args.wss:
                 self.dev.close_wconn()
             self.conn, self.addr_client = self.serv_soc.accept()
@@ -345,17 +349,21 @@ class SSL_REPL_server:
 
     def colored(self, msg):
         if self.color_style == 'one_dark':
-            result = highlight(msg, Python3Lexer(), Terminal256Formatter(style=one_darkStyle))
+            result = highlight(msg, Python3Lexer(),
+                               Terminal256Formatter(style=one_darkStyle))
             lines = result.split('\n')
-            lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+            lines_numbered = ["{}{:4}{} {}".format(
+                DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
             my_code_numb = '\n'.join(lines_numbered)
             print(my_code_numb)
 
         else:
             pygm_style = get_style_by_name(self.color_style)
-            result = highlight(msg, Python3Lexer(), Terminal256Formatter(style=pygm_style))
+            result = highlight(msg, Python3Lexer(),
+                               Terminal256Formatter(style=pygm_style))
             lines = result.split('\n')
-            lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+            lines_numbered = ["{}{:4}{} {}".format(
+                DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
             my_code_numb = '\n'.join(lines_numbered)
             print(my_code_numb)
 
@@ -456,14 +464,16 @@ class SSL_REPL_server:
                         if n >= 1:
                             try:
                                 if b'>>> ' in self.buff:  # parse last line of cat command
-                                    last_line = self.buff.decode().split('\n')[-1].replace('\r', '').replace('>>> ', '')
+                                    last_line = self.buff.decode().split(
+                                        '\n')[-1].replace('\r', '').replace('>>> ', '')
                                     var = ast.literal_eval(last_line)
                                     if isinstance(var, list) or isinstance(var, dict):
                                         print(var)
                             except Exception as e:
                                 if inp.split(';')[0].startswith('cat') and (inp.split(';')[0].endswith(".txt')") or inp.split(';')[0].endswith(".py')")):
                                     if b'>>> ' in self.buff:
-                                        last_line = self.buff.decode().split('\n')[-1].replace('\r', '').replace('>>> ', '')
+                                        last_line = self.buff.decode().split(
+                                            '\n')[-1].replace('\r', '').replace('>>> ', '')
                                         if last_line != '':
                                             print(last_line)
                                 pass
@@ -556,7 +566,8 @@ class SSL_REPL_server:
 
                 if not silent:
                     if color:
-                        self.colored(b'\n'.join(self.raw_buff.splitlines()[1:-1]+[self.raw_buff.splitlines()[-1].replace(b'>>> ', b'')]).decode())
+                        self.colored(b'\n'.join(self.raw_buff.splitlines()[
+                                     1:-1]+[self.raw_buff.splitlines()[-1].replace(b'>>> ', b'')]).decode())
                     else:
                         print(self.output)
             if traceback:
@@ -600,8 +611,8 @@ class SSL_TOOL:
             return local_ip
         except Exception as e:
             return [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                        iface in netifaces.interfaces() if netifaces.AF_INET in
-                        netifaces.ifaddresses(iface)][-1]
+                    iface in netifaces.interfaces() if netifaces.AF_INET in
+                    netifaces.ifaddresses(iface)][-1]
 
     def start_SOC(self):
         self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -625,7 +636,8 @@ class SSL_TOOL:
         self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
         self.context.verify_mode = ssl.CERT_REQUIRED
         self.context.load_verify_locations(cafile=self.cert)
-        self.ssl_repl.ssl_repl("ssl_tool=ssl_repl.SSL_socket_client_tool('{}', {})".format(self.host, self.port))
+        self.ssl_repl.ssl_repl(
+            "ssl_tool=ssl_repl.SSL_socket_client_tool('{}', {})".format(self.host, self.port))
         self.ssl_repl.ssl_repl("ssl_tool.connect_SOC(ssl_client.key, ssl_client.cert)")
         self.conn, self.addr_client = self.serv_soc.accept()
         self.conn = self.context.wrap_socket(self.conn, server_side=True)
@@ -653,12 +665,13 @@ class SSL_TOOL:
         if index == self.bar_size:
             l_bloc = "█"
         sys.stdout.write("\033[K")
-        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((self.bar_size+1) - len("█" *index + l_bloc)),
-                                                                        wheel[index % 4],
-                                                                        int((percentage)*100),
-                                                                        nb_of_total, speed,
-                                                                        str(timedelta(seconds=time_e)).split('.')[0][2:],
-                                                                        str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
+        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" * index + l_bloc + " "*((self.bar_size+1) - len("█" * index + l_bloc)),
+                                                                    wheel[index % 4],
+                                                                    int((percentage)*100),
+                                                                    nb_of_total, speed,
+                                                                    str(timedelta(seconds=time_e)).split(
+                                                                        '.')[0][2:],
+                                                                    str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
         sys.stdout.flush()
 
     def put(self, filetoput, chunk=(1024*8), chunk_rx=(4096*3)):
@@ -670,7 +683,8 @@ class SSL_TOOL:
         # def_chunk = chunk
         print("{}  [{:.2f} KB]".format(filetoput, sz / 1024))
         self.ssl_repl.flush_conn()
-        self.ssl_repl.send_message("ssl_tool.put('{}', {}, chunk={})".format(filetoput, sz, chunk_rx) + '\r')
+        self.ssl_repl.send_message(
+            "ssl_tool.put('{}', {}, chunk={})".format(filetoput, sz, chunk_rx) + '\r')
         # self.ssl_repl.ssl_repl("ssl_tool.put('{}', {}, chunk={})".format(filetoput, sz, chunk_rx))
         with open(filetoput, "rb") as f:
             self.buff = f.read(chunk)
@@ -689,7 +703,8 @@ class SSL_TOOL:
                             loop_index_f = (cnt/sz)*self.bar_size
                             loop_index = int(loop_index_f)
                             loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                            nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                            nb_of_total = "{:.2f}/{:.2f} KB".format(
+                                cnt/(1024), sz/(1024))
                             percentage = cnt / sz
                             t_elapsed = time.time() - t_start
                             t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
@@ -722,7 +737,8 @@ class SSL_TOOL:
         sz = self.ssl_repl.dev.output
         print("{}  [{:.2f} KB]".format(filetoget, sz / 1024))
         self.ssl_repl.flush_conn()
-        self.ssl_repl.send_message("ssl_tool.get('{}', chunk={})".format(filetoget, chunk_tx) + '\r')
+        self.ssl_repl.send_message(
+            "ssl_tool.get('{}', chunk={})".format(filetoget, chunk_tx) + '\r')
         # self.ssl_repl.ssl_repl("ssl_tool.put('{}', {}, chunk={})".format(filetoget, sz, chunk_rx))
         with open(filetoget, 'wb') as f:
             pass
@@ -746,7 +762,8 @@ class SSL_TOOL:
                             loop_index_f = (cnt/sz)*self.bar_size
                             loop_index = int(loop_index_f)
                             loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                            nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                            nb_of_total = "{:.2f}/{:.2f} KB".format(
+                                cnt/(1024), sz/(1024))
                             percentage = cnt / sz
                             t_elapsed = time.time() - t_start
                             t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
@@ -985,7 +1002,8 @@ else:
     shell_mode['S'] = True
     if encrypted_flag['sec']:
         # time.sleep(0.2)
-        ssl_cp.ssl_repl('import gc;import os;from upysh import *;gc.collect()', silent=True)
+        ssl_cp.ssl_repl(
+            'import gc;import os;from upysh import *;gc.collect()', silent=True)
         time.sleep(0.2)
         ssl_cp.flush_conn()
         ssl_cp.flush_conn()
@@ -1003,7 +1021,8 @@ else:
         ssl_cp.flush_conn()
         espdev.output = None
     else:
-        espdev.wr_cmd('import gc;import os;from upysh import *;gc.collect()', silent=True)
+        espdev.wr_cmd(
+            'import gc;import os;from upysh import *;gc.collect()', silent=True)
         # espdev.close_wconn()
         espdev.wr_cmd("help('modules')", silent=True, long_string=True)
         # espdev.open_wconn()
@@ -1156,7 +1175,8 @@ def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
         data = ['{}{}{}{}'.format(
             CGREEN, val, CEND, ' '*(wide-len(val))) if '.mpy' in val else val for val in data]
     if autocol_tab:
-        data = [namefile if len(namefile) < wide else namefile+'\n' for namefile in data]
+        data = [namefile if len(namefile) < wide else namefile +
+                '\n' for namefile in data]
     if autowide:
         wide_data = max([len(namefile) for namefile in data]) + 2
         if wide_data > wide:
@@ -1182,7 +1202,8 @@ def read_pbm(fname):
     pixel_blocks = [bin(x).replace('0b', '0'*(8-len(bin(x)[2:]))) for x in data]
     raw_bin_img = ''.join(pixel_blocks)
     img_term = ["█" if int(x) > 0 else " " for x in raw_bin_img]
-    term_images = '\n'.join(textwrap.wrap(''.join(img_term[6:]), dimensions[0]*2)[:dimensions[0]])
+    term_images = '\n'.join(textwrap.wrap(
+        ''.join(img_term[6:]), dimensions[0]*2)[:dimensions[0]])
     img_1 = '\n'.join([line[:dimensions[0]] for line in term_images.split('\n')])
     return dimensions, data, raw_bin_img, img_1
 
@@ -1195,6 +1216,9 @@ def map_upysh(cmd_inp):
         scnd_cmd = cmd_inp.split(' ')[1]
         if scnd_cmd != '':
             shell_cmd = "{}('{}')".format(frst_cmd, scnd_cmd)
+            if '*' in scnd_cmd and frst_cmd in ['rm', 'cat', 'head', 'rmdir']:
+                pattrn = scnd_cmd.replace('*', '')
+                shell_cmd = f"__ = list(map({frst_cmd}, [f for f in os.listdir(os.getcwd()) if '{pattrn}' in f]))"
     else:
         shell_cmd = frst_cmd
 
@@ -1232,8 +1256,8 @@ def get_ip():
     # ip = scanoutput.decode('utf-8').split('\n')[0]
     try:
         ip = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                    iface in netifaces.interfaces() if netifaces.AF_INET in
-                    netifaces.ifaddresses(iface)][-1]
+              iface in netifaces.interfaces() if netifaces.AF_INET in
+              netifaces.ifaddresses(iface)][-1]
         return ip
     except Exception as e:
         try:
@@ -1263,7 +1287,8 @@ class LTREE:
             l = os.listdir(path)
         else:
             l = [f for f in os.listdir(path) if not f.startswith('.')]
-        nf = len([file for file in l if not os.stat("%s/%s" % (path, file))[0] & 0x4000])
+        nf = len([file for file in l if not os.stat(
+            "%s/%s" % (path, file))[0] & 0x4000])
         nd = len(l) - nf
         ns_f, ns_d = 0, 0
         l.sort()
@@ -1274,7 +1299,8 @@ class LTREE:
         for f in l:
             st = os.stat("%s/%s" % (path, f))
             if st[0] & 0x4000:  # stat.S_IFDIR
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  \u001b[34;1m%s\033[0m" % f)
+                print(self._treeindent(level, f, last_file, is_last=is_last,
+                                       carrier=carrier) + "  \u001b[34;1m%s\033[0m" % f)
                 if f == last_file and level == 0:
                     carrier = "    "
                 os.chdir(f)
@@ -1295,7 +1321,8 @@ class LTREE:
                 nf += ns_f
                 nd += ns_d
             else:
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + " %s" % (f))
+                print(self._treeindent(level, f, last_file,
+                                       is_last=is_last, carrier=carrier) + " %s" % (f))
         if is_root:
             nd_str = 'directories'
             nf_str = 'files'
@@ -1334,36 +1361,46 @@ class DISK_USAGE:
     def __call__(self, path=".", dlev=0, max_dlev=0, hidden=False, absp=True):
         if path != ".":
                 if not os.stat(path)[0] & 0x4000:
-                    print('{:9} {}'.format(self.print_filesys_info(os.stat(path)[6]), path))
+                    print('{:9} {}'.format(
+                        self.print_filesys_info(os.stat(path)[6]), path))
                 else:
                     if hidden:
-                        resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
+                        resp = {
+                            path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
                     else:
-                        resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                        resp = {
+                            path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
                     for dir in resp.keys():
 
                         if not os.stat(dir)[0] & 0x4000:
                             if absp:
-                                print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir))
+                                print('{:9} {}'.format(
+                                    self.print_filesys_info(resp[dir]), dir))
                             else:
-                                print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir.split('/')[-1]))
+                                print('{:9} {}'.format(self.print_filesys_info(
+                                    resp[dir]), dir.split('/')[-1]))
 
                         else:
                             if dlev < max_dlev:
                                 dlev += 1
-                                self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
+                                self.__call__(path=dir, dlev=dlev,
+                                              max_dlev=max_dlev, hidden=hidden)
                                 dlev += (-1)
                             else:
                                 if absp:
-                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
+                                    print('{:9} \u001b[34;1m{}\033[0m'.format(
+                                        self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
                                 else:
-                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
+                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(
+                                        self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
 
         else:
             if hidden:
-                resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
+                resp = {path+'/'+dir: os.stat(path+'/'+dir)
+                        [6] for dir in os.listdir(path)}
             else:
-                resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                resp = {
+                    path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
             for dir in resp.keys():
 
                 if not os.stat(dir)[0] & 0x4000:
@@ -1372,10 +1409,12 @@ class DISK_USAGE:
                 else:
                     if dlev < max_dlev:
                         dlev += 1
-                        self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
+                        self.__call__(path=dir, dlev=dlev,
+                                      max_dlev=max_dlev, hidden=hidden)
                         dlev += (-1)
                     else:
-                        print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
+                        print('{:9} \u001b[34;1m{}\033[0m'.format(
+                            self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
 
     def print_filesys_info(self, filesize):
         _kB = 1024
@@ -1403,10 +1442,11 @@ def get_dir_size_recursive(dir):
 def d_sync_recursive(folder, dev=None, rootdir='./', root_sync_folder=None,
                      show_tree=False):
     t0 = time.time()
-    type_file_dict = {True:'<f>', False:'<d>'}
+    type_file_dict = {True: '<f>', False: '<d>'}
     if folder == root_sync_folder:
         print('DIRECTORY TO SYNC: {}'.format(folder))
-        print('DIRECTORY SIZE: {}'.format(print_filesys_info(get_dir_size_recursive(folder))))
+        print('DIRECTORY SIZE: {}'.format(
+            print_filesys_info(get_dir_size_recursive(folder))))
         ssl_htool.start_SOC()
     if show_tree:
         print('DIRECTORY TREE STRUCTURE:\n')
@@ -1517,7 +1557,7 @@ def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True, collect=False,
         else:
             # espdev.close_wconn()
             espdev.wr_cmd(cmd, silent=sh_silent, long_string=True,
-            follow=follow)
+                          follow=follow)
             # espdev.output = espdev.long_output
             # espdev.open_wconn()
     else:
@@ -1603,9 +1643,10 @@ def custom_sh_cmd(cmd_inp):
                                                                    'Avail',
                                                                    'Use%', 'Mounted on']))
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format('Flash', total_mem,
-                                                                used_mem, free_mem,
-                                                                "{:.1f} %".format((used_b/total_b)*100), ' ', '/'))
-        vfs_resp = send_custom_sh_cmd("{dir:os.statvfs(dir) for dir in os.listdir() if os.stat(dir)[0] & 0x4000 and os.statvfs('') != os.statvfs(dir)}")
+                                                                     used_mem, free_mem,
+                                                                     "{:.1f} %".format((used_b/total_b)*100), ' ', '/'))
+        vfs_resp = send_custom_sh_cmd(
+            "{dir:os.statvfs(dir) for dir in os.listdir() if os.stat(dir)[0] & 0x4000 and os.statvfs('') != os.statvfs(dir)}")
         for vfs in vfs_resp.keys():
             if vfs_resp[vfs] != resp:
                 size_info_sd = vfs_resp[vfs]
@@ -1616,8 +1657,8 @@ def custom_sh_cmd(cmd_inp):
                 free_mem_sd = print_filesys_info(size_info_sd[0] * size_info_sd[3])
                 used_mem_sd = print_filesys_info(used_b_sd)
                 print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(vfs, total_mem_sd,
-                                                                        used_mem_sd, free_mem_sd,
-                                                                        "{:.1f} %".format((used_b_sd/total_b_sd)*100), ' ', '/{}'.format(vfs)))
+                                                                             used_mem_sd, free_mem_sd,
+                                                                             "{:.1f} %".format((used_b_sd/total_b_sd)*100), ' ', '/{}'.format(vfs)))
 
     if cmd_inp.split()[0] == 'ldu':
         if len(cmd_inp.split()) == 1:
@@ -1629,7 +1670,7 @@ def custom_sh_cmd(cmd_inp):
                 du(path='./{}'.format(file))
 
             elif cmd_inp.split()[1] == '-o':
-                resp = {dir:os.stat(dir)[6] for dir in os.listdir()}
+                resp = {dir: os.stat(dir)[6] for dir in os.listdir()}
                 is_dir = {}
                 for dir in resp.keys():
                     if resp[dir] != 0:
@@ -1638,7 +1679,8 @@ def custom_sh_cmd(cmd_inp):
                         # print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
                     else:
                         # print('{:9} ./{}'.format('<dir>', dir))
-                        resp_dir = sum([os.stat(dir+sdir)[6] for sdir in os.listdir(dir)])
+                        resp_dir = sum([os.stat(dir+sdir)[6]
+                                        for sdir in os.listdir(dir)])
                         # print('{:9} ./{} <dir>'.format(print_filesys_info(resp_dir), dir))
                         resp[dir] = resp_dir
                         is_dir[dir] = 1
@@ -1650,7 +1692,8 @@ def custom_sh_cmd(cmd_inp):
                     if val[2] == 0:
                         print('{:9} ./{}'.format(print_filesys_info(val[1]), val[0]))
                     else:
-                        print('{:9} ./{} <dir>'.format(print_filesys_info(val[1]), val[0]))
+                        print(
+                            '{:9} ./{} <dir>'.format(print_filesys_info(val[1]), val[0]))
         elif len(cmd_inp.split()) == 3:
             if cmd_inp.split()[1] == '-d':
                 try:
@@ -1677,19 +1720,23 @@ def custom_sh_cmd(cmd_inp):
                 ssl_cp.ssl_repl('from upysh2 import du;du();gc.collect()', follow=True)
                 ssl_cp.flush_conn()
             else:
-                send_custom_sh_cmd('from upysh2 import du;du();gc.collect()', sh_silent=False, follow=True)
+                send_custom_sh_cmd(
+                    'from upysh2 import du;du();gc.collect()', sh_silent=False, follow=True)
 
         elif len(cmd_inp.split()) == 2:
             if cmd_inp.split()[1] != '-o':
                 file = cmd_inp.split()[1]
                 if encrypted_flag['sec']:
-                    ssl_cp.ssl_repl("from upysh2 import du;du(path='./{}');gc.collect()".format(file), follow=True)
+                    ssl_cp.ssl_repl(
+                        "from upysh2 import du;du(path='./{}');gc.collect()".format(file), follow=True)
                     ssl_cp.flush_conn()
                 else:
-                    send_custom_sh_cmd("from upysh2 import du;du(path='./{}');gc.collect()".format(file), sh_silent=False, follow=True)
+                    send_custom_sh_cmd(
+                        "from upysh2 import du;du(path='./{}');gc.collect()".format(file), sh_silent=False, follow=True)
 
             elif cmd_inp.split()[1] == '-o':
-                resp = send_custom_sh_cmd("{dir:os.stat(dir)[6] for dir in os.listdir()}")
+                resp = send_custom_sh_cmd(
+                    "{dir:os.stat(dir)[6] for dir in os.listdir()}")
                 is_dir = {}
                 for dir in resp.keys():
                     if resp[dir] != 0:
@@ -1698,7 +1745,8 @@ def custom_sh_cmd(cmd_inp):
                         # print('{:9} ./{}'.format(print_filesys_info(resp[dir]), dir))
                     else:
                         # print('{:9} ./{}'.format('<dir>', dir))
-                        resp_dir = send_custom_sh_cmd("sum([os.stat('{0}/'+dir)[6] for dir in os.listdir('{0}')])".format(dir))
+                        resp_dir = send_custom_sh_cmd(
+                            "sum([os.stat('{0}/'+dir)[6] for dir in os.listdir('{0}')])".format(dir))
                         # print('{:9} ./{} <dir>'.format(print_filesys_info(resp_dir), dir))
                         resp[dir] = resp_dir
                         is_dir[dir] = 1
@@ -1710,16 +1758,19 @@ def custom_sh_cmd(cmd_inp):
                     if val[2] == 0:
                         print('{:9} ./{}'.format(print_filesys_info(val[1]), val[0]))
                     else:
-                        print('{:9} ./{} <dir>'.format(print_filesys_info(val[1]), val[0]))
+                        print(
+                            '{:9} ./{} <dir>'.format(print_filesys_info(val[1]), val[0]))
         elif len(cmd_inp.split()) == 3:
             if cmd_inp.split()[1] == '-d':
                 try:
                     dlev = cmd_inp.split()[2]
                     if encrypted_flag['sec']:
-                        ssl_cp.ssl_repl("from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), follow=True)
+                        ssl_cp.ssl_repl(
+                            "from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), follow=True)
                         ssl_cp.flush_conn()
                     else:
-                        send_custom_sh_cmd("from upysh2 import du;du(max_dlev={});gc.collect()".format(dlev), sh_silent=False, follow=True)
+                        send_custom_sh_cmd("from upysh2 import du;du(max_dlev={});gc.collect()".format(
+                            dlev), sh_silent=False, follow=True)
 
                 except Exception as e:
                     print(e)
@@ -1730,16 +1781,15 @@ def custom_sh_cmd(cmd_inp):
                     file = cmd_inp.split()[1]
                     dlev = cmd_inp.split()[3]
                     if encrypted_flag['sec']:
-                        ssl_cp.ssl_repl("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), follow=True)
+                        ssl_cp.ssl_repl(
+                            "from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), follow=True)
                         ssl_cp.flush_conn()
                     else:
-                        send_custom_sh_cmd("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(file, dlev), sh_silent=False, follow=True)
+                        send_custom_sh_cmd("from upysh2 import du;du(path='./{}',max_dlev={});gc.collect()".format(
+                            file, dlev), sh_silent=False, follow=True)
 
                 except Exception as e:
                     print(e)
-
-
-
 
     if cmd_inp == 'datetime':
         send_custom_sh_cmd("import time;tnow=time.localtime()")
@@ -1887,8 +1937,8 @@ def custom_sh_cmd(cmd_inp):
         free_mem_s = "{:.3f} KB".format(free_mem)
 
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
-                                                          used_mem_s, free_mem_s,
-                                                          "{:.1f} %".format((used_mem/total_mem)*100)))
+                                                         used_mem_s, free_mem_s,
+                                                         "{:.1f} %".format((used_mem/total_mem)*100)))
 
     if cmd_inp == 'dump_mem':
         if encrypted_flag['sec']:
@@ -1897,7 +1947,7 @@ def custom_sh_cmd(cmd_inp):
             print(RAM_dump)
         else:
             RAM_dump = espdev.wr_cmd('from micropython import mem_info;mem_info(1)',
-                                      follow=True)
+                                     follow=True)
             # print(RAM_dump)
 
     if cmd_inp.split(' ')[0] == 'install':
@@ -1905,9 +1955,10 @@ def custom_sh_cmd(cmd_inp):
             lib = cmd_inp.split(' ')[1]
             if not encrypted_flag['sec']:
                 install_resp = send_custom_sh_cmd(
-                "import upip;upip.install('{}')".format(lib), sh_silent=False)
+                    "import upip;upip.install('{}')".format(lib), sh_silent=False)
             else:
-                ssl_cp.ssl_repl("import upip;upip.install('{}')".format(lib), follow=True)
+                ssl_cp.ssl_repl(
+                    "import upip;upip.install('{}')".format(lib), follow=True)
         except Exception as e:
             print('Please indicate a library to install')
 
@@ -2062,7 +2113,7 @@ def custom_sh_cmd(cmd_inp):
         if len(cmd_inp.split()) == 1:
             list_of_files = os.listdir()
         elif len(cmd_inp.split()) > 1:
-            if '*' in cmd_inp.split()[1]: # re to match
+            if '*' in cmd_inp.split()[1]:  # re to match
                 r_e = cmd_inp.split()[1].replace('*', '')
                 list_of_files = [f for f in os.listdir() if r_e in f]
             else:
@@ -2131,7 +2182,8 @@ def custom_sh_cmd(cmd_inp):
                     time.sleep(0.2)
                     ssl_htool.stop_SOC()
                 elif '*' in file:
-                    ssl_cp.ssl_repl("ssl_repl.get_files_re('{}')".format(file.replace('*', '')))
+                    ssl_cp.ssl_repl("ssl_repl.get_files_re('{}')".format(
+                        file.replace('*', '')))
                     espdev.get_output()
                     files_to_put_re = espdev.output
                     if files_to_put_re is None or files_to_put_re == []:
@@ -2224,7 +2276,7 @@ def custom_sh_cmd(cmd_inp):
         except Exception as e:
             print('File not Found\nIndicate a file to get')
 
-    if cmd_inp.split(' ')[0] == 'put': # FIXME: * wildcard with glob, webrepl put with wsio.py
+    if cmd_inp.split(' ')[0] == 'put':  # FIXME: * wildcard with glob, webrepl put with wsio.py
         if not encrypted_flag['sec']:
             print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
             try:
@@ -2288,7 +2340,8 @@ def custom_sh_cmd(cmd_inp):
                     ssl_htool.stop_SOC()
                 elif '*' in file:
                     files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl)]
-                    files_to_put_re = [fl for fl in files_to_put if file.replace('*', '') in fl]
+                    files_to_put_re = [
+                        fl for fl in files_to_put if file.replace('*', '') in fl]
                     for file in files_to_put_re:
                         print('- {}'.format(file))
                     ssl_htool.start_SOC()
@@ -2300,7 +2353,8 @@ def custom_sh_cmd(cmd_inp):
                     ssl_htool.stop_SOC()
                 elif len(cmd_inp.split(' ')) > 2:
                     files_to_put = cmd_inp.split(' ')[1:]
-                    files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in files_to_put]
+                    files_to_put_dir = [fl for fl in os.listdir(
+                    ) if os.path.isfile(fl) and fl in files_to_put]
                     if len(files_to_put_dir) != len(files_to_put):
                         print('One or more files not found in cwd')
                     else:
@@ -2314,7 +2368,8 @@ def custom_sh_cmd(cmd_inp):
                         time.sleep(0.2)
                         ssl_htool.stop_SOC()
                 else:
-                    files_to_put_dir = [fl for fl in os.listdir() if os.path.isfile(fl) and fl in [file]]
+                    files_to_put_dir = [fl for fl in os.listdir(
+                    ) if os.path.isfile(fl) and fl in [file]]
                     if len(files_to_put_dir) == 0:
                         print('File not Found\nIndicate a valid file to put')
                     else:
@@ -2350,7 +2405,8 @@ def custom_sh_cmd(cmd_inp):
             except Exception as e:
                 pass
             if cmd_inp.split()[-1] == '.':
-                file =' '.join([fl for fl in os.listdir() if os.path.isfile(fl) and not fl.startswith('.')])
+                file = ' '.join([fl for fl in os.listdir()
+                                 if os.path.isfile(fl) and not fl.startswith('.')])
                 put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
                     file, args.t, args.p, '')
                 put_cmd = shlex.split(put_str)
@@ -2368,7 +2424,8 @@ def custom_sh_cmd(cmd_inp):
                     pass
                     print('Operation aborted')
 
-                dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
+                dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(
+                    fl) and not fl.startswith('.')]
                 try:
                     ssl_cp.enable_wrepl_io()
                 except Exception as e:
@@ -2379,8 +2436,8 @@ def custom_sh_cmd(cmd_inp):
                     print('- {}'.format(_dir))
 
                     d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f'.format(args.t,
-                                                                               args.p,
-                                                                               _dir)
+                                                                                  args.p,
+                                                                                  _dir)
 
                     d_sync_cmd = shlex.split(d_sync_str)
                     try:
@@ -2406,8 +2463,8 @@ def custom_sh_cmd(cmd_inp):
                     dir_to_sync = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
 
                     d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f'.format(args.t,
-                                                                               args.p,
-                                                                               dir_to_sync)
+                                                                                  args.p,
+                                                                                  dir_to_sync)
 
                     d_sync_cmd = shlex.split(d_sync_str)
                     try:
@@ -2426,11 +2483,12 @@ def custom_sh_cmd(cmd_inp):
                 except Exception as e:
                     print('Indicate a dir to sync')
         else:
-            if len(cmd_inp.split()) == 1: # root_dir
+            if len(cmd_inp.split()) == 1:  # root_dir
                 dir_to_sync = os.getcwd().split('/')[-1]
                 # print('Directory to sync: {}'.format(dir_to_sync))
                 os.chdir('..')
-                d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
+                d_sync_recursive(dir_to_sync, show_tree=True,
+                                 root_sync_folder=dir_to_sync)
                 os.chdir(dir_to_sync)
             elif len(cmd_inp.split()) == 2:
                 dir_to_sync = cmd_inp.split()[-1]
@@ -2438,7 +2496,8 @@ def custom_sh_cmd(cmd_inp):
                 if dir_to_sync == '.':
                     file = 'cwd'
                     if file == 'cwd':
-                        files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl) and not fl.startswith('.')]
+                        files_to_put = [fl for fl in os.listdir() if os.path.isfile(
+                            fl) and not fl.startswith('.')]
                         if len(files_to_put) > 0:
                             print('File/s to put:')
                         for file in files_to_put:
@@ -2451,15 +2510,18 @@ def custom_sh_cmd(cmd_inp):
                         time.sleep(0.2)
                         ssl_htool.stop_SOC()
 
-                    dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
+                    dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(
+                        fl) and not fl.startswith('.')]
                     if len(dirs_to_sync) > 0:
                         print('Dir/s to sync:')
                         for _dir in dirs_to_sync:
                             print('- {}'.format(_dir))
                             # print('Directory to sync: {}'.format(dir_to_sync))
-                            d_sync_recursive(_dir, show_tree=True, root_sync_folder=_dir)
+                            d_sync_recursive(_dir, show_tree=True,
+                                             root_sync_folder=_dir)
                 else:
-                    d_sync_recursive(dir_to_sync, show_tree=True, root_sync_folder=dir_to_sync)
+                    d_sync_recursive(dir_to_sync, show_tree=True,
+                                     root_sync_folder=dir_to_sync)
 
     if cmd_inp.split()[0] == 'pytest':
         # setup conftest.py
@@ -2522,11 +2584,13 @@ def custom_sh_cmd(cmd_inp):
         if len(cmd_inp.split()) == 1:
             dev_files = send_custom_sh_cmd('os.listdir();gc.collect()')
         elif len(cmd_inp.split()) > 1:
-            if '*' in cmd_inp.split()[1]: # re to match
+            if '*' in cmd_inp.split()[1]:  # re to match
                 r_e = cmd_inp.split()[1].replace('*', '')
-                dev_files = send_custom_sh_cmd("[f for f in os.listdir() if '{}' in f];gc.collect()".format(r_e))
+                dev_files = send_custom_sh_cmd(
+                    "[f for f in os.listdir() if '{}' in f];gc.collect()".format(r_e))
             else:
-                dev_files = send_custom_sh_cmd("os.listdir('{}');gc.collect()".format(cmd_inp.split()[1]))
+                dev_files = send_custom_sh_cmd(
+                    "os.listdir('{}');gc.collect()".format(cmd_inp.split()[1]))
         try:
             print_table(dev_files, wide=28, format_SH=True)
         except Exception as e:
@@ -2609,34 +2673,42 @@ def custom_sh_cmd(cmd_inp):
         if len(cmd_inp.split(' ')) > 1:
             if cmd_inp.split(' ')[1] == '-a':
                 if encrypted_flag['sec']:
-                    ssl_cp.ssl_repl('from upysh2 import tree;tree(hidden=True);gc.collect()', follow=True)
+                    ssl_cp.ssl_repl(
+                        'from upysh2 import tree;tree(hidden=True);gc.collect()', follow=True)
                     ssl_cp.flush_conn()
                 else:
-                    send_custom_sh_cmd('from upysh2 import tree;tree(hidden=True);gc.collect()', sh_silent=False, follow=True)
+                    send_custom_sh_cmd(
+                        'from upysh2 import tree;tree(hidden=True);gc.collect()', sh_silent=False, follow=True)
             else:
                 if len(cmd_inp.split(' ')) == 2:
                     dir = cmd_inp.split(' ')[1]
                     if encrypted_flag['sec']:
-                        ssl_cp.ssl_repl("from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), follow=True)
+                        ssl_cp.ssl_repl(
+                            "from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), follow=True)
                         ssl_cp.flush_conn()
                     else:
-                        send_custom_sh_cmd("from upysh2 import tree;tree(path='{}');gc.collect()".format(dir), sh_silent=False, follow=True)
+                        send_custom_sh_cmd("from upysh2 import tree;tree(path='{}');gc.collect()".format(
+                            dir), sh_silent=False, follow=True)
                 else:
                     if cmd_inp.split(' ')[2] == '-a':
                         dir = cmd_inp.split(' ')[1]
                         if encrypted_flag['sec']:
-                            ssl_cp.ssl_repl("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), follow=True)
+                            ssl_cp.ssl_repl(
+                                "from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), follow=True)
                             ssl_cp.flush_conn()
                         else:
-                            send_custom_sh_cmd("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(dir), sh_silent=False, follow=True)
+                            send_custom_sh_cmd("from upysh2 import tree;tree(path='{}', hidden=True);gc.collect()".format(
+                                dir), sh_silent=False, follow=True)
 
         else:
             # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
             if encrypted_flag['sec']:
-                ssl_cp.ssl_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
+                ssl_cp.ssl_repl(
+                    'from upysh2 import tree;tree();gc.collect()', follow=True)
                 ssl_cp.flush_conn()
             else:
-                send_custom_sh_cmd('from upysh2 import tree;tree();gc.collect()', sh_silent=False, follow=True)
+                send_custom_sh_cmd(
+                    'from upysh2 import tree;tree();gc.collect()', sh_silent=False, follow=True)
 
     if cmd_inp == 'l_ifconfig':
         ifconfig_local = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]
@@ -2685,8 +2757,8 @@ def custom_sh_cmd(cmd_inp):
             'PORT', 'STATE', 'SERVICE'))
         for port in ports:
             print('{0:<8}  {1:^15}  {2:^15} '.format(port,
-                                                         result[port]['state'],
-                                                         result[port]['name']))
+                                                     result[port]['state'],
+                                                     result[port]['name']))
 
     if cmd_inp.split(' ')[0] == 'reload':
         try:
@@ -2705,7 +2777,8 @@ def custom_sh_cmd(cmd_inp):
     if cmd_inp.split(' ')[0] == 'docs':
         if len(cmd_inp.split(' ')) > 1:
             key_word = cmd_inp.split(' ')[1]
-            search = 'http://docs.micropython.org/en/latest/search.html?q={}&check_keywords=yes&area=default'.format(key_word)
+            search = 'http://docs.micropython.org/en/latest/search.html?q={}&check_keywords=yes&area=default'.format(
+                key_word)
             webbrowser.open(search)
         else:
             webbrowser.open('http://docs.micropython.org/en/latest/')
@@ -2795,22 +2868,28 @@ def custom_sh_cmd(cmd_inp):
             color_file = cmd_inp.split(' ')[1]
             if color_file.endswith('.py'):
                 if encrypted_flag['sec']:
-                    ssl_cp.ssl_repl("cat('{}')".format(color_file), silent=False, color=True)
+                    ssl_cp.ssl_repl("cat('{}')".format(color_file),
+                                    silent=False, color=True)
                 else:
-                    color_f = send_custom_sh_cmd("cat('{}')".format(color_file), capture_output=True)
+                    color_f = send_custom_sh_cmd(
+                        "cat('{}')".format(color_file), capture_output=True)
                     # print(color_f)
                     if batstyle['style'] == 'one_dark':
-                        result = highlight(color_f, Python3Lexer(), Terminal256Formatter(style=one_darkStyle))
+                        result = highlight(color_f, Python3Lexer(),
+                                           Terminal256Formatter(style=one_darkStyle))
                         lines = result.split('\n')
-                        lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+                        lines_numbered = ["{}{:4}{} {}".format(
+                            DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
                         my_code_numb = '\n'.join(lines_numbered)
                         print(my_code_numb)
 
                     else:
                         pygm_style = get_style_by_name(batstyle['style'])
-                        result = highlight(color_f, Python3Lexer(), Terminal256Formatter(style=pygm_style))
+                        result = highlight(color_f, Python3Lexer(),
+                                           Terminal256Formatter(style=pygm_style))
                         lines = result.split('\n')
-                        lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+                        lines_numbered = ["{}{:4}{} {}".format(
+                            DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
                         my_code_numb = '\n'.join(lines_numbered)
                         print(my_code_numb)
 
@@ -2832,17 +2911,21 @@ def custom_sh_cmd(cmd_inp):
                         else:
                             current_style = batstyle['style']
                         if current_style == 'one_dark':
-                            result = highlight(content, Python3Lexer(), Terminal256Formatter(style=one_darkStyle))
+                            result = highlight(content, Python3Lexer(
+                            ), Terminal256Formatter(style=one_darkStyle))
                             lines = result.split('\n')
-                            lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+                            lines_numbered = ["{}{:4}{} {}".format(
+                                DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
                             my_code_numb = '\n'.join(lines_numbered)
                             print(my_code_numb)
 
                         else:
                             pygm_style = get_style_by_name(current_style)
-                            result = highlight(content, Python3Lexer(), Terminal256Formatter(style=pygm_style))
+                            result = highlight(content, Python3Lexer(
+                            ), Terminal256Formatter(style=pygm_style))
                             lines = result.split('\n')
-                            lines_numbered = ["{}{:4}{} {}".format(DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
+                            lines_numbered = ["{}{:4}{} {}".format(
+                                DARK_GRAY, i, CEND, lines[i-1]) for i in range(1, len(lines)+1)]
                             my_code_numb = '\n'.join(lines_numbered)
                             print(my_code_numb)
                 except Exception as e:
@@ -2864,7 +2947,8 @@ def custom_sh_cmd(cmd_inp):
         try:
             ping_dir = cmd_inp.split(' ')[1]
             if ping_dir == 'host':
-                ping_dir = ifconfig_local = netifaces.ifaddresses('en0')[netifaces.AF_INET][0]['addr']
+                ping_dir = ifconfig_local = netifaces.ifaddresses(
+                    'en0')[netifaces.AF_INET][0]['addr']
             inp = "import uping;uping.ping('{}', loop=True, rtn=False)".format(ping_dir)
             if not encrypted_flag['sec']:
                 espdev.wr_cmd(inp, follow=True, long_string=True)
@@ -2909,10 +2993,12 @@ def custom_sh_cmd(cmd_inp):
             if script_to_time.endswith('.py') or script_to_time.endswith('.mpy'):
                 print('Timing script: {}'.format(script_to_time))
                 script_to_time = script_to_time.replace('.py', '').replace('.mpy', '')
-                inp = "from time_it import tzero, tdiff, result;t_0 = tzero();import {0};diff=tdiff(t_0);result('{0}',diff);".format(script_to_time)
+                inp = "from time_it import tzero, tdiff, result;t_0 = tzero();import {0};diff=tdiff(t_0);result('{0}',diff);".format(
+                    script_to_time)
             else:
                 cmd_to_time = ' '.join(cmd_inp.split()[1:])
-                inp = "from time_it import tzero, tdiff, result;t_0 = tzero();{0};diff=tdiff(t_0);result('{0}',diff, cmd=True);".format(cmd_to_time)
+                inp = "from time_it import tzero, tdiff, result;t_0 = tzero();{0};diff=tdiff(t_0);result('{0}',diff, cmd=True);".format(
+                    cmd_to_time)
             if not encrypted_flag['sec']:
                 espdev.wr_cmd(inp)
             else:
@@ -2940,16 +3026,20 @@ def custom_sh_cmd(cmd_inp):
                     scl = cmd_inp.split()[3]
                     sda = cmd_inp.split()[5]
                     if not encrypted_flag['sec']:
-                        espdev.wr_cmd("from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl,sda))
+                        espdev.wr_cmd(
+                            "from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl, sda))
                     else:
-                        ssl_cp.ssl_repl("from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl,sda))
+                        ssl_cp.ssl_repl(
+                            "from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl, sda))
                 else:
                     scl = cmd_inp.split()[3]
                     sda = cmd_inp.split()[5]
                     if not encrypted_flag['sec']:
-                        espdev.wr_cmd("from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl,sda))
+                        espdev.wr_cmd(
+                            "from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl, sda))
                     else:
-                        ssl_cp.ssl_repl("from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl,sda))
+                        ssl_cp.ssl_repl(
+                            "from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl, sda))
             elif i2c_mode == 'scan':
                 i2c_devs = send_custom_sh_cmd("i2c.scan()")
                 if len(i2c_devs) > 0:
@@ -2982,16 +3072,19 @@ def custom_sh_cmd(cmd_inp):
             else:
                 # Parse changed files
                 print('Changes to push:')
-                latest_commit = shlex.split('git show -{} --name-only --oneline HEAD'.format(git_diff_files['n_commits']))
+                latest_commit = shlex.split(
+                    'git show -{} --name-only --oneline HEAD'.format(git_diff_files['n_commits']))
                 subprocess.call(latest_commit)
                 files_to_put_dir = [fl for fl in files_to_push if os.path.isfile(fl)]
-                dirs_to_put_dir = ['/'.join(dir.split('/')[:-1]) for dir in files_to_put_dir]
+                dirs_to_put_dir = ['/'.join(dir.split('/')[:-1])
+                                   for dir in files_to_put_dir]
                 # dirs_to_put_dir = [fl for fl in os.listdir() if not os.path.isfile(fl) and fl in files_to_push]
                 # print(files_to_put_dir)
                 # print(dirs_to_put_dir)
                 log_cmd = shlex.split('git log -{}'.format(git_diff_files['n_commits']))
                 log_to_dev = subprocess.check_output(log_cmd)
-                hash_cmd = shlex.split('git log -{} --pretty=format:"%H"'.format(git_diff_files['n_commits']))
+                hash_cmd = shlex.split(
+                    'git log -{} --pretty=format:"%H"'.format(git_diff_files['n_commits']))
                 hash_to_dev = subprocess.check_output(hash_cmd)
 
                 cwd_now = send_custom_sh_cmd("os.getcwd()")
@@ -3004,12 +3097,14 @@ def custom_sh_cmd(cmd_inp):
                 if len(dirs_to_put_dir) > 0:
                     # print(dirs_to_put_dir)
                     print('New directories to make:')
-                    order_dirs = [(len(dir.split('/')), dir) for dir in dirs_to_put_dir if dir != '']
+                    order_dirs = [(len(dir.split('/')), dir)
+                                  for dir in dirs_to_put_dir if dir != '']
                     order_dirs.sort()
                     # check if already in dev:
                     for _dir in order_dirs:
                         if '/' in _dir[1]:
-                            dir_in_dev = send_custom_sh_cmd("os.listdir('{}')".format('/'+'/'.join(_dir[1].split('/')[:-1])))
+                            dir_in_dev = send_custom_sh_cmd("os.listdir('{}')".format(
+                                '/'+'/'.join(_dir[1].split('/')[:-1])))
                         else:
                             dir_in_dev = send_custom_sh_cmd("os.listdir()")
                         if _dir[1].split('/')[-1] not in dir_in_dev:
@@ -3068,7 +3163,8 @@ def custom_sh_cmd(cmd_inp):
                     ssl_htool.stop_SOC()
                 # Save commit log in dev
                 print('\nUpdating dev .gitlog.', end='')
-                send_custom_sh_cmd("gitlog = open('.gitlog', 'ab+');gitlog.seek(0);gl=gitlog.read();gitlog.seek(0)")
+                send_custom_sh_cmd(
+                    "gitlog = open('.gitlog', 'ab+');gitlog.seek(0);gl=gitlog.read();gitlog.seek(0)")
                 for log_ in log_to_dev.split(b'\n\n'):
                     send_custom_sh_cmd("gitlog.write({})".format(log_+b'\n\n'))
                     # time.sleep(0.1)
@@ -3076,7 +3172,8 @@ def custom_sh_cmd(cmd_inp):
                 print('\rUpdating dev .gitlog..', end='')
                 time.sleep(0.1)
                 print('\rUpdating dev .gitlog...', end='')
-                send_custom_sh_cmd("gitlog = open('.githash', 'ab+');gitlog.seek(0);gl=gitlog.read();gitlog.seek(0)")
+                send_custom_sh_cmd(
+                    "gitlog = open('.githash', 'ab+');gitlog.seek(0);gl=gitlog.read();gitlog.seek(0)")
                 send_custom_sh_cmd("gitlog.write({})".format(hash_to_dev+b'\n'))
                 send_custom_sh_cmd("gitlog.write(gl);gitlog.close()")
                 send_custom_sh_cmd("cd('{}')".format(cwd_now))
@@ -3086,14 +3183,17 @@ def custom_sh_cmd(cmd_inp):
                 # print('TESTING')
         elif 'commit' in cmd_git:
             status_cmd = shlex.split('git status -s')
-            files_to_push = [file for file in subprocess.check_output(status_cmd).decode().split('\n') if file != '']
-            files_to_pushdev = [file.split()[1] for file in files_to_push if file.split()[0] == 'M' or file.split()[0] == 'A']
+            files_to_push = [file for file in subprocess.check_output(
+                status_cmd).decode().split('\n') if file != '']
+            files_to_pushdev = [file.split()[1] for file in files_to_push if file.split()[
+                                           0] == 'M' or file.split()[0] == 'A']
             if len(git_diff_files['diff']) == 0:
                 git_diff_files['diff'] = files_to_pushdev
                 if len(files_to_pushdev) > 0:
                     git_diff_files['n_commits'] = 1
             else:
-                git_diff_files['diff'] = git_diff_files['diff'] + [file for file in files_to_pushdev if file not in git_diff_files['diff']]
+                git_diff_files['diff'] = git_diff_files['diff'] + \
+                    [file for file in files_to_pushdev if file not in git_diff_files['diff']]
                 if len(files_to_pushdev) > 0:
                     git_diff_files['n_commits'] += 1
             # print(git_diff_files)
@@ -3107,8 +3207,10 @@ def custom_sh_cmd(cmd_inp):
             cmd_git = shlex.split('git log --pretty=format:"%H"')
             local_gitlog = subprocess.check_output(cmd_git).decode().split()
             if not encrypted_flag['sec']:
-                log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()', True)
-                log_info_list = [commit_hash.replace('\r', '') for commit_hash in log_dev_head]
+                log_dev_head = send_custom_sh_cmd(
+                    "cat('.githash')"+';gc.collect()', True)
+                log_info_list = [commit_hash.replace(
+                    '\r', '') for commit_hash in log_dev_head]
                 # print(log_info_list)
             else:
                 log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()')
@@ -3118,23 +3220,28 @@ def custom_sh_cmd(cmd_inp):
                 pass
             else:
                 if len(git_diff_files['diff']) > 0:
-                    cmd_git_l = shlex.split('git log --name-status  --pretty=format:"%H"')
+                    cmd_git_l = shlex.split(
+                        'git log --name-status  --pretty=format:"%H"')
                     local_gitlog_files = subprocess.check_output(cmd_git_l).decode()
-                    commit_dict = {c.split('\n')[0] : [s for s in c.replace('\t', '\n').split()[1:]] for c in local_gitlog_files.split('\n\n')}
+                    commit_dict = {c.split('\n')[0]: [s for s in c.replace('\t', '\n').split()[
+                                           1:]] for c in local_gitlog_files.split('\n\n')}
                     for commit in commit_dict.keys():
                         if commit not in log_info_list:
                             if any([file not in git_diff_files['diff'] for file in commit_dict[commit][1::2]]):
-                                git_diff_files['diff'] += [file for file in commit_dict[commit][1::2] if file not in git_diff_files['diff']]
-                    git_diff_files['n_commits'] = int(len(local_gitlog) - len(log_info_list))
+                                git_diff_files['diff'] += [file for file in commit_dict[commit]
+                                                           [1::2] if file not in git_diff_files['diff']]
+                    git_diff_files['n_commits'] = int(
+                        len(local_gitlog) - len(log_info_list))
                 else:
-                    cmd_git_l = shlex.split('git log --name-status  --pretty=format:"%H"')
+                    cmd_git_l = shlex.split(
+                        'git log --name-status  --pretty=format:"%H"')
                     local_gitlog = subprocess.check_output(cmd_git_l).decode()
-                    commit_dict = {c.split('\n')[0] : [s for s in c.replace('\t', '\n').split()[1:]] for c in local_gitlog.split('\n\n')}
+                    commit_dict = {c.split('\n')[0]: [s for s in c.replace(
+                        '\t', '\n').split()[1:]] for c in local_gitlog.split('\n\n')}
                     for commit in commit_dict.keys():
                         if commit not in log_info_list:
                             git_diff_files['diff'] += commit_dict[commit][1::2]
                             git_diff_files['n_commits'] += 1
-
 
         elif 'clone_dev' in cmd_git:
             if not encrypted_flag['sec']:
@@ -3142,7 +3249,8 @@ def custom_sh_cmd(cmd_inp):
                     ssl_cp.enable_wrepl_io()
                 except Exception as e:
                     pass
-                file =' '.join([fl for fl in os.listdir() if os.path.isfile(fl) and not fl.startswith('.')])
+                file = ' '.join([fl for fl in os.listdir()
+                                 if os.path.isfile(fl) and not fl.startswith('.')])
                 put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
                     file, args.t, args.p, '')
                 put_cmd = shlex.split(put_str)
@@ -3160,7 +3268,8 @@ def custom_sh_cmd(cmd_inp):
                     pass
                     print('Operation aborted')
 
-                dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
+                dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(
+                    fl) and not fl.startswith('.')]
                 try:
                     ssl_cp.enable_wrepl_io()
                 except Exception as e:
@@ -3170,8 +3279,8 @@ def custom_sh_cmd(cmd_inp):
                     print('- {}'.format(_dir))
 
                     d_sync_str = 'upydev d_sync -tree -t {} -p {} -dir {} -rst f'.format(args.t,
-                                                                               args.p,
-                                                                               _dir)
+                                                                                         args.p,
+                                                                                         _dir)
 
                     d_sync_cmd = shlex.split(d_sync_str)
                     try:
@@ -3192,7 +3301,8 @@ def custom_sh_cmd(cmd_inp):
                 print('File/s to put:')
                 file = 'cwd'
                 if file == 'cwd':
-                    files_to_put = [fl for fl in os.listdir() if os.path.isfile(fl) and not fl.startswith('.')]
+                    files_to_put = [fl for fl in os.listdir() if os.path.isfile(
+                        fl) and not fl.startswith('.')]
                     for file in files_to_put:
                         print('- {}'.format(file))
                     ssl_htool.start_SOC()
@@ -3203,7 +3313,8 @@ def custom_sh_cmd(cmd_inp):
                     time.sleep(0.2)
                     ssl_htool.stop_SOC()
 
-                dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(fl) and not fl.startswith('.')]
+                dirs_to_sync = [fl for fl in os.listdir() if os.path.isdir(
+                    fl) and not fl.startswith('.')]
                 if len(dirs_to_sync) > 0:
                     print('Dir/s to sync:')
                     for _dir in dirs_to_sync:
@@ -3218,19 +3329,26 @@ def custom_sh_cmd(cmd_inp):
                         # espdev.close_wconn()
                         # espdev.cmd("cat('.gitlog')"+';gc.collect()')
                         # espdev.open_wconn()
-                        log_dev_head = send_custom_sh_cmd("cat('.gitlog')"+';gc.collect()', True)
-                        log_info_list = [line.replace('\r','') for line in log_dev_head if line.replace('\r', '') != '']
+                        log_dev_head = send_custom_sh_cmd(
+                            "cat('.gitlog')"+';gc.collect()', True)
+                        log_info_list = [line.replace(
+                            '\r', '') for line in log_dev_head if line.replace('\r', '') != '']
                         log_dev_head = '\n'.join(log_info_list)
-                        log_dev_head = log_dev_head.replace('\n ', '\n\n ').replace('\ncommit', '\n\ncommit')
-                        log_dev_head = log_dev_head.replace('\n\ncommit', '\n\n{}commit'.format(YELLOW)).replace('\nAuthor: ', '{}\nAuthor: '.format(CEND))
+                        log_dev_head = log_dev_head.replace(
+                            '\n ', '\n\n ').replace('\ncommit', '\n\ncommit')
+                        log_dev_head = log_dev_head.replace('\n\ncommit', '\n\n{}commit'.format(
+                            YELLOW)).replace('\nAuthor: ', '{}\nAuthor: '.format(CEND))
                         last_commit_header = log_dev_head.split('\n')[0]
                         if 'Traceback (most recent call last)' in last_commit_header:
                             print('Device {} repo not initiated'.format(dev_platform))
                         else:
                             if last_commit_header != '' and last_commit_header != ' ':
-                                log_dev_head = log_dev_head.replace(last_commit_header, '')
-                                head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN, CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
-                                commit = "{}{}){}".format(YELLOW, last_commit_header + head_dev, CEND)
+                                log_dev_head = log_dev_head.replace(
+                                    last_commit_header, '')
+                                head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN,
+                                                                              CEND+YELLOW+','+BCYAN+CRED, dev_platform+CEND+YELLOW)
+                                commit = "{}{}){}".format(
+                                    YELLOW, last_commit_header + head_dev, CEND)
                                 print(commit, end='')
                                 print(log_dev_head)
                             else:
@@ -3238,38 +3356,50 @@ def custom_sh_cmd(cmd_inp):
 
                     else:
                         # ssl_cp.ssl_repl("cat('.gitlog')"+';gc.collect()', follow=True)
-                        log_dev_head = send_custom_sh_cmd("cat('.gitlog')"+';gc.collect()')
-                        log_dev_head = log_dev_head.replace('\n ', '\n\n ').replace('\ncommit', '\n\ncommit')
-                        log_dev_head = log_dev_head.replace('\n\ncommit', '\n\n{}commit'.format(YELLOW)).replace('\nAuthor: ', '{}\nAuthor: '.format(CEND))
+                        log_dev_head = send_custom_sh_cmd(
+                            "cat('.gitlog')"+';gc.collect()')
+                        log_dev_head = log_dev_head.replace(
+                            '\n ', '\n\n ').replace('\ncommit', '\n\ncommit')
+                        log_dev_head = log_dev_head.replace('\n\ncommit', '\n\n{}commit'.format(
+                            YELLOW)).replace('\nAuthor: ', '{}\nAuthor: '.format(CEND))
                         last_commit_header = log_dev_head.split('\n')[0]
                         if 'Traceback (most recent call last)' in last_commit_header:
                             print('Device {} repo not initiated'.format(dev_platform))
                         else:
                             log_dev_head = log_dev_head.replace(last_commit_header, '')
-                            head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN, CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
-                            commit = "{}{}){}".format(YELLOW, last_commit_header + head_dev, CEND)
+                            head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN,
+                                                                          CEND+YELLOW+','+BCYAN+CRED, dev_platform+CEND+YELLOW)
+                            commit = "{}{}){}".format(
+                                YELLOW, last_commit_header + head_dev, CEND)
                             print(commit, end='')
                             print(log_dev_head)
                 else:
                     if not encrypted_flag['sec']:
 
-                        log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()', True)
-                        log_info_list = ''.join([line.replace('\r', '\n') for line in log_dev_head if line.replace('\r', '\n') != ''])
-                        log_info_list = log_info_list.split('\ncommit ')[0].replace('\n    ', '\n\n    ', 1)
+                        log_dev_head = send_custom_sh_cmd(
+                            "head('.gitlog')"+';gc.collect()', True)
+                        log_info_list = ''.join(
+                            [line.replace('\r', '\n') for line in log_dev_head if line.replace('\r', '\n') != ''])
+                        log_info_list = log_info_list.split(
+                            '\ncommit ')[0].replace('\n    ', '\n\n    ', 1)
                         commit_body = '\n'.join(log_info_list.split('\n')[1:])
                         commit_head = log_info_list.split('\n')[0]
                     else:
-                        log_dev_head = send_custom_sh_cmd("head('.gitlog')"+';gc.collect()')
+                        log_dev_head = send_custom_sh_cmd(
+                            "head('.gitlog')"+';gc.collect()')
                         # print(log_dev_head)
-                        log_info_list = log_dev_head.split('\ncommit ')[0].replace('\n    ', '\n\n    ', 1)
+                        log_info_list = log_dev_head.split(
+                            '\ncommit ')[0].replace('\n    ', '\n\n    ', 1)
                         commit_body = '\n'.join(log_info_list.split('\n')[1:])
                         commit_head = log_info_list.split('\n')[0]
                     if 'Traceback (most recent call last)' in commit_head:
                         print('Device {} repo not initiated'.format(dev_platform))
                     else:
                         if commit_head != '' and commit_head != ' ':
-                            head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN,CEND+YELLOW+','+BCYAN+CRED,dev_platform+CEND+YELLOW)
-                            commit = "{}{}){}".format(YELLOW, commit_head + head_dev, CEND)
+                            head_dev = ' ({}HEAD -> {}master{} {}'.format(BCYAN, CGREEN,
+                                                                          CEND+YELLOW+','+BCYAN+CRED, dev_platform+CEND+YELLOW)
+                            commit = "{}{}){}".format(
+                                YELLOW, commit_head + head_dev, CEND)
                             print(commit)
                             print(commit_body)
                         else:
@@ -3304,8 +3434,10 @@ def custom_sh_cmd(cmd_inp):
             local_gitlog = subprocess.check_output(cmd_git).decode().split()
             try:
                 if not encrypted_flag['sec']:
-                    log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()', True)
-                    log_info_list = [commit_hash.replace('\r', '') for commit_hash in log_dev_head if commit_hash != '' and commit_hash != ' ']
+                    log_dev_head = send_custom_sh_cmd(
+                        "cat('.githash')"+';gc.collect()', True)
+                    log_info_list = [commit_hash.replace(
+                        '\r', '') for commit_hash in log_dev_head if commit_hash != '' and commit_hash != ' ']
                     # print(log_info_list)
                 else:
                     log_dev_head = send_custom_sh_cmd("cat('.githash')"+';gc.collect()')
@@ -3317,27 +3449,36 @@ def custom_sh_cmd(cmd_inp):
             except Exception as e:
                 log_info_list = []
             if local_gitlog == log_info_list:
-                status_msg = "On branch {}\nYour branch is up to date with '{}'.\n\nnothing to commit, working tree clean".format(get_git_branch(), dev_platform)
+                status_msg = "On branch {}\nYour branch is up to date with '{}'.\n\nnothing to commit, working tree clean".format(
+                    get_git_branch(), dev_platform)
             else:
                 if len(git_diff_files['diff']) > 0:
-                    cmd_git_l = shlex.split('git log --name-status  --pretty=format:"%H"')
+                    cmd_git_l = shlex.split(
+                        'git log --name-status  --pretty=format:"%H"')
                     local_gitlog_files = subprocess.check_output(cmd_git_l).decode()
-                    commit_dict = {c.split('\n')[0] : [s for s in c.replace('\t', '\n').split()[1:]] for c in local_gitlog_files.split('\n\n')}
+                    commit_dict = {c.split('\n')[0]: [s for s in c.replace('\t', '\n').split()[
+                                           1:]] for c in local_gitlog_files.split('\n\n')}
                     for commit in commit_dict.keys():
                         if commit not in log_info_list:
                             if any([file not in git_diff_files['diff'] for file in commit_dict[commit][1::2]]):
-                                git_diff_files['diff'] += [file for file in commit_dict[commit][1::2] if file not in git_diff_files['diff']]
-                    git_diff_files['n_commits'] = int(len(local_gitlog) - len(log_info_list))
-                    status_msg = "On branch {0}\nYour branch is ahead of '{1}' by {2} commit{3}.\n (use 'git push dev' to push your local commits to {1})\n\nnothing to commit, working tree clean".format(get_git_branch(), dev_platform, git_diff_files['n_commits'], ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
+                                git_diff_files['diff'] += [file for file in commit_dict[commit]
+                                                           [1::2] if file not in git_diff_files['diff']]
+                    git_diff_files['n_commits'] = int(
+                        len(local_gitlog) - len(log_info_list))
+                    status_msg = "On branch {0}\nYour branch is ahead of '{1}' by {2} commit{3}.\n (use 'git push dev' to push your local commits to {1})\n\nnothing to commit, working tree clean".format(
+                        get_git_branch(), dev_platform, git_diff_files['n_commits'], ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
                 else:
-                    cmd_git_l = shlex.split('git log --name-status  --pretty=format:"%H"')
+                    cmd_git_l = shlex.split(
+                        'git log --name-status  --pretty=format:"%H"')
                     local_gitlog = subprocess.check_output(cmd_git_l).decode()
-                    commit_dict = {c.split('\n')[0]: [s for s in c.replace('\t', '\n').split()[1:]] for c in local_gitlog.split('\n\n')}
+                    commit_dict = {c.split('\n')[0]: [s for s in c.replace(
+                        '\t', '\n').split()[1:]] for c in local_gitlog.split('\n\n')}
                     for commit in commit_dict.keys():
                         if commit not in log_info_list:
                             git_diff_files['diff'] += commit_dict[commit][1::2]
                             git_diff_files['n_commits'] += 1
-                    status_msg = "On branch {0}\nYour branch is ahead of '{1}' by {2} commit{3} not tracked by upydev.\n (use 'git push dev' to push last commit changes to {1})\n\nnothing to commit, working tree clean".format(get_git_branch(), dev_platform, git_diff_files['n_commits'], ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
+                    status_msg = "On branch {0}\nYour branch is ahead of '{1}' by {2} commit{3} not tracked by upydev.\n (use 'git push dev' to push last commit changes to {1})\n\nnothing to commit, working tree clean".format(
+                        get_git_branch(), dev_platform, git_diff_files['n_commits'], ['s' if git_diff_files['n_commits'] > 1 else '' for i in range(1)][0])
             print(status_msg)
 
         elif 'repo' in cmd_git:
@@ -3554,22 +3695,26 @@ def custom_sh_cmd(cmd_inp):
                             cancel_text="Finish",
                             values=[
                                 ("I2C_DEF", "{:10}{}".format("1 I2C DEFAULT:",
-                                                         default)),
+                                                             default)),
                                 ("I2C_CUSTOM", "{:10}{}".format("2 I2C CUSTOM:",
-                                                         "SET SCL, SDA and FREQ"))
+                                                                "SET SCL, SDA and FREQ"))
                             ]
                         ).run()
                     if results_array == 'I2C_DEF':
                         if dev_platform == 'pyboard':
                             if not encrypted_flag['sec']:
-                                espdev.wr_cmd("from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl,sda))
+                                espdev.wr_cmd(
+                                    "from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl, sda))
                             else:
-                                ssl_cp.ssl_repl("from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl,sda))
+                                ssl_cp.ssl_repl(
+                                    "from machine import I2C;i2c = I2C(scl='{}', sda='{}')".format(scl, sda))
                         else:
                             if not encrypted_flag['sec']:
-                                espdev.wr_cmd("from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl,sda))
+                                espdev.wr_cmd(
+                                    "from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl, sda))
                             else:
-                                ssl_cp.ssl_repl("from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl,sda))
+                                ssl_cp.ssl_repl(
+                                    "from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl, sda))
 
                         message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
                                        text="I2C Default configuration enabled successfully as 'i2c'").run()
@@ -3587,14 +3732,18 @@ def custom_sh_cmd(cmd_inp):
                             freq = custom_i2c.split()[2]
                         if dev_platform == 'pyboard':
                             if not encrypted_flag['sec']:
-                                espdev.wr_cmd("from machine import I2C;i2c_custom = I2C(scl='{}', sda='{}', freq={})".format(scl, sda, freq))
+                                espdev.wr_cmd(
+                                    "from machine import I2C;i2c_custom = I2C(scl='{}', sda='{}', freq={})".format(scl, sda, freq))
                             else:
-                                ssl_cp.ssl_repl("from machine import I2C;i2c_custom = I2C(scl='{}', sda='{}', freq={})".format(scl, sda, freq))
+                                ssl_cp.ssl_repl(
+                                    "from machine import I2C;i2c_custom = I2C(scl='{}', sda='{}', freq={})".format(scl, sda, freq))
                         else:
                             if not encrypted_flag['sec']:
-                                espdev.wr_cmd("from machine import Pin, I2C;i2c_custom = I2C(scl=Pin({}), sda=Pin({}), freq={})".format(scl, sda, freq))
+                                espdev.wr_cmd(
+                                    "from machine import Pin, I2C;i2c_custom = I2C(scl=Pin({}), sda=Pin({}), freq={})".format(scl, sda, freq))
                             else:
-                                ssl_cp.ssl_repl("from machine import Pin, I2C;i2c_custom = I2C(scl=Pin({}), sda=Pin({}), freq={})".format(scl, sda, freq))
+                                ssl_cp.ssl_repl(
+                                    "from machine import Pin, I2C;i2c_custom = I2C(scl=Pin({}), sda=Pin({}), freq={})".format(scl, sda, freq))
 
                         message_dialog(title="Upydev {} Configuration Tool".format(dev_platform),
                                        text="I2C Custom configuration enabled successfully as 'i2c_custom'").run()
@@ -3604,12 +3753,14 @@ def custom_sh_cmd(cmd_inp):
             mode = cmd_inp.split(' ')[1]
             if mode == 'on':
                 send_custom_sh_cmd("sslconfig = open('ssl_flag.py', 'wb')")
-                send_custom_sh_cmd("sslconfig.write({});sslconfig.close()".format(b'SSL = True'))
+                send_custom_sh_cmd(
+                    "sslconfig.write({});sslconfig.close()".format(b'SSL = True'))
                 print('WebSecureREPL enabled')
 
             elif mode == 'off':
                 send_custom_sh_cmd("sslconfig = open('ssl_flag.py', 'wb')")
-                send_custom_sh_cmd("sslconfig.write({});sslconfig.close()".format(b'SSL = False'))
+                send_custom_sh_cmd(
+                    "sslconfig.write({});sslconfig.close()".format(b'SSL = False'))
                 print('WebSecureREPL disabled')
         except Exception as e:
             print('Select a mode (on/off) to enable or disable WebSecureREPL')
@@ -3620,8 +3771,10 @@ def custom_sh_cmd(cmd_inp):
                 cmd_inp = cmd_inp[1:]
             shell_cmd_str = shlex.split(cmd_inp)
             if shell_cmd_str[0] in SHELL_ALIASES:
-                shell_cmd_str = SHELL_ALIASES[shell_cmd_str[0]].split() + shell_cmd_str[1:]
+                shell_cmd_str = SHELL_ALIASES[shell_cmd_str[0]
+                                              ].split() + shell_cmd_str[1:]
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
             def preexec_function(action=old_action):
                 signal.signal(signal.SIGINT, action)
             try:
@@ -3966,7 +4119,7 @@ def send_KBI(event):
             event.app.current_buffer.reset()
         else:
             if encrypted_flag['sec']:
-                ssl_cp.ssl_repl('\x03') # KBI
+                ssl_cp.ssl_repl('\x03')  # KBI
             else:
                 espdev.wr_cmd('C')
             paste_flag['p'] = False
@@ -4059,18 +4212,18 @@ def paste_mode_exit(event):
                     # block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
                     # espdev.wr_cmd(block_commad)
                     # print(block_commad.splitlines())
-                    espdev._wconn.child.sendline('E')
-                    time.sleep(0.2)
-                    for line in buff_text.split('\n'):
-                        espdev._wconn.child.sendline(line)
-                        cmd_echo = espdev._wconn.child.readline()
-                        # time.sleep(0.2)
-                    # espdev._wconn.child.sendline('D')
                     try:
-                        cmd_echo = espdev._wconn.child.read_nonblocking(2**16, 0.2)
-                    except Exception as e:
+                        espdev.paste_buff(buff_text)
+                        espdev.wr_cmd("\x04", follow=True)
+                    except KeyboardInterrupt:
+                        time.sleep(0.2)
+                        espdev.wr_cmd('\x03')  # KBI
+                        time.sleep(0.2)
+                        for i in range(1):
+                            espdev.wr_cmd('\x0d', silent=True)
+                            
                         pass
-                    espdev.wr_cmd('D')
+
 
                 else:
                     # espdev.wr_cmd("cp.gbls = globals()", silent=True)
@@ -4155,9 +4308,11 @@ def tab_press(event):
             if buff_text_frst_cmd == 'import' or buff_text_frst_cmd == 'from':
                 import_cmd = True
             if ').' not in event.app.current_buffer.document.text:
-                buff_text = event.app.current_buffer.document.text.replace('=', ' ').replace('(', ' ').split(' ')[-1]
+                buff_text = event.app.current_buffer.document.text.replace(
+                    '=', ' ').replace('(', ' ').split(' ')[-1]
             else:
-                buff_text = event.app.current_buffer.document.text.replace('=', ' ').split(' ')[-1]
+                buff_text = event.app.current_buffer.document.text.replace(
+                    '=', ' ').split(' ')[-1]
             if isinstance(buff_text, str):
                 if '.' in buff_text and not shell_mode['S']:
 
@@ -4165,10 +4320,12 @@ def tab_press(event):
                     rest = buff_text.split('.')[-1]
                     if rest != '':
                         if encrypted_flag['sec']:
-                            ssl_cp.ssl_repl("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest))
+                            ssl_cp.ssl_repl(
+                                "[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest))
                             ssl_cp.flush_conn()
                         else:
-                            espdev.wr_cmd("[val for val in dir({}) if val.startswith('{}')]".format(root_text, rest), silent=True)
+                            espdev.wr_cmd("[val for val in dir({}) if val.startswith('{}')]".format(
+                                root_text, rest), silent=True)
                     else:
                         if encrypted_flag['sec']:
                             try:
@@ -4187,27 +4344,34 @@ def tab_press(event):
                     glb = True
                     cmd_ls_glb = 'dir()'
                     if buff_text != '':
-                        cmd_ls_glb = "[val for val in dir() if val.startswith('{}')]".format(buff_text)
+                        cmd_ls_glb = "[val for val in dir() if val.startswith('{}')]".format(
+                            buff_text)
                     if import_cmd:
                         fbuff_text = event.app.current_buffer.document.text.split()
                         if 'import' in fbuff_text and 'from' in fbuff_text and len(fbuff_text) >= 3:
                             if fbuff_text[1] not in frozen_modules['FM']:
                                 if len(fbuff_text) == 3:
-                                    cmd_ls_glb = "import {0};dir({0});del(sys.modules['{0}'])".format(fbuff_text[1])
+                                    cmd_ls_glb = "import {0};dir({0});del(sys.modules['{0}'])".format(
+                                        fbuff_text[1])
                                 if len(fbuff_text) == 4:
-                                    cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')];del(sys.modules['{0}'])".format(fbuff_text[1], fbuff_text[3])
+                                    cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')];del(sys.modules['{0}'])".format(
+                                        fbuff_text[1], fbuff_text[3])
                             else:
                                 if len(fbuff_text) == 3:
-                                    cmd_ls_glb = "import {0};dir({0})".format(fbuff_text[1])
+                                    cmd_ls_glb = "import {0};dir({0})".format(
+                                        fbuff_text[1])
                                 if len(fbuff_text) == 4:
-                                    cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')]".format(fbuff_text[1], fbuff_text[3])
+                                    cmd_ls_glb = "import {0};[val for val in dir({0}) if val.startswith('{1}')]".format(
+                                        fbuff_text[1], fbuff_text[3])
 
                         else:
                             cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('/lib') if '.py' in scp]"
                             frozen_modules['SUB'] = frozen_modules['FM']
                             if buff_text != '':
-                                cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(buff_text)
-                                frozen_modules['SUB'] = [mod for mod in frozen_modules['FM'] if mod.startswith(buff_text)]
+                                cmd_ls_glb = "[scp.split('.')[0] for scp in os.listdir()+os.listdir('/lib') if '.py' in scp and scp.startswith('{}')]".format(
+                                    buff_text)
+                                frozen_modules['SUB'] = [
+                                    mod for mod in frozen_modules['FM'] if mod.startswith(buff_text)]
 
                     if shell_mode['S']:
 
@@ -4216,12 +4380,14 @@ def tab_press(event):
                             dir_to_list = '/'.join(buff_text.split('/')[:-1])
                             cmd_ls_glb = "os.listdir('{}')".format(dir_to_list)
                             if buff_text.split('/')[-1] != '':
-                                cmd_ls_glb = "[val for val in os.listdir('{}') if val.startswith('{}')]".format(dir_to_list, buff_text.split('/')[-1])
+                                cmd_ls_glb = "[val for val in os.listdir('{}') if val.startswith('{}')]".format(
+                                    dir_to_list, buff_text.split('/')[-1])
 
                         else:
                             cmd_ls_glb = 'os.listdir()'
                             if buff_text != '':
-                                cmd_ls_glb = "[val for val in os.listdir() if val.startswith('{}')]".format(buff_text)
+                                cmd_ls_glb = "[val for val in os.listdir() if val.startswith('{}')]".format(
+                                    buff_text)
                     if encrypted_flag['sec']:
                         try:
                             ssl_cp.ssl_repl(cmd_ls_glb+';gc.collect()',
@@ -4315,7 +4481,8 @@ def tab_press(event):
                                             result[0][len(buff_text.split('/')[-1]):])
                                 else:
                                     print('>>> {}'.format(buff_text))   # dir var
-                                    print_table(espdev.output, wide=16, autocol_tab=True, sort=False)
+                                    print_table(espdev.output, wide=16,
+                                                autocol_tab=True, sort=False)
                             else:
                                 result = [
                                     val for val in espdev.output if val.startswith(buff_text)]
@@ -4685,6 +4852,7 @@ def listen_SSL_WREPL(event):
 
 def check_prompt():
     return prompt['p']
+
 
 session_p = PromptSession()
 

@@ -691,6 +691,9 @@ def map_upysh(cmd_inp):
         scnd_cmd = cmd_inp.split(' ')[1]
         if scnd_cmd != '':
             shell_cmd = "{}('{}')".format(frst_cmd, scnd_cmd)
+            if '*' in scnd_cmd and frst_cmd in ['rm', 'cat', 'head', 'rmdir']:
+                pattrn = scnd_cmd.replace('*', '')
+                shell_cmd = f"__ = list(map({frst_cmd}, [f for f in os.listdir(os.getcwd()) if '{pattrn}' in f]))"
     else:
         shell_cmd = frst_cmd
 
