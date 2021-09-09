@@ -4,19 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-## [0.3.5] Ureleased [Github Repo]
-=======
 ## [0.3.5] 2021-09-09
->>>>>>> 02a1b95 (version 0.3.5 release)
 ## Fix
 - `set_ntptime` with WebSocket Devices
 - blerepl paste command
 - paste command in sslweb_repl -nem mode
+## Added
+- get rssi value in blerepl
 
->>>>>>> e316c59 (fix set_ntptime, update changelog latest release)
 ## [0.3.4] 2021-08-12
 ### Fix
 - Fix autocomplete on tab in REPL while `import` or `from X import` in SERIAL REPL
