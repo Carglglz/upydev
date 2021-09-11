@@ -63,6 +63,10 @@ See `Bleak Troubleshooting <https://bleak.readthedocs.io/en/latest/troubleshooti
 ------
 
 
+DEVELOPING WITH WEBSOCKET DEVICES (WIFI) FROM OUTSIDE LAN (ZEROTIER GLOBAL AREA NETWORK)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TODO: setup network, raspberry pi, setup ufw , route port fordwarding with ufw
+
 TESTING DEVICES WITH PYTEST
 ---------------------------
 

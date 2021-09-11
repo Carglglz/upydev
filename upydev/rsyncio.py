@@ -46,29 +46,26 @@ class SyncFileIO:
         if index == self.bar_size:
             l_bloc = "█"
         sys.stdout.write("\033[K")
-        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((self.bar_size+1) - len("█" *index + l_bloc)),
-                                                                        wheel[index % 4],
-                                                                        int((percentage)*100),
-                                                                        nb_of_total, speed,
-                                                                        str(timedelta(seconds=time_e)).split('.')[0][2:],
-                                                                        str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
+        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" * index + l_bloc + " "*((self.bar_size+1) - len("█" * index + l_bloc)),
+                                                                    wheel[index % 4],
+                                                                    int((percentage)*100),
+                                                                    nb_of_total, speed,
+                                                                    str(timedelta(seconds=time_e)).split(
+                                                                        '.')[0][2:],
+                                                                    str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
         sys.stdout.flush()
 
     def get_ip(self):
         try:
-            ip = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                  iface in netifaces.interfaces() if netifaces.AF_INET in
-                  netifaces.ifaddresses(iface)][-1]
-            return ip
+            ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ip_soc.connect(('8.8.8.8', 1))
+            local_ip = ip_soc.getsockname()[0]
+            ip_soc.close()
+            return local_ip
         except Exception as e:
-            try:
-                ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                ip_soc.connect(('8.8.8.8', 1))
-                local_ip = ip_soc.getsockname()[0]
-                ip_soc.close()
-                return local_ip
-            except Exception as e:
-                return '0.0.0.0'
+            return [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                    iface in netifaces.interfaces() if netifaces.AF_INET in
+                    netifaces.ifaddresses(iface)][-1]
 
     def connect(self, args):
 
@@ -208,7 +205,8 @@ def synctool(args, dev_name):
                     if args.s is not None:
                         args.dir = '{}/{}'.format(args.s, args.dir)
                     print('Looking for file in {}:/{} dir'.format(dev_name, args.dir))
-                    cmd_str = "import uos; '{}' in uos.listdir('/{}')".format(args.f, args.dir)
+                    cmd_str = "import uos; '{}' in uos.listdir('/{}')".format(
+                        args.f, args.dir)
                     dir = '/{}'.format(args.dir)
 
                 try:
@@ -222,7 +220,8 @@ def synctool(args, dev_name):
                             result = False
                     else:
                         if file_exists is True:
-                            cmd_str = "import uos; not uos.stat('{}')[0] & 0x4000 ".format(dir + '/' + args.f)
+                            cmd_str = "import uos; not uos.stat('{}')[0] & 0x4000 ".format(
+                                dir + '/' + args.f)
                             is_file = dev.cmd(cmd_str, silent=True, rtn_resp=True)
                     if file_exists is True and is_file:
                         rsyncio.connect(args)
@@ -253,7 +252,8 @@ def synctool(args, dev_name):
                             print('File Not found in {}:{} directory'.format(dev_name, dir))
                         elif file_exists is True:
                             if is_file is not True:
-                                print('{}:{} is a directory'.format(dev_name, dir + '/' + args.f))
+                                print('{}:{} is a directory'.format(
+                                    dev_name, dir + '/' + args.f))
                 except KeyboardInterrupt as e:
                     print('KeyboardInterrupt: get Operation Cancelled')
 
@@ -266,7 +266,8 @@ def synctool(args, dev_name):
                     if args.s is not None:
                         args.dir = '{}/{}'.format(args.s, args.dir)
                     print('Looking for files in {}:/{} dir'.format(dev_name, args.dir))
-                    cmd_str = "import uos;[file for file in uos.listdir('/{0}') if not uos.stat('/{0}/'+file)[0] & 0x4000]".format(args.dir)
+                    cmd_str = "import uos;[file for file in uos.listdir('/{0}') if not uos.stat('/{0}/'+file)[0] & 0x4000]".format(
+                        args.dir)
                     dir = '/{}'.format(args.dir)
                 try:
                     file_exists = dev.cmd(cmd_str, silent=True, rtn_resp=True)
@@ -286,7 +287,8 @@ def synctool(args, dev_name):
                                 args.fre = file_exists
                             elif '*' in args.fre[0]:
                                 start_exp, end_exp = args.fre[0].split('*')
-                                args.fre = [file for file in file_exists if file.startswith(start_exp) and file.endswith(end_exp)]
+                                args.fre = [file for file in file_exists if file.startswith(
+                                    start_exp) and file.endswith(end_exp)]
                         if dir == '':
                             dir = '/'
                         print('Files in {}:{} to get: '.format(dev_name, dir))
@@ -308,7 +310,8 @@ def synctool(args, dev_name):
                             print('Downloading files @ {}...'.format(dev_name))
                             # file_to_get = args.f
                             if args.dir is not None:
-                                args.fre = ['/{}/{}'.format(args.dir, file) for file in files_to_get]
+                                args.fre = ['/{}/{}'.format(args.dir, file)
+                                            for file in files_to_get]
                             else:
                                 args.fre = files_to_get
                             result = rsyncio.sync_files(args, dev_name)
