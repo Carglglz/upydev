@@ -22,6 +22,7 @@ import shlex
 import shutil
 import webbrowser
 import argparse
+import json
 from upydev import upip_host
 from upydev.style_customs import one_darkStyle
 from datetime import datetime, date, timedelta
@@ -191,8 +192,13 @@ class SSL_REPL_server:
     """
 
     def __init__(self, dev=None, port=8443, buff=1024, key=None,
-                 cert=None, init=True, client_key=None, dev_id=None):
-        self.host = self.find_localip()
+                 cert=None, init=True, client_key=None, dev_id=None, zt=''):
+        if '/' in zt:
+            self.host = zt.split('/')[0]
+            self.dev_host = zt.split('/')[1]
+        else:
+            self.host = self.find_localip()
+            self.dev_host = self.host
         self.port = port
         self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serv_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -297,7 +303,7 @@ class SSL_REPL_server:
             #     print(c['name'])
             # self.dev.wr_cmd("import ssl_repl;ssl_client=ssl_repl.start('{}', {}, auth=False)".format(self.host, self.port))
             self.dev.wr_cmd(
-                "import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.host, self.port))
+                "import ssl_repl;ssl_client=ssl_repl.start('{}', {})".format(self.dev_host, self.port))
             if args.wss:
                 self.dev.close_wconn()
             self.conn, self.addr_client = self.serv_soc.accept()
@@ -586,8 +592,13 @@ class SSL_REPL_server:
 
 class SSL_TOOL:
     def __init__(self, ssl_repl, port=8433, key=None,
-                 cert=None):
-        self.host = self.find_localip()
+                 cert=None, zt=''):
+        if '/' in zt:
+            self.host = zt.split('/')[0]
+            self.dev_host = zt.split('/')[1]
+        else:
+            self.host = self.find_localip()
+            self.dev_host = self.host
         self.port = port
         self.serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serv_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -637,7 +648,7 @@ class SSL_TOOL:
         self.context.verify_mode = ssl.CERT_REQUIRED
         self.context.load_verify_locations(cafile=self.cert)
         self.ssl_repl.ssl_repl(
-            "ssl_tool=ssl_repl.SSL_socket_client_tool('{}', {})".format(self.host, self.port))
+            "ssl_tool=ssl_repl.SSL_socket_client_tool('{}', {})".format(self.dev_host, self.port))
         self.ssl_repl.ssl_repl("ssl_tool.connect_SOC(ssl_client.key, ssl_client.cert)")
         self.conn, self.addr_client = self.serv_soc.accept()
         self.conn = self.context.wrap_socket(self.conn, server_side=True)
@@ -820,6 +831,8 @@ parser.add_argument("-nem",
 parser.add_argument("-wss",
                     help='Use WebSocket Secure to do initial handshake, this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
                     default=False, action='store_true')
+parser.add_argument("-zt", help='zerotier bridge; [HOST/FWD-HOST]',
+                    default=None)
 
 args = parser.parse_args()
 
@@ -876,14 +889,23 @@ if args.v:
 #                   id=unique_id)
 # if rk is None:
 #     sys.exit()
-ssl_key = upydev.__path__[0]+'/'+'SSL_key{}.pem'.format(unique_id)
-ssl_cert = upydev.__path__[0]+'/'+'SSL_certificate{}.pem'.format(unique_id)
+UPYDEV_PATH = upydev.__path__[0]
+ssl_key = os.path.join(UPYDEV_PATH, f'SSL_key{unique_id}.pem')
+ssl_cert = os.path.join(UPYDEV_PATH, f'SSL_certificate{unique_id}.pem')
 if not args.nem:
     if base_ws:
         espdev = ws_upydevice
+    # check if device in ZeroTier group.
+    zt_file_conf = '_zt_upydev_.config'
+    zt_file_path = os.path.join(UPYDEV_PATH, zt_file_conf)
+    if zt_file_conf in os.listdir(UPYDEV_PATH):
+        with open(zt_file_path, 'r', encoding='utf-8') as zt_conf:
+            zt_devices = json.loads(zt_conf.read())
+            if args.dev in zt_devices:
+                args.zt = zt_devices[args.dev]
     ssl_cp = SSL_REPL_server(dev=espdev, key=ssl_key, cert=ssl_cert,
-                             client_key=None, dev_id=unique_id)
-    ssl_htool = SSL_TOOL(ssl_repl=ssl_cp, key=ssl_key, cert=ssl_cert)
+                             client_key=None, dev_id=unique_id, zt=args.zt)
+    ssl_htool = SSL_TOOL(ssl_repl=ssl_cp, key=ssl_key, cert=ssl_cert, zt=args.zt)
 # print('Done!')
 # if args.v:
 #     print('SSLWebREPL connected')

@@ -69,14 +69,14 @@ def ssl_wrepl(args, device):
         if not args.nem:
             if device is not None:
                 if args.wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss'.format(args.t, args.p, device)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss, -zt {}'.format(args.t, args.p, device, args.zt)
                 else:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {}'.format(args.t, args.p, device)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -zt {}'.format(args.t, args.p, device, args.zt)
             else:
                 if args.wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -wss'.format(args.t, args.p)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -wss -zt {}'.format(args.t, args.p, args.zt)
                 else:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r'.format(args.t, args.p)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -zt {}'.format(args.t, args.p, args.zt)
             sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
 
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -108,9 +108,9 @@ def ssl_wrepl(args, device):
 
     if args.rkey:
         if device is not None:
-            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {}'.format(args.t, args.p, device)
+            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -zt {}'.format(args.t, args.p, device, args.zt)
         else:
-            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {}'.format(args.t, args.p)
+            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -zt {}'.format(args.t, args.p, args.zt)
         sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
         try:
             sslweb_repl = subprocess.call(sslweb_repl_cmd)

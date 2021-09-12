@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] Unreleased Github Repo [develop]
+## Added
+- `zerotier` compatibility through raspberry pi bridge (port forwarding + ufw route rules) and `-zt [HOST IP/BRIDGE IP]` option to indicate host zerotier ip and raspberry pi bridge local ip for ssl
+shell-repl mode. Also `-zt` option with config command compatibility.
+
 ## [0.3.5] 2021-09-09
 ## Fix
 - `set_ntptime` with WebSocket Devices
