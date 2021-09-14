@@ -22,6 +22,8 @@ SHELL_REPLS_HELP = """
                      after exit.This passowrd will be stored in the working directory or in global directory with
                      -g option. (This mode needs ssl_repl.py, upysecrets.py for -rfkey)
                      *(Use -nem option to use without encryption (for esp8266))
+                     * Use -zt [HOST ZEROTIER IP/BRIDGE IP] option to for devices connected through zerotier network.
+                      (this can be avoided adding the -zt [HOST ZEROTIER IP/BRIDGE IP] option when configuring a device)
 
         - ssl: to access ssl_wrepl in a 'ssh' style command to be used like e.g.:
               "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
@@ -69,14 +71,18 @@ def ssl_wrepl(args, device):
         if not args.nem:
             if device is not None:
                 if args.wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss, -zt {}'.format(args.t, args.p, device, args.zt)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss, -zt {}'.format(
+                        args.t, args.p, device, args.zt)
                 else:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -zt {}'.format(args.t, args.p, device, args.zt)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -zt {}'.format(
+                        args.t, args.p, device, args.zt)
             else:
                 if args.wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -wss -zt {}'.format(args.t, args.p, args.zt)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -wss -zt {}'.format(
+                        args.t, args.p, args.zt)
                 else:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -zt {}'.format(args.t, args.p, args.zt)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -zt {}'.format(
+                        args.t, args.p, args.zt)
             sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
 
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -85,15 +91,18 @@ def ssl_wrepl(args, device):
                 signal.signal(signal.SIGINT, action)
 
             try:
-                sslweb_repl = subprocess.call(sslweb_repl_cmd, preexec_fn=preexec_function)
+                sslweb_repl = subprocess.call(
+                    sslweb_repl_cmd, preexec_fn=preexec_function)
             except KeyboardInterrupt:
                 pass
 
         else:
             if device is not None:
-                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -nem'.format(args.t, args.p, device)
+                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -nem'.format(
+                    args.t, args.p, device)
             else:
-                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -nem'.format(args.t, args.p)
+                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -nem'.format(
+                    args.t, args.p)
             sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
 
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -102,15 +111,18 @@ def ssl_wrepl(args, device):
                 signal.signal(signal.SIGINT, action)
 
             try:
-                sslweb_repl = subprocess.call(sslweb_repl_cmd, preexec_fn=preexec_function)
+                sslweb_repl = subprocess.call(
+                    sslweb_repl_cmd, preexec_fn=preexec_function)
             except KeyboardInterrupt:
                 pass
 
     if args.rkey:
         if device is not None:
-            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -zt {}'.format(args.t, args.p, device, args.zt)
+            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -zt {}'.format(
+                args.t, args.p, device, args.zt)
         else:
-            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -zt {}'.format(args.t, args.p, args.zt)
+            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -zt {}'.format(
+                args.t, args.p, args.zt)
         sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
         try:
             sslweb_repl = subprocess.call(sslweb_repl_cmd)
@@ -130,7 +142,8 @@ def sh_srepl(args, device):
         if args.b:
             args.p = args.b
         if device is not None:
-            sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r -dev {}'.format(args.p, args.t, device)
+            sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r -dev {}'.format(
+                args.p, args.t, device)
         else:
             sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r'.format(args.p, args.t)
         sh_srepl_cmd = shlex.split(sh_srepl_cmd_str)
@@ -171,6 +184,8 @@ def ble_repl(args, device):
     sys.exit()
 
 #############################################
+
+
 def jupyterc():
     jupyter_cmd_str = 'jupyter console --kernel=micropython-upydevice'
     jupyter_cmd = shlex.split(jupyter_cmd_str)

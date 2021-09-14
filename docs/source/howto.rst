@@ -63,9 +63,78 @@ See `Bleak Troubleshooting <https://bleak.readthedocs.io/en/latest/troubleshooti
 ------
 
 
-DEVELOPING WITH WEBSOCKET DEVICES (WIFI) FROM OUTSIDE LAN (ZEROTIER GLOBAL AREA NETWORK)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TODO: setup network, raspberry pi, setup ufw , route port fordwarding with ufw
+WEBSOCKET DEVICES (WIFI) THROUGH ZEROTIER GLOBAL AREA NETWORK
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+See `ZeroTier Global Area Network <https://www.zerotier.com>`_
+
+Although there is no library to directly connect a microcontroller to a zerotier network, a raspberry pi can be used as a bridge to make it possible.
+So install zerotier in your computer and in the raspberry pi.
+
+Setup a zerotier network, add both your computer and the raspberry pi. (`guide <https://breadnet.co.uk/zerotier-cloud-managment/?pk_campaign=reddit&pk_kwd=zerotier_cloud>`_)
+Now add the rules for port fordwarding e.g. for WebREPL port (*8266*) in the raspberry pi and device with IP *192.168.1.46*
+
+
+.. code-block:: console
+
+    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8266 -j DNAT --to-destination 192.168.1.46:8266
+
+And if using a firewall e.g. `ufw`
+
+.. code-block:: console
+
+    $ sudo ufw allow 8266
+    $ sudo ufw route allow in on ztrta7qtbo out on wlan0 to 192.168.1.46 port 8266 from any
+    $ sudo ufw reload
+
+Where *ztrta7qtbo* is the zerotier interface (check this and its ip with *ifconfig*)
+Now connecting to the raspberry pi zerotier IP and port *8266* should redirect the traffic to the microcontroller port *8266* (WebREPL), e.g.
+
+.. code-block:: console
+
+    $ upydev config -t 142.64.115.62 -p mypass -gg -@ zerotdevice
+
+Where *142.64.115.62* is the IP of the raspberry pi zerotier interface.
+
+To configure SSL shell-repl through zerotier network: (e.g your computer has a zerotier IP *142.64.115.75*)
+
+.. code-block:: console
+
+    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8443 -j DNAT --to-destination 142.64.115.75:8443
+    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8433 -j DNAT --to-destination 142.64.115.75:8433
+
+And if using a firewall e.g. `ufw`
+
+.. code-block:: console
+
+    $ sudo ufw allow 8443
+    $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8443 from any
+    $ sudo ufw allow 8433
+    $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8433 from any
+    $ sudo ufw reload
+
+
+Now SSL shell-repl mode is available using ``-zt`` option: e.g.
+
+
+.. code-block:: console
+
+    $ upydev shl@zerotdevice -zt 142.64.115.75/192.168.1.79
+
+Where *192.168.1.79* is the IP of the raspberry pi in the local area network.
+
+Or configre a device with the ``-zt`` option so it is not required anymore, e.g.
+
+.. code-block:: console
+
+    $ upydev config -t 142.64.115.62 -p mypass -gg -@ zerowpy -zt 142.64.115.75/192.168.1.79
+    WebSocketDevice zerotdevice settings saved in global group!
+    WebSocketDevice zerotdevice settings saved in ZeroTier group!
+
+Now to access the SSL shell-repl mode through zerotier network:
+
+.. code-block:: console
+
+    $ upydev shl@zerotdevice
 
 TESTING DEVICES WITH PYTEST
 ---------------------------
