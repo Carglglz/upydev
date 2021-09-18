@@ -73,10 +73,18 @@ So install zerotier in your computer and in the raspberry pi.
 Setup a zerotier network, add both your computer and the raspberry pi. (`guide <https://breadnet.co.uk/zerotier-cloud-managment/?pk_campaign=reddit&pk_kwd=zerotier_cloud>`_)
 Now add the rules for port fordwarding e.g. for WebREPL port (*8266*) in the raspberry pi and device with IP *192.168.1.46*
 
+Then enable port for by editing ``/etc/sysctl.conf`` and uncomment
+
+.. code-block:: console
+
+    net.ipv4.ip_forward=1
+
+Then set the rules with ``iptables``
 
 .. code-block:: console
 
     $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8266 -j DNAT --to-destination 192.168.1.46:8266
+    $ sudo iptables -t nat -A POSTROUTING -j MASQUERADE
 
 And if using a firewall e.g. `ufw`
 
@@ -101,6 +109,7 @@ To configure SSL shell-repl through zerotier network: (e.g your computer has a z
 
     $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8443 -j DNAT --to-destination 142.64.115.75:8443
     $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8433 -j DNAT --to-destination 142.64.115.75:8433
+    $ sudo iptables -t nat -A POSTROUTING -j MASQUERADE
 
 And if using a firewall e.g. `ufw`
 
