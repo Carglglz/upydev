@@ -158,7 +158,7 @@ class SyncFileIO:
         # print(filesize, len(buff))
         if not EOF:
             print('CONNECTION ERROR, TRYING AGAIN...')
-            self.sync_file(args)
+            self.sync_file(args, dev_name, out=out)
         print('\n\nDone in {} seconds'.format(round(t_elapsed, 2)))
         print('Total data received: {:>30.2f} kB'.format(filesize/1024))
         return True
@@ -183,7 +183,7 @@ class SyncFileIO:
 
     def disconnect(self):
         self.conn.close()
-        self.dev.wr_cmd('cli_soc.close()')
+        self.dev.wr_cmd('cli_soc.close()', silent=True)
         self.dev.disconnect()
 
 
