@@ -73,7 +73,7 @@ So install zerotier in your computer and in the raspberry pi.
 Setup a zerotier network, add both your computer and the raspberry pi. (`guide <https://breadnet.co.uk/zerotier-cloud-managment/?pk_campaign=reddit&pk_kwd=zerotier_cloud>`_)
 Now add the rules for port fordwarding e.g. for WebREPL port (*8266*) in the raspberry pi and device with IP *192.168.1.46*
 
-Then enable port for by editing ``/etc/sysctl.conf`` and uncomment
+First enable port forwarding by editing ``/etc/sysctl.conf`` and uncomment
 
 .. code-block:: console
 
@@ -94,7 +94,7 @@ And if using a firewall e.g. `ufw`
     $ sudo ufw route allow in on ztrta7qtbo out on wlan0 to 192.168.1.46 port 8266 from any
     $ sudo ufw reload
 
-Where *ztrta7qtbo* is the zerotier interface (check this and its ip with *ifconfig*)
+Where *ztrta7qtbo* is the zerotier interface (check this and its IP with *ifconfig*)
 Now connecting to the raspberry pi zerotier IP and port *8266* should redirect the traffic to the microcontroller port *8266* (WebREPL), e.g.
 
 .. code-block:: console
