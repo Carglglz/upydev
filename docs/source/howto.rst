@@ -121,6 +121,14 @@ And if using a firewall e.g. `ufw`
     $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8433 from any
     $ sudo ufw reload
 
+.. note::
+
+  If ``$ sudo zerotier-cli info`` shows this error:
+  *Error connecting to the ZeroTier service:*
+
+  *Please check that the service is running and that TCP port 9993 can be contacted via 127.0.0.1.*
+
+  Add this rule ``$ sudo iptables -t nat -I POSTROUTING -o lo -j ACCEPT``
 
 Now SSL shell-repl mode is available using ``-zt`` option: e.g.
 
