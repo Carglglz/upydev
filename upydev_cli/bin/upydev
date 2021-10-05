@@ -22,6 +22,7 @@ import copy
 import time
 import traceback
 import multiprocessing
+import socket
 from argcomplete.completers import ChoicesCompleter
 from ipaddress import ip_address
 from upydevice import check_device_type, Device, DEVGROUP
@@ -494,6 +495,14 @@ def address_entry_point(entry_point, group_file=''):
             # check IP
             try:
                 ip_address(dev_address)
+                dev_ip = devices[entry_point][0]
+                dev_pass = devices[entry_point][1]
+                return (dev_ip, dev_pass)
+            except Exception as e:
+                print(e)
+        elif dev_address.endswith('.local'):
+            try:
+                ip_address(socket.gethostbyname(dev_address))
                 dev_ip = devices[entry_point][0]
                 dev_pass = devices[entry_point][1]
                 return (dev_ip, dev_pass)

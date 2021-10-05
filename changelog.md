@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - `zerotier` compatibility through raspberry pi bridge (port forwarding + ufw route rules) and `-zt [HOST IP/BRIDGE IP]` option to indicate host zerotier ip and raspberry pi bridge local ip for ssl
 shell-repl mode. Also `-zt` option with config command compatibility.
+- mDNS `.local`/`dhcp_hostname` compatibility, so device configuration works across networks, e.g, `-t` argument now can accept `-t mydev.local` and resolve to device ip. 
 ## Fix
 - `fget` error on connection, and unintended verbose output on close.
 ## [0.3.5] 2021-09-09
