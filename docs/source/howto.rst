@@ -53,6 +53,69 @@ WEBSOCKET DEVICES (WIFI)
     In another window use upydev normally. Now in the terminal window with the serial repl you can see which commands are sent.
 
 
+  **Working with dchp_hostnames instead of IP**
+
+  To do this activate station interface and set ``dhcp_hostname`` before connecting to the WLAN, e.g. in MicroPython REPL/script
+
+  .. code-block:: console
+
+    >>> import network
+    >>> wlan = network.WLAN(network.STA_IF)
+    >>> wlan.active(True)
+    >>> wlan.config(dhcp_hostname='esp_dev')
+
+  After connecting, the device should be reachable as ``esp_dev.local``, do ``$ ping esp_dev.local``,  ``avahi-resolve --name esp_dev.local``
+  or ``$ sudo resolvectl query esp_dev.local`` to check that it is working as expected.
+
+  .. code-block:: console
+
+      $ ping esp_dev.local
+      PING esp_dev.local (192.168.1.73): 56 data bytes
+      64 bytes from 192.168.1.73: icmp_seq=0 ttl=255 time=2.403 ms
+      64 bytes from 192.168.1.73: icmp_seq=1 ttl=255 time=219.618 ms
+      64 bytes from 192.168.1.73: icmp_seq=2 ttl=255 time=239.348 ms
+      ^C
+      --- esp_dev.local ping statistics ---
+      3 packets transmitted, 3 packets received, 0.0% packet loss
+      round-trip min/avg/max/stddev = 2.403/153.790/239.348/107.349 ms
+
+      $ avahi-resolve --name esp_dev.local
+
+      esp_dev.local	192.168.1.73
+
+      $ sudo resolvectl query esp_dev.local
+
+      esp_dev.local: 192.168.1.73                     -- link: enp5s0
+
+
+  Now is possible to use this ``dhcp_hostname`` for ``-t`` argument while configuring a device e.g.
+
+  .. code-block:: console
+
+
+      $ upydev config -t esp_dev.local -p mypass -@ esp_dev -gg
+      WebSocketDevice esp_dev settings saved in global group!
+
+      $ upydev check -@ esp_dev
+      Device: esp_dev
+      Address: esp_dev.local, Device Type: WebSocketDevice
+
+      $ upydev check -@ esp_dev -i
+      Device: esp_dev
+      WebSocketDevice @ ws://192.168.1.73:8266, Type: esp32, Class: WebSocketDevice
+      Firmware: MicroPython v1.12-63-g1c849d63a on 2020-01-14; ESP32 module with ESP32
+      (MAC: 30:ae:a4:1e:73:f8, RSSI: -38 dBm)
+
+      $ upydev ping -@ esp_dev
+      PING esp_dev.local (192.168.1.73): 56 data bytes
+      64 bytes from 192.168.1.73: icmp_seq=0 ttl=255 time=56.655 ms
+      64 bytes from 192.168.1.73: icmp_seq=1 ttl=255 time=75.751 ms
+      ^C
+      --- esp_dev.local ping statistics ---
+      2 packets transmitted, 2 packets received, 0.0% packet loss
+      round-trip min/avg/max/stddev = 56.655/66.203/75.751/9.548 ms
+
+
 ------
 
 BLUETOOTH LOW ENERGY DEVICES

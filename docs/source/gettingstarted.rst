@@ -65,7 +65,7 @@ Upydev will use local working directory configuration unless it does not find an
 
 - To save configuration in working directory:
 
-``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE]``, where ``ADDRESS`` must be a valid **IP** , **SERIAL ADDRESS** [#]_, or **MAC ADDRESS/ UUID** [#]_
+``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE]``, where ``ADDRESS`` must be a valid **IP** [#]_ , **SERIAL ADDRESS** [#]_, or **MAC ADDRESS/ UUID** [#]_
 
   e.g.
 
@@ -81,6 +81,7 @@ Upydev will use local working directory configuration unless it does not find an
     $ upydev config -t 9998175F-9A91-4CA2-B5EA-482AFC3453B9
 
 
+.. [#] IP can be a valid dhcp_hostname e.g. `esp_dev.local`
 .. [#] ``-p`` is set to 115200 by default, so it is not necessary unless using a different baudrate
 .. [#] It will depend on OS system (e.g. Linux uses MAC format 'XX:XX:XX:XX:XX:XX', and macOS uses UUID format 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
 
