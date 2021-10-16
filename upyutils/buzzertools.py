@@ -296,6 +296,9 @@ class BUZZER:
     def door_bell(self):
         self._warning(1000, 800, 600, 1)
 
+    def error(self):
+        self.buzz_beep(350, 2, 50, 100)
+
     def play_tone(self, ts, scale=0, tone=None):
         if tone is None:
             tone = self.mario
