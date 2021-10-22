@@ -502,7 +502,7 @@ def address_entry_point(entry_point, group_file=''):
                 print(e)
         elif dev_address.endswith('.local'):
             try:
-                ip_address(socket.gethostbyname(dev_address))
+                # ip_address(socket.gethostbyname(dev_address))
                 dev_ip = devices[entry_point][0]
                 dev_pass = devices[entry_point][1]
                 return (dev_ip, dev_pass)
@@ -825,8 +825,8 @@ if args.t is None:
             if args.st:
                 print('Target:{}'.format(args.t))
         except Exception as e:
-            print('upydev_.config file not found, please provide target and \
-            password or create config file with command "config"')
+            print('upydev_.config file not found, please provide target and password or\
+ create config file with command "config"')
             see_help('config')
             sys.exit()
 

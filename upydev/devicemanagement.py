@@ -203,8 +203,8 @@ def devicemanagement_action(args, **kargs):
             if args.st:
                 print('Target:{}'.format(args.t))
         except Exception as e:
-            print('upydev_.config file not found, please provide target and \
-            password or create config file with command "config"')
+            print('upydev_.config file not found, please provide target and password or\
+             create config file with command "config"')
             see_help('config')
             sys.exit()
 
