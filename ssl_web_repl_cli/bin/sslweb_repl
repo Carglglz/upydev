@@ -1031,11 +1031,12 @@ else:
         ssl_cp.flush_conn()
         espdev.output = None
         try:
-            ssl_cp.ssl_repl("help('modules')", silent=True)
+            ssl_cp.ssl_repl(
+                "import time;help('modules');time.sleep(0.5);print('>>>')", silent=True)
         except KeyboardInterrupt:
             try:
                 ssl_cp.flush_conn()
-                ssl_cp.ssl_repl("help('modules')", silent=True)
+                ssl_cp.ssl_repl("help('modules');print('>>>')", silent=True)
             except Exception as e:
                 pass
         frozen_modules['FM'] = espdev.output.split()[:-6]

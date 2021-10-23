@@ -115,11 +115,18 @@ def upy_keygen(rsa_key):
 
 
 def get_cert_data():
-    # MAC ADDRES IF
+    # MAC ADDRESS IF
     try:
-        addrs = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                 iface in netifaces.interfaces() if netifaces.AF_INET in
-                 netifaces.ifaddresses(iface)][-1]
+        try:
+            ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ip_soc.connect(('8.8.8.8', 1))
+            local_ip = ip_soc.getsockname()[0]
+            ip_soc.close()
+            addrs = local_ip
+        except Exception as e:
+            addrs = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                     iface in netifaces.interfaces() if netifaces.AF_INET in
+                     netifaces.ifaddresses(iface)][-1]
 
         USER = os.environ['USER']
         HOST_NAME = socket.gethostname()
@@ -172,18 +179,38 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
                                       NameOID.ORGANIZATION_NAME, u"MicroPython"),
                                   x509.NameAttribute(NameOID.COMMON_NAME, u"{}@{}".format(dev_platform, unique_id))])
     host_ip = ipaddress.IPv4Address(cert_data['addrs'])
-    cert = x509.CertificateBuilder().subject_name(
-                subject).issuer_name(issuer).public_key(key.public_key()
-                                                        ).serial_number(x509.random_serial_number()
-                                                                        ).not_valid_before(datetime.utcnow()
-                                                                                           ).not_valid_after(datetime.utcnow() + timedelta(days=365)
-                                                                                                             ).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
-                                                                                                                                                          x509.IPAddress(host_ip),
-                                                                                                                                                          x509.DNSName(
-                                                                                                                 u"wss://{}:8833".format(args.t)),
-                                                                                                                 x509.DNSName(u"wss://192.168.4.1:8833")]),
-                                                  critical=False
-                                                  ).sign(key, hashes.SHA256(), default_backend())
+    if '.local' in args.t:
+        args.t = socket.gethostbyname(args.t)
+    if not args.zt:
+        cert = x509.CertificateBuilder().subject_name(
+                    subject).issuer_name(issuer).public_key(key.public_key()
+                                                            ).serial_number(x509.random_serial_number()
+                                                                            ).not_valid_before(datetime.utcnow()
+                                                                                               ).not_valid_after(datetime.utcnow() + timedelta(days=365)
+                                                                                                                 ).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
+                                                                                                                                                              x509.IPAddress(
+                                                                                                                                                                  host_ip),
+                                                                                                                                                              x509.DNSName(
+                                                                                                                     u"wss://{}:8833".format(args.t)),
+                                                                                                                     x509.DNSName(u"wss://192.168.4.1:8833")]),
+                                                      critical=False
+                                                      ).sign(key, hashes.SHA256(), default_backend())
+    else:
+        cert = x509.CertificateBuilder().subject_name(
+                    subject).issuer_name(issuer).public_key(key.public_key()
+                                                            ).serial_number(x509.random_serial_number()
+                                                                            ).not_valid_before(datetime.utcnow()
+                                                                                               ).not_valid_after(datetime.utcnow() + timedelta(days=365)
+                                                                                                                 ).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
+                                                                                                                                                              x509.IPAddress(
+                                                                                                                                                                  host_ip),
+                                                                                                                                                              x509.DNSName(
+                                                                                                                     u"wss://{}:8833".format(args.t)),
+                                                                                                                     x509.DNSName(
+                                                                                                                         u"wss://192.168.4.1:8833"),
+                                                                                                                     x509.DNSName(u"wss://{}:8833".format(args.zt))]),
+                                                      critical=False
+                                                      ).sign(key, hashes.SHA256(), default_backend())
     if store:
         cert_path_file_pem = os.path.join(dir,
                                           'SSL_certificate{}.pem'.format(unique_id))

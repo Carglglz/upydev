@@ -71,7 +71,7 @@ def ssl_wrepl(args, device):
         if not args.nem:
             if device is not None:
                 if args.wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss, -zt {}'.format(
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss -zt {}'.format(
                         args.t, args.p, device, args.zt)
                 else:
                     sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -zt {}'.format(
