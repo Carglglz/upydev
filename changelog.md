@@ -4,13 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.6] Unreleased Github Repo [develop]
+## [0.3.7] Unreleased Github Repo [develop]
+## [0.3.6] 2021-10-24
 ## Added
 - `zerotier` compatibility through raspberry pi bridge (port forwarding + ufw route rules) and `-zt [HOST IP/BRIDGE IP]` option to indicate host zerotier ip and raspberry pi bridge local ip for ssl
 shell-repl mode. Also `-zt` option with config command compatibility.
-- mDNS `.local`/`dhcp_hostname` compatibility, so device configuration works across networks, e.g, `-t` argument now can accept `-t mydev.local` and resolve to device ip. 
+- mDNS `.local`/`dhcp_hostname` compatibility, so device configuration works across networks, e.g, `-t` argument now can accept `-t mydev.local` and resolve to device ip.
+- added `-zt [IP]` in `keygen ssl` for zerotier `wss-sslwebrepl` mode
+- `wpa_supplicant.py` utility in upyutils
+- New buzzer effects in `buzzertools.py`: `error`, `warning_call`, `phone_call`, `door_bell`.
+- Added docs for `zerotier` bridge configuration in `HOWTO`
 ## Fix
 - `fget` error on connection, and unintended verbose output on close.
+- `check -i`, `info` commands in `-apmd`, if connected to AP of the device.
+- fix ssl cert authentication in `wss` mode if using `.local`/`dhcp_hostname` target.
 ## [0.3.5] 2021-09-09
 ## Fix
 - `set_ntptime` with WebSocket Devices
