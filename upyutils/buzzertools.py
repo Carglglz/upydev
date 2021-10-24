@@ -163,7 +163,7 @@ class BUZZER:
 
     def check_alarm(self):
         self.buff[0], self.buff[1], self.buff[2] = time.localtime()[3], time.localtime()[
-                                                                  4], time.localtime()[5]
+            4], time.localtime()[5]
         if (self.buff[0] == self.hour) and (self.buff[1] == self.minute) and (self.buff[2] == self.second):
             return True
 
@@ -275,6 +275,29 @@ class BUZZER:
     def sec_alarm(self, ntimes=10):
         for i in range(ntimes):
             self.sound_effect_up_down(1250, 6250, 200, 5)
+
+    def _warning(self, fl, fh, ts=100, ntimes=10):
+        self.buzz.init()
+        for i in range(ntimes):
+            self.buzz.freq(fl)
+            time.sleep_ms(ts)
+            self.buzz.freq(fh)
+            time.sleep_ms(ts)
+        self.buzz.deinit()
+
+    def warning_call(self, ntimes=1):
+        for i in range(ntimes):
+            self._warning(4000, 800, 180, 3)
+
+    def phone_call(self, ntimes=1):
+        for i in range(ntimes):
+            self._warning(4000, 800, 80, 10)
+
+    def door_bell(self):
+        self._warning(1000, 800, 600, 1)
+
+    def error(self):
+        self.buzz_beep(350, 2, 50, 100)
 
     def play_tone(self, ts, scale=0, tone=None):
         if tone is None:

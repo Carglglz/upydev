@@ -244,6 +244,8 @@ SHELL-REPL
           ``-g`` option. (This mode needs *ssl_repl.py, upysecrets.py* for ``-rfkey``)
 
           Use ``-nem`` option to use just WebREPL (websockets without encryption for esp8266)
+          Use ``-zt [HOST ZEROTIER IP/BRIDGE IP]`` option to for devices connected through zerotier network.
+          (this can be avoided adding the ``-zt [HOST ZEROTIER IP/BRIDGE IP]`` option when configuring a device)
 
     - ssl:
           Alias of ``ssl_wrepl``. To access ssl_wrepl in a 'ssh' style command to be used like e.g.:

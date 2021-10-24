@@ -13,7 +13,7 @@ def readme():
 
 
 setup(name='upydev',
-      version='0.3.5',
+      version='0.3.6',
       description='Command line tool for wired/wireless MicroPython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',
@@ -47,7 +47,7 @@ setup(name='upydev',
                'ssl_web_repl_cli/bin/sslweb_repl',
                'shr_srepl_cli/bin/sh_srepl',
                'ble_repl_cli/bin/blerepl',
-               'pydfu_dir/bin/pydfu'],
+               'pydfu_cli/bin/pydfu'],
       include_package_data=True,
       install_requires=['websocket-client', 'argcomplete',
                         'esptool', 'prompt_toolkit', 'python-nmap',

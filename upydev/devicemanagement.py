@@ -156,6 +156,21 @@ def devicemanagement_action(args, **kargs):
                 print('{} {} settings saved globally!'.format(dt, upydev_name))
             else:
                 print('{} {} settings saved in working directory!'.format(dt, upydev_name))
+
+        # ZeroTier SSL shell-repl mode IP/REMOTE IP RPY bridge
+        if args.zt:
+            zt_file_conf = '_zt_upydev_.config'
+            zt_file_path = os.path.join(UPYDEV_PATH, zt_file_conf)
+            if zt_file_conf not in os.listdir(UPYDEV_PATH):
+                with open(zt_file_path, 'w', encoding='utf-8') as zt_conf:
+                    zt_conf.write(json.dumps({}))
+            with open(zt_file_path, 'r', encoding='utf-8') as zt_conf:
+                zt_devices = json.loads(zt_conf.read())
+                zt_devices.update({upydev_name: args.zt})
+            with open(zt_file_path, 'w', encoding='utf-8') as zt_conf:
+                zt_conf.write(json.dumps(zt_devices))
+            print('{} {} settings saved in ZeroTier group!'.format(dt, upydev_name))
+
         sys.exit()
 
     # UPYDEV LOOKS FOR UPYDEV_.CONFIG FILE
@@ -188,8 +203,8 @@ def devicemanagement_action(args, **kargs):
             if args.st:
                 print('Target:{}'.format(args.t))
         except Exception as e:
-            print('upydev_.config file not found, please provide target and \
-            password or create config file with command "config"')
+            print('upydev_.config file not found, please provide target and password or\
+             create config file with command "config"')
             see_help('config')
             sys.exit()
 

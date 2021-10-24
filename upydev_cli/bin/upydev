@@ -22,6 +22,7 @@ import copy
 import time
 import traceback
 import multiprocessing
+import socket
 from argcomplete.completers import ChoicesCompleter
 from ipaddress import ip_address
 from upydevice import check_device_type, Device, DEVGROUP
@@ -323,6 +324,8 @@ parser.add_argument('-nt', help='Local Area Network scan flag for scan command',
                     default=False, action='store_true')
 parser.add_argument('-rf', help='remove files or directories in dsync mode',
                     default=False, action='store_true')
+parser.add_argument("-zt", help='zerotier bridge; [HOST/FWD-HOST]',
+                    default=None)
 parser.add_argument(
     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
@@ -492,6 +495,14 @@ def address_entry_point(entry_point, group_file=''):
             # check IP
             try:
                 ip_address(dev_address)
+                dev_ip = devices[entry_point][0]
+                dev_pass = devices[entry_point][1]
+                return (dev_ip, dev_pass)
+            except Exception as e:
+                print(e)
+        elif dev_address.endswith('.local'):
+            try:
+                # ip_address(socket.gethostbyname(dev_address))
                 dev_ip = devices[entry_point][0]
                 dev_pass = devices[entry_point][1]
                 return (dev_ip, dev_pass)
@@ -814,8 +825,8 @@ if args.t is None:
             if args.st:
                 print('Target:{}'.format(args.t))
         except Exception as e:
-            print('upydev_.config file not found, please provide target and \
-            password or create config file with command "config"')
+            print('upydev_.config file not found, please provide target and password or\
+ create config file with command "config"')
             see_help('config')
             sys.exit()
 
@@ -917,7 +928,8 @@ if args.GP is not None:
         if args.devs is not None:
             devs = args.devs
         if args.m not in keywords_mode:
-            dev_list = [Device(devices[dev][0], devices[dev][1], init=True, name=dev) for dev in devs]
+            dev_list = [Device(devices[dev][0], devices[dev][1],
+                               init=True, name=dev) for dev in devs]
             devices_group = DEVGROUP(dev_list)
             cmd = args.m
             devices_group.cmd_p(cmd, follow=True)
@@ -930,7 +942,8 @@ if args.GP is not None:
             # override print with [device name] ?
             # redirect ouput to /tmp/dev_x_output
             # parse output and clean/organized presentation ?
-            process_devices = {dev: multiprocessing.Process(target=handle_action, args=(args_devices[dev], False, dev)) for dev in devs}
+            process_devices = {dev: multiprocessing.Process(
+                target=handle_action, args=(args_devices[dev], False, dev)) for dev in devs}
 
             for dev in devs:
                 process_devices[dev].start()
@@ -944,7 +957,8 @@ if args.GP is not None:
                         break
                 except KeyboardInterrupt:
                     while True:
-                        dev_proc_state = [process_devices[dev].is_alive() for dev in devs]
+                        dev_proc_state = [process_devices[dev].is_alive()
+                                          for dev in devs]
                         if all(state is False for state in dev_proc_state):
                             time.sleep(1)
                             for dev in devs:

@@ -184,22 +184,16 @@ PROTOTYPE_COMMANDS_HELP = """
 
 
 def get_ip():
-    # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
-    # ip = scanoutput.decode('utf-8').split('\n')[0]
     try:
-        ip = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-              iface in netifaces.interfaces() if netifaces.AF_INET in
-              netifaces.ifaddresses(iface)][-1]
-        return ip
+        ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ip_soc.connect(('8.8.8.8', 1))
+        local_ip = ip_soc.getsockname()[0]
+        ip_soc.close()
+        return local_ip
     except Exception as e:
-        try:
-            ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            ip_soc.connect(('8.8.8.8', 1))
-            local_ip = ip_soc.getsockname()[0]
-            ip_soc.close()
-            return local_ip
-        except Exception as e:
-            return '0.0.0.0'
+        return [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                iface in netifaces.interfaces() if netifaces.AF_INET in
+                netifaces.ifaddresses(iface)][-1]
 
 
 def get_live_stream(args, run_cmd, dev, sensorlib, filename=None,
@@ -1463,7 +1457,6 @@ def prototype_command(args, **kargs):
         dev.disconnect()
         sys.exit()
 
-
     # DAC_SIG
 
     elif args.m == 'dac_sig':
@@ -1571,7 +1564,6 @@ def prototype_command(args, **kargs):
             servo_angle))
         sys.exit()
 
-
     # * DC MOTOR *
 
     # DCMOTOR_CONFIG
@@ -1635,7 +1627,6 @@ def prototype_command(args, **kargs):
         print('Stepper moved {} steps to {} !'.format(
             steps, step_direction))
         sys.exit()
-
 
     #############################################
     #  * NETWORKING *

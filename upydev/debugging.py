@@ -382,9 +382,9 @@ def diagnose(args):
                                                             'Avail',
                                                             'Use%']))
         FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memory',
-                                                            'Size', 'Used',
-                                                            'Avail',
-                                                            'Use%']))
+                                                                         'Size', 'Used',
+                                                                         'Avail',
+                                                                         'Use%']))
         total_mem = mem['total']/1024
         used_mem = mem['used']/1024
         free_mem = mem['free']/1024
@@ -393,11 +393,11 @@ def diagnose(args):
         free_mem_s = "{:.3f} KB".format(free_mem)
 
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
-                                                          used_mem_s, free_mem_s,
-                                                          "{:.1f} %".format((used_mem/total_mem)*100)))
+                                                         used_mem_s, free_mem_s,
+                                                         "{:.1f} %".format((used_mem/total_mem)*100)))
         FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
-                                                          used_mem_s, free_mem_s,
-                                                          "{:.1f} %".format((used_mem/total_mem)*100)))
+                                                                      used_mem_s, free_mem_s,
+                                                                      "{:.1f} %".format((used_mem/total_mem)*100)))
 
         print('\n')
         FILE_REPORT.append('\n')
@@ -436,15 +436,15 @@ def diagnose(args):
                                                                    'Avail',
                                                                    'Use%', 'Mounted on']))
         FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
-                                                                   'Size', 'Used',
-                                                                   'Avail',
-                                                                   'Use%', 'Mounted on']))
+                                                                                'Size', 'Used',
+                                                                                'Avail',
+                                                                                'Use%', 'Mounted on']))
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                used_mem, free_mem,
-                                                                "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+                                                                     used_mem, free_mem,
+                                                                     "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
         FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                used_mem, free_mem,
-                                                                "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+                                                                                  used_mem, free_mem,
+                                                                                  "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
         print('\n')
         FILE_REPORT.append('\n')
 
@@ -466,15 +466,15 @@ def diagnose(args):
                                                                        'Avail',
                                                                        'Use%', 'Mounted on']))
             FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
-                                                                       'Size', 'Used',
-                                                                       'Avail',
-                                                                       'Use%', 'Mounted on']))
+                                                                                    'Size', 'Used',
+                                                                                    'Avail',
+                                                                                    'Use%', 'Mounted on']))
             print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                    used_mem, free_mem,
-                                                                    "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+                                                                         used_mem, free_mem,
+                                                                         "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
             FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                    used_mem, free_mem,
-                                                                    "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
+                                                                                      used_mem, free_mem,
+                                                                                      "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
             print('\n')
             FILE_REPORT.append('\n')
         else:
@@ -919,22 +919,16 @@ def get_error_log(args):
 
 
 def get_ip():
-    # scanoutput = subprocess.check_output(["ipconfig", "getifaddr", "en0"])
-    # ip = scanoutput.decode('utf-8').split('\n')[0]
     try:
-        ip = [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
-                    iface in netifaces.interfaces() if netifaces.AF_INET in
-                    netifaces.ifaddresses(iface)][-1]
-        return ip
+        ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ip_soc.connect(('8.8.8.8', 1))
+        local_ip = ip_soc.getsockname()[0]
+        ip_soc.close()
+        return local_ip
     except Exception as e:
-        try:
-            ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            ip_soc.connect(('8.8.8.8', 1))
-            local_ip = ip_soc.getsockname()[0]
-            ip_soc.close()
-            return local_ip
-        except Exception as e:
-            return '0.0.0.0'
+        return [netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'] for
+                iface in netifaces.interfaces() if netifaces.AF_INET in
+                netifaces.ifaddresses(iface)][-1]
 
 
 def do_pg_bar(index, wheel, nb_of_total, speed, time_e,
@@ -943,10 +937,12 @@ def do_pg_bar(index, wheel, nb_of_total, speed, time_e,
     if index == bar_size:
         l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" *index + l_bloc  + " "*((bar_size+1) - len("█" *index + l_bloc)),
-                                                                    wheel[index % 4],
-                                                                    int((percentage)*100),
-                                                                    nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][2:]), end='\r')
+    print('▏{}▏{:>2}{:>5} % | DATA: {} | SPEED: {:>5} MB/s | TIME: {} s'.format("█" * index + l_bloc + " "*((bar_size+1) - len("█" * index + l_bloc)),
+                                                                                wheel[index %
+                                                                                      4],
+                                                                                int((
+                                                                                    percentage)*100),
+                                                                                nb_of_total, speed, str(timedelta(seconds=time_e)).split('.')[0][2:]), end='\r')
     sys.stdout.flush()
 
 
@@ -964,7 +960,8 @@ def w_stream_reader(soc, total_size, chunk_rx):
                 loop_index_f = ((len(buff))/total_size)*bar_size
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                nb_of_total = "{:.2f}/{:.2f} MB".format(len(buff)/(1024**2), total_size/(1024**2))
+                nb_of_total = "{:.2f}/{:.2f} MB".format(
+                    len(buff)/(1024**2), total_size/(1024**2))
                 percentage = len(buff)/total_size
                 t_elapsed = time.time() - t_start
                 t_speed = "{:^2.2f}".format((len(buff)/(1024**2))/t_elapsed)
@@ -1118,13 +1115,16 @@ def get_log_script(args, dev_name):
                 level=log_levels['debug'],
                 format="%(asctime)s [%(name)s] [%(process)d] [%(threadName)s] [%(levelname)s]  %(message)s",
                 handlers=[handler])
-            log = logging.getLogger('{}_{}'.format(dev_name, script_name))  # setup one logger per device
+            # setup one logger per device
+            log = logging.getLogger('{}_{}'.format(dev_name, script_name))
             # log.setLevel(log_levels[args.dslev]) # MASTER LOG LEVEL
             # Filehandler for error
-            fh_err = logging.FileHandler(os.path.join(filelog_path, '{}_error.log'.format(script_name)))
+            fh_err = logging.FileHandler(os.path.join(
+                filelog_path, '{}_error.log'.format(script_name)))
             fh_err.setLevel(log_levels[args.dflev])
             # Formatter for errors
-            fmt_err = logging.Formatter("%(asctime)s [%(name)s] [%(process)d] [%(threadName)s] [%(levelname)s]  %(message)s")
+            fmt_err = logging.Formatter(
+                "%(asctime)s [%(name)s] [%(process)d] [%(threadName)s] [%(levelname)s]  %(message)s")
             fh_err.setFormatter(fmt_err)
             log.addHandler(fh_err)
 
@@ -1151,7 +1151,8 @@ def get_log_script(args, dev_name):
         daemon_cmd = "nohup upydev log {} > {} &".format(gcommand, filelog_daemon)
         subprocess.call(daemon_cmd, shell=True)  # is this still safe?
         print('Running upydev log daemon-like mode')
-        print('Logging to {} with level: {}'.format('{}_daemon.log'.format(script_name), args.dslev))
+        print('Logging to {} with level: {}'.format(
+            '{}_daemon.log'.format(script_name), args.dslev))
         print("Do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
 
 
@@ -1169,7 +1170,8 @@ def follow_daemon_log(args):
             line = follow_tail.stdout.readline()
             print(line[:-1].decode())
         except KeyboardInterrupt:
-            print("Unfollowing, do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
+            print(
+                "Unfollowing, do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
             break
 
 
@@ -1383,12 +1385,13 @@ def debugging_action(args, **kargs):
                         if isinstance(dev.metadata, dict):
                             if 'uuids' in dev.metadata.keys():
                                 try:
-                                    services = [uuidstr_to_str(serv) for serv in dev.metadata['uuids']]
+                                    services = [uuidstr_to_str(serv)
+                                                for serv in dev.metadata['uuids']]
                                 except Exception as e:
                                     services = ['']
 
                     print('┃{0:^20} ┃ {1:^40} ┃ {2:^10} ┃ {3:^40} ┃'.format(dev.name, dev.address,
-                                                                 int(dev.rssi), ','.join(services)))
+                                                                            int(dev.rssi), ','.join(services)))
                     if dev != devs[-1]:
                         print('┣{0}━╋━{1}━╋━{2}━╋━{3}━┫'.format(
                             '━'*20, '━'*40, '━'*10, '━'*40))
@@ -1408,7 +1411,6 @@ def debugging_action(args, **kargs):
 
                 except Exception as e:
                     print(e)
-
 
     elif args.m == 'ping':
         dt = check_device_type(args.t)
