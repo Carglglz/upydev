@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.3.7] Unreleased Github Repo [develop]
+## Fix
+- `firmwaretools.get_fw_versions` update after `micropython.org\all` not working anymore.
 ## [0.3.6] 2021-10-24
 ## Added
 - `zerotier` compatibility through raspberry pi bridge (port forwarding + ufw route rules) and `-zt [HOST IP/BRIDGE IP]` option to indicate host zerotier ip and raspberry pi bridge local ip for ssl
