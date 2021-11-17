@@ -761,7 +761,9 @@ if args.m not in keywords_mode and args.m.startswith('%'):
     see_help(action)
     sys.exit()
 
-_dev_name = None
+_dev_name = vars(args)['@']
+entryp = vars(args)['@']
+
 # @ ENTRY
 if "@" in args.m:
     args.m, entry_point = args.m.split('@')
@@ -818,8 +820,8 @@ if args.t is None:
                     gf, entryp = args.b.split('@')
                     args.t, args.p = address_entry_point(entryp, gf)
             if vars(args)['@'] is not None:
-                    entryp = vars(args)['@']
-                    args.t, args.p = address_entry_point(entryp)
+                entryp = vars(args)['@']
+                args.t, args.p = address_entry_point(entryp)
             if args.apmd:
                 args.t = '192.168.4.1'
             if args.st:

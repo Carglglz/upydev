@@ -43,12 +43,13 @@ def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l,
     if index == size_bar:
         l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((size_bar+1) - len("█" *index + l_bloc)),
-                                                                    wheel[index % 4],
-                                                                    int((percentage)*100),
-                                                                    nb_of_total, speed,
-                                                                    str(timedelta(seconds=time_e)).split('.')[0][2:],
-                                                                    str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
+    print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" * index + l_bloc + " "*((size_bar+1) - len("█" * index + l_bloc)),
+                                                                wheel[index % 4],
+                                                                int((percentage)*100),
+                                                                nb_of_total, speed,
+                                                                str(timedelta(seconds=time_e)).split(
+                                                                    '.')[0][2:],
+                                                                str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
     sys.stdout.flush()
 
 
@@ -290,9 +291,11 @@ def connect_ws(host, port, passwd, websec):
         # print(e, 'Device {} unreachable'.format(devname))
         try:
             if websec:
-                raise DeviceNotFound("WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
+                raise DeviceNotFound(
+                    "WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
             else:
-                raise DeviceNotFound("WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
+                raise DeviceNotFound(
+                    "WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
         except Exception as e:
             print('ERROR {}'.format(e))
             return False
@@ -350,7 +353,8 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                 abs_src_file = '/{}'.format(src_file)
             print("{}:{} -> {}".format(devname, abs_src_file, dst_file))
             if dev:
-                dev.cmd("import uos, gc; uos.stat('{}')[6]; gc.collect()".format(src_file), silent=True)
+                dev.cmd("import uos, gc; uos.stat('{}')[6]; gc.collect()".format(
+                    src_file), silent=True)
                 size_file_to_get = dev.output
 
     else:
@@ -379,9 +383,11 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                     # print(e, 'Device {} unreachable'.format(devname))
                     try:
                         if args.wss:
-                            raise DeviceNotFound("WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
+                            raise DeviceNotFound(
+                                "WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
                         else:
-                            raise DeviceNotFound("WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
+                            raise DeviceNotFound(
+                                "WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
                     except Exception as e:
                         print('ERROR {}'.format(e))
                         return False
@@ -414,9 +420,11 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                         # print(e, 'Device {} unreachable'.format(devname))
                         try:
                             if args.wss:
-                                raise DeviceNotFound("WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
+                                raise DeviceNotFound(
+                                    "WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
                             else:
-                                raise DeviceNotFound("WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
+                                raise DeviceNotFound(
+                                    "WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
                         except Exception as e:
                             print('ERROR {}'.format(e))
                             return False
@@ -430,9 +438,11 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                     # print(e, 'Device {} unreachable'.format(devname))
                     try:
                         if args.wss:
-                            raise DeviceNotFound("WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
+                            raise DeviceNotFound(
+                                "WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
                         else:
-                            raise DeviceNotFound("WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
+                            raise DeviceNotFound(
+                                "WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
                     except Exception as e:
                         print('ERROR {}'.format(e))
                         return False
@@ -453,7 +463,8 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                         basename = src_file.rsplit("/", 1)[-1]
                         dst_file += basename
                     print("{} -> {}:{}".format(src_file, devname, dst_file))
-                    print('\n{} [{:.2f} KB]'.format(src_file, os.stat(src_file)[6]/1024))
+                    print('\n{} [{:.2f} KB]'.format(
+                        src_file, os.stat(src_file)[6]/1024))
                     try:
                         put_file(ws, src_file, dst_file)
                     except KeyboardInterrupt as e:
@@ -465,9 +476,11 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                         # print(e, 'Device {} unreachable'.format(devname))
                         try:
                             if args.wss:
-                                raise DeviceNotFound("WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
+                                raise DeviceNotFound(
+                                    "WebSocketDevice @ wss://{}:{} is not reachable".format(host, port))
                             else:
-                                raise DeviceNotFound("WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
+                                raise DeviceNotFound(
+                                    "WebSocketDevice @ ws://{}:{} is not reachable".format(host, port))
                         except Exception as e:
                             print('ERROR {}'.format(e))
                             return False
@@ -501,6 +514,9 @@ class WebSocketFileIO:
 
 
 def wstool(args, dev_name):
+    if not dev_name:
+        if vars(args)['@'] is not None:
+            dev_name = vars(args)['@']
     if not args.f and not args.fre:
         print('args -f or -fre required:')
         see_help(args.m)
@@ -528,7 +544,8 @@ def wstool(args, dev_name):
                     if args.s:
                         dev = Device(args.t, args.p, init=True, ssl=args.wss,
                                      auth=args.wss)
-                        is_dir_cmd = "import uos, gc; uos.stat('{}')[0] & 0x4000".format(source)
+                        is_dir_cmd = "import uos, gc; uos.stat('{}')[0] & 0x4000".format(
+                            source)
                         is_dir = dev.cmd(is_dir_cmd, silent=True, rtn_resp=True)
                         dev.disconnect()
                         if dev._traceback.decode() in dev.response:
@@ -536,7 +553,8 @@ def wstool(args, dev_name):
                                 raise DeviceException(dev.response)
                             except Exception as e:
                                 print(e)
-                                print('Directory {}:{} does NOT exist'.format(dev_name, source))
+                                print('Directory {}:{} does NOT exist'.format(
+                                    dev_name, source))
                                 result = False
                         else:
                             if is_dir:
@@ -566,7 +584,8 @@ def wstool(args, dev_name):
             # Handle special cases:
             # CASE [cwd]:
             if args.fre[0] == 'cwd' or args.fre[0] == '.':
-                args.fre = [fname for fname in os.listdir('./') if os.path.isfile(fname) and not fname.startswith('.')]
+                args.fre = [fname for fname in os.listdir(
+                    './') if os.path.isfile(fname) and not fname.startswith('.')]
                 print('Files in ./{} to put: '.format(os.getcwd().split('/')[-1]))
             elif '*' in args.fre[0]:
                 args.fre = glob.glob(args.fre[0])
@@ -602,7 +621,8 @@ def wstool(args, dev_name):
                 if args.s:
                     dev = Device(args.t, args.p, init=True, ssl=args.wss,
                                  auth=args.wss)
-                    is_dir_cmd = "import uos, gc; uos.stat('{}')[0] & 0x4000".format(source)
+                    is_dir_cmd = "import uos, gc; uos.stat('{}')[0] & 0x4000".format(
+                        source)
                     is_dir = dev.cmd(is_dir_cmd, silent=True, rtn_resp=True)
                     dev.disconnect()
                     if dev._traceback.decode() in dev.response:
@@ -625,7 +645,8 @@ def wstool(args, dev_name):
                 if result:
                     if args.rst is None:
                         time.sleep(0.1)
-                        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+                        dev = Device(args.t, args.p, init=True,
+                                     ssl=args.wss, auth=args.wss)
                         time.sleep(0.2)
                         dev.reset(reconnect=False)
                         time.sleep(0.2)
@@ -647,7 +668,8 @@ def wstool(args, dev_name):
                 if args.s is not None:
                     args.dir = '{}/{}'.format(args.s, args.dir)
                 print('Looking for file in {}:/{} dir'.format(dev_name, args.dir))
-                cmd_str = "import uos; '{}' in uos.listdir('/{}')".format(args.f, args.dir)
+                cmd_str = "import uos; '{}' in uos.listdir('/{}')".format(
+                    args.f, args.dir)
                 dir = '/{}'.format(args.dir)
             try:
                 dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
@@ -661,7 +683,8 @@ def wstool(args, dev_name):
                         result = False
                 else:
                     if file_exists is True:
-                        cmd_str = "import uos; not uos.stat('{}')[0] & 0x4000 ".format(dir + '/' + args.f)
+                        cmd_str = "import uos; not uos.stat('{}')[0] & 0x4000 ".format(
+                            dir + '/' + args.f)
                         is_file = dev.cmd(cmd_str, silent=True, rtn_resp=True)
                 if file_exists is True and is_file:
                     print('Downloading file {} @ {}...'.format(args.f, dev_name))
@@ -682,7 +705,8 @@ def wstool(args, dev_name):
                         print('File Not found in {}:{} directory'.format(dev_name, dir))
                     elif file_exists is True:
                         if is_file is not True:
-                            print('{}:{} is a directory'.format(dev_name, dir + '/' + args.f))
+                            print('{}:{} is a directory'.format(
+                                dev_name, dir + '/' + args.f))
             except DeviceNotFound as e:
                 print('ERROR {}'.format(e))
             except KeyboardInterrupt as e:
@@ -696,7 +720,8 @@ def wstool(args, dev_name):
                 if args.s is not None:
                     args.dir = '{}/{}'.format(args.s, args.dir)
                 print('Looking for files in {}:/{} dir'.format(dev_name, args.dir))
-                cmd_str = "import uos;[file for file in uos.listdir('/{0}') if not uos.stat('/{0}/'+file)[0] & 0x4000]".format(args.dir)
+                cmd_str = "import uos;[file for file in uos.listdir('/{0}') if not uos.stat('/{0}/'+file)[0] & 0x4000]".format(
+                    args.dir)
                 dir = '/{}'.format(args.dir)
             try:
                 dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
@@ -717,7 +742,8 @@ def wstool(args, dev_name):
                             args.fre = file_exists
                         elif '*' in args.fre[0]:
                             start_exp, end_exp = args.fre[0].split('*')
-                            args.fre = [file for file in file_exists if file.startswith(start_exp) and file.endswith(end_exp)]
+                            args.fre = [file for file in file_exists if file.startswith(
+                                start_exp) and file.endswith(end_exp)]
                     if dir == '':
                         dir = '/'
                     print('Files in {}:{} to get: '.format(dev_name, dir))
@@ -738,7 +764,8 @@ def wstool(args, dev_name):
                         print('Downloading files @ {}...'.format(dev_name))
                         # file_to_get = args.f
                         if args.dir is not None:
-                            args.fre = ['/{}/{}'.format(args.dir, file) for file in files_to_get]
+                            args.fre = ['/{}/{}'.format(args.dir, file)
+                                        for file in files_to_get]
                         else:
                             args.fre = files_to_get
                         wsfileio(args, '', '', dev_name, dev=dev)

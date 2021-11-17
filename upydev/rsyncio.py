@@ -244,6 +244,7 @@ def synctool(args, dev_name):
                         args.f = file_to_get
                         result = rsyncio.sync_file(args, dev_name)
                         print('Done!')
+                        time_h.sleep(0.2)
                         rsyncio.disconnect()
                     else:
                         if file_exists is False:
@@ -316,6 +317,7 @@ def synctool(args, dev_name):
                                 args.fre = files_to_get
                             result = rsyncio.sync_files(args, dev_name)
                             print('Done!')
+                            time_h.sleep(0.2)
                             rsyncio.disconnect()
                         else:
                             if dir == '':

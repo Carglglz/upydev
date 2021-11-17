@@ -5,8 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.3.7] Unreleased Github Repo [develop]
+## Added
+- `rssi` command in shell repls to get RSSI value (Wifi or Ble)
 ## Fix
 - `firmwaretools.get_fw_versions` update after `micropython.org\all` not working anymore.
+- fix device name instead of `None` in `put`, `get`, `fget`, `dsync` in `sslweb_repl` with `-nem` mode enabled.
+- fix `fget` disconnection error.
 
 ## [0.3.6] 2021-10-24
 ## Added

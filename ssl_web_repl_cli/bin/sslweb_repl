@@ -996,7 +996,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'ifconfig_t', 'netscan',
                     'getcert', 'get_rawbuff', 'l_tree', 'view', 'bat', 'rcat',
                     'batl', 'du', 'ldu', 'upipl', 'pkg_info', 'uping', 'lping',
                     'timeit', 'i2c', 'dump_mem', 'git', 'emacs', 'batstyle',
-                    'upy-config', 'wss', 'tig', 'jupyterc', 'pytest']
+                    'upy-config', 'wss', 'tig', 'jupyterc', 'pytest', 'rssi']
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
@@ -1850,6 +1850,14 @@ def custom_sh_cmd(cmd_inp):
         else:
             print('STA interface not connected')
 
+    if cmd_inp == 'rssi':
+        sta_isconnected = send_custom_sh_cmd(
+            "import network;network.WLAN(network.STA_IF).isconnected()")
+        if sta_isconnected:
+            signal_rssi = send_custom_sh_cmd(
+                "network.WLAN(network.STA_IF).status('rssi')")
+            print(signal_rssi)
+
     if cmd_inp == 'netscan':
         if espdev.dev_platform == 'esp8266':
             enable_sta = send_custom_sh_cmd(
@@ -2158,18 +2166,18 @@ def custom_sh_cmd(cmd_inp):
             try:
                 file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
                 if file == 'cwd':
-                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                        file, args.t, args.p, dev_dir)
+                    get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(file,
+                        args.t, args.p, dev_dir, args.dev)
                 elif '*' in file:
-                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                        file.replace('*', ''), args.t, args.p, dev_dir)
+                    get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(
+                        file.replace('*', ''), args.t, args.p, dev_dir, args.dev)
                 elif len(cmd_inp.split(' ')) > 2:
                     file = ' '.join(cmd_inp.split(' ')[1:])
-                    get_str = 'upydev get -fre {} -t {} -p {} {}'.format(
-                        file, args.t, args.p, dev_dir)
+                    get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(
+                        file, args.t, args.p, dev_dir, args.dev)
                 else:
-                    get_str = 'upydev get -f {} -t {} -p {} {}'.format(
-                        file, args.t, args.p, dev_dir)
+                    get_str = 'upydev get -f {} -t {} -p {} {} -@ {}'.format(
+                        file, args.t, args.p, dev_dir, args.dev)
                 get_cmd = shlex.split(get_str)
                 try:
                     get_file = subprocess.call(get_cmd)
@@ -2269,18 +2277,18 @@ def custom_sh_cmd(cmd_inp):
         try:
             file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
             if file == 'cwd':
-                get_str = 'upydev fget -fre {} -t {} -p {} {}'.format(
-                    file, args.t, args.p, dev_dir)
+                get_str = 'upydev fget -fre {} -t {} -p {} {} -@ {}'.format(
+                    file, args.t, args.p, dev_dir, args.dev)
             elif '*' in file:
-                get_str = 'upydev fget -fre {} -t {} -p {} {}'.format(
-                    file.replace('*', ''), args.t, args.p, dev_dir)
+                get_str = 'upydev fget -fre {} -t {} -p {} {} -@ {}'.format(
+                    file.replace('*', ''), args.t, args.p, dev_dir, args.dev)
             elif len(cmd_inp.split(' ')) > 2:
                 file = ' '.join(cmd_inp.split(' ')[1:])
-                get_str = 'upydev fget -fre {} -t {} -p {} {}'.format(
-                    file, args.t, args.p, dev_dir)
+                get_str = 'upydev fget -fre {} -t {} -p {} {} -@ {}'.format(
+                    file, args.t, args.p, dev_dir, args.dev)
             else:
-                get_str = 'upydev fget -f {} -t {} -p {} {}'.format(
-                    file, args.t, args.p, dev_dir)
+                get_str = 'upydev fget -f {} -t {} -p {} {} -@ {}'.format(
+                    file, args.t, args.p, dev_dir, args.dev)
 
             sync_cmd = shlex.split(get_str)
             try:
@@ -2317,18 +2325,18 @@ def custom_sh_cmd(cmd_inp):
 
                 file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
                 if file == 'cwd':
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                        file, args.t, args.p, dev_dir)
+                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -@ {}'.format(
+                        file, args.t, args.p, dev_dir, args.dev)
                 elif '*' in file:
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                        file.replace('*', ''), args.t, args.p, dev_dir)
+                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -@ {}'.format(
+                        file.replace('*', ''), args.t, args.p, dev_dir, args.dev)
                 elif len(cmd_inp.split(' ')) > 2:
                     file = ' '.join(cmd_inp.split(' ')[1:])
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                        file, args.t, args.p, dev_dir)
+                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -@ {}'.format(
+                        file, args.t, args.p, dev_dir, args.dev)
                 else:
-                    put_str = 'upydev put -f {} -t {} -p {} {} -rst f'.format(
-                        file, args.t, args.p, dev_dir)
+                    put_str = 'upydev put -f {} -t {} -p {} {} -rst f -@ {}'.format(
+                        file, args.t, args.p, dev_dir, args.dev)
                 put_cmd = shlex.split(put_str)
                 try:
                     put_file = subprocess.call(put_cmd)
@@ -2430,8 +2438,8 @@ def custom_sh_cmd(cmd_inp):
             if cmd_inp.split()[-1] == '.':
                 file = ' '.join([fl for fl in os.listdir()
                                  if os.path.isfile(fl) and not fl.startswith('.')])
-                put_str = 'upydev put -fre {} -t {} -p {} {} -rst f'.format(
-                    file, args.t, args.p, '')
+                put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -@ {}'.format(
+                    file, args.t, args.p, '', args.dev)
                 put_cmd = shlex.split(put_str)
                 try:
                     put_file = subprocess.call(put_cmd)
@@ -2458,9 +2466,10 @@ def custom_sh_cmd(cmd_inp):
                 for _dir in dirs_to_sync:
                     print('- {}'.format(_dir))
 
-                    d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f'.format(args.t,
+                    d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f -@ {}'.format(args.t,
                                                                                   args.p,
-                                                                                  _dir)
+                                                                                  _dir,
+                                                                                  args.dev)
 
                     d_sync_cmd = shlex.split(d_sync_str)
                     try:
@@ -2485,9 +2494,10 @@ def custom_sh_cmd(cmd_inp):
                 try:
                     dir_to_sync = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
 
-                    d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f'.format(args.t,
+                    d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f -@ {}'.format(args.t,
                                                                                   args.p,
-                                                                                  dir_to_sync)
+                                                                                  dir_to_sync,
+                                                                                  args.dev)
 
                     d_sync_cmd = shlex.split(d_sync_str)
                     try:
@@ -2640,9 +2650,9 @@ def custom_sh_cmd(cmd_inp):
             pass
 
     if cmd_inp.split(' ')[0] == 'vim':
-        print('<-- Vim editor -->')
-        print('Use I to insert; (ESC , :w) to write; (ESC ,:q) to exit')
-        time.sleep(1)
+        # print('<-- Vim editor -->')
+        # print('Use I to insert; (ESC , :w) to write; (ESC ,:q) to exit')
+        # time.sleep(1)
         try:
             file_to_edit = cmd_inp.split(' ')[1]
             lvim = 'vim {}'.format(file_to_edit)
@@ -2657,9 +2667,9 @@ def custom_sh_cmd(cmd_inp):
             pass
 
     if 'emacs' in cmd_inp.split(' ')[0]:
-        print('<-- Emacs editor -->')
-        print('Use Ctrl-x-Ctrl-s to Save,  Ctrl-x-Ctrl-c to exit')
-        time.sleep(1)
+        # print('<-- Emacs editor -->')
+        # print('Use Ctrl-x-Ctrl-s to Save,  Ctrl-x-Ctrl-c to exit')
+        # time.sleep(1)
         try:
             file_to_edit = cmd_inp.split(' ')[1]
             lemacs = 'emacs {} -nw'.format(file_to_edit)
