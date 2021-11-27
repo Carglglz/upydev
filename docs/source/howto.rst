@@ -142,6 +142,13 @@ First enable port forwarding by editing ``/etc/sysctl.conf`` and uncomment
 
     net.ipv4.ip_forward=1
 
+And reload
+
+.. code-block:: console
+
+    $ sudo sysctl -p
+    net.ipv4.ip_forward = 1
+
 Then set the rules with ``iptables``
 
 .. code-block:: console
