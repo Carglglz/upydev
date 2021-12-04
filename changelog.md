@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.7] Unreleased Github Repo [develop]
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)
+- `make_sgroup` / `mksg` command to create a subgroup of an existant group of devices.
 ## Fix
 - `firmwaretools.get_fw_versions` update after `micropython.org\all` not working anymore.
 - fix device name instead of `None` in `put`, `get`, `fget`, `dsync` in `sslweb_repl` with `-nem` mode enabled.

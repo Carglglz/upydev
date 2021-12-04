@@ -62,7 +62,7 @@ Help
 Device Management
 -----------------
 
-    ACTIONS : ``config``, ``check``, ``set``, ``make_group``, ``mg_group``, ``see``, ``gg``
+    ACTIONS : ``config``, ``check``, ``set``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
 
 
       - config:
@@ -83,6 +83,11 @@ Device Management
           To manage a group of devices to send commands to. Use ``-G`` for the name
           of the group and ``-add`` option to add devices (indicate a name, ip and the
           password of each board) or ``-rm`` to remove devices (indicated by name)
+
+      - make_sgroup:
+          To make a subset group of an existant group, alias ``mksg``.  Use -f for the name
+          of the subgroup, -G for the name of parent group and -devs option to indicate the names
+          of the devices to include.
 
       - see:
           To get specific info about a devices group use ``-G`` option as ``see -G [GROUP NAME]``

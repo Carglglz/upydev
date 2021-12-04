@@ -128,7 +128,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
-                 'backup', 'rsync']
+                 'backup', 'rsync', 'make_sgroup', 'mksg']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -332,8 +332,8 @@ argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
-                     'pytest', 'make_group', 'mg_group', 'du', 'tree', 'rsync',
-                     'docs', 'udocs', 'mdocs']
+                     'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
+                     'rsync', 'docs', 'udocs', 'mdocs']
 multiple_args_fw = ['fwr', 'flash', 'mpyx']
 
 if len(args.m) == 1:
@@ -375,6 +375,9 @@ elif len(args.m) == 2:
     elif args.m == 'mggroup' or args.m == 'mgg':
         args.m = 'mg_group'
         args.G = second_arg
+    elif args.m == 'mksg':
+        args.m = 'make_sgroup'
+        args.f = second_arg
     elif args.m == 'see' or args.m == 'probe':
         args.G = second_arg
 
@@ -395,7 +398,7 @@ elif len(args.m) > 2:
 # DEVICE MANAGEMENT ACTIONS
 
 DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'set', 'make_group',
-                             'mg_group', 'gg', 'see']
+                             'mg_group', 'gg', 'see', 'make_sgroup']
 
 # FIRMWARE ACTIONS
 
@@ -687,7 +690,7 @@ def handle_action(args, exit=True, device_name=None):
     #############################################
 
 
-KW_NOT_GROUP = ['probe', 'scan']
+KW_NOT_GROUP = ['probe', 'scan', 'mksg', 'mak']
 
 
 #############################################
@@ -772,11 +775,11 @@ if "@" in args.m:
 
 if args.gg:
     # if args.m not in DEBUGGING_ACTIONS:
-        args.G = 'UPY_G'
+    args.G = 'UPY_G'
 
 if args.ggp:
     # if args.m not in DEBUGGING_ACTIONS:
-        args.GP = 'UPY_G'
+    args.GP = 'UPY_G'
 
 if args.gf:
     if glob.glob('*.config'):

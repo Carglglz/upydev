@@ -30,6 +30,10 @@ DEVICE_MANAGEMENT_HELP = """
                   of the group and -add option to add devices (indicate a name, ip and the
                   password of each board) or -rm to remove devices (indicated by name)
 
+    - make_sgroup: to make a subset group of an existant group, alias 'mksg'.  Use -f for the name
+                  of the subgroup, -G for the name of parent group and -devs option to indicate the names
+                  of the devices to include.
+
     - see: To get specific info about a devices group use -G option as "see -G [GROUP NAME]"
 
     - gg: To see global group
@@ -129,7 +133,7 @@ def devicemanagement_action(args, **kargs):
         upydev_addr = args.t
         upydev_mdata = args.p
         if vars(args)['@'] is not None:
-                upydev_name = vars(args)['@']
+            upydev_name = vars(args)['@']
         else:
             upydev_name = 'upydevice'
         upy_conf = {'addr': upydev_addr, 'passwd': upydev_mdata, 'name': upydev_name}
@@ -196,8 +200,8 @@ def devicemanagement_action(args, **kargs):
                     gf, entryp = args.b.split('@')
                     args.t, args.p = address_entry_point(entryp, gf, args=args)
             if vars(args)['@'] is not None:
-                    entryp = vars(args)['@']
-                    args.t, args.p = address_entry_point(entryp, args=args)
+                entryp = vars(args)['@']
+                args.t, args.p = address_entry_point(entryp, args=args)
             if args.apmd:
                 args.t = '192.168.4.1'
             if args.st:
@@ -236,7 +240,7 @@ def devicemanagement_action(args, **kargs):
         upydev_ip = args.t
         upydev_pass = args.p
         if vars(args)['@'] is not None:
-                upydev_name = vars(args)['@']
+            upydev_name = vars(args)['@']
         else:
             upydev_name = _dev_name
         upy_conf = {'addr': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
@@ -334,6 +338,44 @@ def devicemanagement_action(args, **kargs):
                         for key in removed_devs.keys():
                             dt = check_device_type(removed_devs[key][0])
                             print('{} : {} @ {}'.format(key, dt, removed_devs[key][0]))
+            elif args.m == 'make_sgroup':
+                # LOAD CONFIG FROM -G
+                with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+                    devices = json.loads(group.read())
+                    # print(devices)
+
+                # SAVE subgroup
+                if not args.f:
+                    print('Group Name required, indicate with -f option')
+                    see_help(args.m)
+                    sys.exit()
+                else:
+                    subgroup_file = '{}.config'.format(args.f)
+                    subgroup_dict = {}
+                if args.devs:
+                    for dev in args.devs:
+                        subgroup_dict[dev] = devices[dev]
+
+                else:
+                    print('Devs names required, indicate with -devs option')
+                    see_help(args.m)
+                    sys.exit()
+
+                if args.g:
+                    group_file = os.path.join(UPYDEV_PATH, args.f)
+                with open(subgroup_file, 'w') as subgroup:
+                    subgroup.write(json.dumps(subgroup_dict))
+
+                if args.g:
+                    print('Group settings saved globally!')
+                else:
+                    print('Group settings saved in working directory!')
+                print('Upy devices group created!')
+                print('GROUP NAME: {}'.format(args.f))
+                print('# DEVICES: {}'.format(len(subgroup_dict.keys())))
+                for key in subgroup_dict.keys():
+                    dt = check_device_type(subgroup_dict[key][0])
+                    print('{} -> {} @ {}'.format(key, dt, subgroup_dict[key][0]))
 
             sys.exit()
         except Exception as e:
