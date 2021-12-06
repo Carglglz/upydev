@@ -85,7 +85,7 @@ Device Management
           password of each board) or ``-rm`` to remove devices (indicated by name)
 
       - make_sgroup:
-          To make a subset group of an existant group, alias ``mksg``.  Use -f for the name
+          To make a subset group of an existing group, alias ``mksg``.  Use -f for the name
           of the subgroup, -G for the name of parent group and -devs option to indicate the names
           of the devices to include.
 
