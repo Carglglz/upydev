@@ -28,7 +28,7 @@ class mqtt_client(MQTTClient):
         self.port = port
         super().__init__(self.id, self.broker_addrss, self.port,
                          user=self.user, password=self.passwd,
-                         keepalive=0, ssl=False, ssl_params={})
+                         keepalive=keepalive, ssl=False, ssl_params={})
 
     def callback(self, topic, message):
         msg = message.decode('utf-8')

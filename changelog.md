@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)
 - `make_sgroup` / `mksg` command to create a subgroup of an existing group of devices.
+- `set_hostname` command to set hostname of the device for dhcp service (needs *wpa_supplicant.py*)
+- `set_localname` command to set localname of the device for ble gap/advertising name (needs *ble_uart_peripheral.py*)
 ## Fix
 - `firmwaretools.get_fw_versions` update after `micropython.org\all` not working anymore.
 - fix device name instead of `None` in `put`, `get`, `fget`, `dsync` in `sslweb_repl` with `-nem` mode enabled.

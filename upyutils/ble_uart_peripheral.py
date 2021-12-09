@@ -3,9 +3,12 @@
 import bluetooth
 from ble_advertising import advertising_payload
 import time
-
 from micropython import const
 
+try:
+    from localname import NAME as LOCALNAME
+except Exception:
+    LOCALNAME = None
 _IRQ_CENTRAL_CONNECT = const(1)
 _IRQ_CENTRAL_DISCONNECT = const(2)
 _IRQ_GATTS_WRITE = const(3)
@@ -25,7 +28,12 @@ class BLEUART:
     def __init__(self, ble, name='mpy-uart', rxbuf=512, uuid=''):
         self._ble = ble
         self._ble.active(True)
-        self._ble.config(gap_name='ESP32@{}'.format(uuid), mtu=515, rxbuf=512)
+        if LOCALNAME:
+            _gap_name = LOCALNAME
+            name = LOCALNAME
+        else:
+            _gap_name = 'ESP32@{}'.format(uuid)
+        self._ble.config(gap_name=_gap_name, mtu=515, rxbuf=512)
         self._ble.irq(self._irq)
         ((self._tx_handle, self._rx_handle,),
          ) = self._ble.gatts_register_services((_UART_SERVICE,))
