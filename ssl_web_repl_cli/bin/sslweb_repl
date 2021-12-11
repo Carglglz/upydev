@@ -1198,8 +1198,8 @@ def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
         data = ['{}{}{}{}'.format(
             CGREEN, val, CEND, ' '*(wide-len(val))) if '.mpy' in val else val for val in data]
     if autocol_tab:
-        data = [namefile if len(namefile) < wide else namefile +
-                '\n' for namefile in data]
+        data = [namefile if len(namefile) < wide else namefile
+                + '\n' for namefile in data]
     if autowide:
         wide_data = max([len(namefile) for namefile in data]) + 2
         if wide_data > wide:
@@ -1258,12 +1258,12 @@ def map_upysh(cmd_inp):
 
 
 def _dt_format(number):
-        rtc_n = str(number)
-        if len(rtc_n) == 1:
-            rtc_n = "0{}".format(rtc_n)
-            return rtc_n
-        else:
-            return rtc_n
+    rtc_n = str(number)
+    if len(rtc_n) == 1:
+        rtc_n = "0{}".format(rtc_n)
+        return rtc_n
+    else:
+        return rtc_n
 
 
 def _ft_datetime(t_now):
@@ -1383,7 +1383,7 @@ class DISK_USAGE:
 
     def __call__(self, path=".", dlev=0, max_dlev=0, hidden=False, absp=True):
         if path != ".":
-                if not os.stat(path)[0] & 0x4000:
+               if not os.stat(path)[0] & 0x4000:
                     print('{:9} {}'.format(
                         self.print_filesys_info(os.stat(path)[6]), path))
                 else:
@@ -2167,7 +2167,7 @@ def custom_sh_cmd(cmd_inp):
                 file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
                 if file == 'cwd':
                     get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(file,
-                        args.t, args.p, dev_dir, args.dev)
+                                                                               args.t, args.p, dev_dir, args.dev)
                 elif '*' in file:
                     get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(
                         file.replace('*', ''), args.t, args.p, dev_dir, args.dev)
@@ -2467,9 +2467,9 @@ def custom_sh_cmd(cmd_inp):
                     print('- {}'.format(_dir))
 
                     d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f -@ {}'.format(args.t,
-                                                                                  args.p,
-                                                                                  _dir,
-                                                                                  args.dev)
+                                                                                        args.p,
+                                                                                        _dir,
+                                                                                        args.dev)
 
                     d_sync_cmd = shlex.split(d_sync_str)
                     try:
@@ -2495,9 +2495,9 @@ def custom_sh_cmd(cmd_inp):
                     dir_to_sync = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
 
                     d_sync_str = 'upydev dsync -t {} -p {} -dir {} -rst f -@ {}'.format(args.t,
-                                                                                  args.p,
-                                                                                  dir_to_sync,
-                                                                                  args.dev)
+                                                                                        args.p,
+                                                                                        dir_to_sync,
+                                                                                        args.dev)
 
                     d_sync_cmd = shlex.split(d_sync_str)
                     try:
@@ -4237,7 +4237,7 @@ def paste_mode_exit(event):
     # event.app.current_buffer.insert_text('import')
 
     def cmd_paste_exit(buff_P=paste_buffer['B']):
-            buff_text = '\n'.join(
+           buff_text = '\n'.join(
                 buff_P + [event.app.current_buffer.document.text])
             if buff_text is not None and buff_text != '':
                 # espdev.wr_cmd("cp.gbls = globals()", silent=True)
@@ -4284,7 +4284,7 @@ def paste_mode_exit(event):
             prompt['p'] = ">>> "
 
     def cmd_edit_exit(file_to_edit=edit_mode['File']):
-            buff_text = ''.join([event.app.current_buffer.document.text])
+           buff_text = ''.join([event.app.current_buffer.document.text])
             if buff_text is not None and buff_text != '':
                 send_custom_sh_cmd(
                     "_file_to_edit = open('{}','w')".format(file_to_edit))
@@ -4563,8 +4563,8 @@ def shif_tab(event):
     def autocomplete_sh_cmd():
         if shell_mode['S']:
             buff_text = event.app.current_buffer.document.text
-            result = [sh_cmd for sh_cmd in shell_commands +
-                      custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
+            result = [sh_cmd for sh_cmd in shell_commands
+                      + custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
             if len(result) > 1:
                 comm_part = os.path.commonprefix(result)
                 if comm_part == buff_text:
@@ -4613,7 +4613,7 @@ def autocomplete_locals(event):
                     rest = ''
                     glb = True
                     if shell_mode['S']:
-                            cmd_ls_glb = os.listdir()
+                           cmd_ls_glb = os.listdir()
                     # if encrypted_flag['sec']:
                     #     h_cp.crepl(cmd_ls_glb)
                     # else:
@@ -4632,7 +4632,7 @@ def autocomplete_locals(event):
 
         def s_r_cmd_info(rest_part=rest, flag=glb, buff=buff_text, output=cmd_ls_glb):
             try:
-                    if isinstance(cmd_ls_glb, str):
+                   if isinstance(cmd_ls_glb, str):
                         # print(espdev.output)
                         pass
                     else:
@@ -5015,8 +5015,8 @@ while repl:
             print(e)
             continue
     except EOFError:
-            # print('This is EOF ERROR!')
-            continue
+           # print('This is EOF ERROR!')
+           continue
         # espdev.reset()
         # sys.exit()
 

@@ -132,8 +132,8 @@ def devicemanagement_action(args, **kargs):
                         args.p = 'pass'
         upydev_addr = args.t
         upydev_mdata = args.p
-        if vars(args)['@'] is not None:
-            upydev_name = vars(args)['@']
+        if vars(args)['@']:
+            upydev_name = vars(args)['@'][0]
         else:
             upydev_name = 'upydevice'
         upy_conf = {'addr': upydev_addr, 'passwd': upydev_mdata, 'name': upydev_name}
@@ -199,8 +199,8 @@ def devicemanagement_action(args, **kargs):
                 if "@" in args.b:
                     gf, entryp = args.b.split('@')
                     args.t, args.p = address_entry_point(entryp, gf, args=args)
-            if vars(args)['@'] is not None:
-                entryp = vars(args)['@']
+            if vars(args)['@']:
+                entryp = vars(args)['@'][0]
                 args.t, args.p = address_entry_point(entryp, args=args)
             if args.apmd:
                 args.t = '192.168.4.1'
@@ -215,32 +215,48 @@ def devicemanagement_action(args, **kargs):
     # CHECK
 
     if args.m == 'check':
-        if vars(args)['@'] is not None:
-            print('Device: {}'.format(entryp))
+        if vars(args)['@']:
+            space = ''
+            for dev in vars(args)['@']:
+                try:
+                    args.t, args.p = address_entry_point(dev, args=args)
+                    print('{}Device: {}'.format(space, dev))
+                    dt = check_device_type(args.t)
+                    if not args.i:
+                        print('Address: {}, Device Type: {}'.format(args.t, dt))
+                    else:
+                        if not args.wss:
+                            dev = Device(args.t, args.p, init=True)
+                        else:
+                            dev = Device(args.t, args.p, init=True, ssl=True)
+                        print(dev)
+                except Exception as e:
+                    print(e)
+                space = '\n'
         else:
             print('Device: {}'.format(_dev_name))
-        dt = check_device_type(args.t)
-        if not args.i:
-            print('Address: {}, Device Type: {}'.format(args.t, dt))
-        else:
-            if not args.wss:
-                dev = Device(args.t, args.p, init=True)
+            dt = check_device_type(args.t)
+            if not args.i:
+                print('Address: {}, Device Type: {}'.format(args.t, dt))
             else:
-                dev = Device(args.t, args.p, init=True, ssl=True)
-            print(dev)
+                if not args.wss:
+                    dev = Device(args.t, args.p, init=True)
+                else:
+                    dev = Device(args.t, args.p, init=True, ssl=True)
+                print(dev)
         sys.exit()
 
     # SET
     elif args.m == 'set':
         dt = check_device_type(args.t)
-        if vars(args)['@'] is not None:
+        if vars(args)['@']:
             print('Setting {}: {}'.format(dt, entryp))
         else:
             print('Setting {}: {}'.format(dt, _dev_name))
         upydev_ip = args.t
         upydev_pass = args.p
-        if vars(args)['@'] is not None:
-            upydev_name = vars(args)['@']
+        if vars(args)['@']:
+            upydev_name = entryp
         else:
             upydev_name = _dev_name
         upy_conf = {'addr': upydev_ip, 'passwd': upydev_pass, 'name': upydev_name}
@@ -389,4 +405,5 @@ def devicemanagement_action(args, **kargs):
         else:
             see_help(args.m)
 
+    sys.exit()
     sys.exit()
