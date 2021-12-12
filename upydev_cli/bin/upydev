@@ -477,7 +477,8 @@ def see_groups():
 
 #############################################
 def address_entry_point(entry_point, group_file=''):
-    if group_file == '':
+    group_name = group_file
+    if group_file == '' or group_file is None:
         group_file = 'UPY_G'
     # print(group_file)
     if '{}.config'.format(group_file) not in os.listdir() or args.g:
@@ -530,35 +531,48 @@ def address_entry_point(entry_point, group_file=''):
             dev_pass = devices[entry_point][1]
             return (dev_uuid, dev_pass)
     else:
-        print('Device not configured in global group')
-        print("Do '$ upydev see -gg' to see devices global group")
+        if group_name != '':
+            print(f'Device {entry_point} not configured in {group_name} group')
+            print(f"Do '$ upydev see {group_name}' to see devices {group_name} group")
+        else:
+            print(f'Device {entry_point} not configured in global group')
+            print("Do '$ upydev see -gg' to see devices global group")
         sys.exit()
 
 
-def address_wildcard_entry_point(entry_point, group_file='', args=None):
-    if group_file == '':
-        group_file = 'UPY_G'
-    # print(group_file)
-    if '{}.config'.format(group_file) not in os.listdir() or args.g:
-        group_file = os.path.join(UPYDEV_PATH, group_file)
-    with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-        devices = json.loads(group.read())
-        # print(devices)
-    devs = devices.keys()
+def address_wildcard_entry_point(entry_point, group_file='', exp_entryp=False,
+                                 args=None):
     target_devs = []
-    if '*' in entry_point:
-        if entry_point.startswith('*'):
-            target_devs += [dev for dev in devs if dev.endswith(
-                entry_point.replace('*', ''))]
-        elif entry_point.endswith('*'):
-            target_devs += [dev for dev in devs if dev.startswith(
-                entry_point.replace('*', ''))]
-        elif '*' in entry_point:
-            start, end = entry_point.split('*')
-            target_devs += [dev for dev in devs if dev.startswith(
-                start) and dev.endswith(end)]
-    elif entry_point == 'gg':
-        target_devs += devs
+    try:
+        if group_file == '':
+            group_file = 'UPY_G'
+        if args.G is not None and args.G != 'UPY_G':
+            group_file = args.G
+        if exp_entryp:
+            group_file = exp_entryp
+        # print(group_file)
+        if '{}.config'.format(group_file) not in os.listdir() or args.g:
+            group_file = os.path.join(UPYDEV_PATH, group_file)
+        with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+            devices = json.loads(group.read())
+            # print(devices)
+        devs = devices.keys()
+        if '*' in entry_point:
+            if entry_point.startswith('*'):
+                target_devs += [dev for dev in devs if dev.endswith(
+                    entry_point.replace('*', ''))]
+            elif entry_point.endswith('*'):
+                target_devs += [dev for dev in devs if dev.startswith(
+                    entry_point.replace('*', ''))]
+            elif '*' in entry_point:
+                start, end = entry_point.split('*')
+                target_devs += [dev for dev in devs if dev.startswith(
+                    start) and dev.endswith(end)]
+        elif entry_point == 'gg' or group_file != 'UPY_G':
+            target_devs += devs
+    except Exception as e:
+        # print(e)
+        pass
 
     return target_devs
 #############################################
@@ -798,6 +812,8 @@ if vars(args)['@']:
     n_devices = len(vars(args)['@'])
 else:
     n_devices = 0
+# print(vars(args)['@'])
+
 if n_devices == 1:
     # expand wildcard
     _dev_name = vars(args)['@'][0]
@@ -805,7 +821,38 @@ if n_devices == 1:
     if '*' in entryp or entryp == 'gg':
         vars(args)['@'] = address_wildcard_entry_point(entryp, args=args)
         if not vars(args)['@']:
-            raise DeviceNotFound('No device with this name pattern')
+            try:
+                raise DeviceNotFound('No device with this name pattern')
+            except Exception as e:
+                print(e)
+        else:
+            n_devices = len(vars(args)['@'])
+            if n_devices == 1:
+                _dev_name = vars(args)['@'][0]
+                entryp = vars(args)['@'][0]
+                if args.G:
+                    args.devs = vars(args)['@']
+            else:
+                args.devs = vars(args)['@']
+                if not args.G:
+                    args.gg = True
+                _dev_name = vars(args)['@'][0]
+                entryp = vars(args)['@'][0]
+
+    if entryp not in see_global_devs(all=True):
+        # print(entryp)
+        # check if group file to expand
+        for gconf in glob.glob('*.config'):
+            if entryp == gconf.replace('.config', ''):
+                # fix
+                vars(args)['@'] = address_wildcard_entry_point('gg', entryp,
+                                                               exp_entryp=entryp,
+                                                               args=args)
+        if not vars(args)['@']:
+            try:
+                raise DeviceNotFound('No group with this name pattern')
+            except Exception as e:
+                print(e)
         else:
             n_devices = len(vars(args)['@'])
             if n_devices == 1:
@@ -813,7 +860,8 @@ if n_devices == 1:
                 entryp = vars(args)['@'][0]
             else:
                 args.devs = vars(args)['@']
-                args.gg = True
+                if not args.G:
+                    args.gg = True
                 _dev_name = vars(args)['@'][0]
                 entryp = vars(args)['@'][0]
 
@@ -830,14 +878,44 @@ else:
         else:
             # TODO: allow other groups than global
             if dev != 'gg':
-                target_devs += [dev]
+                if dev not in see_global_devs(all=True):
+                    # check group name in local dir
+                    group_confs = [conf.replace('.config', '') for conf
+                                   in glob.glob('*.config')]
+                    if dev in group_confs:  # expand group
+                        # fix
+                        group_expand = address_wildcard_entry_point('gg', dev,
+                                                                    exp_entryp=dev,
+                                                                    args=args)
+                        # print(group_expand)
+
+                    else:  # device within local group
+                        group_expand = [ldev for ldev in address_wildcard_entry_point(
+                                dev, args=args) if ldev == dev]
+
+                    target_devs += group_expand
+                else:
+                    target_devs += [dev]
             else:
                 # expand group name
                 target_devs += address_wildcard_entry_point(dev, args=args)
 
+    if not target_devs:
+        try:
+            if not args.G:
+                excp_info = """Device/s not configured in global group
+    Do '$ upydev gg' to see devices global group"""
+            else:
+                excp_info = f"""Device/s not configured in {args.G} group
+    Do '$ upydev see {args.G} to see devices {args.G} group"""
+            raise DeviceNotFound(excp_info)
+        except Exception as e:
+            print(e)
+            sys.exit()
     vars(args)['@'] = target_devs
     args.devs = vars(args)['@']
-    args.gg = True
+    if not args.G:
+        args.gg = True
     _dev_name = vars(args)['@'][0]
     entryp = vars(args)['@'][0]
 
@@ -856,6 +934,7 @@ if args.gg:
 if args.ggp:
     # if args.m not in DEBUGGING_ACTIONS:
     args.GP = 'UPY_G'
+    args.G = None
 
 if args.gf:
     if glob.glob('*.config'):
@@ -900,7 +979,7 @@ if args.t is None:
                     args.t, args.p = address_entry_point(entryp, gf)
             if vars(args)['@']:
                 entryp = vars(args)['@'][0]
-                args.t, args.p = address_entry_point(entryp)
+                args.t, args.p = address_entry_point(entryp, args.G)
             if args.apmd:
                 args.t = '192.168.4.1'
             if args.st:
@@ -1000,7 +1079,8 @@ if args.GP is not None:
         if '{}.config'.format(group_file) not in os.listdir() or args.g:
             group_file = os.path.join(UPYDEV_PATH, args.GP)
 
-        print('Sending command to group: {}'.format(group_file.split('/')[-1]))
+        print('Sending command in parallel to group: {}'.format(
+            group_file.split('/')[-1]))
         with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
             devices = json.loads(group.read())
             # print(devices)

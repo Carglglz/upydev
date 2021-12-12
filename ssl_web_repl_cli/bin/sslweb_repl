@@ -1383,39 +1383,39 @@ class DISK_USAGE:
 
     def __call__(self, path=".", dlev=0, max_dlev=0, hidden=False, absp=True):
         if path != ".":
-               if not os.stat(path)[0] & 0x4000:
-                    print('{:9} {}'.format(
+            if not os.stat(path)[0] & 0x4000:
+                print('{:9} {}'.format(
                         self.print_filesys_info(os.stat(path)[6]), path))
+            else:
+                if hidden:
+                    resp = {
+                        path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
                 else:
-                    if hidden:
-                        resp = {
-                            path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
-                    else:
-                        resp = {
-                            path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
-                    for dir in resp.keys():
+                    resp = {
+                        path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                for dir in resp.keys():
 
-                        if not os.stat(dir)[0] & 0x4000:
-                            if absp:
-                                print('{:9} {}'.format(
-                                    self.print_filesys_info(resp[dir]), dir))
-                            else:
-                                print('{:9} {}'.format(self.print_filesys_info(
-                                    resp[dir]), dir.split('/')[-1]))
-
+                    if not os.stat(dir)[0] & 0x4000:
+                        if absp:
+                            print('{:9} {}'.format(
+                                self.print_filesys_info(resp[dir]), dir))
                         else:
-                            if dlev < max_dlev:
-                                dlev += 1
-                                self.__call__(path=dir, dlev=dlev,
-                                              max_dlev=max_dlev, hidden=hidden)
-                                dlev += (-1)
+                            print('{:9} {}'.format(self.print_filesys_info(
+                                resp[dir]), dir.split('/')[-1]))
+
+                    else:
+                        if dlev < max_dlev:
+                            dlev += 1
+                            self.__call__(path=dir, dlev=dlev,
+                                          max_dlev=max_dlev, hidden=hidden)
+                            dlev += (-1)
+                        else:
+                            if absp:
+                                print('{:9} \u001b[34;1m{}\033[0m'.format(
+                                    self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
                             else:
-                                if absp:
-                                    print('{:9} \u001b[34;1m{}\033[0m'.format(
-                                        self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
-                                else:
-                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(
-                                        self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
+                                print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(
+                                    self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
 
         else:
             if hidden:
@@ -4237,78 +4237,78 @@ def paste_mode_exit(event):
     # event.app.current_buffer.insert_text('import')
 
     def cmd_paste_exit(buff_P=paste_buffer['B']):
-           buff_text = '\n'.join(
+        buff_text = '\n'.join(
                 buff_P + [event.app.current_buffer.document.text])
-            if buff_text is not None and buff_text != '':
+        if buff_text is not None and buff_text != '':
+            # espdev.wr_cmd("cp.gbls = globals()", silent=True)
+            if not encrypted_flag['sec']:
+                # block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
+                # espdev.wr_cmd(block_commad)
+                # print(block_commad.splitlines())
+                try:
+                    espdev.paste_buff(buff_text)
+                    espdev.wr_cmd("\x04", follow=True)
+                except KeyboardInterrupt:
+                    time.sleep(0.2)
+                    espdev.wr_cmd('\x03')  # KBI
+                    time.sleep(0.2)
+                    for i in range(1):
+                        espdev.wr_cmd('\x0d', silent=True)
+
+            else:
                 # espdev.wr_cmd("cp.gbls = globals()", silent=True)
-                if not encrypted_flag['sec']:
-                    # block_commad = uparser_dec('\n' + buff_text, end='\r\r\r')
-                    # espdev.wr_cmd(block_commad)
-                    # print(block_commad.splitlines())
-                    try:
-                        espdev.paste_buff(buff_text)
-                        espdev.wr_cmd("\x04", follow=True)
-                    except KeyboardInterrupt:
-                        time.sleep(0.2)
-                        espdev.wr_cmd('\x03')  # KBI
-                        time.sleep(0.2)
-                        for i in range(1):
-                            espdev.wr_cmd('\x0d', silent=True)
-
-                else:
-                    # espdev.wr_cmd("cp.gbls = globals()", silent=True)
-                    try:
-                        ssl_cp.paste_buff(buff_text)
-                        ssl_cp.ssl_repl("\x04", follow=True)
-                    except KeyboardInterrupt:
-                        time.sleep(0.2)
-                        ssl_cp.ssl_repl('\x03', silent=True,
-                                        traceback=True)  # KBI
-                        time.sleep(0.2)
-                        for i in range(1):
-                            ssl_cp.ssl_repl('\x0d', silent=True)
-                            ssl_cp.flush_conn()
-                        pass
-                    # ssl_cp.ssl_repl('', just_recv=True, silent=False) blocking
-                    # if espdev.output is not None:
-                    #     print(espdev.output)
-                    espdev.output = None
-                    time.sleep(1)
-                    if encrypted_flag['sec']:
+                try:
+                    ssl_cp.paste_buff(buff_text)
+                    ssl_cp.ssl_repl("\x04", follow=True)
+                except KeyboardInterrupt:
+                    time.sleep(0.2)
+                    ssl_cp.ssl_repl('\x03', silent=True,
+                                    traceback=True)  # KBI
+                    time.sleep(0.2)
+                    for i in range(1):
+                        ssl_cp.ssl_repl('\x0d', silent=True)
                         ssl_cp.flush_conn()
-                        ssl_cp.flush_conn()
-            # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
-            event.app.current_buffer.reset()
-            # print(buff_text)
-            print(">>> ")
-            prompt['p'] = ">>> "
-
-    def cmd_edit_exit(file_to_edit=edit_mode['File']):
-           buff_text = ''.join([event.app.current_buffer.document.text])
-            if buff_text is not None and buff_text != '':
-                send_custom_sh_cmd(
-                    "_file_to_edit = open('{}','w')".format(file_to_edit))
-                send_custom_sh_cmd("nl = '\\n'")
-                print('Writing to file...')
-                lines_to_write = buff_text.split('\n')
-                for line in lines_to_write:
-                    if line != ' ' and line != "" and line != '':
-                        send_custom_sh_cmd(
-                            '_file_to_edit.write("{}")'.format(line))
-                        # if not encrypted_flag['sec']:
-                        send_custom_sh_cmd('_file_to_edit.write(nl)')
-                    # time.sleep(0.1)
-                send_custom_sh_cmd("_file_to_edit.close()")
-                send_custom_sh_cmd("gc.collect()")
-                time.sleep(0.5)
+                    pass
+                # ssl_cp.ssl_repl('', just_recv=True, silent=False) blocking
+                # if espdev.output is not None:
+                #     print(espdev.output)
+                espdev.output = None
+                time.sleep(1)
                 if encrypted_flag['sec']:
                     ssl_cp.flush_conn()
                     ssl_cp.flush_conn()
-            # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
-            event.app.current_buffer.reset()
-            # print(buff_text)
-            print("File {} edited successfully!".format(file_to_edit))
-            print('PRESS ESC, THEN ENTER TO EXIT EDIT MODE')
+        # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
+        event.app.current_buffer.reset()
+        # print(buff_text)
+        print(">>> ")
+        prompt['p'] = ">>> "
+
+    def cmd_edit_exit(file_to_edit=edit_mode['File']):
+        buff_text = ''.join([event.app.current_buffer.document.text])
+        if buff_text is not None and buff_text != '':
+            send_custom_sh_cmd(
+                "_file_to_edit = open('{}','w')".format(file_to_edit))
+            send_custom_sh_cmd("nl = '\\n'")
+            print('Writing to file...')
+            lines_to_write = buff_text.split('\n')
+            for line in lines_to_write:
+                if line != ' ' and line != "" and line != '':
+                    send_custom_sh_cmd(
+                        '_file_to_edit.write("{}")'.format(line))
+                    # if not encrypted_flag['sec']:
+                    send_custom_sh_cmd('_file_to_edit.write(nl)')
+                # time.sleep(0.1)
+            send_custom_sh_cmd("_file_to_edit.close()")
+            send_custom_sh_cmd("gc.collect()")
+            time.sleep(0.5)
+            if encrypted_flag['sec']:
+                ssl_cp.flush_conn()
+                ssl_cp.flush_conn()
+        # print('paste mode; Ctrl-C to cancel, Ctrl-D to finish')
+        event.app.current_buffer.reset()
+        # print(buff_text)
+        print("File {} edited successfully!".format(file_to_edit))
+        print('PRESS ESC, THEN ENTER TO EXIT EDIT MODE')
     if not shell_mode['S']:
         if paste_flag['p']:
             # print(paste_buffer['B'])
@@ -4632,86 +4632,50 @@ def autocomplete_locals(event):
 
         def s_r_cmd_info(rest_part=rest, flag=glb, buff=buff_text, output=cmd_ls_glb):
             try:
-                   if isinstance(cmd_ls_glb, str):
-                        # print(espdev.output)
-                        pass
-                    else:
-                        if rest != '':
-                            result = [
-                                val for val in output if val.startswith(rest)]
-                            if len(result) > 1:
-                                comm_part = os.path.commonprefix(result)
-                                if comm_part == rest:
-                                    if shell_mode['S']:
-                                        last_cmd = event.app.current_buffer.document.text
-                                        if local_path['p'] == '':
-                                            g_p = [val[1]
-                                                   for val in prompt['p'][1:5]]
-                                            b_p = [val[1]
-                                                   for val in prompt['p'][5:]]
-                                            color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                            print(color_p)
-                                        else:
-                                            m_p = [prompt['p'][0][1]]
-                                            g_p = [val[1]
-                                                   for val in prompt['p'][1:5]]
-                                            b_p = [val[1]
-                                                   for val in prompt['p'][5:]]
-                                            color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                            print(color_p)
-                                    print_table(result, wide=28, format_SH=True)
-                                else:
-                                    event.app.current_buffer.insert_text(
-                                        comm_part[len(rest):])
+                if isinstance(cmd_ls_glb, str):
+                    # print(espdev.output)
+                    pass
+                else:
+                    if rest != '':
+                        result = [
+                            val for val in output if val.startswith(rest)]
+                        if len(result) > 1:
+                            comm_part = os.path.commonprefix(result)
+                            if comm_part == rest:
+                                if shell_mode['S']:
+                                    last_cmd = event.app.current_buffer.document.text
+                                    if local_path['p'] == '':
+                                        g_p = [val[1]
+                                               for val in prompt['p'][1:5]]
+                                        b_p = [val[1]
+                                               for val in prompt['p'][5:]]
+                                        color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                            "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                        print(color_p)
+                                    else:
+                                        m_p = [prompt['p'][0][1]]
+                                        g_p = [val[1]
+                                               for val in prompt['p'][1:5]]
+                                        b_p = [val[1]
+                                               for val in prompt['p'][5:]]
+                                        color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                            "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                        print(color_p)
+                                print_table(result, wide=28, format_SH=True)
                             else:
                                 event.app.current_buffer.insert_text(
-                                    result[0][len(rest):])
+                                    comm_part[len(rest):])
                         else:
-                            if not glb:
-                                if shell_mode['S']:
-                                    result = [val for val in output if val.startswith(
-                                        buff_text.split('/')[-1])]
-                                    if len(result) > 1:
-                                        comm_part = os.path.commonprefix(result)
-                                        if comm_part == buff_text.split('/')[-1]:
-                                            if shell_mode['S']:
-                                                last_cmd = event.app.current_buffer.document.text
-                                                if local_path['p'] == '':
-                                                    g_p = [val[1]
-                                                           for val in prompt['p'][1:5]]
-                                                    b_p = [val[1]
-                                                           for val in prompt['p'][5:]]
-                                                    color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                        "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                                    print(color_p)
-                                                else:
-                                                    m_p = [prompt['p'][0][1]]
-                                                    g_p = [val[1]
-                                                           for val in prompt['p'][1:5]]
-                                                    b_p = [val[1]
-                                                           for val in prompt['p'][5:]]
-                                                    color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                        "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                                    print(color_p)
-                                                # format ouput
-                                                print_table(
-                                                    result, wide=28, format_SH=True)
-                                        else:
-                                            event.app.current_buffer.insert_text(
-                                                comm_part[len(buff_text.split('/')[-1]):])
-                                    else:
-                                        event.app.current_buffer.insert_text(
-                                            result[0][len(buff_text.split('/')[-1]):])
-                                else:
-                                    print_table(output, wide=28, format_SH=True)
-                            else:
-                                result = [
-                                    val for val in output if val.startswith(buff_text)]
+                            event.app.current_buffer.insert_text(
+                                result[0][len(rest):])
+                    else:
+                        if not glb:
+                            if shell_mode['S']:
+                                result = [val for val in output if val.startswith(
+                                    buff_text.split('/')[-1])]
                                 if len(result) > 1:
                                     comm_part = os.path.commonprefix(result)
-                                    if comm_part == buff_text:
+                                    if comm_part == buff_text.split('/')[-1]:
                                         if shell_mode['S']:
                                             last_cmd = event.app.current_buffer.document.text
                                             if local_path['p'] == '':
@@ -4731,20 +4695,56 @@ def autocomplete_locals(event):
                                                 color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
                                                     "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
                                                 print(color_p)
-
                                             # format ouput
-                                            print_table(
-                                                result, wide=28, format_SH=True)
-                                        else:
-                                            print('>>> {}'.format(buff_text))
                                             print_table(
                                                 result, wide=28, format_SH=True)
                                     else:
                                         event.app.current_buffer.insert_text(
-                                            comm_part[len(buff_text):])
+                                            comm_part[len(buff_text.split('/')[-1]):])
                                 else:
                                     event.app.current_buffer.insert_text(
-                                        result[0][len(buff_text):])
+                                        result[0][len(buff_text.split('/')[-1]):])
+                            else:
+                                print_table(output, wide=28, format_SH=True)
+                        else:
+                            result = [
+                                val for val in output if val.startswith(buff_text)]
+                            if len(result) > 1:
+                                comm_part = os.path.commonprefix(result)
+                                if comm_part == buff_text:
+                                    if shell_mode['S']:
+                                        last_cmd = event.app.current_buffer.document.text
+                                        if local_path['p'] == '':
+                                            g_p = [val[1]
+                                                   for val in prompt['p'][1:5]]
+                                            b_p = [val[1]
+                                                   for val in prompt['p'][5:]]
+                                            color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                                "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                            print(color_p)
+                                        else:
+                                            m_p = [prompt['p'][0][1]]
+                                            g_p = [val[1]
+                                                   for val in prompt['p'][1:5]]
+                                            b_p = [val[1]
+                                                   for val in prompt['p'][5:]]
+                                            color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                                "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                            print(color_p)
+
+                                        # format ouput
+                                        print_table(
+                                            result, wide=28, format_SH=True)
+                                    else:
+                                        print('>>> {}'.format(buff_text))
+                                        print_table(
+                                            result, wide=28, format_SH=True)
+                                else:
+                                    event.app.current_buffer.insert_text(
+                                        comm_part[len(buff_text):])
+                            else:
+                                event.app.current_buffer.insert_text(
+                                    result[0][len(buff_text):])
 
             except Exception as e:
                 pass

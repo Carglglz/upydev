@@ -48,6 +48,8 @@ VALS_N_ARGS = []
 def address_entry_point(entry_point, group_file='', args=None):
     if group_file == '':
         group_file = 'UPY_G'
+    if args.G is not None and args.G != 'UPY_G':
+        group_file = args.G
     # print(group_file)
     if '{}.config'.format(group_file) not in os.listdir() or args.g:
         group_file = os.path.join(UPYDEV_PATH, group_file)
@@ -67,8 +69,12 @@ def address_entry_point(entry_point, group_file='', args=None):
         elif device_type == 'BleDevice':
             return (dev_address, dev_pass)
     else:
-        print('Device not configured in global group')
-        print("Do '$ upydev gg' to see devices global group")
+        if args.G is not None and args.G != 'UPY_G':
+            print(f'Device {entry_point} not configured in {args.G} group')
+            print(f"Do '$ upydev see {args.G}' to see devices {args.G} group")
+        else:
+            print(f'Device {entry_point} not configured in global group')
+            print("Do '$ upydev gg' to see devices global group")
         sys.exit()
 
 

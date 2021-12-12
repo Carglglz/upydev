@@ -6,6 +6,8 @@ def pytest_addoption(parser):
                      help="indicate the device with which to run the test")
     parser.addoption("--wss", action="store_true", default=False,
                      help="to indicate use of ssl if WebSecureREPL enabled in WebSocketDevice")
+    parser.addoption("--devp", action="store", default="default",
+                     help="indicate the device with which to run the test")
 
 
 @pytest.fixture

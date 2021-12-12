@@ -376,7 +376,10 @@ Group Mode
 
     To send a command to multiple devices in a group (made with make_group command)
 
-    To target specific devices within a group add -devs option as -devs [DEV NAME] [DEV NAME] ...
+    To target specific devices within a group add ``-devs`` option as ``-devs [DEV NAME] [DEV NAME] ...``
+    or use ``-@ [DEV NAME] [DEV NAME] ...`` which has autocompletion on tab and accepts group names, \* wildcards or brace expansion.
+
+    e.g. ``$ upydev check -@ esp\*``, ``$ upydev check -@ esp{1..3}`` 
 
 .. note::
     *upydev will use local working directory  group configuration unless it does
