@@ -11,7 +11,8 @@ AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
 
 KEY_N_ARGS = {'du': ['f', 's'], 'df': ['s'], 'netstat_conn': ['wp'],
               'apconfig': ['ap'], 'i2c_config': ['i2c'],
-              'spi_config': ['spi'], 'set_ntptime': ['utc'], 'tree': ['f']}
+              'spi_config': ['spi'], 'set_ntptime': ['utc'], 'tree': ['f'],
+              'set_hostname': ['f'], 'set_localname': ['f']}
 
 VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc']
 
@@ -52,7 +53,9 @@ GENERAL_COMMANDS_HELP = """
         - spi_config: to configure the spi pins (see -spi, defaults are SCK=5,MISO=19,MOSI=18,CS=21)
         - set_localtime: to pass host localtime and set upy device rtc
         - set_ntptime: to set rtc from server, (see -utc for time zone)
-        - get_datetime: to get date and time (must be set first, see above commands)"""
+        - get_datetime: to get date and time (must be set first, see above commands)
+        - set_hostname: to set hostname of the device for dhcp service
+        - set_localname: to set localname of the device for ble device gap/advertising name"""
 
 
 def print_sizefile(file_name, filesize, tabs=0):
@@ -112,12 +115,12 @@ def print_filesys_info(filesize):
 
 
 def _dt_format(number):
-        rtc_n = str(number)
-        if len(rtc_n) == 1:
-            rtc_n = "0{}".format(rtc_n)
-            return rtc_n
-        else:
-            return rtc_n
+    rtc_n = str(number)
+    if len(rtc_n) == 1:
+        rtc_n = "0{}".format(rtc_n)
+        return rtc_n
+    else:
+        return rtc_n
 
 
 def _ft_datetime(t_now):
@@ -740,3 +743,35 @@ def gen_command(cmd, *args, **kargs):
     elif cmd == 'gc':
         print(GENERAL_COMMANDS_HELP)
         sys.exit()
+
+    # SET HOSTNAME
+    elif cmd == 'set_hostname':
+        hostname = kargs.pop('f')
+        dev = Device(*args, **kargs)
+        print(f"Setting hostname: {hostname}")
+        dev.cmd(_CMDDICT_['SET_HOSTNAME'].format(f'NAME="{hostname}"'), silent=True)
+        if dev._traceback.decode() in dev.response:
+            try:
+                raise DeviceException(dev.response)
+            except Exception as e:
+                print(e)
+        else:
+            print('Done!')
+        dev.disconnect()
+        return
+
+    # SET LOCALNAME
+    elif cmd == 'set_localname':
+        localname = kargs.pop('f')
+        dev = Device(*args, **kargs)
+        print(f"Setting localname: {localname}")
+        dev.cmd(_CMDDICT_['SET_LOCALNAME'].format(f'NAME="{localname}"'), silent=True)
+        if dev._traceback.decode() in dev.response:
+            try:
+                raise DeviceException(dev.response)
+            except Exception as e:
+                print(e)
+        else:
+            print('Done!')
+        dev.disconnect()
+        return

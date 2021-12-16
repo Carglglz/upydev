@@ -22,10 +22,9 @@ import copy
 import time
 import traceback
 import multiprocessing
-import socket
 from argcomplete.completers import ChoicesCompleter
 from ipaddress import ip_address
-from upydevice import check_device_type, Device, DEVGROUP
+from upydevice import check_device_type, Device, DeviceNotFound
 from upydev.helpinfo import HELP_INFO_ARG, see_help
 
 UPYDEV_PATH = upydev.__path__[0]
@@ -46,7 +45,7 @@ def see_groups():
     local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
     ) if '.config' in group_file and group_file not in 'upydev_.config']
     globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
-        upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
+        UPYDEV_PATH) if '.config' in group_file and group_file not in avoid_files]
     return local_cwd + globl_wd
 
 
@@ -57,7 +56,7 @@ def see_global_devs(ws=True, serial=False, ble=False, all=False):
     # globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
     #     upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
     try:
-        with open('{}/UPY_G.config'.format(upydev.__path__[0]), 'r', encoding='utf-8') as group:
+        with open('{}/UPY_G.config'.format(UPYDEV_PATH), 'r', encoding='utf-8') as group:
             devices = json.loads(group.read())
             # print(devices)
         if ws:
@@ -128,7 +127,8 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
-                 'backup', 'rsync']
+                 'backup', 'rsync', 'make_sgroup', 'mksg', 'set_localname',
+                 'set_hostname']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -153,7 +153,7 @@ parser.version = '{}: {}'.format(upydev.name, upydev.version)
 parser.add_argument(
     "m", metavar='ACTION', help=helparg, nargs='+').completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
 parser.add_argument("-@", help=help_dv,
-                    required=False).completer = ChoicesCompleter(see_global_devs(all=True))
+                    required=False, nargs='+').completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-gg", help='global group flag', required=False,
                     action='store_true')
 parser.add_argument("-ggp", help='global group parallel flag', required=False,
@@ -332,8 +332,8 @@ argcomplete.autocomplete(parser)
 args = parser.parse_args()
 
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
-                     'pytest', 'make_group', 'mg_group', 'du', 'tree', 'rsync',
-                     'docs', 'udocs', 'mdocs']
+                     'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
+                     'rsync', 'docs', 'udocs', 'mdocs', 'set_hostname', 'set_localname']
 multiple_args_fw = ['fwr', 'flash', 'mpyx']
 
 if len(args.m) == 1:
@@ -375,8 +375,13 @@ elif len(args.m) == 2:
     elif args.m == 'mggroup' or args.m == 'mgg':
         args.m = 'mg_group'
         args.G = second_arg
+    elif args.m == 'mksg':
+        args.m = 'make_sgroup'
+        args.f = second_arg
     elif args.m == 'see' or args.m == 'probe':
         args.G = second_arg
+    elif args.m == 'set_hostname' or args.m == 'set_localname':
+        args.f = second_arg
 
 elif len(args.m) > 2:
     rest_args = args.m[1:]
@@ -395,7 +400,7 @@ elif len(args.m) > 2:
 # DEVICE MANAGEMENT ACTIONS
 
 DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'set', 'make_group',
-                             'mg_group', 'gg', 'see']
+                             'mg_group', 'gg', 'see', 'make_sgroup']
 
 # FIRMWARE ACTIONS
 
@@ -432,7 +437,7 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'netstat_off', 'netstat_conn', 'netstat', 'ap_on',
                     'ap_off', 'apstat', 'apconfig', 'apscan', 'i2c_config',
                     'i2c_scan', 'spi_config', 'set_localtime', 'set_ntptime',
-                    'get_datetime', 'gc']
+                    'get_datetime', 'gc', 'set_hostname', 'set_localname']
 # WLAN COMMANDS
 
 WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
@@ -466,17 +471,18 @@ def see_groups():
     local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
     ) if '.config' in group_file and group_file not in 'upydev_.config']
     globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
-        upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
+        UPYDEV_PATH) if '.config' in group_file and group_file not in avoid_files]
     return local_cwd + globl_wd
 
 
 #############################################
 def address_entry_point(entry_point, group_file=''):
-    if group_file == '':
+    group_name = group_file
+    if group_file == '' or group_file is None:
         group_file = 'UPY_G'
     # print(group_file)
     if '{}.config'.format(group_file) not in os.listdir() or args.g:
-        group_file = '{}/{}'.format(upydev.__path__[0], group_file)
+        group_file = os.path.join(UPYDEV_PATH, group_file)
     with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
         devices = json.loads(group.read())
         # print(devices)
@@ -525,9 +531,50 @@ def address_entry_point(entry_point, group_file=''):
             dev_pass = devices[entry_point][1]
             return (dev_uuid, dev_pass)
     else:
-        print('Device not configured in global group')
-        print("Do '$ upydev see -gg' to see devices global group")
+        if group_name != '':
+            print(f'Device {entry_point} not configured in {group_name} group')
+            print(f"Do '$ upydev see {group_name}' to see devices {group_name} group")
+        else:
+            print(f'Device {entry_point} not configured in global group')
+            print("Do '$ upydev see -gg' to see devices global group")
         sys.exit()
+
+
+def address_wildcard_entry_point(entry_point, group_file='', exp_entryp=False,
+                                 args=None):
+    target_devs = []
+    try:
+        if group_file == '':
+            group_file = 'UPY_G'
+        if args.G is not None and args.G != 'UPY_G':
+            group_file = args.G
+        if exp_entryp:
+            group_file = exp_entryp
+        # print(group_file)
+        if '{}.config'.format(group_file) not in os.listdir() or args.g:
+            group_file = os.path.join(UPYDEV_PATH, group_file)
+        with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+            devices = json.loads(group.read())
+            # print(devices)
+        devs = devices.keys()
+        if '*' in entry_point:
+            if entry_point.startswith('*'):
+                target_devs += [dev for dev in devs if dev.endswith(
+                    entry_point.replace('*', ''))]
+            elif entry_point.endswith('*'):
+                target_devs += [dev for dev in devs if dev.startswith(
+                    entry_point.replace('*', ''))]
+            elif '*' in entry_point:
+                start, end = entry_point.split('*')
+                target_devs += [dev for dev in devs if dev.startswith(
+                    start) and dev.endswith(end)]
+        elif entry_point == 'gg' or group_file != 'UPY_G':
+            target_devs += devs
+    except Exception as e:
+        # print(e)
+        pass
+
+    return target_devs
 #############################################
 
 
@@ -687,7 +734,7 @@ def handle_action(args, exit=True, device_name=None):
     #############################################
 
 
-KW_NOT_GROUP = ['probe', 'scan']
+KW_NOT_GROUP = ['probe', 'scan', 'mksg', 'make_sgroup']
 
 
 #############################################
@@ -761,7 +808,119 @@ if args.m not in keywords_mode and args.m.startswith('%'):
     see_help(action)
     sys.exit()
 
-_dev_name = None
+if vars(args)['@']:
+    n_devices = len(vars(args)['@'])
+else:
+    n_devices = 0
+# print(vars(args)['@'])
+
+if n_devices == 1:
+    # expand wildcard
+    _dev_name = vars(args)['@'][0]
+    entryp = vars(args)['@'][0]
+    if '*' in entryp or entryp == 'gg':
+        vars(args)['@'] = address_wildcard_entry_point(entryp, args=args)
+        if not vars(args)['@']:
+            try:
+                raise DeviceNotFound('No device with this name pattern')
+            except Exception as e:
+                print(e)
+        else:
+            n_devices = len(vars(args)['@'])
+            if n_devices == 1:
+                _dev_name = vars(args)['@'][0]
+                entryp = vars(args)['@'][0]
+                if args.G:
+                    args.devs = vars(args)['@']
+            else:
+                args.devs = vars(args)['@']
+                if not args.G:
+                    args.gg = True
+                _dev_name = vars(args)['@'][0]
+                entryp = vars(args)['@'][0]
+
+    if entryp not in see_global_devs(all=True):
+        # print(entryp)
+        # check if group file to expand
+        for gconf in glob.glob('*.config'):
+            if entryp == gconf.replace('.config', ''):
+                # fix
+                vars(args)['@'] = address_wildcard_entry_point('gg', entryp,
+                                                               exp_entryp=entryp,
+                                                               args=args)
+        if not vars(args)['@']:
+            try:
+                raise DeviceNotFound('No group with this name pattern')
+            except Exception as e:
+                print(e)
+        else:
+            n_devices = len(vars(args)['@'])
+            if n_devices == 1:
+                _dev_name = vars(args)['@'][0]
+                entryp = vars(args)['@'][0]
+            else:
+                args.devs = vars(args)['@']
+                if not args.G:
+                    args.gg = True
+                _dev_name = vars(args)['@'][0]
+                entryp = vars(args)['@'][0]
+
+
+elif n_devices == 0:
+    _dev_name = vars(args)['@']
+    entryp = vars(args)['@']
+else:
+    # expand wildcard
+    target_devs = []
+    for dev in vars(args)['@']:
+        if '*' in dev:
+            target_devs += address_wildcard_entry_point(dev, args=args)
+        else:
+            # TODO: allow other groups than global
+            if dev != 'gg':
+                if dev not in see_global_devs(all=True):
+                    # check group name in local dir
+                    group_confs = [conf.replace('.config', '') for conf
+                                   in glob.glob('*.config')]
+                    if dev in group_confs:  # expand group
+                        # fix
+                        group_expand = address_wildcard_entry_point('gg', dev,
+                                                                    exp_entryp=dev,
+                                                                    args=args)
+                        # print(group_expand)
+
+                    else:  # device within local group
+                        group_expand = [ldev for ldev in address_wildcard_entry_point(
+                                dev, args=args) if ldev == dev]
+
+                    target_devs += group_expand
+                else:
+                    target_devs += [dev]
+            else:
+                # expand group name
+                target_devs += address_wildcard_entry_point(dev, args=args)
+
+    if not target_devs:
+        try:
+            if not args.G:
+                excp_info = """Device/s not configured in global group
+    Do '$ upydev gg' to see devices global group"""
+            else:
+                excp_info = f"""Device/s not configured in {args.G} group
+    Do '$ upydev see {args.G} to see devices {args.G} group"""
+            raise DeviceNotFound(excp_info)
+        except Exception as e:
+            print(e)
+            sys.exit()
+    vars(args)['@'] = target_devs
+    args.devs = vars(args)['@']
+    if not args.G:
+        args.gg = True
+    _dev_name = vars(args)['@'][0]
+    entryp = vars(args)['@'][0]
+
+# print(vars(args)['@'])
+
 # @ ENTRY
 if "@" in args.m:
     args.m, entry_point = args.m.split('@')
@@ -770,11 +929,12 @@ if "@" in args.m:
 
 if args.gg:
     # if args.m not in DEBUGGING_ACTIONS:
-        args.G = 'UPY_G'
+    args.G = 'UPY_G'
 
 if args.ggp:
     # if args.m not in DEBUGGING_ACTIONS:
-        args.GP = 'UPY_G'
+    args.GP = 'UPY_G'
+    args.G = None
 
 if args.gf:
     if glob.glob('*.config'):
@@ -800,7 +960,7 @@ if args.t is None:
         try:
             file_conf = 'upydev_.config'
             if file_conf not in os.listdir() or args.g:
-                file_conf = '{}/upydev_.config'.format(upydev.__path__[0])
+                file_conf = '{}/upydev_.config'.format(UPYDEV_PATH)
 
             with open(file_conf, 'r') as config_file:
                 upy_conf = json.loads(config_file.read())
@@ -817,9 +977,9 @@ if args.t is None:
                 if "@" in args.b:
                     gf, entryp = args.b.split('@')
                     args.t, args.p = address_entry_point(entryp, gf)
-            if vars(args)['@'] is not None:
-                    entryp = vars(args)['@']
-                    args.t, args.p = address_entry_point(entryp)
+            if vars(args)['@']:
+                entryp = vars(args)['@'][0]
+                args.t, args.p = address_entry_point(entryp, args.G)
             if args.apmd:
                 args.t = '192.168.4.1'
             if args.st:
@@ -836,7 +996,7 @@ if args.G is not None:
         group_file = args.G
         # print(group_file)
         if '{}.config'.format(group_file) not in os.listdir() or args.g:
-            group_file = '{}/{}'.format(upydev.__path__[0], args.G)
+            group_file = os.path.join(UPYDEV_PATH, args.G)
         # if args.m == 'see':
         #     see()
         #     sys.exit()
@@ -913,57 +1073,57 @@ kw_loc = ['run', 'get', 'put', 'timeit', 'install',
           'pytest-setup', 'ble', 'set']
 
 if args.GP is not None:
-    pass
     try:
         group_file = args.GP
         # print(group_file)
         if '{}.config'.format(group_file) not in os.listdir() or args.g:
-            group_file = '{}/{}'.format(upydev.__path__[0], args.GP)
+            group_file = os.path.join(UPYDEV_PATH, args.GP)
 
-        print('Sending command to group: {}'.format(group_file.split('/')[-1]))
+        print('Sending command in parallel to group: {}'.format(
+            group_file.split('/')[-1]))
         with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
             devices = json.loads(group.read())
             # print(devices)
         devs = devices.keys()
         if args.devs is not None:
             devs = args.devs
-        if args.m not in keywords_mode:
-            dev_list = [Device(devices[dev][0], devices[dev][1],
-                               init=True, name=dev) for dev in devs]
-            devices_group = DEVGROUP(dev_list)
-            cmd = args.m
-            devices_group.cmd_p(cmd, follow=True)
-        else:
-            args_devices = {dev: copy.deepcopy(args) for dev in devs}
-            for dev in devs:
-                args_devices[dev].t = devices[dev][0]
-                args_devices[dev].p = devices[dev][1]
-            # TODO: add args.gf
-            # override print with [device name] ?
-            # redirect ouput to /tmp/dev_x_output
-            # parse output and clean/organized presentation ?
-            process_devices = {dev: multiprocessing.Process(
-                target=handle_action, args=(args_devices[dev], False, dev)) for dev in devs}
+        # if args.m not in keywords_mode:
+        #     dev_list = [Device(devices[dev][0], devices[dev][1],
+        #                        init=True, name=dev) for dev in devs]
+        #     devices_group = DEVGROUP(dev_list)
+        #     cmd = args.m
+        #     devices_group.cmd_p(cmd, follow=True)
+        # else:
+        args_devices = {dev: copy.deepcopy(args) for dev in devs}
+        for dev in devs:
+            args_devices[dev].t = devices[dev][0]
+            args_devices[dev].p = devices[dev][1]
+        # TODO: add args.gf
+        # override print with [device name] ?
+        # redirect ouput to /tmp/dev_x_output
+        # parse output and clean/organized presentation ?
+        process_devices = {dev: multiprocessing.Process(
+            target=handle_action, args=(args_devices[dev], False, dev)) for dev in devs}
 
-            for dev in devs:
-                process_devices[dev].start()
+        for dev in devs:
+            process_devices[dev].start()
 
-            while True:
-                try:
-                    dev_proc_state = [process_devices[dev].is_alive(
-                    ) for dev in devs]
+        while True:
+            try:
+                dev_proc_state = [process_devices[dev].is_alive(
+                ) for dev in devs]
+                if all(state is False for state in dev_proc_state):
+                    time.sleep(0.1)
+                    break
+            except KeyboardInterrupt:
+                while True:
+                    dev_proc_state = [process_devices[dev].is_alive()
+                                      for dev in devs]
                     if all(state is False for state in dev_proc_state):
-                        time.sleep(0.1)
+                        time.sleep(1)
+                        for dev in devs:
+                            process_devices[dev].terminate()
                         break
-                except KeyboardInterrupt:
-                    while True:
-                        dev_proc_state = [process_devices[dev].is_alive()
-                                          for dev in devs]
-                        if all(state is False for state in dev_proc_state):
-                            time.sleep(1)
-                            for dev in devs:
-                                process_devices[dev].terminate()
-                            break
 
     except Exception as e:
         print(traceback.format_exc())

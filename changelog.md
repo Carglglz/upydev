@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.7] Unreleased Github Repo [develop]
+## [0.3.8] Unreleased Github Repo [develop]
+## [0.3.7] 2021-12-16
+## Added
+- `rssi` command in shell repls to get RSSI value (Wifi or Ble)
+- `make_sgroup` / `mksg` command to create a subgroup of an existing group of devices.
+- `set_hostname` command to set hostname of the device for dhcp service (needs *wpa_supplicant.py*)
+- `set_localname` command to set localname of the device for ble gap/advertising name (needs *ble_uart_peripheral.py*)
+- Now `-@` option accepts multiple devices, names with `*` wildcard or global group `gg` or other group names, e.g. `upydev check -i -@ esp\* dev{1..4} mytestgroup`
+will expand to all devices that start with `esp` , `dev1 dev2 dev3 dev4` and devices configured in `mytestgroup`
+## Fix
+- `firmwaretools.get_fw_versions` update after `micropython.org\all` not working anymore.
+- fix device name instead of `None` in `put`, `get`, `fget`, `dsync` in `sslweb_repl` with `-nem` mode enabled.
+- fix `fget` disconnection error.
+
 ## [0.3.6] 2021-10-24
 ## Added
 - `zerotier` compatibility through raspberry pi bridge (port forwarding + ufw route rules) and `-zt [HOST IP/BRIDGE IP]` option to indicate host zerotier ip and raspberry pi bridge local ip for ssl
@@ -18,6 +31,7 @@ shell-repl mode. Also `-zt` option with config command compatibility.
 - `fget` error on connection, and unintended verbose output on close.
 - `check -i`, `info` commands in `-apmd`, if connected to AP of the device.
 - fix ssl cert authentication in `wss` mode if using `.local`/`dhcp_hostname` target.
+
 ## [0.3.5] 2021-09-09
 ## Fix
 - `set_ntptime` with WebSocket Devices
@@ -73,6 +87,7 @@ shell-repl mode. Also `-zt` option with config command compatibility.
 - `-d ` flag for `dsync` to sync from device to host.
 - `backup` command == `dsync . -d` to make a backup of the device filesystem
 - `rsync` command == `dsync [DIR] -rf -wdl` to recursively sync (deleting files too)
+
 ## [0.3.3] - 2020-06-07
 ### Fix
 - Fix `git status dev` aware of current branch
@@ -80,6 +95,7 @@ shell-repl mode. Also `-zt` option with config command compatibility.
 - Fix `put` for pyboard in SERIAL SHELL-REPL mode
 - Fix `fw` for downloading and flashing firmware to pyboard, esp in SERIAL SHELL-REPL mode, now asserts serial port is available after flashing.
 - Fix `battery` error if command fails.
+
 ## [0.3.2] - 2020-05-27
 ### Fix
 - Fix `set_localtime` for pyboard in SERIAL SHELL-REPL mode
@@ -91,12 +107,15 @@ shell-repl mode. Also `-zt` option with config command compatibility.
 - Fix, `apscan` mode now show MAC address instead of bytes
 ### Added
 - Watch mode with `-wdl` flag for `put -fre` and `d_sync` modes. Uploads only new or modified files
+
 ## [0.3.1] - 2020-04-23
 ### Fix
 - Fix for host ip determination
+
 ## [0.3.0] - 2020-04-13
 ### Fix
 - Minor fix for host ip determination (while ECDSA key is generated and for SSLWebREPL mode)
+
 ## [0.2.9] - 2020-02-24
 ### Added
 - jupyter console integration through jupyter-micropython-upydevice
@@ -105,12 +124,14 @@ shell-repl mode. Also `-zt` option with config command compatibility.
 - autocompletion for zsh
 - git integration and 'git init dev' command for SHELLS
 - sslgen_key command help
+
 ## [0.2.8] - 2020-02-16
 ### Added
 - emacs in nw mode by default
 - tig integration for git workflow: [tig](https://jonas.github.io/tig/)
 ### Fix
 - in SERIAL SHELL-REPL 'fw update' command for esp8266
+
 ## [0.2.7] - 2020-02-08
 ### Added
 - To be able to use this new commands update the SSL key and cert with 'upydev sslgen_key -tfkey' and do 'upydev update_upyutils'
@@ -120,6 +141,7 @@ shell-repl mode. Also `-zt` option with config command compatibility.
 - 'set_wss' upydev command to switch WebREPL to WebSecureREPL and
 'set_wss -wss' to switch back to WebREPL
 - if WebSecureREPL enabled, upydev 'put' and 'get' commands support WebSecureREPL file transfer using '-wss' option e.g. 'upydev put -f foo.py -wss'
+
 ## [0.2.6] 2020-02-02
 ### Added
 - 'bat' command output style configurable and line numbers (inspired by https://github.com/willmcgugan/rich)
@@ -129,9 +151,11 @@ shell-repl mode. Also `-zt` option with config command compatibility.
 - cat, bat in SSLWebREPL if last line does not end with new line ('\\n')
 - ECDSA key (SECP256R1_SHA256 method to meet IETF recommendations)
 - 'git status dev' now tracks all commits (inside or outside the shell)
+
 ## [0.2.5] 2020-01-26
 ### Fix
 - put method in SERIAL SHELL for esp32/8266
+
 ## [0.2.4] - 2020-01-26
 ### Added
 - 'timeit' command to measure execution time of a script/command (for SSL/SERIAL SHELLS)
@@ -144,6 +168,7 @@ shell-repl mode. Also `-zt` option with config command compatibility.
 - Changed upydev 'sslgen_rsakey' to 'sslgen_key' key now is a ECDSA key (SECP384R1 method)
 - Cipher suite is now TLSv1.2 @ ECDHE-ECDSA-AES128-CCM8 - 128 bits which is recommended for constrained devices / IOT (This requires a recent version of python-ssl)
 - put method (faster) in SERIAL SHELL
+
 ## [0.2.3] - 2020-01-19
 ### Added
 - fw , flash (and fw update which is 'fw get' + 'flash') commands for SERIAL SHELL
@@ -158,17 +183,20 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - 'update_upyutils' command for SERIAL SHELL
 ### Fix
 - fw and flash commands of upydev
+
 ## [0.2.2] 2020-01-13
 ### Added
 - Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match for frozen modules too.
 ### Fix
 - Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match (bug fix)
+
 ## [0.2.1] 2020-01-12
 ### Added
 - Autocompletion on REPLS (SSL/SERIAL) for "from foo import X" will show option of what to import/autocomplete on match
 - CTRL-u deprecated (no encryption toggle), CTRL-p now shows RAM STATUS (used/free)
 - CTRL-e in SHELLS (SSL/SERIAL) moves cursor to end of the line (if not in edit mode)
 - 'batl' command for SHELLS(SSL/SERIAL) to print local file with python syntax highlighting
+
 ## [0.2.0] - 2020-01-10
 ### Added
 - serial terminal SHELL-REPL mode (same style as SSLWebREPL) "sh_srepl"
@@ -178,6 +206,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - ssl_wrepl netscan command for esp8266
 - Add help of latest upydev commands
 - see -c command help info text wraps at terminal length
+
 ## [0.1.9] - 2020-01-07
 ### Added
 - Mode to generate RSA key and self signed certificate ('sslgen_rsakey')
@@ -187,6 +216,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - "ssl@[dev]" shortcut to "ssl_wrepl" mode
 - Progress bar length and percentage fix, and estimated time
 - put and get commands now works in SSL mode too
+
 ## [0.1.8] - 2019-12-29
 ### Added
 - New CryptoWebREPL shell local commands ('lsof', 'l_ifconfig', 'l_ifconfig_t') (last one works only on MacOS, linux pending...). Network utilities
@@ -196,6 +226,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 - Paste mode in unencrypted mode
 - Fix -h command error if there is no 'UPY_G.config' global group file
 - Installation dependencies
+
 ## [0.1.7] - 2019-12-24
 ### Added
 - Mode to generate RSA private key, and send it to the device ('gen_rsakey')
@@ -213,6 +244,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 ### Fix
 - Progress bar animation now available in put/get/sync modes and auto-adjust to terminal size
 - sync mode improved
+
 ## [0.1.6] - 2019-12-08
 ### Added
 - New 'update_upyutils' mode to update the latest versions of sync_tool.py,
@@ -224,6 +256,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 ### Fix
 - BSSID column of netscan command now shows mac address instead of bytes format
 - refactor of sync mode (shows transfer progress animation also)
+
 ## [0.1.5] - 2019-11-23
 ### Added
 - New mode d_sync to sync recursively a directory (all files and subfolders)
@@ -250,6 +283,7 @@ e.g. 'upipl' or 'upipl [module]' (SSL/SERIAL SHELLS)
 
 ### Fix
 - Code refactoring using upydevice
+
 ## [0.1.4] - 2019-11-12
 ### Added
 - New 'upyutils' script 'upylog.py' a modification of logging module to be able to log messages or exceptions to file and two formats to choose ([NAME] [LVL]
@@ -262,6 +296,7 @@ source sd.
 ### Fix
 - Command options -g , -st, -rep, -apmd (do not need any argument, they store true if used)
 - Option "-md local" in diagnose option (deprecated) use -apmd instead
+
 ## [0.1.3] - 2019-11-02
 ### Fix
 - package requests dependency added
@@ -269,15 +304,18 @@ source sd.
 - KeyboardInterrupt command (kbi) to stop for/while loops
 - New mode diagnose
 - New -apmd option to set target to 192.168.4.1 (AP default)
+
 ## [0.1.2] - 2019-10-14
 ### Added
 - '-dir' option to put/get commands to select in which directory to put file or get a file from
+
 ## [0.1.1] - 2019-10-01
 ### Fix
 - Dedent with shift-tab in wrepl (normal mode and paste mode)
 ### Added
 - find command to scan for upy devices in the WLAN
 - WIFI UTILS commands
+
 ## [0.1.0] - 2019-09-19
 ### Fix
 - toggle wrepl in synchronized mode for ssh session
@@ -285,6 +323,7 @@ source sd.
 ### Added
 - toggle autosuggest mode (fish shell like)
 - mg_group command to manage groups to add or remove devices
+
 
 ## [0.0.9] - 2019-08-22
 ### Added

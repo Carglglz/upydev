@@ -34,6 +34,8 @@ General Commands
         - **set_localtime**: to pass host localtime and set upy device rtc
         - **set_ntptime**: to set rtc from server, (see ``-utc`` for time zone)
         - **get_datetime**: to get date and time (must be set first, see above commands)
+        - **set_hostname**: to set hostname of the device for dhcp service *(needs wpa_supplicant.py)*
+        - **set_localname**: to set localname of the device for ble gap/advertising name *(needs ble_uart_peripheral.py)*
 
 
 WiFi Utils

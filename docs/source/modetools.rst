@@ -62,7 +62,7 @@ Help
 Device Management
 -----------------
 
-    ACTIONS : ``config``, ``check``, ``set``, ``make_group``, ``mg_group``, ``see``, ``gg``
+    ACTIONS : ``config``, ``check``, ``set``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
 
 
       - config:
@@ -83,6 +83,11 @@ Device Management
           To manage a group of devices to send commands to. Use ``-G`` for the name
           of the group and ``-add`` option to add devices (indicate a name, ip and the
           password of each board) or ``-rm`` to remove devices (indicated by name)
+
+      - make_sgroup:
+          To make a subset group of an existing group, alias ``mksg``.  Use -f for the name
+          of the subgroup, -G for the name of parent group and -devs option to indicate the names
+          of the devices to include.
 
       - see:
           To get specific info about a devices group use ``-G`` option as ``see -G [GROUP NAME]``
@@ -371,7 +376,10 @@ Group Mode
 
     To send a command to multiple devices in a group (made with make_group command)
 
-    To target specific devices within a group add -devs option as -devs [DEV NAME] [DEV NAME] ...
+    To target specific devices within a group add ``-devs`` option as ``-devs [DEV NAME] [DEV NAME] ...``
+    or use ``-@ [DEV NAME] [DEV NAME] ...`` which has autocompletion on tab and accepts group names, \* wildcards or brace expansion.
+
+    e.g. ``$ upydev check -@ esp\*``, ``$ upydev check -@ esp{1..3}`` 
 
 .. note::
     *upydev will use local working directory  group configuration unless it does

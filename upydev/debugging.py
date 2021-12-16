@@ -99,12 +99,12 @@ def sortSecond(val):
 
 
 def _dt_format(number):
-        rtc_n = str(number)
-        if len(rtc_n) == 1:
-            rtc_n = "0{}".format(rtc_n)
-            return rtc_n
-        else:
-            return rtc_n
+    rtc_n = str(number)
+    if len(rtc_n) == 1:
+        rtc_n = "0{}".format(rtc_n)
+        return rtc_n
+    else:
+        return rtc_n
 
 
 def _ft_datetime(t_now):
@@ -1222,11 +1222,14 @@ def probe_device(addr, passwd):
         else:
             return False
     elif dt == 'WebSocketDevice':
-        dev = Device(addr, passwd)
-        status = dev.is_reachable()
-        if status:
-            return True
-        else:
+        try:
+            dev = Device(addr, passwd)
+            status = dev.is_reachable()
+            if status:
+                return True
+            else:
+                return False
+        except Exception:
             return False
 
     elif dt == 'BleDevice':

@@ -34,7 +34,7 @@ FIRMWARE_HELP = """
 def get_fw_versions(keyword):
     fw_list = []
     fw_links = []
-    r = requests.get('https://micropython.org/download/all/')
+    r = requests.get(f'https://micropython.org/download/{keyword}/')
     fw_text = [line for line in r.text.split(
         '\n') if keyword in line and any(x in line for x in ['bin', 'dfu', 'zip']) and 'firmware' in line]
     if not fw_text:
@@ -298,7 +298,8 @@ def firmwaretools_action(args, **kargs):
                             print(
                                 'Firmware {} and {} device platform [{}] match, flashing firmware now...'.format(args.f, devname, platform))
                         else:
-                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(args.f, devname, platform))
+                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
+                                args.f, devname, platform))
                             sys.exit()
                     print('Flashing firmware {} with esptool.py to {} @ {}...'.format(
                         args.f, devname, args.port))
@@ -327,7 +328,8 @@ def firmwaretools_action(args, **kargs):
                             print(
                                 'Firmware {} and {} device platform [{}] match, flashing firmware now...'.format(args.f, devname, platform))
                         else:
-                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(args.f, devname, platform))
+                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
+                                args.f, devname, platform))
                             sys.exit()
                     print('Flashing firmware {} with esptool.py to {} @ {}...'.format(
                         args.f, devname, args.port))
@@ -365,18 +367,22 @@ def firmwaretools_action(args, **kargs):
                                 print(
                                     'Firmware {} and {} device platform [{}] machine [{}], verison [{}] match, flashing firmware now...'.format(args.f, devname, platform, machine, version))
                             else:
-                                print('Firmware {} and {} device platform [{}] machine [{}], verison [{}] do NOT match, operation aborted.'.format(args.f, devname, platform, machine, version))
+                                print('Firmware {} and {} device platform [{}] machine [{}], verison [{}] do NOT match, operation aborted.'.format(
+                                    args.f, devname, platform, machine, version))
                                 sys.exit()
                         else:
-                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(args.f, devname, platform))
+                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
+                                args.f, devname, platform))
                             sys.exit()
 
                     print('Enabling DFU mode in pyboard, DO NOT DISCONNECT...')
                     dev.connect()
-                    bs = dev.serial.write(bytes('import pyb;pyb.bootloader()\r', 'utf-8'))
+                    bs = dev.serial.write(
+                        bytes('import pyb;pyb.bootloader()\r', 'utf-8'))
                     time.sleep(0.2)
                     bin_file = args.f
-                    flash_tool = input('Select a tool to flash pydfu.py/dfu-util: (0/1) ')
+                    flash_tool = input(
+                        'Select a tool to flash pydfu.py/dfu-util: (0/1) ')
                     if flash_tool == '0':
                         print('Using pydfu.py...')
                         pydfu_fw_cmd = 'pydfu -u {}'.format(bin_file)

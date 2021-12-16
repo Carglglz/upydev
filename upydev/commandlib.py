@@ -106,6 +106,10 @@ SD_AUTO = "import SD_AM;gc.collect()"
 
 CHECK_UPYSH2 = "import os;'upysh2.py' in os.listdir('lib');gc.collect()"
 
+SET_HOSTNAME = "f=open('hostname.py','wb');f.write(b'{}');f.close();"
+
+SET_LOCALNAME = "f=open('localname.py','wb');f.write(b'{}');f.close();"
+
 CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'MEM': MEM, 'OS_STAT': OS_STAT, 'FILE_STAT': FILE_STAT,
             'CHECK_DIR': CHECK_DIR, 'STAT_FS': STAT_FS,
@@ -121,6 +125,7 @@ CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'WLAN_CONFIG': WLAN_CONFIG, 'WLAN_AP_CONFIG': WLAN_AP_CONFIG,
             'WLAN_CONN': WLAN_CONN, 'WLAN_AP_CONN': WLAN_AP_CONN,
             'SD_ENABLE': SD_ENABLE, 'SD_INIT': SD_INIT,
-            'SD_DEINIT': SD_DEINIT, 'SD_AUTO': SD_AUTO, 'CHECK_UPYSH2': CHECK_UPYSH2}
+            'SD_DEINIT': SD_DEINIT, 'SD_AUTO': SD_AUTO, 'CHECK_UPYSH2': CHECK_UPYSH2,
+            'SET_HOSTNAME': SET_HOSTNAME, 'SET_LOCALNAME': SET_LOCALNAME}
 
 _CMDDICT_ = {k: 'import gc;' + v for k, v in CMDDICT_.items()}
