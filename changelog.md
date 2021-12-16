@@ -4,13 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.7] Unreleased Github Repo [develop]
+## [0.3.8] Unreleased Github Repo [develop]
+## [0.3.7] 2021-12-16
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)
 - `make_sgroup` / `mksg` command to create a subgroup of an existing group of devices.
 - `set_hostname` command to set hostname of the device for dhcp service (needs *wpa_supplicant.py*)
 - `set_localname` command to set localname of the device for ble gap/advertising name (needs *ble_uart_peripheral.py*)
-- Now `-@` option accepts multiple devices, names with `*` wildcard or global group `gg`
+- Now `-@` option accepts multiple devices, names with `*` wildcard or global group `gg` or other group names, e.g. `upydev check -i -@ esp\* dev{1..4} mytestgroup`
+will expand to all devices that start with `esp` , `dev1 dev2 dev3 dev4` and devices configured in `mytestgroup`
 ## Fix
 - `firmwaretools.get_fw_versions` update after `micropython.org\all` not working anymore.
 - fix device name instead of `None` in `put`, `get`, `fget`, `dsync` in `sslweb_repl` with `-nem` mode enabled.

@@ -52,5 +52,5 @@ setup(name='upydev',
       install_requires=['websocket-client', 'argcomplete',
                         'esptool', 'prompt_toolkit', 'python-nmap',
                         'netifaces', 'requests', 'cryptography', 'Pygments',
-                        'pyusb', 'packaging', 'upydevice>=0.3.2',
+                        'pyusb', 'packaging', 'upydevice>=0.3.3',
                         'jupyter_micropython_upydevice>=0.0.5'])
