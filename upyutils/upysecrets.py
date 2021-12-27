@@ -66,7 +66,7 @@ def upy_session_keygen(rsa_key, save_sessionkey=False, token=None):
     for line in raw_key_list:
         raw_key += line
     if token is None:
-        random_token = uos.urandom(32) # send this
+        random_token = uos.urandom(32)  # send this
     else:
         random_token = token[:32]
     for b in random_token:
@@ -76,17 +76,21 @@ def upy_session_keygen(rsa_key, save_sessionkey=False, token=None):
     hashed_key = key_hash.digest()
     if token is None:
         if sys.platform == 'esp8266':
-            index_pvkey = [urandom.getrandbits(4)+urandom.getrandbits(4) for i in range(32)]
+            index_pvkey = [urandom.getrandbits(
+                4)+urandom.getrandbits(4) for i in range(32)]
         else:
-            index_pvkey = [urandom.randrange(0, len(hashed_key)) for i in range(32)] # send this
+            index_pvkey = [urandom.randrange(0, len(hashed_key))
+                           for i in range(32)]  # send this
     else:
         index_pvkey = token[32:64]
     pv_key = bytes([hashed_key[val] for val in index_pvkey])
     if token is None:
         if sys.platform == 'esp8266':
-            index_ivkey = [urandom.getrandbits(4)+urandom.getrandbits(4) for i in range(16)]
+            index_ivkey = [urandom.getrandbits(
+                4)+urandom.getrandbits(4) for i in range(16)]
         else:
-            index_ivkey = [urandom.randrange(0, len(hashed_key)) for i in range(16)] # send this
+            index_ivkey = [urandom.randrange(0, len(hashed_key))
+                           for i in range(16)]  # send this
     else:
         index_ivkey = token[64:]
     iv = bytes([hashed_key[val] for val in index_ivkey])
@@ -165,8 +169,10 @@ class CRYPTOGRAPHER:
         self.buff[:] = bytearray(self.buff_size)
         self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
         self.data_bytes = msg.encode()
-        self.block_len = len(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16))
-        self.enc.encrypt(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
+        self.block_len = len(self.data_bytes + b'\x00'
+                             * ((16 - (len(self.data_bytes) % 16)) % 16))
+        self.enc.encrypt(self.data_bytes + b'\x00'
+                         * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
         gc.collect()
         return bytes(self.buff[:self.block_len])
 
@@ -182,8 +188,10 @@ class CRYPTOGRAPHER:
         self.buff[:] = bytearray(self.buff_size)
         self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
         self.data_bytes = msg.encode()
-        self.block_len = len(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16))
-        self.enc.encrypt(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
+        self.block_len = len(self.data_bytes + b'\x00'
+                             * ((16 - (len(self.data_bytes) % 16)) % 16))
+        self.enc.encrypt(self.data_bytes + b'\x00'
+                         * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
         gc.collect()
         return hexlify(bytes(self.buff[:self.block_len]))
 
@@ -191,8 +199,10 @@ class CRYPTOGRAPHER:
         self.buff[:] = bytearray(self.buff_size)
         self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
         self.data_bytes = msg
-        self.block_len = len(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16))
-        self.enc.encrypt(self.data_bytes + b'\x00' * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
+        self.block_len = len(self.data_bytes + b'\x00'
+                             * ((16 - (len(self.data_bytes) % 16)) % 16))
+        self.enc.encrypt(self.data_bytes + b'\x00'
+                         * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
         gc.collect()
         return hexlify(bytes(self.buff[:self.block_len]))
 

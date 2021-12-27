@@ -57,25 +57,30 @@ def firmwaretools_action(args, **kargs):
     # MPYX
 
     if args.m == 'mpyx':
-        if not args.f:
+        if not args.f and not args.fre:
             print('File name required indicate with -f option.')
             see_help(args.m)
         else:
-            if args.f not in os.listdir():
-                print('File not found, indicate a valid file')
-            else:
-                print('Frozing {} to bytecode with mpy-cross'.format(args.f))
-                mpy_cmd_str = 'python -m mpy_cross {}'.format(args.f)
-                mpy_cmd = shlex.split(mpy_cmd_str)
-                try:
-                    mpy_tool = subprocess.call(mpy_cmd)
-                    if mpy_tool == 0:
-                        print('Process successful, bytecode in : {}'.format(
-                                                args.f.replace('py', 'mpy')))
+            if args.f:
+                args.fre[0] = args.f
+            if args.fre:
+                for frfile in args.fre:
+                    args.f = frfile
+                    if args.f not in os.listdir():
+                        print('File not found, indicate a valid file')
                     else:
-                        print('Process failed.')
-                except KeyboardInterrupt:
-                    pass
+                        print('Frozing {} to bytecode with mpy-cross'.format(args.f))
+                        mpy_cmd_str = 'mpy-cross {}'.format(args.f)
+                        mpy_cmd = shlex.split(mpy_cmd_str)
+                        try:
+                            mpy_tool = subprocess.call(mpy_cmd)
+                            if mpy_tool == 0:
+                                print('Process successful, bytecode in : {}'.format(
+                                                        args.f.replace('py', 'mpy')))
+                            else:
+                                print('Process failed.')
+                        except KeyboardInterrupt:
+                            pass
 
         sys.exit()
 

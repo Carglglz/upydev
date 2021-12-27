@@ -1,6 +1,7 @@
 from upydevice import Device
 import sys
 from upydev.helpinfo import see_help
+from upydev.fileio import fileio_action
 from upydevice import check_device_type
 import getpass
 import os
@@ -8,11 +9,12 @@ import json
 import upydev
 from binascii import hexlify
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa, ec
+from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
 from cryptography.hazmat.primitives import serialization
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 import string
 import secrets
 import hashlib
@@ -23,6 +25,7 @@ from datetime import datetime, timedelta
 import shlex
 import subprocess
 import ipaddress
+import time
 
 
 UPYDEV_PATH = upydev.__path__[0]
@@ -35,6 +38,13 @@ KEYGEN_HELP = """
                       device (use only if connected directly to the AP of the device or a
                       "secure" wifi e.g. local/home). If not connected to a "secure" wifi
                       upload the key (it is stored in upydev.__path__) by USB/Serial connection.
+                      *Use -rkey option to remove private key from host (only store public key)
+
+        - rsa_sign: To sign a file with device RSA key, (rsa lib required), use -f to indicate
+                   the file to sign or use alias form: $ upydev rsa sign [FILE]
+
+        - rsa_verify: To verify a signature of a file made with device RSA key, use -f to indicate
+                   the signature file to verify or use alias form: $ upydev rsa verify [FILE]
 
         - rf_wrkey: To "refresh" the WebREPL password with a new random password derivated from
                     the RSA key previously generated. A token then is sent to the device to generate
@@ -62,21 +72,53 @@ def rsa_keygen(args, dir='', store=True, show_key=False, id='00'):
         public_exponent=65537,
         key_size=args.key_size,
         backend=default_backend())
-    my_p = getpass.getpass(prompt='Password: ', stream=None)
-    pem = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
-                                    encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
+    # my_p = getpass.getpass(prompt='Password: ', stream=None)
+    # pem = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
+    #                                 encryption_algorithm=serialization.BestAvailableEncryption(bytes(my_p, 'utf-8')))
+    pem = private_key.private_bytes(encoding=serialization.Encoding.PEM,
+                                    format=serialization.PrivateFormat.TraditionalOpenSSL,
+                                    encryption_algorithm=serialization.NoEncryption())
+    public_key = private_key.public_key()
+    pub_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
+                                      format=serialization.PublicFormat.SubjectPublicKeyInfo)
     if show_key:
         print(pem)
     if store:
-        key_path_file = os.path.join(dir, 'upy_pub_rsa{}.key'.format(id))
-        with open(key_path_file, 'wb') as keyfile:
+        # private key
+        keypv_path_file = os.path.join(dir, 'upy_pv_rsa{}.key'.format(id))
+        with open(keypv_path_file, 'wb') as keyfile:
             keyfile.write(pem)
-    return pem
+        # public key
+        keypb_path_file = os.path.join(dir, 'upy_pub_rsa{}.key'.format(id))
+        with open(keypb_path_file, 'wb') as keyfile:
+            keyfile.write(pub_pem)
+    return pem  # , my_p
 
 
 def load_rsa_key(dir='', show_key=False, id='00'):
     buff_key = b''
     rsa_key_abs = os.path.join(dir, 'upy_pub_rsa{}.key'.format(id))
+    try:
+        with open(rsa_key_abs, 'rb') as keyfile:
+            while True:
+                try:
+                    buff = keyfile.read(2000)
+                    if buff != b'':
+                        buff_key += buff
+                    else:
+                        break
+                except Exception as e:
+                    print(e)
+        if show_key:
+            print(buff_key)
+        return buff_key
+    except Exception as e:
+        print("No RSA key found for this device, generate one first with '$ upydev gen_rsakey -tfkey' ")
+
+
+def load_rsa_pvkey(dir='', show_key=False, id='00'):
+    buff_key = b''
+    rsa_key_abs = os.path.join(dir, 'upy_pv_rsa{}.key'.format(id))
     try:
         with open(rsa_key_abs, 'rb') as keyfile:
             while True:
@@ -236,6 +278,17 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
         return {'ACTION': 'put', 'mode': 'SSL', 'Files': [ssl_k, ssl_c]}
 
 
+# with open(sys.argv[1], 'rb') as input:
+#     key = PrivateKey.load_pkcs1(input.read())
+#     d = {}
+#     d['n'] = key.n
+#     d['e'] = key.e
+#     d['d'] = key.d
+#     d['p'] = key.p
+#     d['q'] = key.q
+#     with open(sys.argv[2], 'w') as output:
+#         output.write(json.dumps(d))
+
 # CRYPTO
 
 
@@ -253,10 +306,11 @@ def get_rsa_key(args):
     print('Done!')
 
     if args.tfkey:  # move out for now
+        print('Loading RSA key...')
+        key_abs = os.path.join(UPYDEV_PATH, 'upy_pv_rsa{}.key'.format(unique_id))
+        key_abs_pub = os.path.join(UPYDEV_PATH, 'upy_pub_rsa{}.key'.format(unique_id))
         print('Transfering RSA key to the device...')
-        key_abs = os.path.join(UPYDEV_PATH, 'upy_pub_rsa{}.key'.format(unique_id))
-        return {'ACTION': 'put', 'mode': 'RSA', 'Files': [key_abs]}
-        # print('Done!')
+        return {'ACTION': 'put', 'mode': 'RSA', 'Files': [key_abs, key_abs_pub]}
 
 
 def refresh_wrkey(args, device):
@@ -320,6 +374,66 @@ def get_ssl_keycert(args):
         return ssl_dict
 
 
+def rsa_sign(args, **kargs):
+    device = kargs.get('device')
+    args.m = 'put'
+    args.rst = False
+    _sigfile = args.f.split('/')[-1]
+    fileio_action(args, **kargs)
+    print(f'Signing file {_sigfile} with {device} RSA key')
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    id_bytes = dev.wr_cmd("from machine import unique_id; unique_id()",
+                          silent=True, rtn_resp=True)
+    unique_id = hexlify(id_bytes).decode()
+    pvkey = f"upy_pv_rsa{unique_id}.key"
+    print('ID: {}'.format(unique_id))
+    dev.wr_cmd(f"from rsa.rsautil import RSAPrivateKey;pk=RSAPrivateKey('{pvkey}')")
+    # dev.disconnect()
+    dev.wr_cmd(f"sg = pk.signfile('{_sigfile}')", silent=False, follow=True)
+    sg = dev.wr_cmd("sg", silent=True, rtn_resp=True)
+    with open(f"{args.f.split('/')[-1]}.sign", 'wb') as signfile:
+        signfile.write(sg)
+    dev.wr_cmd(f"import os;os.remove('{_sigfile}')")
+    dev.wr_cmd('import gc;del(sg);gc.collect()')
+    dev.disconnect()
+    print('Signature done!')
+
+
+def rsa_verify(args, device):
+    print(f'Verifying {args.f} signature from {device} RSA key')
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    id_bytes = dev.cmd("from machine import unique_id; unique_id()",
+                       silent=True, rtn_resp=True)
+    dev.disconnect()
+    unique_id = hexlify(id_bytes).decode()
+    print(f"Assuming signed data in {args.f.replace('.sign', '')}")
+    print('ID: {}'.format(unique_id))
+    key_abs = os.path.join(UPYDEV_PATH, 'upy_pub_rsa{}.key'.format(unique_id))
+    # load key.json
+    with open(key_abs, "rb") as key_file:
+        pub_key = serialization.load_pem_public_key(key_file.read())
+        kz = pub_key.key_size
+        key_hash = hashlib.sha256()
+        key_hash.update(pub_key.public_bytes(serialization.Encoding.DER,
+                                             serialization.PublicFormat.PKCS1))
+        hashed_key = hexlify(key_hash.digest()).decode('ascii').upper()
+        print(f"Using {kz} bits RSA key {hashed_key[:40]}")
+    # load message
+    with open(args.f.replace('.sign', ''), 'rb') as message:
+        message_bytes = message.read()
+
+    with open(args.f, 'rb') as signature:
+        signature_bytes = signature.read()
+
+    try:
+        pub_key.verify(signature_bytes, message_bytes, padding.PKCS1v15(),
+                       hashes.SHA256())
+
+        print('Verification: OK')
+    except InvalidSignature:
+        print('Verification failed: Invalid Signature')
+
+
 def keygen_action(args, **kargs):
     dev_name = kargs.get('device')
     # GEN_RSAKEY
@@ -346,3 +460,13 @@ def keygen_action(args, **kargs):
             return ssl_key_cert
         else:
             sys.exit()
+
+    # RSA Sign & Verify
+
+    elif args.m == 'rsa_sign':
+        rsa_sign(args, **kargs)
+        sys.exit()
+
+    elif args.m == 'rsa_verify':
+        rsa_verify(args, dev_name)
+        sys.exit()

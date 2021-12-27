@@ -128,7 +128,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
                  'backup', 'rsync', 'make_sgroup', 'mksg', 'set_localname',
-                 'set_hostname']
+                 'set_hostname', 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -265,7 +265,7 @@ parser.add_argument('-tfkey', help='transfer RSA/ECDSA key,ideally this should b
                     required=False, default=False, action='store_true')
 parser.add_argument('-key_size', help='Indicate RSA key length in bits (default is 2048)',
                     required=False, default=2048, type=int)
-parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection',
+parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection, or delete private key after gen_rsakey',
                     required=False, default=False, action='store_true')
 parser.add_argument('-localkey_id', help='To refresh password manually of a current WebREPL connection',
                     required=False)
@@ -382,6 +382,10 @@ elif len(args.m) == 2:
         args.G = second_arg
     elif args.m == 'set_hostname' or args.m == 'set_localname':
         args.f = second_arg
+    elif args.m == 'rsa_sign':
+        args.f = second_arg
+    elif args.m == 'rsa_verify':
+        args.f = second_arg
 
 elif len(args.m) > 2:
     rest_args = args.m[1:]
@@ -394,10 +398,15 @@ elif len(args.m) > 2:
         elif args.m == 'flash':
             args.f = rest_args[0]
             args.port = rest_args[1]
-# print(args.m, args.f, args.fre, args.md)
-# sys.exit()
+        elif args.m == 'mpyx':
+            args.fre = rest_args
+    elif args.m == 'rsa':
+        rsa_mode, args.f, = rest_args[:2]
+        args.m = f"{args.m}_{rsa_mode}"
+        # print(args.m, args.f, args.fre, args.md)
+        # sys.exit()
 
-# DEVICE MANAGEMENT ACTIONS
+        # DEVICE MANAGEMENT ACTIONS
 
 DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'set', 'make_group',
                              'mg_group', 'gg', 'see', 'make_sgroup']
@@ -409,7 +418,7 @@ FIRMWARE_ACTIONS = ['mpyx', 'fwr', 'flash']
 
 # KEYGEN ACTIONS
 
-KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key']
+KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key', 'rsa_sign', 'rsa_verify']
 
 # REPL ACTIONS
 
@@ -681,9 +690,17 @@ def handle_action(args, exit=True, device_name=None):
                 # args.f = cert
                 # put_f(args.t, args.p, rst=args.rst)
             elif key_dict['mode'] == 'RSA':
-                rsa_key, = key_dict['Files']
-                args.f = rsa_key
+                args.fre = key_dict['Files']
                 fileio_action(args, device=dev_name)
+                if args.rkey:
+                    pvkey_id = key_dict['Files'][0].split('/')[-1]
+                    print(f'Removing private key {pvkey_id} from host...')
+                    try:
+                        os.remove(key_dict['Files'][0])
+                        print('Done!')
+                    except Exception as e:
+                        print(e)
+
         if exit:
             sys.exit()
 

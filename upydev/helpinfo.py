@@ -18,7 +18,7 @@ HELP_INFO_ARG = '''Mode/Tools:
     ACTIONS: fwr, flash, mpyx
 
 > KEYGEN: '$ upydev kg' to see help on keygen operations.
-    ACTIONS: gen_rsakey, rf_wrkey, sslgen_key
+    ACTIONS: gen_rsakey, rf_wrkey, sslgen_key, rsa_sign, rsa_verify
 
 > REPLS: '$ upydev rp' to see help on repls modes.
     ACTIONS: repl, rpl, wrepl, wssrepl, srepl

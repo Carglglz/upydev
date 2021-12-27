@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.3.8] Unreleased Github Repo [develop]
+## Added
+- `rsa_sign`, `rsa_verify` commands to sign file with device RSA key
+- `rsa` lib in `upyutils` to support RSA key loading and signatures
+- `gen_rsakey` added option `-rkey` to remove RSA private key from the host, so in combination with `-tfkey` option, the RSA private key will only be stored in the device.
+# Fix
+- `mpyx` command with multiple files
+- `rf_wrkey` now use RSA public key for password derivation
 ## [0.3.7] 2021-12-16
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)

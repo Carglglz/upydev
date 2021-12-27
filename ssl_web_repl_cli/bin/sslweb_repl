@@ -94,7 +94,7 @@ def rsa_keygen(dir='', store=True, show_key=False, id='00'):
     if show_key:
         print(pem)
     if store:
-        with open(dir+'upy_pub_rsa{}.key'.format(id), 'wb') as keyfile:
+        with open(dir+'upy_pv_rsa{}.key'.format(id), 'wb') as keyfile:
             keyfile.write(pem)
     return pem
 
@@ -102,7 +102,7 @@ def rsa_keygen(dir='', store=True, show_key=False, id='00'):
 def load_rsa_key(dir='', show_key=False, id='00'):
     buff_key = b''
     try:
-        with open(dir+'upy_pub_rsa{}.key'.format(id), 'rb') as keyfile:
+        with open(dir+'upy_pv_rsa{}.key'.format(id), 'rb') as keyfile:
             while True:
                 try:
                     buff = keyfile.read(2000)
@@ -4613,7 +4613,7 @@ def autocomplete_locals(event):
                     rest = ''
                     glb = True
                     if shell_mode['S']:
-                           cmd_ls_glb = os.listdir()
+                        cmd_ls_glb = os.listdir()
                     # if encrypted_flag['sec']:
                     #     h_cp.crepl(cmd_ls_glb)
                     # else:
@@ -5015,8 +5015,8 @@ while repl:
             print(e)
             continue
     except EOFError:
-           # print('This is EOF ERROR!')
-           continue
+        # print('This is EOF ERROR!')
+        continue
         # espdev.reset()
         # sys.exit()
 

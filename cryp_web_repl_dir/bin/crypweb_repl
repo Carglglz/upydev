@@ -71,7 +71,7 @@ def rsa_keygen(dir='', store=True, show_key=False, id='00'):
     if show_key:
         print(pem)
     if store:
-        with open(dir+'upy_pub_rsa{}.key'.format(id), 'wb') as keyfile:
+        with open(dir+'upy_pv_rsa{}.key'.format(id), 'wb') as keyfile:
             keyfile.write(pem)
     return pem
 
@@ -79,7 +79,7 @@ def rsa_keygen(dir='', store=True, show_key=False, id='00'):
 def load_rsa_key(dir='', show_key=False, id='00'):
     buff_key = b''
     try:
-        with open(dir+'upy_pub_rsa{}.key'.format(id), 'rb') as keyfile:
+        with open(dir+'upy_pv_rsa{}.key'.format(id), 'rb') as keyfile:
             while True:
                 try:
                     buff = keyfile.read(2000)

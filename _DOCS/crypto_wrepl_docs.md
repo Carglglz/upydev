@@ -238,7 +238,7 @@ Flash          2.0 MB     512.0 KB     1.5 MB      25.3 %        /
 esp32@esp_room1:~ $ ls
 lib                          boot.py                      main.py
 wifi_.config                 ap_.config                   webrepl_cfg.py
-upy_pub_rsa30aea4233564.key  test_sync_dir
+upy_pv_rsa30aea4233564.key  test_sync_dir
 esp32@esp_room1:~ $ meminfo
 Memory         Size        Used       Avail        Use%
 RAM          116.188 KB  36.531 KB   79.656 KB     31.4 %
