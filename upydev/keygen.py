@@ -80,7 +80,7 @@ def rsa_keygen(args, dir='', store=True, show_key=False, id='00'):
                                     encryption_algorithm=serialization.NoEncryption())
     public_key = private_key.public_key()
     pub_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
-                                      format=serialization.PublicFormat.SubjectPublicKeyInfo)
+                                      format=serialization.PublicFormat.PKCS1)
     if show_key:
         print(pem)
     if store:

@@ -12,7 +12,8 @@
 This module provides ASN.1 encoder and decoder.
 """
 
-import ucollections as collections
+import collections as collections
+import re
 
 
 class Numbers:
@@ -49,6 +50,284 @@ Tag = collections.namedtuple('Tag', 'nr typ cls')
 
 class Error(Exception):
     """ASN.11 encoding or decoding error."""
+
+
+class Encoder(object):
+    """ASN.1 encoder. Uses DER encoding.
+    """
+
+    def __init__(self):  # type: () -> None
+        """Constructor."""
+        self.m_stack = None
+
+    def start(self):  # type: () -> None
+        """This method instructs the encoder to start encoding a new ASN.1
+        output. This method may be called at any time to reset the encoder,
+        and resets the current output (if any).
+        """
+        self.m_stack = [[]]
+
+    def enter(self, nr, cls=None):  # type: (int, int) -> None
+        """This method starts the construction of a constructed type.
+        Args:
+            nr (int): The desired ASN.1 type. Use ``Numbers`` enumeration.
+            cls (int): This optional parameter specifies the class
+                of the constructed type. The default class to use is the
+                universal class. Use ``Classes`` enumeration.
+        Returns:
+            None
+        Raises:
+            `Error`
+        """
+        if self.m_stack is None:
+            raise Error('Encoder not initialized. Call start() first.')
+        if cls is None:
+            cls = Classes.Universal
+        self._emit_tag(nr, Types.Constructed, cls)
+        self.m_stack.append([])
+
+    def leave(self):  # type: () -> None
+        """This method completes the construction of a constructed type and
+        writes the encoded representation to the output buffer.
+        """
+        if self.m_stack is None:
+            raise Error('Encoder not initialized. Call start() first.')
+        if len(self.m_stack) == 1:
+            raise Error('Tag stack is empty.')
+        value = b''.join(self.m_stack[-1])
+        del self.m_stack[-1]
+        self._emit_length(len(value))
+        self._emit(value)
+
+    def write(self, value, nr=None, typ=None, cls=None):  # type: (object, int, int, int) -> None
+        """This method encodes one ASN.1 tag and writes it to the output buffer.
+        Note:
+            Normally, ``value`` will be the only parameter to this method.
+            In this case Python-ASN1 will autodetect the correct ASN.1 type from
+            the type of ``value``, and will output the encoded value based on this
+            type.
+        Args:
+            value (any): The value of the ASN.1 tag to write. Python-ASN1 will
+                try to autodetect the correct ASN.1 type from the type of
+                ``value``.
+            nr (int): If the desired ASN.1 type cannot be autodetected or is
+                autodetected wrongly, the ``nr`` parameter can be provided to
+                specify the ASN.1 type to be used. Use ``Numbers`` enumeration.
+            typ (int): This optional parameter can be used to write constructed
+                types to the output by setting it to indicate the constructed
+                encoding type. In this case, ``value`` must already be valid ASN.1
+                encoded data as plain Python bytes. This is not normally how
+                constructed types should be encoded though, see `Encoder.enter()`
+                and `Encoder.leave()` for the recommended way of doing this.
+                Use ``Types`` enumeration.
+            cls (int): This parameter can be used to override the class of the
+                ``value``. The default class is the universal class.
+                Use ``Classes`` enumeration.
+        Returns:
+            None
+        Raises:
+            `Error`
+        """
+        if self.m_stack is None:
+            raise Error('Encoder not initialized. Call start() first.')
+
+        if typ is None:
+            typ = Types.Primitive
+        if cls is None:
+            cls = Classes.Universal
+
+        if cls != Classes.Universal and nr is None:
+            raise Error(
+                'Please specify a tag number (nr) when using classes Application, Context or Private')
+
+        if nr is None:
+            if isinstance(value, bool):
+                nr = Numbers.Boolean
+            elif isinstance(value, int):
+                nr = Numbers.Integer
+            elif isinstance(value, str):
+                nr = Numbers.PrintableString
+            elif isinstance(value, bytes):
+                nr = Numbers.OctetString
+            elif value is None:
+                nr = Numbers.Null
+
+        value = self._encode_value(cls, nr, value)
+        self._emit_tag(nr, typ, cls)
+        self._emit_length(len(value))
+        self._emit(value)
+
+    def output(self):  # type: () -> bytes
+        """This method returns the encoded ASN.1 data as plain Python ``bytes``.
+        This method can be called multiple times, also during encoding.
+        In the latter case the data that has been encoded so far is
+        returned.
+        Note:
+            It is an error to call this method if the encoder is still
+            constructing a constructed type, i.e. if `Encoder.enter()` has been
+            called more times that `Encoder.leave()`.
+        Returns:
+            bytes: The DER encoded ASN.1 data.
+        Raises:
+            `Error`
+        """
+        if self.m_stack is None:
+            raise Error('Encoder not initialized. Call start() first.')
+        if len(self.m_stack) != 1:
+            raise Error('Stack is not empty.')
+        output = b''.join(self.m_stack[0])
+        return output
+
+    def _emit_tag(self, nr, typ, cls):  # type: (int, int, int) -> None
+        """Emit a tag."""
+        if nr < 31:
+            self._emit_tag_short(nr, typ, cls)
+        else:
+            self._emit_tag_long(nr, typ, cls)
+
+    def _emit_tag_short(self, nr, typ, cls):  # type: (int, int, int) -> None
+        """Emit a short (< 31 bytes) tag."""
+        assert nr < 31
+        self._emit(bytes([nr | typ | cls]))
+
+    def _emit_tag_long(self, nr, typ, cls):  # type: (int, int, int) -> None
+        """Emit a long (>= 31 bytes) tag."""
+        head = bytes([typ | cls | 0x1f])
+        self._emit(head)
+        values = [(nr & 0x7f)]
+        nr >>= 7
+        while nr:
+            values.append((nr & 0x7f) | 0x80)
+            nr >>= 7
+        values.reverse()
+        for val in values:
+            self._emit(bytes([val]))
+
+    def _emit_length(self, length):  # type: (int) -> None
+        """Emit length octects."""
+        if length < 128:
+            self._emit_length_short(length)
+        else:
+            self._emit_length_long(length)
+
+    def _emit_length_short(self, length):  # type: (int) -> None
+        """Emit the short length form (< 128 octets)."""
+        assert length < 128
+        self._emit(bytes([length]))
+
+    def _emit_length_long(self, length):  # type: (int) -> None
+        """Emit the long length form (>= 128 octets)."""
+        values = []
+        while length:
+            values.append(length & 0xff)
+            length >>= 8
+        values.reverse()
+        # really for correctness as this should not happen anytime soon
+        assert len(values) < 127
+        head = bytes([0x80 | len(values)])
+        self._emit(head)
+        for val in values:
+            self._emit(bytes([val]))
+
+    def _emit(self, s):  # type: (bytes) -> None
+        """Emit raw bytes."""
+        assert isinstance(s, bytes)
+        self.m_stack[-1].append(s)
+
+    def _encode_value(self, cls, nr, value):  # type: (int, int, any) -> bytes
+        """Encode a value."""
+        if cls != Classes.Universal:
+            return value
+        if nr in (Numbers.Integer, Numbers.Enumerated):
+            return self._encode_integer(value)
+        if nr in (Numbers.OctetString, Numbers.PrintableString):
+            return self._encode_octet_string(value)
+        if nr == Numbers.BitString:
+            return self._encode_bit_string(value)
+        if nr == Numbers.Boolean:
+            return self._encode_boolean(value)
+        if nr == Numbers.Null:
+            return self._encode_null()
+        if nr == Numbers.ObjectIdentifier:
+            return self._encode_object_identifier(value)
+        return value
+
+    @staticmethod
+    def _encode_boolean(value):  # type: (bool) -> bytes
+        """Encode a boolean."""
+        return value and bytes(b'\xff') or bytes(b'\x00')
+
+    @staticmethod
+    def _encode_integer(value):  # type: (int) -> bytes
+        """Encode an integer."""
+        if value < 0:
+            value = -value
+            negative = True
+            limit = 0x80
+        else:
+            negative = False
+            limit = 0x7f
+        values = []
+        while value > limit:
+            values.append(value & 0xff)
+            value >>= 8
+        values.append(value & 0xff)
+        if negative:
+            # create two's complement
+            for i in range(len(values)):  # Invert bits
+                values[i] = 0xff - values[i]
+            for i in range(len(values)):  # Add 1
+                values[i] += 1
+                if values[i] <= 0xff:
+                    break
+                assert i != len(values) - 1
+                values[i] = 0x00
+        if negative and values[len(values) - 1] == 0x7f:  # Two's complement corner case
+            values.append(0xff)
+        values.reverse()
+        return bytes(values)
+
+    @staticmethod
+    def _encode_octet_string(value):  # type: (object) -> bytes
+        """Encode an octetstring."""
+        # Use the primitive encoding
+        assert isinstance(value, str) or isinstance(value, bytes)
+        if isinstance(value, str):
+            return value.encode('utf-8')
+        else:
+            return value
+
+    @staticmethod
+    def _encode_bit_string(value):  # type: (object) -> bytes
+        """Encode a bitstring. Assumes no unused bytes."""
+        # Use the primitive encoding
+        assert isinstance(value, bytes)
+        return b'\x00' + value
+
+    @staticmethod
+    def _encode_null():  # type: () -> bytes
+        """Encode a Null value."""
+        return bytes(b'')
+
+    _re_oid = re.compile(r'^[0-9]+(\.[0-9]+)+$')
+
+    def _encode_object_identifier(self, oid):  # type: (str) -> bytes
+        """Encode an object identifier."""
+        if not self._re_oid.match(oid):
+            raise Error('Illegal object identifier')
+        cmps = list(map(int, oid.split('.')))
+        if cmps[0] > 39 or cmps[1] > 39:
+            raise Error('Illegal object identifier')
+        cmps = [40 * cmps[0] + cmps[1]] + cmps[2:]
+        cmps.reverse()
+        result = []
+        for cmp_data in cmps:
+            result.append(cmp_data & 0x7f)
+            while cmp_data > 0x7f:
+                cmp_data >>= 7
+                result.append(0x80 | (cmp_data & 0x7f))
+        result.reverse()
+        return bytes(result)
 
 
 class Decoder(object):
@@ -219,20 +498,21 @@ class Decoder(object):
         assert not index > len(input_data)
         return index == len(input_data)
 
-    def decode(self, data, pvn=[]):
+    def decode(self, data):
         if data:
-            pvnumbers = pvn
             self.start(data)
         while not self.eof():
             tag = self.peek()
             if tag.typ == Types.Primitive:
                 tag, value = self.read()
-                pvn.append(value)
+                self._pvnumbers.append(value)
             elif tag.typ == Types.Constructed:
                 self.enter()
-                self.decode(None, pvn=pvnumbers)
+                self.decode(None)
                 self.leave()
         if data:
+            pvnumbers = self._pvnumbers[:]
+            self._pvnumbers = []
             return pvnumbers
 
     @staticmethod

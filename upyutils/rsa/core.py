@@ -24,6 +24,20 @@ import rsa.common
 from rsa._compat import is_integer
 
 
+def fast_pow(x, e, m):
+    X = x
+    E = e
+    Y = 1
+    while E > 0:
+        if E % 2 == 0:
+            X = (X * X) % m
+            E = E//2
+        else:
+            Y = (X * Y) % m
+            E = E - 1
+    return Y
+
+
 def assert_int(var, name):
     if is_integer(var):
         return
@@ -45,3 +59,14 @@ def encrypt_int(message, ekey, n):
         raise OverflowError("The message %i is too long for n=%i" % (message, n))
 
     return rsa.common.modular_pow(message, ekey, n)
+
+
+def decrypt_int(cyphertext, dkey, n):
+    """Decrypts a cypher text using the decryption key 'dkey', working modulo n"""
+
+    assert_int(cyphertext, 'cyphertext')
+    assert_int(dkey, 'dkey')
+    assert_int(n, 'n')
+
+    message = fast_pow(cyphertext, dkey, n)
+    return message

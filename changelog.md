@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.8] Unreleased Github Repo [develop]
 ## Added
 - `rsa_sign`, `rsa_verify` commands to sign file with device RSA key
-- `rsa` lib in `upyutils` to support RSA key loading and signatures
+- `rsa` lib in `upyutils` to support RSA key load, sign, verify, encrypt, decrypt,
+generation and export in PEM format
 - `gen_rsakey` added option `-rkey` to remove RSA private key from the host, so in combination with `-tfkey` option, the RSA private key will only be stored in the device.
+- `shasum.py` lib in `upyutils` to support hash SHA-256 check
+- `shasum` and `shasum_c` to compute hash SHA-256 of files and check shasum files.
 # Fix
 - `mpyx` command with multiple files
 - `rf_wrkey` now use RSA public key for password derivation

@@ -61,8 +61,8 @@ def firmwaretools_action(args, **kargs):
             print('File name required indicate with -f option.')
             see_help(args.m)
         else:
-            if args.f:
-                args.fre[0] = args.f
+            if args.f and not args.fre:
+                args.fre = [args.f]
             if args.fre:
                 for frfile in args.fre:
                     args.f = frfile

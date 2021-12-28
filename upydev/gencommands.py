@@ -12,9 +12,10 @@ AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
 KEY_N_ARGS = {'du': ['f', 's'], 'df': ['s'], 'netstat_conn': ['wp'],
               'apconfig': ['ap'], 'i2c_config': ['i2c'],
               'spi_config': ['spi'], 'set_ntptime': ['utc'], 'tree': ['f'],
-              'set_hostname': ['f'], 'set_localname': ['f']}
+              'set_hostname': ['f'], 'set_localname': ['f'],
+              'shasum_c': ['f'], 'shasum': ['f', 'fre']}
 
-VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc']
+VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc', 'fre']
 
 
 GENERAL_COMMANDS_HELP = """
@@ -55,7 +56,9 @@ GENERAL_COMMANDS_HELP = """
         - set_ntptime: to set rtc from server, (see -utc for time zone)
         - get_datetime: to get date and time (must be set first, see above commands)
         - set_hostname: to set hostname of the device for dhcp service
-        - set_localname: to set localname of the device for ble device gap/advertising name"""
+        - set_localname: to set localname of the device for ble device gap/advertising name
+        - shasum_c: to check shasum file,
+        - shasum: to comput hash SHA-256 of a device file"""
 
 
 def print_sizefile(file_name, filesize, tabs=0):
@@ -773,5 +776,40 @@ def gen_command(cmd, *args, **kargs):
                 print(e)
         else:
             print('Done!')
+        dev.disconnect()
+        return
+
+    # SHASUM_CHECK
+    elif cmd == 'shasum_c':
+        file_name = kargs.pop('f')
+        dev = Device(*args, **kargs)
+        print(f"Checking shasum file: {file_name}")
+        dev.wr_cmd(_CMDDICT_['SHASUM_CHECK'].format(file_name), follow=True)
+        if dev._traceback.decode() in dev.response:
+            try:
+                raise DeviceException(dev.response)
+            except Exception as e:
+                print(e)
+
+        dev.disconnect()
+        return
+
+    # SHASUM
+    elif cmd == 'shasum':
+        file_name = kargs.pop('f')
+        files_names = kargs.pop('fre')
+        dev = Device(*args, **kargs)
+        # print(f"Hash SHA-256 of file: {file_name}")
+        if not files_names:
+            files_names = [file_name]
+        for file in files_names:
+            dev.wr_cmd(_CMDDICT_['SHASUM'].format(file), follow=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+            else:
+                pass
         dev.disconnect()
         return

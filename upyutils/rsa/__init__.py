@@ -22,14 +22,14 @@ prevent repetitions, or other common security improvements. Use with care.
 
 """
 
-from rsa.key import PrivateKey
+from rsa.key import PrivateKey, PublicKey
 from rsa.pkcs1 import sign, sign_hash, compute_hash, \
-    DecryptionError, VerificationError
+    DecryptionError, VerificationError, verify, decrypt, encrypt
 
 __author__ = "Sybren Stuvel, Barry Mead and Yesudeep Mangalapilly"
 __date__ = "2018-09-16"
 __version__ = '4.0'
 
 __all__ = ['sign', 'compute_hash', 'sign_hash',
-           'PrivateKey',
+           'PrivateKey', 'PublicKey', 'verify', 'decrypt', 'encrypt',
            'DecryptionError', 'VerificationError']

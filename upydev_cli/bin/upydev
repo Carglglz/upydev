@@ -128,7 +128,8 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
                  'backup', 'rsync', 'make_sgroup', 'mksg', 'set_localname',
-                 'set_hostname', 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify']
+                 'set_hostname', 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify',
+                 'shasum', 'shasum_c']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -333,8 +334,9 @@ args = parser.parse_args()
 
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
                      'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
-                     'rsync', 'docs', 'udocs', 'mdocs', 'set_hostname', 'set_localname']
-multiple_args_fw = ['fwr', 'flash', 'mpyx']
+                     'rsync', 'docs', 'udocs', 'mdocs', 'set_hostname', 'set_localname',
+                     'shasum_c', 'shasum', 'mpyx']
+multiple_args_fw = ['fwr', 'flash']
 
 if len(args.m) == 1:
     args.m = args.m[0]
@@ -398,8 +400,6 @@ elif len(args.m) > 2:
         elif args.m == 'flash':
             args.f = rest_args[0]
             args.port = rest_args[1]
-        elif args.m == 'mpyx':
-            args.fre = rest_args
     elif args.m == 'rsa':
         rsa_mode, args.f, = rest_args[:2]
         args.m = f"{args.m}_{rsa_mode}"
@@ -446,7 +446,8 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'netstat_off', 'netstat_conn', 'netstat', 'ap_on',
                     'ap_off', 'apstat', 'apconfig', 'apscan', 'i2c_config',
                     'i2c_scan', 'spi_config', 'set_localtime', 'set_ntptime',
-                    'get_datetime', 'gc', 'set_hostname', 'set_localname']
+                    'get_datetime', 'gc', 'set_hostname', 'set_localname',
+                    'shasum_c', 'shasum']
 # WLAN COMMANDS
 
 WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
@@ -720,7 +721,7 @@ def handle_action(args, exit=True, device_name=None):
         from upydev.gencommands import gen_command
         gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
                     ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
-                    init=True, ssl=args.wss, auth=args.wss)
+                    init=True, ssl=args.wss, auth=args.wss, fre=args.fre)
 
     #############################################
     # WLAN UTILS COMMANDS

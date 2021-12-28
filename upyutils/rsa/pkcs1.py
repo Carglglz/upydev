@@ -32,7 +32,8 @@ except Exception:
         'SHA-256': hashlib.sha256,
     }
 
-from rsa import common, transform
+from rsa import common, transform, core
+import os
 
 # ASN.1 codes that describe the hash algorithm used.
 HASH_ASN1 = {
@@ -51,6 +52,49 @@ class DecryptionError(CryptoError):
 
 class VerificationError(CryptoError):
     """Raised when verification fails."""
+
+
+def _pad_for_encryption(message, target_length):
+    r"""Pads the message for encryption, returning the padded message.
+    :return: 00 02 RANDOM_DATA 00 MESSAGE
+    >>> block = _pad_for_encryption(b'hello', 16)
+    >>> len(block)
+    16
+    >>> block[0:2]
+    b'\x00\x02'
+    >>> block[-6:]
+    b'\x00hello'
+    """
+
+    max_msglength = target_length - 11
+    msglength = len(message)
+
+    if msglength > max_msglength:
+        raise OverflowError('%i bytes needed for message, but there is only'
+                            ' space for %i' % (msglength, max_msglength))
+
+    # Get random padding
+    padding = b''
+    padding_length = target_length - msglength - 3
+
+    # We remove 0-bytes, so we'll end up with less padding than we've asked for,
+    # so keep adding data until we're at the correct length.
+    while len(padding) < padding_length:
+        needed_bytes = padding_length - len(padding)
+
+        # Always read at least 8 bytes more than we need, and trim off the rest
+        # after removing the 0-bytes. This increases the chance of getting
+        # enough bytes, especially when needed_bytes is small
+        new_padding = os.urandom(needed_bytes + 5)
+        new_padding = new_padding.replace(b'\x00', b'')
+        padding = padding + new_padding[:needed_bytes]
+
+    assert len(padding) == padding_length
+
+    return b''.join([b'\x00\x02',
+                     padding,
+                     b'\x00',
+                     message])
 
 
 def _pad_for_signing(message, target_length):
@@ -123,6 +167,88 @@ def sign_hash(hash_value, priv_key, hash_method):
     return block
 
 
+def encrypt(message, pub_key):
+    """Encrypts the given message using PKCS#1 v1.5
+    :param message: the message to encrypt. Must be a byte string no longer than
+        ``k-11`` bytes, where ``k`` is the number of bytes needed to encode
+        the ``n`` component of the public key.
+    :param pub_key: the :py:class:`rsa.PublicKey` to encrypt with.
+    :raise OverflowError: when the message is too large to fit in the padded
+        block.
+    >>> from rsa import key, common
+    >>> (pub_key, priv_key) = key.newkeys(256)
+    >>> message = b'hello'
+    >>> crypto = encrypt(message, pub_key)
+    The crypto text should be just as long as the public key 'n' component:
+    >>> len(crypto) == common.byte_size(pub_key.n)
+    True
+    """
+
+    keylength = common.byte_size(pub_key.n)
+    padded = _pad_for_encryption(message, keylength)
+
+    payload = transform.bytes2int(padded)
+    encrypted = core.encrypt_int(payload, pub_key.e, pub_key.n)
+    block = transform.int2bytes(encrypted, keylength)
+
+    return block
+
+
+def decrypt(crypto, priv_key):
+    r"""Decrypts the given message using PKCS#1 v1.5
+    The decryption is considered 'failed' when the resulting cleartext doesn't
+    start with the bytes 00 02, or when the 00 byte between the padding and
+    the message cannot be found.
+    :param crypto: the crypto text as returned by :py:func:`rsa.encrypt`
+    :param priv_key: the :py:class:`rsa.PrivateKey` to decrypt with.
+    :raise DecryptionError: when the decryption fails. No details are given as
+        to why the code thinks the decryption fails, as this would leak
+        information about the private key.
+    >>> import rsa
+    >>> (pub_key, priv_key) = rsa.newkeys(256)
+    It works with strings:
+    >>> crypto = encrypt(b'hello', pub_key)
+    >>> decrypt(crypto, priv_key)
+    b'hello'
+    And with binary data:
+    >>> crypto = encrypt(b'\x00\x00\x00\x00\x01', pub_key)
+    >>> decrypt(crypto, priv_key)
+    b'\x00\x00\x00\x00\x01'
+    Altering the encrypted information will *likely* cause a
+    :py:class:`rsa.pkcs1.DecryptionError`. If you want to be *sure*, use
+    :py:func:`rsa.sign`.
+    .. warning::
+        Never display the stack trace of a
+        :py:class:`rsa.pkcs1.DecryptionError` exception. It shows where in the
+        code the exception occurred, and thus leaks information about the key.
+        It's only a tiny bit of information, but every bit makes cracking the
+        keys easier.
+    >>> crypto = encrypt(b'hello', pub_key)
+    >>> crypto = crypto[0:5] + b'X' + crypto[6:] # change a byte
+    >>> decrypt(crypto, priv_key)
+    Traceback (most recent call last):
+    ...
+    rsa.pkcs1.DecryptionError: Decryption failed
+    """
+
+    blocksize = common.byte_size(priv_key.n)
+    encrypted = transform.bytes2int(crypto)
+    decrypted = priv_key.blinded_decrypt(encrypted)
+    cleartext = transform.int2bytes(decrypted, blocksize)
+
+    # If we can't find the cleartext marker, decryption failed.
+    if cleartext[0:2] != b'\x00\x02':
+        raise DecryptionError('Decryption failed')
+
+    # Find the 00 separator between the padding and the message
+    try:
+        sep_idx = cleartext.index(b'\x00', 2)
+    except ValueError:
+        raise DecryptionError('Decryption failed')
+
+    return cleartext[sep_idx + 1:]
+
+
 def sign(message, priv_key, hash_method):
     """Signs the message with the private key.
 
@@ -143,6 +269,38 @@ def sign(message, priv_key, hash_method):
     print('Computing SHA-256 hash...')
     msg_hash = compute_hash(message, hash_method)
     return sign_hash(msg_hash, priv_key, hash_method)
+
+
+def verify(message, signature, pub_key):
+    """Verifies that the signature matches the message.
+    The hash method is detected automatically from the signature.
+    :param message: the signed message. Can be an 8-bit string or a file-like
+        object. If ``message`` has a ``read()`` method, it is assumed to be a
+        file-like object.
+    :param signature: the signature block, as created with :py:func:`rsa.sign`.
+    :param pub_key: the :py:class:`rsa.PublicKey` of the person signing the message.
+    :raise VerificationError: when the signature doesn't match the message.
+    :returns: the name of the used hash.
+    """
+
+    keylength = common.byte_size(pub_key.n)
+    encrypted = transform.bytes2int(signature)
+    decrypted = core.decrypt_int(encrypted, pub_key.e, pub_key.n)
+    clearsig = transform.int2bytes(decrypted, keylength)
+
+    # Get the hash method
+    method_name = _find_method_hash(clearsig)
+    message_hash = compute_hash(message, method_name)
+
+    # Reconstruct the expected padded hash
+    cleartext = HASH_ASN1[method_name] + message_hash
+    expected = _pad_for_signing(cleartext, keylength)
+
+    # Compare with the signed one
+    if expected != clearsig:
+        raise VerificationError('Verification failed')
+
+    return method_name
 
 
 def yield_fixedblocks(infile, blocksize):
@@ -194,5 +352,19 @@ def compute_hash(message, method_name):
     return hasher.digest()
 
 
-__all__ = ['sign',
+def _find_method_hash(clearsig):
+    """Finds the hash method.
+    :param clearsig: full padded ASN1 and hash.
+    :return: the used hash method.
+    :raise VerificationFailed: when the hash method cannot be found
+    """
+
+    for (hashname, asn1code) in HASH_ASN1.items():
+        if asn1code in clearsig:
+            return hashname
+
+    raise VerificationError('Verification failed')
+
+
+__all__ = ['encrypt', 'decrypt', 'sign', 'verify',
            'DecryptionError', 'VerificationError', 'CryptoError']

@@ -110,6 +110,9 @@ SET_HOSTNAME = "f=open('hostname.py','wb');f.write(b'{}');f.close();"
 
 SET_LOCALNAME = "f=open('localname.py','wb');f.write(b'{}');f.close();"
 
+SHASUM_CHECK = "from shasum import shasum_check;shasum_check('{}');gc.collect()"
+SHASUM = "from shasum import shasum;shasum('{}');gc.collect()"
+
 CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'MEM': MEM, 'OS_STAT': OS_STAT, 'FILE_STAT': FILE_STAT,
             'CHECK_DIR': CHECK_DIR, 'STAT_FS': STAT_FS,
@@ -126,6 +129,8 @@ CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'WLAN_CONN': WLAN_CONN, 'WLAN_AP_CONN': WLAN_AP_CONN,
             'SD_ENABLE': SD_ENABLE, 'SD_INIT': SD_INIT,
             'SD_DEINIT': SD_DEINIT, 'SD_AUTO': SD_AUTO, 'CHECK_UPYSH2': CHECK_UPYSH2,
-            'SET_HOSTNAME': SET_HOSTNAME, 'SET_LOCALNAME': SET_LOCALNAME}
+            'SET_HOSTNAME': SET_HOSTNAME, 'SET_LOCALNAME': SET_LOCALNAME,
+            'SHASUM_CHECK': SHASUM_CHECK,
+            'SHASUM': SHASUM}
 
 _CMDDICT_ = {k: 'import gc;' + v for k, v in CMDDICT_.items()}

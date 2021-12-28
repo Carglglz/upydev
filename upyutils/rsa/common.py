@@ -169,6 +169,8 @@ def inverse(x, n):
 # micropython 1.10 doesn't have modular pow()
 # this is a straightforward implementation of the right-to-left binary method
 # see https://en.wikipedia.org/wiki/Modular_exponentiation#Right-to-left_binary_method
+
+
 def modular_pow(base, exponent, modulus):
     if modulus == 1:
         return 0
