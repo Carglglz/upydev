@@ -48,6 +48,12 @@ class Classes:
 Tag = collections.namedtuple('Tag', 'nr typ cls')
 
 
+def bit_length(n):
+    s = bin(n)
+    s = s.lstrip('-0b')
+    return len(s)
+
+
 class Error(Exception):
     """ASN.11 encoding or decoding error."""
 
@@ -260,32 +266,8 @@ class Encoder(object):
     @staticmethod
     def _encode_integer(value):  # type: (int) -> bytes
         """Encode an integer."""
-        if value < 0:
-            value = -value
-            negative = True
-            limit = 0x80
-        else:
-            negative = False
-            limit = 0x7f
-        values = []
-        while value > limit:
-            values.append(value & 0xff)
-            value >>= 8
-        values.append(value & 0xff)
-        if negative:
-            # create two's complement
-            for i in range(len(values)):  # Invert bits
-                values[i] = 0xff - values[i]
-            for i in range(len(values)):  # Add 1
-                values[i] += 1
-                if values[i] <= 0xff:
-                    break
-                assert i != len(values) - 1
-                values[i] = 0x00
-        if negative and values[len(values) - 1] == 0x7f:  # Two's complement corner case
-            values.append(0xff)
-        values.reverse()
-        return bytes(values)
+        byte_length = (8 + bit_length(value + (value < 0))) // 8
+        return value.to_bytes(byte_length, 'big')
 
     @staticmethod
     def _encode_octet_string(value):  # type: (object) -> bytes
