@@ -349,11 +349,11 @@ def firmwaretools_action(args, **kargs):
                         print('Operation cancelled')
 
                 elif 'pyb' in args.f:
+                    dev = Device(args.t, args.p, init=True, autodetect=True,
+                                 ssl=args.wss, auth=args.wss)
                     if args.i:
                         print('Checking firmware and device platform match')
                         try:
-                            dev = Device(args.t, args.p, init=True, autodetect=True,
-                                         ssl=args.wss, auth=args.wss)
                             machine = dev.cmd('import os;os.uname().machine', silent=True,
                                               rtn_resp=True)
                             dev.disconnect()

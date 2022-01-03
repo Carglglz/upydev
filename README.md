@@ -6,7 +6,7 @@
 
 [![PyPI version](https://badge.fury.io/py/upydev.svg)](https://badge.fury.io/py/upydev)[![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
 
-### Command line tool for wireless MicroPython devices
+### Command line tool for MicroPython devices
 
 **uPydev** is an acronym of '**MicroPy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running MicroPython. It is intended to be cross-platform and
 connection agnostic (Serial, WiFi and Bluetooth Low Energy).

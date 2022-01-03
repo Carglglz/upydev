@@ -326,9 +326,26 @@ def refresh_wrkey(args, device):
                              id=unique_id)
         print('Generating random password from RSA key...')
         new_p, new_token = upy_keygen(pvkey)
-        dev.cmd("from upysecrets import load_key, upy_keygen")
-        dev.cmd("rk = load_key()")
-        dev.cmd("newp = upy_keygen(rk, {})".format(new_token))
+        # Encrypt password and decrypt on device
+        is_rsa = dev.cmd("import os; 'rsa' in os.listdir('/lib')", silent=True,
+                         rtn_resp=True)
+        if is_rsa:
+            dev_pubkey = serialization.load_pem_public_key(pvkey)
+            dev_pvkey = f'upy_pv_rsa{unique_id}.key'
+            dev.cmd(
+                f"from rsa.rsautil import RSAPrivateKey; pv = RSAPrivateKey('{dev_pvkey}')")
+            enc_new_p = dev_pubkey.encrypt(new_p.encode(), padding.PKCS1v15())
+            dev.cmd("new_pass = b''")
+            # Send password
+            for i in range(0, len(enc_new_p), 32):
+                dev.cmd(f"new_pass += {enc_new_p[i:i+32]}")
+            # Save password
+            dev.cmd("pv._decrypt_passwd(new_pass)")
+        else:
+            dev.cmd("from upysecrets import load_key, upy_keygen")
+            dev.cmd("rk = load_key()")
+            dev.cmd("newp = upy_keygen(rk, {})".format(new_token))
+
         print('New random password generated!')
         dev.reset(reconnect=False)
     else:
@@ -439,6 +456,7 @@ def keygen_action(args, **kargs):
     # GEN_RSAKEY
 
     if args.m == 'gen_rsakey':
+        # TODO: gen rsa key in device
         print('Generating RSA key for {}...'.format(dev_name))
         rsa_key = get_rsa_key(args)
         if rsa_key:
@@ -470,3 +488,11 @@ def keygen_action(args, **kargs):
     elif args.m == 'rsa_verify':
         rsa_verify(args, dev_name)
         sys.exit()
+
+    # TODO: RSA key exchange
+    #    -->: Host keypair (unique)
+    #    -->: Device keypair (unique)
+    #  HOST send Public Key
+    #  DEVICE send Public Key
+    # Authenticated message sending --> Encrypt and sign
+    # Authenticated message receiving --> Verify and decrypt

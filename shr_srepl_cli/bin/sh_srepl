@@ -2190,7 +2190,7 @@ def custom_sh_cmd(cmd_inp):
 
         else:
             # send_custom_sh_cmd('from upysh2 import tree;tree()', sh_silent=False)
-            shr_cp.sh_repl('from upysh2 import tree;tree();gc.collect()', follow=True)
+            shr_cp.sh_repl('from upysh2 import tree; tree; gc.collect()', follow=True)
         shr_cp.flush_conn()
 
     if cmd_inp == 'l_ifconfig':

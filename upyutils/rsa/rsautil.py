@@ -1,4 +1,4 @@
-from rsa import PrivateKey, PublicKey, pkcs1,
+from rsa import PrivateKey, PublicKey, pkcs1
 
 
 class RSAPrivateKey:
@@ -18,6 +18,13 @@ class RSAPrivateKey:
     def decrypt(self, message):
         dec = pkcs1.decrypt(message, self.key)
         return dec
+
+    def _decrypt_passwd(self, passwd, save=True):
+        _passwd = self.decrypt(passwd)
+        if save:
+            with open('webrepl_cfg.py', 'wb') as wr_config:
+                wr_config.write(bytes("PASS = '{}'\n".format(_passwd.decode()),
+                                      'utf-8'))
 
 
 class RSAPublicKey:

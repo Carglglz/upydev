@@ -4154,7 +4154,7 @@ def send_KBI(event):
             if encrypted_flag['sec']:
                 ssl_cp.ssl_repl('\x03')  # KBI
             else:
-                espdev.wr_cmd('C')
+                espdev.wr_cmd('\x03', follow=True)
             paste_flag['p'] = False
             if not shell_mode['S']:
                 prompt['p'] = d_prompt
@@ -4250,7 +4250,7 @@ def paste_mode_exit(event):
                     espdev.wr_cmd("\x04", follow=True)
                 except KeyboardInterrupt:
                     time.sleep(0.2)
-                    espdev.wr_cmd('\x03')  # KBI
+                    espdev.wr_cmd('\x03', follow=True)  # KBI
                     time.sleep(0.2)
                     for i in range(1):
                         espdev.wr_cmd('\x0d', silent=True)
