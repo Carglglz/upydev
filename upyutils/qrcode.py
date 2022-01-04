@@ -1,6 +1,4 @@
 import sys
-import gc
-
 
 
 class QRcode:
@@ -23,8 +21,6 @@ class QRcode:
                     sys.stdout.write("\x1b[1;47m  \x1b[40m")
             sys.stdout.write("\x1b[1;47m  \x1b[0m\n")
         sys.stdout.write("\x1b[1;47m" + (" " * (modcount * 2 + 4)) + "\x1b[0m\n")
-
-
 
     def get(self, x, y):
         return self.qr.get(x, y)

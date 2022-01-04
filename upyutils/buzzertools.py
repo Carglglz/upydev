@@ -147,9 +147,9 @@ class BUZZER:
                                   time.localtime()[5]))
 
     def buzz_beep(self, sleeptime, ntimes, ntimespaced, fq):
-        self.buzz.freq(fq)
         for i in range(ntimes):
             self.buzz.init()
+            self.buzz.freq(fq)
             time.sleep_ms(sleeptime)
             self.buzz.deinit()
             time.sleep_ms(ntimespaced)
