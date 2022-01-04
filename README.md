@@ -101,6 +101,22 @@ $ upydev config -t 192.168.1.40 -p mypass -g
 $ upydev config -t 192.168.1.40 -p mypass -gg -@ mydevice
 ```
 
+- [Optional]
+Finally define a function in ``~/.bash_rc`` or ``~/.profile``
+
+```bash
+function mydevice() { upydev "$@" -@ mydevice; }
+```
+
+Now ``mydevice`` will accept any args and pass them to upydev, e.g.
+
+```bash
+$ mydevice info
+Device: mydevice
+WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
+Firmware: MicroPython v1.17-290-g802ef271b-dirty on 2022-01-04; ESP32 module with ESP32
+(MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+```
 
 Once the device is configured see next section or read  [Usage documentation](https://upydev.readthedocs.io/en/latest/usage.html) to check which modes and tools are available.
 

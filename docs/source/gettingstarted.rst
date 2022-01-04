@@ -131,6 +131,26 @@ Or to get more information if the device is online
 
 
 
+- [Optional]
+
+Finally define a function in ``~/.bash_rc`` or ``~/.profile``
+
+  .. code-block:: console
+
+    function mydevice() { upydev "$@" -@ mydevice; }
+
+
+Now ``mydevice`` will accept any args and pass them to upydev, e.g.
+
+  .. code-block:: console
+
+    $ mydevice info
+    Device: mydevice
+    WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
+    Firmware: MicroPython v1.17-290-g802ef271b-dirty on 2022-01-04; ESP32 module with ESP32
+    (MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+
+
 Once the device is configured see :doc:`usage` documentation to check which modes and tools are available.
 
 Or if you are working with more than one device continue with the following section to create a group configuration.
