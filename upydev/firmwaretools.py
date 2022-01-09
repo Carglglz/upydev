@@ -1,6 +1,8 @@
 from upydevice import Device
 import sys
 from upydev.helpinfo import see_help
+from upydev.otatool import OTAServer
+from upydev.otabletool import OTABleController, dfufy_file
 from upydevice import check_device_type
 import os
 from datetime import datetime, timedelta
@@ -25,6 +27,9 @@ FIRMWARE_HELP = """
 
         - flash: to flash a firmware file to the upydevice, a serial port must be indicated
                     to flash do: "upydev flash -port [serial port] -f [firmware file]"
+
+        - ota: to do an OTA firmware update. This needs ota.py or otable.py. Indicate file with -f
+                    option or as second arg.
 
         - mpyx : To froze a module/script , and save some RAM, it uses mpy-cross tool
                  (mpy-cross must be available in $PATH) e.g. $ upydev mpyx [FILE].py,
@@ -415,5 +420,76 @@ def firmwaretools_action(args, **kargs):
                             print(e)
                         print('Flashing firmware finished successfully, RESET the pyboard now.')
                         time.sleep(1)
+
+        sys.exit()
+
+    elif args.m == 'ota':
+        devname = kargs.get('device')
+        if not args.f:
+            print('Firmware file name required, indicate with -f option')
+            see_help(args.m)
+            sys.exit()
+        else:
+            dt = check_device_type(args.t)
+            if dt not in ['WebSocketDevice', 'BleDevice']:
+                print(
+                    'OTA not available, {} is NOT a OTA capable device'.format(devname))
+                sys.exit()
+
+            if 'esp32' in args.f:
+                dev = None
+                if dt == 'WebSocketDevice':
+                    if args.i:
+                        print('Checking firmware and device platform match')
+                        try:
+                            dev = Device(args.t, args.p, init=True, autodetect=True,
+                                         ssl=args.wss, auth=args.wss)
+                            platform = dev.dev_platform
+                            # dev.disconnect()
+                        except Exception as e:
+                            print(e)
+                            print('Device not reachable, connect the device and try again.')
+                            sys.exit()
+                        if platform in args.f:
+                            print(
+                                'Firmware {} and {} device platform [{}] match, starting OTA now...'.format(args.f, devname, platform))
+                        else:
+                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
+                                args.f, devname, platform))
+                            sys.exit()
+                    if not dev:
+                        try:
+                            dev = Device(args.t, args.p, init=True, autodetect=True,
+                                         ssl=args.wss, auth=args.wss)
+                            platform = dev.dev_platform
+                            # dev.disconnect()
+                        except Exception as e:
+                            print(e)
+                            print('Device not reachable, connect the device and try again.')
+                            sys.exit()
+                    OTA_server = OTAServer(dev, port=8014, firmware=args.f)
+                    OTA_server.start_ota()
+                    # print('Rebooting device...')
+                    time.sleep(1)
+                    dev.cmd_nb('import machine;machine.reset()', block_dev=False)
+                    time.sleep(2)
+                    dev.disconnect()
+                    # print('Done!')
+                elif dt == 'BleDevice':
+
+                    dev = OTABleController(args.t, init=True, packet_size=512,
+                                           debug=False)
+                    if dev.connected:
+                        # ASSERT DFU MODE
+                        assert 'Device Firmware Update Service' in dev.services_rsum, 'DFU Mode not available'
+                        assert 'DFU Control Point' in dev.services_rsum[
+                            'Device Firmware Update Service'], 'Missing DFU Control Point'
+                        assert 'DFU Packet' in dev.services_rsum['Device Firmware Update Service'], 'Missing DFU Packet'
+                        if args.f:
+                            assert args.f.endswith(
+                                '.bin'), 'Incorrect file format, create the proper file'
+                            ota_file = dfufy_file(args.f)
+                            dev.do_dfu(ota_file)
+                            os.remove(ota_file)
 
         sys.exit()

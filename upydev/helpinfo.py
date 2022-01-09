@@ -15,7 +15,7 @@ HELP_INFO_ARG = '''Mode/Tools:
     ACTIONS: put, get, fget, dsync, rsync, backup, install, update_upyutils
 
 > FIRMWARE: '$ upydev fw' to see help on firmware operations.
-    ACTIONS: fwr, flash, mpyx
+    ACTIONS: fwr, flash, ota, mpyx
 
 > KEYGEN: '$ upydev kg' to see help on keygen operations.
     ACTIONS: gen_rsakey, rf_wrkey, sslgen_key, rsa_sign, rsa_verify
