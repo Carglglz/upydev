@@ -19,6 +19,7 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 * Command line Autocompletion
 * File IO operations (upload, download one or multiple files, recursively sync directories...)
 * SHELL-REPL modes: Serial, WiFi (SSL/WebREPL), BLE
+* OTA Firmware updates WiFi, BLE (esp32)
 * Custom commands for debugging, testing and prototyping.
 * Group mode to operate with multiple devices
 ------

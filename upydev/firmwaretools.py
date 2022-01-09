@@ -29,7 +29,7 @@ FIRMWARE_HELP = """
                     to flash do: "upydev flash -port [serial port] -f [firmware file]"
 
         - ota: to do an OTA firmware update. This needs ota.py or otable.py. Indicate file with -f
-                    option or as second arg.
+                    option or as second arg. Use -sec option for OTA over TLS.
 
         - mpyx : To froze a module/script , and save some RAM, it uses mpy-cross tool
                  (mpy-cross must be available in $PATH) e.g. $ upydev mpyx [FILE].py,

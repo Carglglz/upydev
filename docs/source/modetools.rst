@@ -140,7 +140,7 @@ File IO operations
 Firmware
 --------
 
-    ACTIONS: ``fwr``, ``flash``, ``mpyx``
+    ACTIONS: ``fwr``, ``flash``, ``ota``, ``mpyx``
 
 
     - fwr:
@@ -155,6 +155,10 @@ Firmware
         e.g. ``upydev flash [firmware_file].bin``, ``upydev flash -f [firmware file] -@ myserialdevice``
         or with serial port: ``upydev flash -port [serial port] -f [firmware file]``
         Use ``-i``, flag to check device platform and firmware match (If using official firmware releases.)
+
+    - ota:
+        To do an OTA firmware update. This needs ``ota.py`` or ``otable.py``. Indicate file with ``-f``
+        option or as second arg. Use ``-sec`` option for OTA over TLS.
 
     - mpyx:
         To froze a module/script , and save some RAM, it uses mpy-cross tool (mpy-cross must be available in $PATH)
@@ -379,7 +383,7 @@ Group Mode
     To target specific devices within a group add ``-devs`` option as ``-devs [DEV NAME] [DEV NAME] ...``
     or use ``-@ [DEV NAME] [DEV NAME] ...`` which has autocompletion on tab and accepts group names, \* wildcards or brace expansion.
 
-    e.g. ``$ upydev check -@ esp\*``, ``$ upydev check -@ esp{1..3}`` 
+    e.g. ``$ upydev check -@ esp\*``, ``$ upydev check -@ esp{1..3}``
 
 .. note::
     *upydev will use local working directory  group configuration unless it does
