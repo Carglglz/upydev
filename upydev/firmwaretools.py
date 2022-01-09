@@ -467,7 +467,8 @@ def firmwaretools_action(args, **kargs):
                             print(e)
                             print('Device not reachable, connect the device and try again.')
                             sys.exit()
-                    OTA_server = OTAServer(dev, port=8014, firmware=args.f)
+                    OTA_server = OTAServer(
+                        dev, port=8014, firmware=args.f, tls=args.sec)
                     OTA_server.start_ota()
                     # print('Rebooting device...')
                     time.sleep(1)

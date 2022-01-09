@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - `ota` command to do OTA Firmware updates (esp32). This needs `ota.py` for network (LAN/WiFi) or `otable.py` for BLE. (`upyutils` directory) and an `application.bin` file, e.g. `micropython.bin` in `build-GENERIC_OTA`.
 Firmware file indicated with `-f` option or as second arg.
+- `ota` with `-sec` option to do OTA over TLS. (This needs `kg ssl` first).
 - `rsa_sign`, `rsa_verify` commands to sign file with device RSA key
 - `rsa` lib in `upyutils` to support RSA key load, sign, verify, encrypt, decrypt,
 generation and export in PEM format

@@ -6,6 +6,9 @@ import time
 import sys
 from datetime import timedelta
 import select
+import ssl
+import getpass
+from upydev import __path__ as _PATH
 
 BLOCKLEN = 4096
 
@@ -39,10 +42,10 @@ def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l,
 
 class OTAServer:
     """
-    Socket server simple class
+    OTA Server Class
     """
 
-    def __init__(self, dev, port, firmware, buff=BLOCKLEN):
+    def __init__(self, dev, port, firmware, buff=BLOCKLEN, tls=False):
 
         try:
             self.host = self.find_localip()
@@ -57,6 +60,29 @@ class OTAServer:
         self.buff = bytearray(buff)
         self.conn = None
         self.addr_client = None
+        self._use_tls = tls
+        if tls:
+            self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
+            id_bytes = self.dev.wr_cmd("from machine import unique_id; unique_id()",
+                                       silent=True, rtn_resp=True)
+            dev_id = hexlify(id_bytes).decode()
+            self.key = os.path.join(_PATH[0], f'SSL_key{dev_id}.pem')
+            self.cert = os.path.join(_PATH[0], f'SSL_certificate{dev_id}.pem')
+            while True:
+                try:
+                    my_p = getpass.getpass(
+                        prompt=f"Enter passphrase for key '{self.key.split('/')[-1]}':",
+                        stream=None)
+                    self.context.load_cert_chain(keyfile=self.key,
+                                                 certfile=self.cert,
+                                                 password=my_p)
+                    break
+                except ssl.SSLError:
+                    # print(e)
+                    print('Passphrase incorrect, try again...')
+            self.context.verify_mode = ssl.CERT_REQUIRED
+            self.context.load_verify_locations(cafile=self.cert)
         self._fw_file = firmware
         with open(firmware, 'rb') as fwr:
             self.firmware = fwr.read()
@@ -77,11 +103,16 @@ class OTAServer:
         self.serv_soc.bind((self.host, self.port))
         self.serv_soc.listen(1)
         print('OTA Server listening...')
+        if self._use_tls:
+            print('OTA TLS enabled...')
         self.dev.wr_cmd('from ota import OTA')
-        self.dev.cmd_nb(f'mOTA = OTA("{self.host}","{self.port}", "{self.check_sha}")',
+        self.dev.cmd_nb(f'mOTA = OTA("{self.host}","{self.port}", "{self.check_sha}", {self._use_tls})',
                         block_dev=False)
         self.conn, self.addr_client = self.serv_soc.accept()
         print('Connection received...')
+        if self._use_tls:
+            self.conn = self.context.wrap_socket(self.conn, server_side=True)
+            print('Connection TLS enabled...')
         # print(self.addr_client)
         self.conn.settimeout(2)
         print('Starting OTA Firmware update...')

@@ -5,6 +5,9 @@ import binascii
 import socket
 import gc
 import time
+from machine import unique_id
+import ssl
+
 
 BLOCKLEN = const(4096)  # data bytes in a flash block
 
@@ -15,12 +18,20 @@ BLOCKLEN = const(4096)  # data bytes in a flash block
 
 
 class OTA:
-    def __init__(self, host, port, check_sha):
+    def __init__(self, host, port, check_sha, tls=False):
         self.part = Partition(Partition.RUNNING).get_next_update()
         self.sha = hashlib.sha256()
         self.block = 0
         self.buf = bytearray(BLOCKLEN)
         self.buflen = 0
+        self._key = f'SSL_key{binascii.hexlify(unique_id()).decode()}.der'
+        self._cert = f'SSL_certificate{binascii.hexlify(unique_id()).decode()}.der'
+        self.tls = tls
+        if tls:
+            with open(self._key, 'rb') as keyfile:
+                self.key = keyfile.read()
+            with open(self._cert, 'rb') as certfile:
+                self.cert = certfile.read()
         self.cli_soc = self.connect(host, port)
         self.check_sha = check_sha
         self._total_blocks = 0
@@ -31,6 +42,8 @@ class OTA:
         cli_soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         soc_addr = socket.getaddrinfo(host, port)[0][-1]
         cli_soc.connect(soc_addr)
+        if self.tls:
+            cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert)
         return cli_soc
 
     # handle processes one message with a chunk of data in msg. The sequence number seq needs
@@ -41,25 +54,32 @@ class OTA:
         # final_file = b'
         self._total_blocks = blocks
         time.sleep(1)
-        self.cli_soc.settimeout(2)
+        if self.tls:
+            self.cli_soc.setblocking(False)
+        else:
+            self.cli_soc.settimeout(2)
         while True:
             try:
-                self.buf = self.cli_soc.recv(BLOCKLEN)  # 2 KB
+                if self.tls:
+                    self.buf = self.cli_soc.read(BLOCKLEN)
+                else:
+                    self.buf = self.cli_soc.recv(BLOCKLEN)  # 2 KB
                 if self.buf != b'':
                     if len(self.buf) < BLOCKLEN:
-                        if self.block < self._total_blocks - 1:
-                            while len(self.buf) < BLOCKLEN:
-                                self.buf += self.cli_soc.recv(BLOCKLEN - len(self.buf))
+                        if self.tls:
+                            if self.block < self._total_blocks - 1:
+                                while len(self.buf) < BLOCKLEN:
+                                    self.buf += self.cli_soc.read(
+                                        BLOCKLEN - len(self.buf))
+                        else:
+                            if self.block < self._total_blocks - 1:
+                                while len(self.buf) < BLOCKLEN:
+                                    self.buf += self.cli_soc.recv(
+                                        BLOCKLEN - len(self.buf))
                     self.buflen = len(self.buf)
                     self.sha.update(self.buf)
                     if self.buflen == BLOCKLEN:
                         self.part.writeblocks(self.block, self.buf)
-                    # else:
-                    #     if self.bock == self._total_blocks - 1:
-                    #         is_last = True
-                    #         for i in range(BLOCKLEN - self.buflen):
-                    #             self.buf += b'\xff'  # erased flash is ff
-                    #         self.part.writeblocks(self.block, self.buf)
                     if debug:
                         print(f"BLOCK # {self.block}; LEN = {self.buflen}", end='\r')
                     self.block += 1
