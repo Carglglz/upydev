@@ -317,22 +317,32 @@ def wsfileio(args, file, upyfile, devname, dev=None):
     websec = args.wss
     multiple_files = args.fre
     source = args.s
+    if ":" in args.t:
+        host, port = args.t.split(":")
+        port = int(port)
+    else:
+        host = args.t
+        port = 8266
 
     if op == 'get':
         source = ''
         if not websec:
-            host, port, src_file = args.t, 8266, source + upyfile
+            host, port, src_file = host, port, source + upyfile
         else:
-            host, port, src_file = args.t, 8833, source + upyfile
+            if port == 8266:
+                port = 8833
+            host, port, src_file = host, port, source + upyfile
         dst_file = '.'
         if os.path.isdir(dst_file):
             basename = src_file.rsplit("/", 1)[-1]
             dst_file += "/" + basename
     elif op == 'put':
         if not websec:
-            host, port, dst_file = args.t, 8266, source + upyfile
+            host, port, dst_file = host, port, source + upyfile
         else:
-            host, port, dst_file = args.t, 8833, source + upyfile
+            if port == 8266:
+                port = 8833
+            host, port, dst_file = host, port, source + upyfile
         src_file = file
         if dst_file[-1] == "/":
             basename = src_file.rsplit("/", 1)[-1]

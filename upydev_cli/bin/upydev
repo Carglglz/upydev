@@ -510,6 +510,8 @@ def address_entry_point(entry_point, group_file=''):
         if '.' in dev_address and dev_address.count('.') == 3:
             # check IP
             try:
+                if ':' in dev_address:
+                    dev_address = dev_address.split(':')[0]
                 ip_address(dev_address)
                 dev_ip = devices[entry_point][0]
                 dev_pass = devices[entry_point][1]

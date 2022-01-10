@@ -137,26 +137,26 @@ def ssl_wrepl(args, device):
 
 
 def sh_srepl(args, device):
-        if args.port:
-            args.t = args.port
-        if args.b:
-            args.p = args.b
-        if device is not None:
-            sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r -dev {}'.format(
-                args.p, args.t, device)
-        else:
-            sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r'.format(args.p, args.t)
-        sh_srepl_cmd = shlex.split(sh_srepl_cmd_str)
+    if args.port:
+        args.t = args.port
+    if args.b:
+        args.p = args.b
+    if device is not None:
+        sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r -dev {}'.format(
+            args.p, args.t, device)
+    else:
+        sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r'.format(args.p, args.t)
+    sh_srepl_cmd = shlex.split(sh_srepl_cmd_str)
 
-        old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        def preexec_function(action=old_action):
-            signal.signal(signal.SIGINT, action)
+    def preexec_function(action=old_action):
+        signal.signal(signal.SIGINT, action)
 
-        try:
-            sh_srepl = subprocess.call(sh_srepl_cmd, preexec_fn=preexec_function)
-        except KeyboardInterrupt:
-            pass
+    try:
+        sh_srepl = subprocess.call(sh_srepl_cmd, preexec_fn=preexec_function)
+    except KeyboardInterrupt:
+        pass
 
 
 #############################################

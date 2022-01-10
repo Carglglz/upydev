@@ -13,6 +13,7 @@
 # https://github.com/Hermann-SW/webrepl
 #
 
+from time import sleep
 import sys
 import websocket
 from prompt_toolkit import PromptSession
@@ -172,7 +173,8 @@ def enterpress(event):
             # ws.send(event.app.current_buffer.document.text)
             # event.app.current_buffer.reset()
             if event.app.current_buffer.document.text != '':
-                event.app.current_buffer.history.append_string(event.app.current_buffer.document.text)
+                event.app.current_buffer.history.append_string(
+                    event.app.current_buffer.document.text)
             ws.send(event.app.current_buffer.document.text)
             event.app.current_buffer.reset()
         ws.send('\x0d')
@@ -341,6 +343,7 @@ def shif_tab(event):
     else:
         event.app.current_buffer.delete_before_cursor(4)
 
+
 # PROMPT SESSION
 session_p = PromptSession()
 
@@ -348,7 +351,6 @@ try:
     import thread
 except ImportError:
     import _thread as thread
-from time import sleep
 
 try:                   # from https://stackoverflow.com/a/7321970
     input = raw_input  # Fix Python 2.x.
@@ -551,13 +553,13 @@ def on_open(ws):
                 else:
                     if ws.sock and ws.sock.connected:
                         try:
-                                # START TEXT (Micropython header info)
-                                inp += '\x02'
-                                ws.send(inp)
-                                if prompt == "" and not(raw_mode) and not(injected):
-                                    # inp += '\x02'
-                                    injected = True
-                                    ws.send('\x0d')  # ENTER
+                            # START TEXT (Micropython header info)
+                            inp += '\x02'
+                            ws.send(inp)
+                            if prompt == "" and not(raw_mode) and not(injected):
+                                # inp += '\x02'
+                                injected = True
+                                ws.send('\x0d')  # ENTER
                         except TypeError as e:
                             pass
                     else:
@@ -571,15 +573,22 @@ def on_open(ws):
 
 if __name__ == "__main__":
     websocket.enableTrace(False)
+    dev_ip = sys.argv[1]
+    port = 8266
+    if ':' in dev_ip:
+        dev_ip, port = dev_ip.split(':')
+        port = int(port)
     if websec:
-        ws = websocket.WebSocketApp("wss://"+sys.argv[1]+":8833",
+        if port == 8266:
+            port = 8833
+        ws = websocket.WebSocketApp(f"wss://{dev_ip}:{port}",
                                     on_message=on_message,
                                     on_error=on_error,
                                     on_close=on_close)
         ws.on_open = on_open
         ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE, "check_hostname": False})
     else:
-        ws = websocket.WebSocketApp("ws://"+sys.argv[1]+":8266",
+        ws = websocket.WebSocketApp(f"ws://{dev_ip}:{port}",
                                     on_message=on_message,
                                     on_error=on_error,
                                     on_close=on_close)

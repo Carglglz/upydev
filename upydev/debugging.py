@@ -148,6 +148,8 @@ def stop_by_pid(raw='ps ax', proc_name='upydev log'):  # upydev log, web_repl_cm
 
 
 def ping(ip):
+    if ':' in ip:
+        ip, _ = ip.split(':')
     ping_cmd_str = 'ping {}'.format(ip)
     ping_cmd = shlex.split(ping_cmd_str)
     try:
@@ -221,6 +223,8 @@ def timeit_script(args):
 
 
 def ping_diagnose(ip, rep_file=None):
+    if ':' in ip:
+        ip, _ = ip.split(':')
     ping_cmd_str = 'ping -c 5 {}'.format(ip)
     ping_cmd = shlex.split(ping_cmd_str)
     timeouts = 0
