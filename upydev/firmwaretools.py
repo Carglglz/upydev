@@ -424,6 +424,9 @@ def firmwaretools_action(args, **kargs):
         sys.exit()
 
     elif args.m == 'ota':
+        OFFSET_BOOTLOADER_DEFAULT = 0x1000
+        OFFSET_APPLICATION_DEFAULT = 0x10000
+        MICROPYTHON_BIN_OFFSET = OFFSET_APPLICATION_DEFAULT - OFFSET_BOOTLOADER_DEFAULT
         devname = kargs.get('device')
         if not args.f:
             print('Firmware file name required, indicate with -f option')
@@ -438,6 +441,15 @@ def firmwaretools_action(args, **kargs):
 
             if 'esp32' in args.f:
                 dev = None
+                # Extract micropython.bin from firmware.bin
+                with open(args.f, 'rb') as fw:
+                    offset = fw.read(MICROPYTHON_BIN_OFFSET)
+                    app = fw.read()
+                with open(f"ota-{args.f}", 'wb') as fw_app:
+                    fw_app.write(app)
+
+                args.f = f"ota-{args.f}"
+
                 if dt == 'WebSocketDevice':
                     if args.i:
                         print('Checking firmware and device platform match')
