@@ -103,7 +103,12 @@ $ upydev config -t 192.168.1.40 -p mypass -gg -@ mydevice
 ```
 
 - [Optional]
-Finally define a function in ``~/.bash_rc`` or ``~/.profile``
+Finally use `register` command to
+define a function in ``~/.bashrc`` or ``~/.profile``
+
+```bash
+$ upydev register -@ mydevice
+````
 
 ```bash
 function mydevice() { upydev "$@" -@ mydevice; }

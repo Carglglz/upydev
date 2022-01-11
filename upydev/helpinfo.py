@@ -9,7 +9,7 @@ UPYDEV_PATH = upydev.__path__[0]
 
 HELP_INFO_ARG = '''Mode/Tools:
 > DEVICE MANAGEMENT: '$ upydev dm' to see help on device management.
-    ACTIONS : config, check, set, make_group, mg_group, see, gg
+    ACTIONS : config, check, set, register, make_group, mg_group, see, gg
 
 > FILEIO: '$ upydev fio' to see help on file input/ouput operations.
     ACTIONS: put, get, fget, dsync, rsync, backup, install, update_upyutils

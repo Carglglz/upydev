@@ -22,6 +22,9 @@ DEVICE_MANAGEMENT_HELP = """
 
     - set: to set current device configuration from a device saved in the global group with -@ entry point
 
+    - register: to register a device name as a bash function so it can called from the command line and pass
+                any args to upydev. This adds the function in ~/.profile or ~/.brashrc
+
     - make_group: to make a group of devices to send commands to. Use -f for the name
                   of the group and -devs option to indicate a name, ip and the
                   password of each board. (To store the group settings globally use -g option)
@@ -277,6 +280,62 @@ def devicemanagement_action(args, **kargs):
             print('{} {} settings saved in working directory!'.format(dt, upydev_name))
         sys.exit()
 
+    # REGISTER
+    elif args.m == 'register':
+        filename = ''
+        if '.profile' in os.listdir(os.environ['HOME']):
+            filename = os.path.join(os.environ['HOME'], '.profile')
+        elif '.bashrc' in os.listdir(os.environ['HOME']):
+            filename = os.path.join(os.environ['HOME'], '.brashrc')
+        if vars(args)['@']:
+            space = ''
+            if args.f:
+                args.fre = [args.f]
+            if not args.fre:
+                for dev in vars(args)['@']:
+                    try:
+                        print('{}Registering Device: {} ...'.format(space, dev))
+                        with open(filename, 'a') as filereg:
+                            filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
+                            sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
+                            filereg.write(f'function {dev}() {sc}\n')
+                        print('Device: {} registered'.format(dev))
+
+                    except Exception as e:
+                        print(e)
+                    space = '\n'
+            else:
+                for psname, dev in dict(zip(args.fre, vars(args)['@'])).items():
+                    try:
+                        print('{}Registering Device: {} ...'.format(space, dev))
+                        with open(filename, 'a') as filereg:
+                            filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
+                            sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
+                            filereg.write(f'function {psname}() {sc}\n')
+                        print(f'Device: {dev} registered as {psname}')
+
+                    except Exception as e:
+                        print(e)
+                    space = '\n'
+        else:
+            if args.f:
+                psname = args.f
+            else:
+                psname = _dev_name
+            print('Registering Device: {} ...'.format(_dev_name))
+            with open(filename, 'a') as filereg:
+                filereg.write(f'\n#UPYDEV DEVICE {_dev_name}\n')
+                sc = '{ ' + f'upydev "$@" -@ {_dev_name}; ' + '}'
+                filereg.write(f'function {psname}() {sc}\n')
+            if args.f:
+                print(f'Device: {_dev_name} registered as {args.f}')
+            else:
+                print(f'Device: {_dev_name} registered')
+        print(
+            f'Reload {os.path.split(filename)[-1]} "$ source {os.path.split(filename)[-1]}"\
+ or open a new terminal to apply the new command')
+        sys.exit()
+
     # MAKE_GROUP
     elif args.m == 'make_group':
         if not args.f:
@@ -411,5 +470,4 @@ def devicemanagement_action(args, **kargs):
         else:
             see_help(args.m)
 
-    sys.exit()
     sys.exit()
