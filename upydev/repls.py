@@ -3,6 +3,7 @@ import subprocess
 import sys
 from upydev.keygen import keygen_action
 from upydevice import check_device_type, Device
+from upydev.shellrepls import ble_repl
 
 REPLS_HELP = """
 > REPLS: Usage '$ upydev ACTION [opts]'
@@ -88,6 +89,11 @@ def repl_action(args, **kargs):
             dev = Device(args.t, args.p, init=True)
             srepl(args, dev_name)
 
+        elif dt == 'BleDevice':
+            print('Initiating BleREPL terminal for {} ...'.format(dev_name))
+            print('Do C-x to exit')
+            ble_repl(args, dev_name)
+
     elif args.m == 'wrepl':
         if dt == 'WebSocketDevice':
             print('Initiating WebREPL terminal for {} ...'.format(dev_name))
@@ -140,4 +146,16 @@ def repl_action(args, **kargs):
                 print('Use wrepl or wssrepl instead')
             elif dt == 'BleDevice':
                 print('Use brepl instead')
+        sys.exit()
+
+    elif args.m == 'brepl':
+        if dt == 'BleDevice':
+            print('BLE SHELL-REPL @ {}'.format(dev_name))
+            ble_repl(args, dev_name)
+        else:
+            print('{} is NOT a BleDevice'.format(dev_name))
+            if dt == 'WebSocketDevice':
+                print('Use ssl_wrepl or ssl instead')
+            elif dt == 'SerialDevice':
+                print('Use sh_srepl or shr instead')
         sys.exit()

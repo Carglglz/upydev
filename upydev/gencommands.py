@@ -57,7 +57,7 @@ GENERAL_COMMANDS_HELP = """
         - get_datetime: to get date and time (must be set first, see above commands)
         - set_hostname: to set hostname of the device for dhcp service
         - set_localname: to set localname of the device for ble device gap/advertising name
-        - shasum_c: to check shasum file,
+        - shasum_c: to check shasum file
         - shasum: to comput hash SHA-256 of a device file"""
 
 

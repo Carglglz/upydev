@@ -281,7 +281,7 @@ def shell_repl_action(args, **kargs):
             print('\rWebREPL enabled!, WebSecureREPL disabled!')
         sys.exit()
 
-    elif args.m == 'brepl' or args.m == 'ble':
+    elif args.m == 'ble':
         if dt == 'BleDevice':
             print('BLE SHELL-REPL @ {}'.format(dev_name))
             ble_repl(args, dev_name)

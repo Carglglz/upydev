@@ -299,6 +299,10 @@ def devicemanagement_action(args, **kargs):
                             filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
                             sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
                             filereg.write(f'function {dev}() {sc}\n')
+                            comp_func = "function _argcomp_upydev() { _python_argcomplete upydev; }\n"
+                            comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {dev}\n"
+                            filereg.write(comp_func)
+                            filereg.write(comp)
                         print('Device: {} registered'.format(dev))
 
                     except Exception as e:
@@ -312,6 +316,10 @@ def devicemanagement_action(args, **kargs):
                             filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
                             sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
                             filereg.write(f'function {psname}() {sc}\n')
+                            comp_func = "function _argcomp_upydev() { _python_argcomplete upydev; }\n"
+                            comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {psname}\n"
+                            filereg.write(comp_func)
+                            filereg.write(comp)
                         print(f'Device: {dev} registered as {psname}')
 
                     except Exception as e:
@@ -327,6 +335,10 @@ def devicemanagement_action(args, **kargs):
                 filereg.write(f'\n#UPYDEV DEVICE {_dev_name}\n')
                 sc = '{ ' + f'upydev "$@" -@ {_dev_name}; ' + '}'
                 filereg.write(f'function {psname}() {sc}\n')
+                comp_func = "function _argcomp_upydev() { _python_argcomplete upydev; }\n"
+                comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {psname}\n"
+                filereg.write(comp_func)
+                filereg.write(comp)
             if args.f:
                 print(f'Device: {_dev_name} registered as {args.f}')
             else:

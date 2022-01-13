@@ -68,10 +68,10 @@ upydev will use local working directory configuration unless it does not find an
 ```
 
 
-  To check configuration
+  To check configuration ``upydev`` or ``upydev check``
 
 ```bash
-$ upydev check
+$ upydev
 Device: mycustomdevice
 Address: 192.168.1.40, Device Type: WebSocketDevice
 ```
@@ -79,7 +79,7 @@ Address: 192.168.1.40, Device Type: WebSocketDevice
   Or to get more information if the device is online
 
 ```bash
-$ upydev check -i
+$ upydev -i
 Device: mycustomdevice
 WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
 Firmware: MicroPython v1.13-221-gc8b055717 on 2020-12-05; ESP32 module with ESP32
@@ -112,12 +112,22 @@ $ upydev register -@ mydevice
 
 ```bash
 function mydevice() { upydev "$@" -@ mydevice; }
+function _argcomp_upydev() { _python_argcomplete upydev; }
+complete -o bashdefault -o default -o nospace -F _argcomp_upydev mydevice
 ```
 
-Now ``mydevice`` will accept any args and pass them to upydev, e.g.
+Now ``mydevice`` will accept any args and pass them to upydev, as well as
+autocompletion of args, e.g.
 
 ```bash
-$ mydevice info
+$ mydevice
+Device: mydevice
+Address: 192.168.1.40, Device Type: WebSocketDevice
+```
+Or if the device is connected.
+
+```bash
+$ mydevice -i
 Device: mydevice
 WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
 Firmware: MicroPython v1.17-290-g802ef271b-dirty on 2022-01-04; ESP32 module with ESP32

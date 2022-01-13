@@ -93,11 +93,11 @@ Default device name is ``upydevice``, to set a custom name use ``-@`` flag as
     $ upydev config -t 192.168.1.40 -p mypass -@ mycustomdevice
 
 
-To check configuration
+To check configuration ``upydev`` or ``upydev check``
 
   .. code-block:: console
 
-    $ upydev check
+    $ upydev
     Device: mycustomdevice
     Address: 192.168.1.40, Device Type: WebSocketDevice
 
@@ -105,7 +105,7 @@ Or to get more information if the device is online
 
   .. code-block:: console
 
-    $ upydev check -i
+    $ upydev -i
     Device: mycustomdevice
     WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
     Firmware: MicroPython v1.13-221-gc8b055717 on 2020-12-05; ESP32 module with ESP32
@@ -133,22 +133,41 @@ Or to get more information if the device is online
 
 - [Optional]
 
-Finally define a function in ``~/.bash_rc`` or ``~/.profile``
+Finally use `register` command to
+define a function in ``~/.bashrc`` or ``~/.profile``
+
+
+  .. code-block:: console
+
+    $ upydev register -@ mydevice
+
 
   .. code-block:: console
 
     function mydevice() { upydev "$@" -@ mydevice; }
+    function _argcomp_upydev() { _python_argcomplete upydev; }
+    complete -o bashdefault -o default -o nospace -F _argcomp_upydev mydevice
 
 
-Now ``mydevice`` will accept any args and pass them to upydev, e.g.
+  Now ``mydevice`` will accept any args and pass them to upydev, as well as
+  autocompletion of args, e.g.
 
   .. code-block:: console
 
-    $ mydevice info
+    $ mydevice
+    Device: mydevice
+    Address: 192.168.1.40, Device Type: WebSocketDevice
+
+Or if the device is connected.
+
+  .. code-block:: console
+
+    $ mydevice -i
     Device: mydevice
     WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
     Firmware: MicroPython v1.17-290-g802ef271b-dirty on 2022-01-04; ESP32 module with ESP32
     (MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+
 
 
 Once the device is configured see :doc:`usage` documentation to check which modes and tools are available.

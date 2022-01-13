@@ -551,6 +551,7 @@ def wstool(args, dev_name):
             try:
                 os.stat(file)[6]
                 if not os.path.isdir(file):
+                    result = None
                     if args.s:
                         dev = Device(args.t, args.p, init=True, ssl=args.wss,
                                      auth=args.wss)

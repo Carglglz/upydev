@@ -152,7 +152,7 @@ parser = argparse.ArgumentParser(prog=upydev.name,
                                  usage=usag, prefix_chars='-')
 parser.version = '{}: {}'.format(upydev.name, upydev.version)
 parser.add_argument(
-    "m", metavar='ACTION', help=helparg, nargs='+').completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
+    "m", metavar='ACTION', help=helparg, nargs='*', default=['check']).completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
 parser.add_argument("-@", help=help_dv,
                     required=False, nargs='+').completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-gg", help='global group flag', required=False,
