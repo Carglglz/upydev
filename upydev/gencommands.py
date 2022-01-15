@@ -58,7 +58,7 @@ GENERAL_COMMANDS_HELP = """
         - set_hostname: to set hostname of the device for dhcp service
         - set_localname: to set localname of the device for ble device gap/advertising name
         - shasum_c: to check shasum file
-        - shasum: to comput hash SHA-256 of a device file"""
+        - shasum: to compute hash SHA-256 of a device file"""
 
 
 def print_sizefile(file_name, filesize, tabs=0):
@@ -802,7 +802,30 @@ def gen_command(cmd, *args, **kargs):
         # print(f"Hash SHA-256 of file: {file_name}")
         if not files_names:
             files_names = [file_name]
+        # expand wildcards
+        _exp_str_b = "import os; [f for f in os.listdir() if f.endswith('{}')]"
+        _exp_str_e = "import os; [f for f in os.listdir() if f.startswith('{}')]"
+        _exp_str_m = "import os; [f for f in os.listdir() if f.endswith('{}') and f.startswith('{}')]"
+        _files_names = []
+        # print(files_names)
         for file in files_names:
+            exp_files = []
+            if file.startswith('*'):
+                exp_files = dev.wr_cmd(_exp_str_b.format(file.replace('*', '')),
+                                       rtn_resp=True, silent=True)
+            elif file.endswith('*'):
+                exp_files = dev.wr_cmd(_exp_str_e.format(file.replace('*', '')),
+                                       rtn_resp=True, silent=True)
+            elif '*' in file:
+                start, end = file.split('*')
+                exp_files = dev.wr_cmd(_exp_str_m.format(end, start),
+                                       rtn_resp=True, silent=True)
+            else:
+                _files_names.append(file)
+            _files_names += exp_files
+
+        # print(_files_names)
+        for file in _files_names:
             dev.wr_cmd(_CMDDICT_['SHASUM'].format(file), follow=True)
             if dev._traceback.decode() in dev.response:
                 try:
