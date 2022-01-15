@@ -32,7 +32,7 @@ Tested on
 
 - OS:
 
-  - MacOS X (Mojave 10.14.5-6)
+  - MacOS X (Mojave 10.14.5-6, Big Sur 11.6.1)
   - Raspbian GNU/Linux 10 (Buster)
   - Ubuntu 20.04.2 LTS (GNU/Linux 5.8.0-55-generic x86_64)
 

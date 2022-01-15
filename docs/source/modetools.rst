@@ -62,7 +62,7 @@ Help
 Device Management
 -----------------
 
-    ACTIONS : ``config``, ``check``, ``set``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
+    ACTIONS : ``config``, ``check``, ``set``, ``register``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
 
 
       - config:
@@ -75,6 +75,9 @@ Device Management
 
       - set:
           To set current device configuration from a device saved in the global group with ``-@`` entry point
+
+      - register:
+          To register a device name as a bash function so it can be called from the command line and pass any args to ``upydev``. This adds the function in ``~/.profile`` or ``~/.brashrc`` or any other config file indicated with ``-s`` option
 
       - make_group:
           To make a group of devices to send commands to. Use ``-f`` for the name of the group and ``-devs`` option to indicate a name, ip and the password of each board. (To store the group settings globally use ``-g`` option)
@@ -171,7 +174,7 @@ Keygen
 ------
 
 
-    ACTIONS: ``gen_rsakey``, ``rf_wrkey``, ``sslgen_key``
+    ACTIONS: ``gen_rsakey``, ``rsa_sign``, ``rsa_verify``, ``rf_wrkey``, ``sslgen_key``
 
 
     - gen_rsakey:
@@ -180,6 +183,12 @@ Keygen
         device (use only if connected directly by USB, the AP of the device or a
         "secure" wifi e.g. local/home). Alternative alias, ``$ upydev kg rsa``,
         ``$ upydev keygen rsa``
+
+    - rsa_sign:
+        To sign a file with device RSA key, (``rsa`` lib required), use ``-f`` to indicate the file to sign or use alias form: ``$ upydev rsa sign [FILE]``
+
+    - rsa_verify:
+        To verify a signature of a file made with device RSA key, use ``-f`` to indicate the signature file to verify or use alias form: ``$ upydev rsa verify [FILE]``
 
     - rf_wrkey:
         To "refresh" the WebREPL password with a new random password derivated from

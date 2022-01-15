@@ -36,6 +36,8 @@ General Commands
         - **get_datetime**: to get date and time (must be set first, see above commands)
         - **set_hostname**: to set hostname of the device for dhcp service *(needs wpa_supplicant.py)*
         - **set_localname**: to set localname of the device for ble gap/advertising name *(needs ble_uart_peripheral.py)*
+        - **shasum_c**: to check shasum file
+        - **shasum**: to compute hash SHA-256 of a device file
 
 
 WiFi Utils

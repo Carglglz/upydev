@@ -23,7 +23,8 @@ DEVICE_MANAGEMENT_HELP = """
     - set: to set current device configuration from a device saved in the global group with -@ entry point
 
     - register: to register a device name as a bash function so it can called from the command line and pass
-                any args to upydev. This adds the function in ~/.profile or ~/.brashrc
+                any args to upydev. This adds the function in ~/.profile or ~/.brashrc or any other config file
+                indicated with -s option
 
     - make_group: to make a group of devices to send commands to. Use -f for the name
                   of the group and -devs option to indicate a name, ip and the

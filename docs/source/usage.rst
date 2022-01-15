@@ -32,7 +32,7 @@ Mode/Tools
 	> :ref:`modetools:Device Management`
 			To manage configuration of a device/group of devices.
 
-			ACTIONS : ``config``, ``check``, ``set``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
+			ACTIONS : ``config``, ``check``, ``set``, ``register``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
 
 	> :ref:`modetools:File IO operations`
 			To upload/download files to/from a device.
@@ -42,12 +42,12 @@ Mode/Tools
 	> :ref:`modetools:Firmware`
 			To list, get or flash the firmware of a device.
 
-			ACTIONS: ``fwr``, ``flash``, ``mpyx``
+			ACTIONS: ``fwr``, ``flash``, ``ota``, ``mpyx``
 
 	> :ref:`modetools:Keygen`
 			To generate SSL key-certs and random WebREPL passwords.
 
-			ACTIONS: ``gen_rsakey``, ``rf_wrkey``, ``sslgen_key``
+			ACTIONS: ``gen_rsakey``, ``rsa_sign``, ``rsa_verify``, ``rf_wrkey``, ``sslgen_key``
 
 
 	> :ref:`modetools:REPL`
