@@ -7,10 +7,11 @@
 # images from a BLE central (for example, a computer or a smartphone)
 # to a peripheral (for example, a Heart Rate Sensor)
 # that supports Device Firmware Updates using the DFU Service.
+# https://infocenter.nordicsemi.com/topic/com.nordic.infocenter.sdk5.v11.0.0/bledfu_transport_bleprofile.html
 
-# This is CUSTOM IMPLEMENTATION JUST FOR '.py' files
+# This is CUSTOM IMPLEMENTATION JUST FOR esp32 application.bin (e.g micropython.bin) files
 # This does not support Softdevice or Bootloader
-# Expected Image structure: b'[INIT PACKET][FILENAME]\n[FILE]'
+# Expected Image structure: b'[INIT PACKET][FILE]'
 
 import bluetooth
 import struct

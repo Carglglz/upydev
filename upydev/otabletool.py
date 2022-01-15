@@ -420,7 +420,7 @@ def get_init_packet(initpacketlist):
 
 
 def dfufy_file(file):
-    # Do checksum
+    # Do checksum of sha256
     try:
         with open(file, 'rb') as filetofreeze:
             data = filetofreeze.read()

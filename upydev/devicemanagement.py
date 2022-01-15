@@ -283,10 +283,15 @@ def devicemanagement_action(args, **kargs):
     # REGISTER
     elif args.m == 'register':
         filename = ''
-        if '.profile' in os.listdir(os.environ['HOME']):
-            filename = os.path.join(os.environ['HOME'], '.profile')
-        elif '.bashrc' in os.listdir(os.environ['HOME']):
-            filename = os.path.join(os.environ['HOME'], '.brashrc')
+        if args.s:
+            filename = args.s
+        else:
+            if '.profile' in os.listdir(os.environ['HOME']):
+                filename = os.path.join(os.environ['HOME'], '.profile')
+            elif '.bashrc' in os.listdir(os.environ['HOME']):
+                filename = os.path.join(os.environ['HOME'], '.brashrc')
+            else:
+                filename = 'upydevs_config.txt'
         if vars(args)['@']:
             space = ''
             if args.f:
@@ -294,7 +299,7 @@ def devicemanagement_action(args, **kargs):
             if not args.fre:
                 for dev in vars(args)['@']:
                     try:
-                        print('{}Registering Device: {} ...'.format(space, dev))
+                        print(f'{space}Registering Device: {dev} ...')
                         with open(filename, 'a') as filereg:
                             filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
                             sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
@@ -303,7 +308,7 @@ def devicemanagement_action(args, **kargs):
                             comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {dev}\n"
                             filereg.write(comp_func)
                             filereg.write(comp)
-                        print('Device: {} registered'.format(dev))
+                        print(f'Device: {dev} registered')
 
                     except Exception as e:
                         print(e)
@@ -311,7 +316,7 @@ def devicemanagement_action(args, **kargs):
             else:
                 for psname, dev in dict(zip(args.fre, vars(args)['@'])).items():
                     try:
-                        print('{}Registering Device: {} ...'.format(space, dev))
+                        print(f'{space}Registering Device: {dev} ...')
                         with open(filename, 'a') as filereg:
                             filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
                             sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
@@ -330,7 +335,8 @@ def devicemanagement_action(args, **kargs):
                 psname = args.f
             else:
                 psname = _dev_name
-            print('Registering Device: {} ...'.format(_dev_name))
+
+            print(f'Registering Device: {_dev_name} ...')
             with open(filename, 'a') as filereg:
                 filereg.write(f'\n#UPYDEV DEVICE {_dev_name}\n')
                 sc = '{ ' + f'upydev "$@" -@ {_dev_name}; ' + '}'
@@ -339,10 +345,12 @@ def devicemanagement_action(args, **kargs):
                 comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {psname}\n"
                 filereg.write(comp_func)
                 filereg.write(comp)
+
             if args.f:
                 print(f'Device: {_dev_name} registered as {args.f}')
             else:
                 print(f'Device: {_dev_name} registered')
+
         print(
             f'Reload {os.path.split(filename)[-1]} "$ source {os.path.split(filename)[-1]}"\
  or open a new terminal to apply the new command')

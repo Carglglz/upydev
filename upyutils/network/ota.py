@@ -1,3 +1,11 @@
+# Adapted from:
+# @tve
+# https://github.com/tve/mqboard/blob/master/mqrepl/mqrepl.py#L22-L84
+# MicroPython forum thread
+# https://forum.micropython.org/viewtopic.php?f=18&t=7066&p=61715&hilit=ota#p61715
+# MicroPython docs [Flash partitions]
+# http://docs.micropython.org/en/latest/library/esp32.html
+
 from esp32 import Partition
 import hashlib
 from micropython import const
