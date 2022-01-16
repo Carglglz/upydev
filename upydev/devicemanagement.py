@@ -1,7 +1,6 @@
-from upydevice import Device
+from upydevice import Device, check_device_type
 import sys
 from upydev.helpinfo import see_help
-from upydevice import check_device_type
 import getpass
 import os
 import json
@@ -22,9 +21,11 @@ DEVICE_MANAGEMENT_HELP = """
 
     - set: to set current device configuration from a device saved in the global group with -@ entry point
 
-    - register: to register a device name as a bash function so it can called from the command line and pass
+    - register: to register a device name as a shell function so it can called from the command line and pass
                 any args to upydev. This adds the function in ~/.profile or ~/.brashrc or any other config file
                 indicated with -s option
+    - lsdevs: to see which devices are registered, this also defines lsdevs as a shell function
+              so it can be called directly.
 
     - make_group: to make a group of devices to send commands to. Use -f for the name
                   of the group and -devs option to indicate a name, ip and the
@@ -292,7 +293,7 @@ def devicemanagement_action(args, **kargs):
             elif '.bashrc' in os.listdir(os.environ['HOME']):
                 filename = os.path.join(os.environ['HOME'], '.brashrc')
             else:
-                filename = 'upydevs_config.txt'
+                filename = 'upydevs_config.sh'
         if vars(args)['@']:
             space = ''
             if args.f:
@@ -356,6 +357,41 @@ def devicemanagement_action(args, **kargs):
             f'Reload {os.path.split(filename)[-1]} "$ source {os.path.split(filename)[-1]}"\
  or open a new terminal to apply the new command')
         sys.exit()
+
+    # LSDEVS
+    elif args.m == 'lsdevs':
+        lsdevs_func = False
+        filename = ''
+        if args.s:
+            filename = args.s
+        else:
+            if '.profile' in os.listdir(os.environ['HOME']):
+                filename = os.path.join(os.environ['HOME'], '.profile')
+            elif '.bashrc' in os.listdir(os.environ['HOME']):
+                filename = os.path.join(os.environ['HOME'], '.brashrc')
+            else:
+                filename = 'upydevs_config.sh'
+        with open(filename, 'r') as devsconfig:
+            lines = devsconfig.read().splitlines()
+            for ln, line in enumerate(lines):
+                if '#UPYDEV DEVICE' in line:
+                    dev = line.split()[-1]
+                    dev_alias = lines[ln+1].split()[1].replace('()', '')
+                    addr, psswd = address_entry_point(dev, args=args)
+                    if dev != dev_alias:
+                        print(f'Device: {dev} registered as {dev_alias}')
+                    else:
+                        print(f'Device: {dev}')
+                    dt = check_device_type(addr)
+                    print(f'Address: {addr}, Device Type: {dt}', end='\n\n')
+                elif '#UPYDEV LSDEVS' in line:
+                    lsdevs_func = True
+                elif 'function lsdevs() { upydev lsdevs; }' in line:
+                    lsdevs_func = True
+        if not lsdevs_func:
+            with open(filename, 'a') as devsconfig:
+                devsconfig.write('\n#UPYDEV LSDEVS\n')
+                devsconfig.write('function lsdevs() { upydev lsdevs; }\n')
 
     # MAKE_GROUP
     elif args.m == 'make_group':

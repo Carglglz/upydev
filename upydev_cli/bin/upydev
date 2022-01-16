@@ -129,7 +129,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
                  'backup', 'rsync', 'make_sgroup', 'mksg', 'set_localname',
                  'set_hostname', 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify',
-                 'shasum', 'shasum_c', 'ota', 'register']
+                 'shasum', 'shasum_c', 'ota', 'register', 'lsdevs']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -408,8 +408,8 @@ elif len(args.m) > 2:
 
         # DEVICE MANAGEMENT ACTIONS
 
-DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'set', 'register', 'make_group',
-                             'mg_group', 'gg', 'see', 'make_sgroup']
+DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'set', 'register', 'lsdevs',
+                             'make_group', 'mg_group', 'gg', 'see', 'make_sgroup']
 
 # FIRMWARE ACTIONS
 

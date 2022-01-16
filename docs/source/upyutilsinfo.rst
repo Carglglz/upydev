@@ -39,7 +39,7 @@ Develop
 
 **upylog.py**: a modified version of MicroPython logging module, with time format logging and log to file option (default file: 'error.log')
 
-**upynotify.py** : a module to notify events with beeps (buzzer needed) and blinks. This is useful to "physical debugging".
+**upynotify.py** : a module to notify events with beeps (buzzer needed) and blinks. This is useful for "physical debugging".
 
 IRQ
 ^^^

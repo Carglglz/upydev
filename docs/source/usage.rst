@@ -32,7 +32,7 @@ Mode/Tools
 	> :ref:`modetools:Device Management`
 			To manage configuration of a device/group of devices.
 
-			ACTIONS : ``config``, ``check``, ``set``, ``register``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
+			ACTIONS : ``config``, ``check``, ``set``, ``register``, ``lsdevs``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
 
 	> :ref:`modetools:File IO operations`
 			To upload/download files to/from a device.

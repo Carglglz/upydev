@@ -62,7 +62,7 @@ Help
 Device Management
 -----------------
 
-    ACTIONS : ``config``, ``check``, ``set``, ``register``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
+    ACTIONS : ``config``, ``check``, ``set``, ``register``, ``lsdevs``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
 
 
       - config:
@@ -77,7 +77,10 @@ Device Management
           To set current device configuration from a device saved in the global group with ``-@`` entry point
 
       - register:
-          To register a device name as a bash function so it can be called from the command line and pass any args to ``upydev``. This adds the function in ``~/.profile`` or ``~/.brashrc`` or any other config file indicated with ``-s`` option
+          To register a device name as a shell function so it can be called from the command line and pass any args to ``upydev``. This adds the function in ``~/.profile`` or ``~/.brashrc`` or any other config file indicated with ``-s`` option
+
+      - lsdevs:
+          To see which devices are registered, this also defines ``lsdevs`` as a shell function so it can be called directly
 
       - make_group:
           To make a group of devices to send commands to. Use ``-f`` for the name of the group and ``-devs`` option to indicate a name, ip and the password of each board. (To store the group settings globally use ``-g`` option)
