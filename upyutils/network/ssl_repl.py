@@ -49,6 +49,8 @@ class SSL_socket_client_repl:
         if self.auth:
             self.cli_soc = ssl.wrap_socket(self.cli_soc, key=self.key,
                                            cert=self.cert)
+            assert self.cert == self.cli_soc.getpeercert(
+                True), "Peer Certificate Invalid"
         # self.cli_soc = ssl.wrap_socket(self.cli_soc)
         else:
             self.cli_soc = ssl.wrap_socket(self.cli_soc)
@@ -115,6 +117,8 @@ class SSL_socket_client_tool:
         # self.cli_soc.settimeout(2)
         self.cli_soc = ssl.wrap_socket(self.cli_soc, key=key,
                                        cert=cert)
+        assert cert == self.cli_soc.getpeercert(
+            True), "Peer Certificate Invalid"
         self.cli_soc.setblocking(False)
         # self.cli_soc.settimeout(2)
 
