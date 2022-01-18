@@ -11,8 +11,6 @@
 **uPydev** is an acronym of '**MicroPy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running MicroPython. It is intended to be cross-platform and
 connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 
-⚠️ ***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything*** ⚠️
-
 ### Features:
 
 * Tools to allow configuration, management, communication and control of MicroPython devices.
@@ -170,4 +168,4 @@ Example: Raw commands
 `$ upydev "import my_lib;foo();my_var=2*3"`
 
 
-Too see documentation check [Upydev readthedocs](https://upydev.readthedocs.io/en/latest/)
+To see documentation check [Upydev readthedocs](https://upydev.readthedocs.io/en/latest/)

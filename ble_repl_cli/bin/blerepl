@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from upydevice import ble_scan, BASE_BLE_DEVICE
+from upydevice.bledevice import ble_scan, BASE_BLE_DEVICE
 from binascii import hexlify
 # import getpass
 # import secrets

@@ -1,4 +1,4 @@
-from upydevice import Device, check_device_type, serial_scan, ble_scan, net_scan
+from upydevice import Device, check_device_type, serial_scan, net_scan
 import sys
 from upydev.helpinfo import see_help
 from upydev.firmwaretools import get_fw_versions
@@ -1237,6 +1237,7 @@ def probe_device(addr, passwd):
             return False
 
     elif dt == 'BleDevice':
+        from upydevice.bledevice import ble_scan
         bledevs = ble_scan()
         if bledevs:
             bdev_reachable = False
@@ -1366,6 +1367,7 @@ def debugging_action(args, **kargs):
             n = 0
             print('Bluetooth Low Energy scan:')
             print('Scanning...')
+            from upydevice.bledevice import ble_scan
             while n < 3:
                 try:
                     devs = ble_scan()

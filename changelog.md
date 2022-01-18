@@ -20,6 +20,7 @@ generation and export in PEM format
 - `mpyx` command with multiple files
 - `rf_wrkey` now use RSA public key for password derivation and send encrypted password
 that is decrypted and stored in device.
+- Load time in MacOS caused by upydevice->BleDevice->bleak->corebluetooth
 ## [0.3.7] 2021-12-16
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)
