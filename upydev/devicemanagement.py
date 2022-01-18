@@ -391,7 +391,10 @@ def devicemanagement_action(args, **kargs):
         if not lsdevs_func:
             with open(filename, 'a') as devsconfig:
                 devsconfig.write('\n#UPYDEV LSDEVS\n')
-                devsconfig.write('function lsdevs() { upydev lsdevs; }\n')
+                if args.s:
+                    devsconfig.write('function lsdevs() { upydev lsdevs -s ' + f'{args.s}' +' ; }\n')
+                else:
+                    devsconfig.write('function lsdevs() { upydev lsdevs; }\n')
 
     # MAKE_GROUP
     elif args.m == 'make_group':
