@@ -52,6 +52,7 @@ class OTA:
         cli_soc.connect(soc_addr)
         if self.tls:
             cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert)
+            assert self.cert == cli_soc.getpeercert(True), "Peer Certificate Invalid"
         return cli_soc
 
     # handle processes one message with a chunk of data in msg. The sequence number seq needs
