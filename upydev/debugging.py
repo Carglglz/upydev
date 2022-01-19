@@ -112,11 +112,11 @@ def _ft_datetime(t_now):
 
 
 def print_sizefile(file_name, filesize, tabs=0):
-    _kB = 1024
+    _kB = 1000
     if filesize < _kB:
         sizestr = str(filesize) + " by"
     elif filesize < _kB**2:
-        sizestr = "%0.1f KB" % (filesize / _kB)
+        sizestr = "%0.1f kB" % (filesize / _kB)
     elif filesize < _kB**3:
         sizestr = "%0.1f MB" % (filesize / _kB**2)
     else:
@@ -389,12 +389,12 @@ def diagnose(args):
                                                                          'Size', 'Used',
                                                                          'Avail',
                                                                          'Use%']))
-        total_mem = mem['total']/1024
-        used_mem = mem['used']/1024
-        free_mem = mem['free']/1024
-        total_mem_s = "{:.3f} KB".format(total_mem)
-        used_mem_s = "{:.3f} KB".format(used_mem)
-        free_mem_s = "{:.3f} KB".format(free_mem)
+        total_mem = mem['total']/1000
+        used_mem = mem['used']/1000
+        free_mem = mem['free']/1000
+        total_mem_s = "{:.3f} kB".format(total_mem)
+        used_mem_s = "{:.3f} kB".format(used_mem)
+        free_mem_s = "{:.3f} kB".format(free_mem)
 
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
                                                          used_mem_s, free_mem_s,
@@ -965,10 +965,10 @@ def w_stream_reader(soc, total_size, chunk_rx):
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
                 nb_of_total = "{:.2f}/{:.2f} MB".format(
-                    len(buff)/(1024**2), total_size/(1024**2))
+                    len(buff)/(1000**2), total_size/(1000**2))
                 percentage = len(buff)/total_size
                 t_elapsed = time.time() - t_start
-                t_speed = "{:^2.2f}".format((len(buff)/(1024**2))/t_elapsed)
+                t_speed = "{:^2.2f}".format((len(buff)/(1000**2))/t_elapsed)
                 if pb:
                     do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
                               t_elapsed, loop_index_l, percentage)
@@ -1001,8 +1001,8 @@ def stream_test(args, dev, mode='download'):
     if mode == 'download':
         # START A LOCAL SERVER
         chunk_size_kb = args.chunk_tx
-        _kB = 1024
-        _MB = 1024*_kB
+        _kB = 1000
+        _MB = 1000*_kB
         print('DOWNLOAD SPEED TEST:')
         print('CHUNK TX DATA SIZE: {:>40.2f} kB'.format(chunk_size_kb))
         print('CHUNK RX DATA SIZE: {:>40.2f} kB'.format(args.chunk_rx))
@@ -1038,7 +1038,7 @@ def get_stream_test(args, device, mode='download'):
     print('TEST DURATION : {:.3f} (s)'.format(total_time))
     N_Bytes = len(data)
     print_sizefile('TEST DATA', N_Bytes)
-    kBs = (N_Bytes/total_time)/1024
+    kBs = (N_Bytes/total_time)/1000
     print('DATA TRANSFER RATE (kBps): {:.3f} kB/s'.format(kBs))
     print('DATA TRANSFER RATE (Mbps): {:.3f} Mbps'.format((kBs*8)/1000))
     dev.disconnect()

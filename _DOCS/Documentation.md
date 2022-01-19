@@ -2269,7 +2269,7 @@ SAMPLES PER PACKET : 1
 VARIABLES PER SAMPLE : 3; ['X', 'Y', 'Z']
 SIZE OF PACKETS: 12 bytes
 Period: 2 ms ; Fs:440.0 Hz, Data send rate: 437 packets/s of 1 samples
-DATA TRANSFER RATE: 5.12109375 KB/s
+DATA TRANSFER RATE: 5.12109375 kB/s
 ```
 
 

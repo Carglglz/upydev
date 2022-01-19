@@ -135,7 +135,7 @@ class BLE_REPL_server:
             print(my_code_numb)
 
     def do_color(self):
-            self.colored(b'\n'.join(self.dev.raw_buff.splitlines()[1:-1]).decode())
+           self.colored(b'\n'.join(self.dev.raw_buff.splitlines()[1:-1]).decode())
 
     def read_callback_follow_paste(self, sender, data):
         try:
@@ -773,8 +773,8 @@ def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
         data = ['{}{}{}{}'.format(
             CGREEN, val, CEND, ' '*(wide-len(val))) if '.mpy' in val else val for val in data]
     if autocol_tab:
-        data = [namefile if len(namefile) < wide else namefile +
-                '\n' for namefile in data]
+        data = [namefile if len(namefile) < wide else namefile
+                + '\n' for namefile in data]
     if autowide:
         wide_data = max([len(namefile) for namefile in data]) + 2
         if wide_data > wide:
@@ -832,12 +832,12 @@ def map_upysh(cmd_inp):
 
 
 def _dt_format(number):
-        rtc_n = str(number)
-        if len(rtc_n) == 1:
-            rtc_n = "0{}".format(rtc_n)
-            return rtc_n
-        else:
-            return rtc_n
+    rtc_n = str(number)
+    if len(rtc_n) == 1:
+        rtc_n = "0{}".format(rtc_n)
+        return rtc_n
+    else:
+        return rtc_n
 
 
 def _ft_datetime(t_now):
@@ -957,39 +957,39 @@ class DISK_USAGE:
 
     def __call__(self, path=".", dlev=0, max_dlev=0, hidden=False, absp=True):
         if path != ".":
-                if not os.stat(path)[0] & 0x4000:
-                    print('{:9} {}'.format(
-                        self.print_filesys_info(os.stat(path)[6]), path))
+            if not os.stat(path)[0] & 0x4000:
+                print('{:9} {}'.format(
+                    self.print_filesys_info(os.stat(path)[6]), path))
+            else:
+                if hidden:
+                    resp = {
+                        path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
                 else:
-                    if hidden:
-                        resp = {
-                            path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
-                    else:
-                        resp = {
-                            path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
-                    for dir in resp.keys():
+                    resp = {
+                        path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                for dir in resp.keys():
 
-                        if not os.stat(dir)[0] & 0x4000:
-                            if absp:
-                                print('{:9} {}'.format(
-                                    self.print_filesys_info(resp[dir]), dir))
-                            else:
-                                print('{:9} {}'.format(self.print_filesys_info(
-                                    resp[dir]), dir.split('/')[-1]))
-
+                    if not os.stat(dir)[0] & 0x4000:
+                        if absp:
+                            print('{:9} {}'.format(
+                                self.print_filesys_info(resp[dir]), dir))
                         else:
-                            if dlev < max_dlev:
-                                dlev += 1
-                                self.__call__(path=dir, dlev=dlev,
-                                              max_dlev=max_dlev, hidden=hidden)
-                                dlev += (-1)
+                            print('{:9} {}'.format(self.print_filesys_info(
+                                resp[dir]), dir.split('/')[-1]))
+
+                    else:
+                        if dlev < max_dlev:
+                            dlev += 1
+                            self.__call__(path=dir, dlev=dlev,
+                                          max_dlev=max_dlev, hidden=hidden)
+                            dlev += (-1)
+                        else:
+                            if absp:
+                                print('{:9} \u001b[34;1m{}\033[0m'.format(
+                                    self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
                             else:
-                                if absp:
-                                    print('{:9} \u001b[34;1m{}\033[0m'.format(
-                                        self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
-                                else:
-                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(
-                                        self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
+                                print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(
+                                    self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
 
         else:
             if hidden:
@@ -3741,8 +3741,8 @@ def shif_tab(event):
     def autocomplete_sh_cmd():
         if shell_mode['S']:
             buff_text = event.app.current_buffer.document.text
-            result = [sh_cmd for sh_cmd in shell_commands +
-                      custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
+            result = [sh_cmd for sh_cmd in shell_commands
+                      + custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
             if 'fw' in buff_text.split():
                 # print('Here: {}'.format(buff_text.split()))
                 if len(buff_text.split()) > 1:
@@ -3801,7 +3801,7 @@ def autocomplete_locals(event):
                     rest = ''
                     glb = True
                     if shell_mode['S']:
-                            cmd_ls_glb = os.listdir()
+                           cmd_ls_glb = os.listdir()
             else:
                 pass
         except Exception as e:
@@ -3809,86 +3809,50 @@ def autocomplete_locals(event):
 
         def s_r_cmd_info(rest_part=rest, flag=glb, buff=buff_text, output=cmd_ls_glb):
             try:
-                    if isinstance(cmd_ls_glb, str):
-                        # print(ble_cp.dev.output)
-                        pass
-                    else:
-                        if rest != '':
-                            result = [
-                                val for val in output if val.startswith(rest)]
-                            if len(result) > 1:
-                                comm_part = os.path.commonprefix(result)
-                                if comm_part == rest:
-                                    if shell_mode['S']:
-                                        last_cmd = event.app.current_buffer.document.text
-                                        if local_path['p'] == '':
-                                            g_p = [val[1]
-                                                   for val in prompt['p'][1:5]]
-                                            b_p = [val[1]
-                                                   for val in prompt['p'][5:]]
-                                            color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                            print(color_p)
-                                        else:
-                                            m_p = [prompt['p'][0][1]]
-                                            g_p = [val[1]
-                                                   for val in prompt['p'][1:5]]
-                                            b_p = [val[1]
-                                                   for val in prompt['p'][5:]]
-                                            color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                            print(color_p)
-                                    print_table(result, wide=28, format_SH=True)
-                                else:
-                                    event.app.current_buffer.insert_text(
-                                        comm_part[len(rest):])
+                if isinstance(cmd_ls_glb, str):
+                    # print(ble_cp.dev.output)
+                    pass
+                else:
+                    if rest != '':
+                        result = [
+                            val for val in output if val.startswith(rest)]
+                        if len(result) > 1:
+                            comm_part = os.path.commonprefix(result)
+                            if comm_part == rest:
+                                if shell_mode['S']:
+                                    last_cmd = event.app.current_buffer.document.text
+                                    if local_path['p'] == '':
+                                        g_p = [val[1]
+                                               for val in prompt['p'][1:5]]
+                                        b_p = [val[1]
+                                               for val in prompt['p'][5:]]
+                                        color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                            "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                        print(color_p)
+                                    else:
+                                        m_p = [prompt['p'][0][1]]
+                                        g_p = [val[1]
+                                               for val in prompt['p'][1:5]]
+                                        b_p = [val[1]
+                                               for val in prompt['p'][5:]]
+                                        color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                            "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                        print(color_p)
+                                print_table(result, wide=28, format_SH=True)
                             else:
                                 event.app.current_buffer.insert_text(
-                                    result[0][len(rest):])
+                                    comm_part[len(rest):])
                         else:
-                            if not glb:
-                                if shell_mode['S']:
-                                    result = [val for val in output if val.startswith(
-                                        buff_text.split('/')[-1])]
-                                    if len(result) > 1:
-                                        comm_part = os.path.commonprefix(result)
-                                        if comm_part == buff_text.split('/')[-1]:
-                                            if shell_mode['S']:
-                                                last_cmd = event.app.current_buffer.document.text
-                                                if local_path['p'] == '':
-                                                    g_p = [val[1]
-                                                           for val in prompt['p'][1:5]]
-                                                    b_p = [val[1]
-                                                           for val in prompt['p'][5:]]
-                                                    color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                        "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                                    print(color_p)
-                                                else:
-                                                    m_p = [prompt['p'][0][1]]
-                                                    g_p = [val[1]
-                                                           for val in prompt['p'][1:5]]
-                                                    b_p = [val[1]
-                                                           for val in prompt['p'][5:]]
-                                                    color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-                                                        "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-                                                    print(color_p)
-                                                # format ouput
-                                                print_table(
-                                                    result, wide=28, format_SH=True)
-                                        else:
-                                            event.app.current_buffer.insert_text(
-                                                comm_part[len(buff_text.split('/')[-1]):])
-                                    else:
-                                        event.app.current_buffer.insert_text(
-                                            result[0][len(buff_text.split('/')[-1]):])
-                                else:
-                                    print_table(output, wide=28, format_SH=True)
-                            else:
-                                result = [
-                                    val for val in output if val.startswith(buff_text)]
+                            event.app.current_buffer.insert_text(
+                                result[0][len(rest):])
+                    else:
+                        if not glb:
+                            if shell_mode['S']:
+                                result = [val for val in output if val.startswith(
+                                    buff_text.split('/')[-1])]
                                 if len(result) > 1:
                                     comm_part = os.path.commonprefix(result)
-                                    if comm_part == buff_text:
+                                    if comm_part == buff_text.split('/')[-1]:
                                         if shell_mode['S']:
                                             last_cmd = event.app.current_buffer.document.text
                                             if local_path['p'] == '':
@@ -3908,20 +3872,56 @@ def autocomplete_locals(event):
                                                 color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
                                                     "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
                                                 print(color_p)
-
                                             # format ouput
-                                            print_table(
-                                                result, wide=28, format_SH=True)
-                                        else:
-                                            print('>>> {}'.format(buff_text))
                                             print_table(
                                                 result, wide=28, format_SH=True)
                                     else:
                                         event.app.current_buffer.insert_text(
-                                            comm_part[len(buff_text):])
+                                            comm_part[len(buff_text.split('/')[-1]):])
                                 else:
                                     event.app.current_buffer.insert_text(
-                                        result[0][len(buff_text):])
+                                        result[0][len(buff_text.split('/')[-1]):])
+                            else:
+                                print_table(output, wide=28, format_SH=True)
+                        else:
+                            result = [
+                                val for val in output if val.startswith(buff_text)]
+                            if len(result) > 1:
+                                comm_part = os.path.commonprefix(result)
+                                if comm_part == buff_text:
+                                    if shell_mode['S']:
+                                        last_cmd = event.app.current_buffer.document.text
+                                        if local_path['p'] == '':
+                                            g_p = [val[1]
+                                                   for val in prompt['p'][1:5]]
+                                            b_p = [val[1]
+                                                   for val in prompt['p'][5:]]
+                                            color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                                "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                            print(color_p)
+                                        else:
+                                            m_p = [prompt['p'][0][1]]
+                                            g_p = [val[1]
+                                                   for val in prompt['p'][1:5]]
+                                            b_p = [val[1]
+                                                   for val in prompt['p'][5:]]
+                                            color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
+                                                "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
+                                            print(color_p)
+
+                                        # format ouput
+                                        print_table(
+                                            result, wide=28, format_SH=True)
+                                    else:
+                                        print('>>> {}'.format(buff_text))
+                                        print_table(
+                                            result, wide=28, format_SH=True)
+                                else:
+                                    event.app.current_buffer.insert_text(
+                                        comm_part[len(buff_text):])
+                            else:
+                                event.app.current_buffer.insert_text(
+                                    result[0][len(buff_text):])
 
             except Exception as e:
                 pass
@@ -4208,8 +4208,8 @@ while repl:
             print(e)
             continue
     except EOFError:
-            # print('This is EOF ERROR!')
-            continue
+           # print('This is EOF ERROR!')
+           continue
         # espdev.reset()
         # sys.exit()
 

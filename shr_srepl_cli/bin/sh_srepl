@@ -503,7 +503,7 @@ class SERIAL_TOOL:
         if index == self.bar_size:
             l_bloc = "█"
         sys.stdout.write("\033[K")
-        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" * index + l_bloc + " "*((self.bar_size+1) - len("█" * index + l_bloc)),
+        print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" * index + l_bloc + " "*((self.bar_size+1) - len("█" * index + l_bloc)),
                                                                     wheel[index % 4],
                                                                     int((percentage)*100),
                                                                     nb_of_total, speed,
@@ -520,7 +520,7 @@ class SERIAL_TOOL:
         self.sh_srepl.sh_repl("os.stat('{}')[6]".format(src))
         self.sh_srepl.dev.get_output()
         sz = self.sh_srepl.dev.output
-        print("{}  [{:.2f} KB]".format(src, sz / 1024))
+        print("{}  [{:.2f} kB]".format(src, sz / 1000))
         self.sh_srepl.flush_conn()
         # self.start_SOC()
         self.sh_srepl.sh_repl("f=open('%s','rb');r=f.read" % src)
@@ -550,10 +550,10 @@ class SERIAL_TOOL:
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                nb_of_total = "{:.2f}/{:.2f} kB".format(cnt/(1000), sz/(1000))
                 percentage = cnt / sz
                 t_elapsed = time.time() - t_start
-                t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
                 ett = sz / (cnt / t_elapsed)
                 if self.pb:
                     self.do_pg_bar(loop_index, self.wheel,
@@ -570,7 +570,7 @@ class SERIAL_TOOL:
         if not abs_path:
             src_ori = src
             src = src.split('/')[-1]
-        print("{}  [{:.2f} KB]".format(src, sz / 1024))
+        print("{}  [{:.2f} kB]".format(src, sz / 1000))
         self.sh_srepl.sh_repl("f=open('%s','wb');w=f.write" % src)
         if not abs_path:
             src = src_ori
@@ -598,10 +598,10 @@ class SERIAL_TOOL:
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                nb_of_total = "{:.2f}/{:.2f} kB".format(cnt/(1000), sz/(1000))
                 percentage = cnt / sz
                 t_elapsed = time.time() - t_start
-                t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
                 ett = sz / (cnt / t_elapsed)
                 if self.pb:
                     self.do_pg_bar(loop_index, self.wheel,
@@ -1196,11 +1196,11 @@ class DISK_USAGE:
                             self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
 
     def print_filesys_info(self, filesize):
-        _kB = 1024
+        _kB = 1000
         if filesize < _kB:
             sizestr = str(filesize) + " by"
         elif filesize < _kB**2:
-            sizestr = "%0.1f KB" % (filesize / _kB)
+            sizestr = "%0.1f kB" % (filesize / _kB)
         elif filesize < _kB**3:
             sizestr = "%0.1f MB" % (filesize / _kB**2)
         else:
@@ -1334,11 +1334,11 @@ def send_custom_sh_cmd(cmd, capture_output=False, sh_silent=True):
 
 
 def print_filesys_info(filesize):
-    _kB = 1024
+    _kB = 1000
     if filesize < _kB:
         sizestr = str(filesize) + " by"
     elif filesize < _kB**2:
-        sizestr = "%0.1f KB" % (filesize / _kB)
+        sizestr = "%0.1f kB" % (filesize / _kB)
     elif filesize < _kB**3:
         sizestr = "%0.1f MB" % (filesize / _kB**2)
     else:
@@ -1362,14 +1362,14 @@ def get_rprompt():
             mem_info = RAM.splitlines()[1]
             mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
                               1]) for elem in mem_info[4:].split(',')}
-            used_mem = mem['used']/1024
-            free_mem = mem['free']/1024
-            used_mem_s = "{:.3f} KB".format(used_mem)
-            free_mem_s = "{:.3f} KB".format(free_mem)
+            used_mem = mem['used']/1000
+            free_mem = mem['free']/1000
+            used_mem_s = "{:.3f} kB".format(used_mem)
+            free_mem_s = "{:.3f} kB".format(free_mem)
             # set used and free
             mem_show_rp['used'] = used_mem_s
             mem_show_rp['free'] = free_mem_s
-            total_mem = mem['total']/1024
+            total_mem = mem['total']/1000
             use_percent = round((used_mem/total_mem)*100, 2)
             mem_show_rp['percent'] = use_percent
             mem_show_rp['call'] = False
@@ -1674,12 +1674,12 @@ def custom_sh_cmd(cmd_inp):
                                                             'Size', 'Used',
                                                             'Avail',
                                                             'Use%']))
-        total_mem = mem['total']/1024
-        used_mem = mem['used']/1024
-        free_mem = mem['free']/1024
-        total_mem_s = "{:.3f} KB".format(total_mem)
-        used_mem_s = "{:.3f} KB".format(used_mem)
-        free_mem_s = "{:.3f} KB".format(free_mem)
+        total_mem = mem['total']/1000
+        used_mem = mem['used']/1000
+        free_mem = mem['free']/1000
+        total_mem_s = "{:.3f} kB".format(total_mem)
+        used_mem_s = "{:.3f} kB".format(used_mem)
+        free_mem_s = "{:.3f} kB".format(free_mem)
 
         print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
                                                          used_mem_s, free_mem_s,

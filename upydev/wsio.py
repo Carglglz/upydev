@@ -43,7 +43,7 @@ def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l,
     if index == size_bar:
         l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" * index + l_bloc + " "*((size_bar+1) - len("█" * index + l_bloc)),
+    print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" * index + l_bloc + " "*((size_bar+1) - len("█" * index + l_bloc)),
                                                                 wheel[index % 4],
                                                                 int((percentage)*100),
                                                                 nb_of_total, speed,
@@ -180,10 +180,10 @@ def put_file(ws, local_file, remote_file):
             loop_index_f = (cnt/sz)*size_bar
             loop_index = int(loop_index_f)
             loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-            nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+            nb_of_total = "{:.2f}/{:.2f} kB".format(cnt/(1000), sz/(1000))
             percentage = cnt/sz
             t_elapsed = time.time() - t_start
-            t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+            t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
             ett = sz / (cnt / t_elapsed)
             if pb:
                 do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed,
@@ -234,10 +234,10 @@ def get_file(ws, local_file, remote_file, file_size):
                     loop_index_f = (cnt/sz_r)*size_bar
                     loop_index = int(loop_index_f)
                     loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                    nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz_r/(1024))
+                    nb_of_total = "{:.2f}/{:.2f} kB".format(cnt/(1000), sz_r/(1000))
                     percentage = cnt / sz_r
                     t_elapsed = time.time() - t_start
-                    t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                    t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
                     ett = sz_r / (cnt / t_elapsed)
                     do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
                               t_elapsed, loop_index_l, percentage, ett, size_bar)
@@ -386,7 +386,7 @@ def wsfileio(args, file, upyfile, devname, dev=None):
 
         if op == "get":
             if not args.fre:
-                print('\n{} [{:.2f} KB]'.format(src_file, dev.output/1024))
+                print('\n{} [{:.2f} kB]'.format(src_file, dev.output/1000))
                 try:
                     get_file(ws, dst_file, src_file, size_file_to_get)
                 except socket.timeout as e:
@@ -418,7 +418,7 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                     if not src_file.startswith('/'):
                         abs_src_file = '/{}'.format(src_file)
                     print("{}:{} -> {}".format(devname, abs_src_file, dst_file))
-                    print('\n{} [{:.2f} KB]'.format(src_file, size_file_to_get/1024))
+                    print('\n{} [{:.2f} kB]'.format(src_file, size_file_to_get/1000))
                     try:
                         get_file(ws, dst_file, src_file, size_file_to_get)
                     except KeyboardInterrupt as e:
@@ -441,7 +441,7 @@ def wsfileio(args, file, upyfile, devname, dev=None):
 
         elif op == "put":
             if not args.fre:
-                print('\n{} [{:.2f} KB]'.format(src_file, os.stat(src_file)[6]/1024))
+                print('\n{} [{:.2f} kB]'.format(src_file, os.stat(src_file)[6]/1000))
                 try:
                     put_file(ws, src_file, dst_file)
                 except socket.timeout as e:
@@ -473,8 +473,8 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                         basename = src_file.rsplit("/", 1)[-1]
                         dst_file += basename
                     print("{} -> {}:{}".format(src_file, devname, dst_file))
-                    print('\n{} [{:.2f} KB]'.format(
-                        src_file, os.stat(src_file)[6]/1024))
+                    print('\n{} [{:.2f} kB]'.format(
+                        src_file, os.stat(src_file)[6]/1000))
                     try:
                         put_file(ws, src_file, dst_file)
                     except KeyboardInterrupt as e:
@@ -610,7 +610,7 @@ def wstool(args, dev_name):
                     filesize = os.stat(file)[6]
                     if not os.path.isdir(file):
                         files_to_put.append(file)
-                        print('- {} [{:.2f} KB]'.format(file, filesize/1024))
+                        print('- {} [{:.2f} kB]'.format(file, filesize/1000))
                     else:
                         filesize = 'IsDirectory'
                         print('- {} [{}]'.format(file, filesize))

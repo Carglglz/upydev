@@ -390,7 +390,7 @@ def test_stream(args, run_cmd, dev, sensorlib, filename=None,
                 round((1/Fs)*1e3), round(Fs, -1),
                 round(N_DATA_PACKETS/final_time), BUFFERSIZE))
             print(
-                'DATA TRANSFER RATE: {} KB/s'.format(round(N_DATA_PACKETS/final_time)*nb/1024))
+                'DATA TRANSFER RATE: {} kB/s'.format(round(N_DATA_PACKETS/final_time)*nb/1000))
         except KeyboardInterrupt:
             conn.shutdown(socket.SHUT_RDWR)
             print('...wait for closing...')
@@ -615,7 +615,7 @@ def test_stream_chunk(args, run_cmd, dev, sensorlib, filename=None,
                 round((1/Fs)*1e3), round(Fs, -1),
                 round(N_DATA_PACKETS/final_time), BUFFERSIZE))
             print(
-                'DATA TRANSFER RATE: {} KB/s'.format(round(N_DATA_PACKETS/final_time)*nb/1024))
+                'DATA TRANSFER RATE: {} kB/s'.format(round(N_DATA_PACKETS/final_time)*nb/1000))
         except KeyboardInterrupt:
             conn.shutdown(socket.SHUT_RDWR)
             print('...wait for closing...')

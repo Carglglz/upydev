@@ -30,7 +30,7 @@ def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l,
     if index == size_bar:
         l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" * index + l_bloc + " "*((size_bar+1) - len("█" * index + l_bloc)),
+    print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" * index + l_bloc + " "*((size_bar+1) - len("█" * index + l_bloc)),
                                                                 wheel[index % 4],
                                                                 int((percentage)*100),
                                                                 nb_of_total, speed,
@@ -146,7 +146,7 @@ class OTAServer:
             pb = False
         wheel = ['|', '/', '-', "\\"]
         sz = len(self.firmware)
-        print(f"{self._fw_file}  [{sz / 1024:.2f} KB]")
+        print(f"{self._fw_file}  [{sz / 1000:.2f} kB]")
         put_soc = [self.conn]
         cnt = 0
         t_start = time.time()
@@ -162,19 +162,19 @@ class OTAServer:
                     if len(writable) == 1:
                         if self.buff != b'':
                             # in python use 'i'
-                            if len(self.buff) < BLOCKLEN:
+                            cnt += len(self.buff)
+                            if len(self.buff) < BLOCKLEN:  # fill last block
                                 for i in range(BLOCKLEN - len(self.buff)):
                                     self.buff += b'\xff'  # erased flash is ff
                             self.conn.sendall(self.buff)
-                            cnt += len(self.buff)
                             loop_index_f = (cnt/sz)*size_bar
                             loop_index = int(loop_index_f)
                             loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                            nb_of_total = "{:.2f}/{:.2f} KB".format(
-                                cnt/(1024), sz/(1024))
+                            nb_of_total = "{:.2f}/{:.2f} kB".format(
+                                cnt/(1000), sz/(1000))
                             percentage = cnt / sz
                             t_elapsed = time.time() - t_start
-                            t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                            t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
                             ett = sz / (cnt / t_elapsed)
                             if pb:
                                 do_pg_bar(loop_index, wheel, nb_of_total, t_speed,

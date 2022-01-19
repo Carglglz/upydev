@@ -62,11 +62,11 @@ GENERAL_COMMANDS_HELP = """
 
 
 def print_sizefile(file_name, filesize, tabs=0):
-    _kB = 1024
+    _kB = 1000
     if filesize < _kB:
         sizestr = str(filesize) + " by"
     elif filesize < _kB**2:
-        sizestr = "%0.1f KB" % (filesize / _kB)
+        sizestr = "%0.1f kB" % (filesize / _kB)
     elif filesize < _kB**3:
         sizestr = "%0.1f MB" % (filesize / _kB**2)
     else:
@@ -84,11 +84,11 @@ def print_sizefile_all(fileslist, tabs=0, frep=None):
         namefile = filedata[0]
         filesize = filedata[1]
 
-        _kB = 1024
+        _kB = 1000
         if filesize < _kB:
             sizestr = str(filesize) + " by"
         elif filesize < _kB**2:
-            sizestr = "%0.1f KB" % (filesize / _kB)
+            sizestr = "%0.1f kB" % (filesize / _kB)
         elif filesize < _kB**3:
             sizestr = "%0.1f MB" % (filesize / _kB**2)
         else:
@@ -105,11 +105,11 @@ def print_sizefile_all(fileslist, tabs=0, frep=None):
 
 
 def print_filesys_info(filesize):
-    _kB = 1024
+    _kB = 1000
     if filesize < _kB:
         sizestr = str(filesize) + " by"
     elif filesize < _kB**2:
-        sizestr = "%0.1f KB" % (filesize / _kB)
+        sizestr = "%0.1f kB" % (filesize / _kB)
     elif filesize < _kB**3:
         sizestr = "%0.1f MB" % (filesize / _kB**2)
     else:
@@ -221,12 +221,12 @@ def gen_command(cmd, *args, **kargs):
                                                                 'Size', 'Used',
                                                                 'Avail',
                                                                 'Use%']))
-            total_mem = mem['total']/1024
-            used_mem = mem['used']/1024
-            free_mem = mem['free']/1024
-            total_mem_s = "{:.3f} KB".format(total_mem)
-            used_mem_s = "{:.3f} KB".format(used_mem)
-            free_mem_s = "{:.3f} KB".format(free_mem)
+            total_mem = mem['total']/1000
+            used_mem = mem['used']/1000
+            free_mem = mem['free']/1000
+            total_mem_s = "{:.3f} kB".format(total_mem)
+            used_mem_s = "{:.3f} kB".format(used_mem)
+            free_mem_s = "{:.3f} kB".format(free_mem)
 
             print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
                                                              used_mem_s, free_mem_s,

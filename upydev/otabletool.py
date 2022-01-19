@@ -90,11 +90,11 @@ class OTABleController(BASE_BLE_DEVICE):
                         / self._len_total_packets) * self._bar_size
         loop_index = int(loop_index_f)
         loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-        nb_of_total = "{:.2f}/{:.2f} KB".format(self._len_image_data_sent / (1024**1),
-                                                self._len_total_packets / (1024**1))
+        nb_of_total = "{:.2f}/{:.2f} kB".format(self._len_image_data_sent / (1000**1),
+                                                self._len_total_packets / (1000**1))
         percentage = self._len_image_data_sent / self._len_total_packets
         t_elapsed = time.time() - self._t_start
-        t_speed = "{:^2.2f}".format((self._len_image_data_sent/(1024**1))/t_elapsed)
+        t_speed = "{:^2.2f}".format((self._len_image_data_sent/(1000**1))/t_elapsed)
         ett = self._len_total_packets / (self._len_image_data_sent / t_elapsed)
         # if pb:
         #     do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
@@ -103,7 +103,7 @@ class OTABleController(BASE_BLE_DEVICE):
         if loop_index == self._bar_size:
             l_bloc = "█"
         sys.stdout.write("\033[K")
-        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" * loop_index + l_bloc + " "*((self._bar_size+1) - len("█" * loop_index + l_bloc)),
+        print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" * loop_index + l_bloc + " "*((self._bar_size+1) - len("█" * loop_index + l_bloc)),
                                                                     self._wheel[loop_index % 4],
                                                                     int((percentage)*100),
                                                                     nb_of_total, t_speed,

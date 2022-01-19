@@ -34,11 +34,11 @@ def print_sizefile(path, file_name, tabs=0, rtl=False):
         filesize = stats[6]
         isdir = stats[0] & 0x4000
 
-        _kB = 1024
+        _kB = 1000
         if filesize < _kB:
             sizestr = str(filesize) + " by"
         elif filesize < _kB**2:
-            sizestr = "%0.1f KB" % (filesize / _kB)
+            sizestr = "%0.1f kB" % (filesize / _kB)
         elif filesize < _kB**3:
             sizestr = "%0.1f MB" % (filesize / _kB**2)
         else:

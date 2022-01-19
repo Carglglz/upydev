@@ -59,8 +59,7 @@ KEYGEN_HELP = """
                     (Only the token will be visible; check this using wireshark)
                     (This needs upysecrets.py)
 
-        - sslgen_key: (This needs openssl available in $PATH)
-                       To generate ECDSA key and a self-signed certificate to enable SSL sockets
+        - sslgen_key:  To generate ECDSA key and a self-signed certificate to enable SSL sockets
                        This needs a passphrase, that will be required every time the key is loaded.
                        Use -tfkey to upload this key to the device
                        (use only if connected directly to the AP of the device or a

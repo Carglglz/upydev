@@ -229,11 +229,11 @@ class DISK_USAGE:
                         print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
 
     def print_filesys_info(self, filesize):
-        _kB = 1024
+        _kB = 1000
         if filesize < _kB:
             sizestr = str(filesize) + " by"
         elif filesize < _kB**2:
-            sizestr = "%0.1f KB" % (filesize / _kB)
+            sizestr = "%0.1f kB" % (filesize / _kB)
         elif filesize < _kB**3:
             sizestr = "%0.1f MB" % (filesize / _kB**2)
         else:
@@ -248,11 +248,11 @@ du = DISK_USAGE()
 
 
 def print_filesys_info(filesize):
-    _kB = 1024
+    _kB = 1000
     if filesize < _kB:
         sizestr = str(filesize) + " by"
     elif filesize < _kB**2:
-        sizestr = "%0.1f KB" % (filesize / _kB)
+        sizestr = "%0.1f kB" % (filesize / _kB)
     elif filesize < _kB**3:
         sizestr = "%0.1f MB" % (filesize / _kB**2)
     else:

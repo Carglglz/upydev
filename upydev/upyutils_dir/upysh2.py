@@ -129,11 +129,11 @@ class DISK_USAGE:
                     gc.collect()
 
     def print_filesys_info(self, filesize):
-        _kB = 1024
+        _kB = 1000
         if filesize < _kB:
             sizestr = str(filesize) + " by"
         elif filesize < _kB**2:
-            sizestr = "%0.1f KB" % (filesize / _kB)
+            sizestr = "%0.1f kB" % (filesize / _kB)
         elif filesize < _kB**3:
             sizestr = "%0.1f MB" % (filesize / _kB**2)
         else:

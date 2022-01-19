@@ -38,7 +38,7 @@ class BleFileIO:
         if index == self.bar_size:
             l_bloc = "█"
         sys.stdout.write("\033[K")
-        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((self.bar_size+1) - len("█" *index + l_bloc)),
+        print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((self.bar_size+1) - len("█" *index + l_bloc)),
                                                                         wheel[index % 4],
                                                                         int((percentage)*100),
                                                                         nb_of_total, speed,
@@ -57,7 +57,7 @@ class BleFileIO:
         dst_file = src.split('/')[-1]
         if ppath:
             print('{}:{} -> {}'.format(dev_name, src, dst_file), end='\n\n')
-        print("{}  [{:.2f} KB]".format(src, sz / 1024))
+        print("{}  [{:.2f} kB]".format(src, sz / 1000))
         self.dev.flush()
         # self.start_SOC()
         self.dev.cmd("f=open('%s','rb');r=f.read" % src, silent=True)
@@ -75,10 +75,10 @@ class BleFileIO:
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                nb_of_total = "{:.2f}/{:.2f} kB".format(cnt/(1000), sz/(1000))
                 percentage = cnt / sz
                 t_elapsed = time.time() - t_start
-                t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
                 ett = sz / (cnt / t_elapsed)
                 if self.pb:
                     self.do_pg_bar(loop_index, self.wheel,
@@ -117,7 +117,7 @@ class BleFileIO:
                 print("{} -> {}:/{}\n".format(src, dev_name, dst_file))
             else:
                 print("{} -> {}:{}\n".format(src, dev_name, dst_file))
-        print("{}  [{:.2f} KB]".format(src, sz / 1024))
+        print("{}  [{:.2f} kB]".format(src, sz / 1000))
         self.dev.cmd("f=open('%s','wb');w=f.write" % dst_file, silent=True)
         if not abs_path:
             src = src_ori
@@ -138,10 +138,10 @@ class BleFileIO:
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                nb_of_total = "{:.2f}/{:.2f} KB".format(cnt/(1024), sz/(1024))
+                nb_of_total = "{:.2f}/{:.2f} kB".format(cnt/(1000), sz/(1000))
                 percentage = cnt / sz
                 t_elapsed = time.time() - t_start
-                t_speed = "{:^2.2f}".format((cnt/(1024))/t_elapsed)
+                t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
                 ett = sz / (cnt / t_elapsed)
                 if self.pb:
                     self.do_pg_bar(loop_index, self.wheel,
@@ -291,7 +291,7 @@ def bletool(args, dev_name):
                         filesize = os.stat(file)[6]
                         if not os.path.isdir(file):
                             files_to_put.append(file)
-                            print('- {} [{:.2f} KB]'.format(file, filesize/1024))
+                            print('- {} [{:.2f} kB]'.format(file, filesize/1000))
                         else:
                             filesize = 'IsDirectory'
                             print('- {} [{}]'.format(file, filesize))

@@ -46,7 +46,7 @@ class SyncFileIO:
         if index == self.bar_size:
             l_bloc = "█"
         sys.stdout.write("\033[K")
-        print('▏{}▏{:>2}{:>5} % | {} | {:>5} KB/s | {}/{} s'.format("█" * index + l_bloc + " "*((self.bar_size+1) - len("█" * index + l_bloc)),
+        print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" * index + l_bloc + " "*((self.bar_size+1) - len("█" * index + l_bloc)),
                                                                     wheel[index % 4],
                                                                     int((percentage)*100),
                                                                     nb_of_total, speed,
@@ -86,22 +86,18 @@ class SyncFileIO:
 
     def sync_file(self, args, dev_name, out=None):
         self.get_pb()
-        dir = ''
-        if args.dir:
-            dir = args.dir
         filetoget = args.f
-        cmd_filesize_str = "synct.os.stat('{}' + '/' + '{}')[6]".format(
-            dir, filetoget)
+        cmd_filesize_str = f"synct.os.stat('{filetoget}')[6]"
         # espdev.output = None
         # while espdev.output is None:
         filesize = self.dev.wr_cmd(cmd_filesize_str, silent=True, follow=False,
                                    rtn_resp=True)
-        print('File size: {:>40.2f} kB'.format(filesize/1024))
+        print('File size: {:>40.2f} kB'.format(filesize/1000))
         time_h.sleep(1)
-        sync_tool_cmd = "synct.read_sd_file_sync_raw({},cli_soc)".format(
-            "'{}/{}'".format(dir, filetoget))
+        sync_tool_cmd = f"synct.read_sd_file_sync_raw('{filetoget}',cli_soc)"
         self.dev.cmd_nb(sync_tool_cmd)
         print('Syncing file {} from {}'.format(filetoget, dev_name))
+        filetoget = filetoget.split('/')[-1]
         print('Saving {} file'.format(filetoget))
         print('Progress:\n')
         t0 = 0
@@ -123,12 +119,12 @@ class SyncFileIO:
                     loop_index_f = ((len(buff))/filesize)*self.bar_size
                     loop_index = int(loop_index_f)
                     loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                    nb_of_total = "{:.2f}/{:.2f} MB".format(
-                        len(buff)/(1024**2), filesize/(1024**2))
+                    nb_of_total = "{:.2f}/{:.2f} kB".format(
+                        len(buff)/(1000**1), filesize/(1000**1))
                     percentage = len(buff)/filesize
                     tdiff = time_h.time() - t_0
                     t_elapsed = time_h.time() - t_start
-                    t_speed = "{:^2.2f}".format((len(buff)/(1024**2))/t_elapsed)
+                    t_speed = "{:^2.2f}".format((len(buff)/(1000**1))/t_elapsed)
                     ett = filesize / (len(buff) / t_elapsed)
                     if self.pb:
                         self.do_pg_bar(loop_index, self.wheel,
@@ -160,7 +156,7 @@ class SyncFileIO:
             print('CONNECTION ERROR, TRYING AGAIN...')
             self.sync_file(args, dev_name, out=out)
         print('\n\nDone in {} seconds'.format(round(t_elapsed, 2)))
-        print('Total data received: {:>30.2f} kB'.format(filesize/1024))
+        print('Total data received: {:>30.2f} kB'.format(filesize/1000))
         return True
 
     def sync_files(self, args, dev_name):
