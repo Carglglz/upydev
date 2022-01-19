@@ -10,7 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ota` command to do OTA Firmware updates (esp32). This needs `ota.py` for network (LAN/WiFi) or `otable.py` for BLE. (`upyutils` directory) and `firmware.bin` file in `build-GENERIC_OTA` or from micropython esp32-ota downloads.
 Firmware file indicated with `-f` option or as second arg.
 - `ota` with `-sec` option to do OTA over TLS. (This needs `kg ssl` first).
-- `rsa_sign`, `rsa_verify` commands to sign file with device RSA key
+- `rsa_sign`, `rsa_verify` commands to sign file or verify signatures made with device RSA key
+- `kg rsa host`, to generate a host RSA key pair and send public key to device.
+- `rsa sign host [FILE]` to sign a file with host RSA key.
+- `rsa verify host [FILE]` to verify in the device a file signature made with host RSA key
 - `rsa` lib in `upyutils` to support RSA key load, sign, verify, encrypt, decrypt,
 generation and export in PEM format
 - `gen_rsakey` added option `-rkey` to remove RSA private key from the host, so in combination with `-tfkey` option, the RSA private key will be stored only in the device.
@@ -21,6 +24,7 @@ generation and export in PEM format
 - `rf_wrkey` now use RSA public key for password derivation and send encrypted password
 that is decrypted and stored in device.
 - Load time in MacOS caused by upydevice->BleDevice->bleak->corebluetooth
+- Save in ecdsa key/cert directly in `DER`, no need for `openssl` in `PATH`.
 ## [0.3.7] 2021-12-16
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)

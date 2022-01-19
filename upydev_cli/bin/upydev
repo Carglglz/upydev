@@ -402,7 +402,15 @@ elif len(args.m) > 2:
             args.port = rest_args[1]
     elif args.m == 'rsa':
         rsa_mode, args.f, = rest_args[:2]
+        if args.f == 'host':
+            args.lh = True
+            args.f = rest_args[-1]
         args.m = f"{args.m}_{rsa_mode}"
+    elif args.m == 'kg' or args.m == 'keygen':
+        rsa_mode, rsa_host, = rest_args[:2]
+        if rsa_mode == 'rsa' and rsa_host == 'host':
+            args.m = 'gen_rsakey'
+            args.lh = True
         # print(args.m, args.f, args.fre, args.md)
         # sys.exit()
 

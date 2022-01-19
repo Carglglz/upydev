@@ -186,12 +186,17 @@ Keygen
         device (use only if connected directly by USB, the AP of the device or a
         "secure" wifi e.g. local/home). Alternative alias, ``$ upydev kg rsa``,
         ``$ upydev keygen rsa``
+        Use ``-rkey`` option to remove private key from host (only store public key).
+        To generate a host key pair use ``kg rsa host``. Then the public key will be sent
+        to the device so it can verify or authenticate the host signature.
 
     - rsa_sign:
-        To sign a file with device RSA key, (``rsa`` lib required), use ``-f`` to indicate the file to sign or use alias form: ``$ upydev rsa sign [FILE]``
+        To sign a file with device RSA key, (``rsa`` lib required), use ``-f`` to indicate the file to sign or use alias form: ``$ upydev rsa sign [FILE]``.
+        To sign a file with host RSA key: ``$ upydev rsa sign host [FILE]``
 
     - rsa_verify:
-        To verify a signature of a file made with device RSA key, use ``-f`` to indicate the signature file to verify or use alias form: ``$ upydev rsa verify [FILE]``
+        To verify a signature of a file made with device RSA key, use ``-f`` to indicate the signature file to verify or use alias form: ``$ upydev rsa verify [FILE]``.
+        To verify in device a signature made with host RSA key: ``$ upydev rsa verify host [FILE]``
 
     - rf_wrkey:
         To "refresh" the WebREPL password with a new random password derivated from
@@ -203,7 +208,6 @@ Keygen
         Alternative alias, ``$ upydev kg wr``, ``$ upydev keygen wr``
 
     - sslgen_key:
-        (This needs openssl available in $PATH)
         To generate ECDSA key and a self-signed certificate to enable SSL sockets
         This needs a passphrase, that will be required every time the key is loaded.
         Use ``-tfkey`` to upload this key to the device
