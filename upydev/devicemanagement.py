@@ -364,7 +364,7 @@ def devicemanagement_action(args, **kargs):
         lsdevs_func = False
         filename = ''
         if args.s:
-            filename = args.s
+            filename = os.path.expanduser(args.s)
         else:
             if '.profile' in os.listdir(os.environ['HOME']):
                 filename = os.path.join(os.environ['HOME'], '.profile')
