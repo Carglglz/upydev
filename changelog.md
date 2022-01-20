@@ -25,6 +25,7 @@ generation and export in PEM format
 that is decrypted and stored in device.
 - Load time in MacOS caused by upydevice->BleDevice->bleak->corebluetooth
 - Save in ecdsa key/cert directly in `DER`, no need for `openssl` in `PATH`.
+- Allow mdns name in ssl certificate.
 ## [0.3.7] 2021-12-16
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)

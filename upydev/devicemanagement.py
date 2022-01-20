@@ -239,7 +239,8 @@ def devicemanagement_action(args, **kargs):
                         if not args.wss:
                             dev = Device(args.t, args.p, init=True)
                         else:
-                            dev = Device(args.t, args.p, init=True, ssl=True)
+                            dev = Device(args.t, args.p, init=True,
+                                         ssl=True, auth=args.wss)
                         print(dev)
                 except Exception as e:
                     print(e)
@@ -253,7 +254,7 @@ def devicemanagement_action(args, **kargs):
                 if not args.wss:
                     dev = Device(args.t, args.p, init=True)
                 else:
-                    dev = Device(args.t, args.p, init=True, ssl=True)
+                    dev = Device(args.t, args.p, init=True, ssl=True, auth=args.wss)
                 print(dev)
         sys.exit()
 
@@ -392,7 +393,8 @@ def devicemanagement_action(args, **kargs):
             with open(filename, 'a') as devsconfig:
                 devsconfig.write('\n#UPYDEV LSDEVS\n')
                 if args.s:
-                    devsconfig.write('function lsdevs() { upydev lsdevs -s ' + f'{args.s}' +' ; }\n')
+                    devsconfig.write(
+                        'function lsdevs() { upydev lsdevs -s ' + f'{args.s}' + ' ; }\n')
                 else:
                     devsconfig.write('function lsdevs() { upydev lsdevs; }\n')
 

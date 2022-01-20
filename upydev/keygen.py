@@ -243,8 +243,8 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
                                       NameOID.ORGANIZATION_NAME, u"MicroPython"),
                                   x509.NameAttribute(NameOID.COMMON_NAME, u"{}@{}".format(dev_platform, unique_id))])
     host_ip = ipaddress.IPv4Address(cert_data['addrs'])
-    if '.local' in args.t:
-        args.t = socket.gethostbyname(args.t)
+    # if '.local' in args.t:
+    #     args.t = socket.gethostbyname(args.t)
     if not args.zt:
         cert = x509.CertificateBuilder().subject_name(
                     subject).issuer_name(issuer).public_key(key.public_key()

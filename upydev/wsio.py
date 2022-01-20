@@ -270,7 +270,8 @@ def parse_remote(remote, ssl=False):
 def connect_ws(host, port, passwd, websec):
     s = socket.socket()
     s.settimeout(10)
-
+    if host.endswith('.local'):
+        host = socket.gethostbyname(host)
     ai = socket.getaddrinfo(host, port)
     addr = ai[0][4]
     try:

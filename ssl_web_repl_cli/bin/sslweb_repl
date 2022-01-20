@@ -3785,15 +3785,13 @@ def custom_sh_cmd(cmd_inp):
         try:
             mode = cmd_inp.split(' ')[1]
             if mode == 'on':
-                send_custom_sh_cmd("sslconfig = open('ssl_flag.py', 'wb')")
-                send_custom_sh_cmd(
-                    "sslconfig.write({});sslconfig.close()".format(b'SSL = True'))
+                send_custom_sh_cmd("from wss_repl import set_ssl")
+                send_custom_sh_cmd("set_ssl()")
                 print('WebSecureREPL enabled')
 
             elif mode == 'off':
-                send_custom_sh_cmd("sslconfig = open('ssl_flag.py', 'wb')")
-                send_custom_sh_cmd(
-                    "sslconfig.write({});sslconfig.close()".format(b'SSL = False'))
+                send_custom_sh_cmd("from wss_repl import set_ssl")
+                send_custom_sh_cmd("set_ssl(False)")
                 print('WebSecureREPL disabled')
         except Exception as e:
             print('Select a mode (on/off) to enable or disable WebSecureREPL')

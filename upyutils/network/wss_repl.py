@@ -16,10 +16,11 @@ cert = None
 listen_s = None
 client_s = None
 websslrepl = False
+ssl_auth = False
 
 
 def setup_conn(port, accept_handler):
-    global listen_s, websslrepl
+    global listen_s, websslrepl, ssl_auth
     listen_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listen_s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -34,14 +35,16 @@ def setup_conn(port, accept_handler):
         iface = network.WLAN(i)
         if iface.active():
             if websslrepl:
-                print("WebSecureREPL daemon started on wss://%s:%d" % (iface.ifconfig()[0], port))
+                print("WebSecureREPL daemon started on wss://%s:%d" %
+                      (iface.ifconfig()[0], port))
             else:
-                print("WebREPL daemon started on ws://%s:%d" % (iface.ifconfig()[0], port))
+                print("WebREPL daemon started on ws://%s:%d" %
+                      (iface.ifconfig()[0], port))
     return listen_s
 
 
 def accept_conn(listen_sock):
-    global client_s, key, cert, websslrepl
+    global client_s, key, cert, websslrepl, ssl_auth
     cl, remote_addr = listen_sock.accept()
     prev = uos.dupterm(None)
     uos.dupterm(prev)
@@ -55,6 +58,12 @@ def accept_conn(listen_sock):
         if hasattr(uos, 'dupterm_notify'):
             cl.setsockopt(socket.SOL_SOCKET, 20, uos.dupterm_notify)
         cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert)
+        # Not possible client auth RN.
+        # if ssl_auth:
+        #     # check peer cert is the same
+        #
+        #     assert cert == cl.getpeercert(True), "Peer Certificate Invalid"
+        #    # todo check hostname: load cert and check remote_addr in peer certificate
         wss_helper.server_handshake(cl, ssl=True)
     else:
         websocket_helper.server_handshake(cl)
@@ -77,9 +86,11 @@ def stop():
         listen_s.close()
 
 
-def start(port=8266, password=None, ssl=False):
-    global key, cert, websslrepl
+def start(port=8266, password=None, ssl=False, auth=False):
+    global key, cert, websslrepl, ssl_auth
     if ssl:
+        if auth:
+            ssl_auth = True
         websslrepl = True
         port = 8833
         _key = 'SSL_key{}.der'.format(hexlify(unique_id()).decode())
@@ -89,7 +100,7 @@ def start(port=8266, password=None, ssl=False):
                 key = keyfile.read()
             with open(_cert, 'rb') as certfile:
                 cert = certfile.read()
-        except Exception as e:
+        except Exception:
             print('No key or certificate found')
     else:
         websslrepl = False
@@ -100,7 +111,7 @@ def start(port=8266, password=None, ssl=False):
             _webrepl.password(webrepl_cfg.PASS)
             setup_conn(port, accept_conn)
             print("Started webrepl in normal mode")
-        except:
+        except Exception:
             print("WebREPL is not configured, run 'import webrepl_setup'")
     else:
         _webrepl.password(password)
@@ -114,6 +125,8 @@ def start_foreground(port=8266):
     accept_conn(s)
 
 
-def set_ssl(flag):
-    with open('ssl_flag.py', 'wb') as sslconfig:
-        sslconfig.write(b'SSL = {}'.format(flag))
+def set_ssl(flag_ssl=True, flag_auth=False):
+    with open('ssl_config.py', 'wb') as sslconfig:
+        sslconfig.write(b'from collections import namedtuple\n\n')
+        sslconfig.write(b'SSL_CONF = namedtuple("SSLCONFIG", ("ssl", "auth"))\n')
+        sslconfig.write(b'SSL = SSL_CONF({}, {})'.format(flag_ssl, flag_auth))
