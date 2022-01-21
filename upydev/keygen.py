@@ -1,6 +1,5 @@
 from upydevice import Device
 import sys
-from upydev.helpinfo import see_help
 from upydev.fileio import fileio_action
 from upydevice import check_device_type
 import getpass
@@ -22,10 +21,7 @@ import netifaces
 import socket
 import locale
 from datetime import datetime, timedelta
-import shlex
-import subprocess
 import ipaddress
-import time
 import uuid
 
 
@@ -83,6 +79,7 @@ def rsa_keygen(args, dir='', store=True, show_key=False, id='00', host=False):
     key_ser = serialization.NoEncryption()
     if host:
         my_p = getpass.getpass(prompt='Password: ', stream=None)
+        # print(my_p)
         key_ser = serialization.BestAvailableEncryption(bytes(my_p, 'utf-8'))
     pem = private_key.private_bytes(encoding=serialization.Encoding.PEM,
                                     format=serialization.PrivateFormat.TraditionalOpenSSL,
@@ -439,9 +436,10 @@ def rsa_sign(args, **kargs):
                           silent=True, rtn_resp=True)
     unique_id = hexlify(id_bytes).decode()
     pvkey = f"upy_pv_rsa{unique_id}.key"
-    print('ID: {}'.format(unique_id))
+    print(f'{device} ID: {unique_id}')
     dev.wr_cmd(f"from rsa.rsautil import RSAPrivateKey;pk=RSAPrivateKey('{pvkey}')")
     # dev.disconnect()
+    print(f"Key ID: {dev.wr_cmd('pk', silent=True, rtn_resp=True)}")
     dev.wr_cmd(f"sg = pk.signfile('{_sigfile}')", silent=False, follow=True)
     sg = dev.wr_cmd("sg", silent=True, rtn_resp=True)
     with open(f"{args.f.split('/')[-1]}.sign", 'wb') as signfile:
@@ -460,8 +458,8 @@ def rsa_verify(args, device):
     dev.disconnect()
     unique_id = hexlify(id_bytes).decode()
     print(f"Assuming signed data in {args.f.replace('.sign', '')}")
-    print('ID: {}'.format(unique_id))
-    key_abs = os.path.join(UPYDEV_PATH, 'upy_pub_rsa{}.key'.format(unique_id))
+    print(f'{device} ID: {unique_id}')
+    key_abs = os.path.join(UPYDEV_PATH, f'upy_pub_rsa{unique_id}.key')
     # load key.pem
     with open(key_abs, "rb") as key_file:
         pub_key = serialization.load_pem_public_key(key_file.read())
@@ -470,7 +468,7 @@ def rsa_verify(args, device):
         key_hash.update(pub_key.public_bytes(serialization.Encoding.DER,
                                              serialization.PublicFormat.PKCS1))
         hashed_key = hexlify(key_hash.digest()).decode('ascii').upper()
-        print(f"Using {kz} bits RSA key {hashed_key[:40]}")
+        print(f"Using {kz} bits RSA Public key {hashed_key[:40]}")
     # load message
     with open(args.f.replace('.sign', ''), 'rb') as message:
         message_bytes = message.read()
@@ -493,7 +491,6 @@ def rsa_verify(args, device):
 def rsa_sign_host(args, **kargs):
     _sigfile = args.f.split('/')[-1]
     # fileio_action(args, **kargs)
-    print('Getting Host unique id...')
     bb = 6
     while True:
         try:
@@ -510,6 +507,7 @@ def rsa_sign_host(args, **kargs):
             try:
                 my_p = getpass.getpass(
                     prompt=f"Enter passphrase for key '{pvkey}':", stream=None)
+                # print(my_p)
                 private_key = serialization.load_pem_private_key(
                     key_file.read(), my_p.encode())
                 break
@@ -519,10 +517,11 @@ def rsa_sign_host(args, **kargs):
     with open(args.f, 'rb') as file_to_sign:
         key_hash = hashlib.sha256()
         kz = private_key.key_size
-        key_hash.update(private_key.public_key().public_bytes(serialization.Encoding.DER,
-                                                              serialization.PublicFormat.PKCS1))
+        key_hash.update(private_key.private_bytes(serialization.Encoding.DER,
+                                                  serialization.PrivateFormat.TraditionalOpenSSL,
+                                                  serialization.NoEncryption()))
         hashed_key = hexlify(key_hash.digest()).decode('ascii').upper()
-        print(f"Using {kz} bits RSA key {hashed_key[:40]}")
+        print(f"Using {kz} bits RSA Private key {hashed_key[:40]}")
         signature = private_key.sign(file_to_sign.read(), padding.PKCS1v15(),
                                      hashes.SHA256())
     with open(f"{args.f}.sign", 'wb') as signedfile:
@@ -534,7 +533,6 @@ def rsa_verify_host(args, device):
     print(f'{device} verifying {args.f} signature from Host RSA key')
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
     print(f"Assuming signed data in {args.f.replace('.sign', '')}")
-    print('Getting Host unique id...')
     bb = 6
     while True:
         try:
@@ -542,8 +540,8 @@ def rsa_verify_host(args, device):
             break
         except OverflowError:
             bb += 1
-    print('Host ID: {}'.format(unique_id))
-    key_abs = os.path.join(UPYDEV_PATH, 'upy_host_pub_rsa{}.key'.format(unique_id))
+    print(f'Host ID: {unique_id}')
+    key_abs = os.path.join(UPYDEV_PATH, f'upy_host_pub_rsa{unique_id}.key')
     # load key.pem
     with open(key_abs, "rb") as key_file:
         pub_key = serialization.load_pem_public_key(key_file.read())
@@ -552,10 +550,11 @@ def rsa_verify_host(args, device):
         key_hash.update(pub_key.public_bytes(serialization.Encoding.DER,
                                              serialization.PublicFormat.PKCS1))
         hashed_key = hexlify(key_hash.digest()).decode('ascii').upper()
-        print(f"Using {kz} bits RSA key {hashed_key[:40]}")
+        print(f"Host: {kz} bits RSA Public key {hashed_key[:40]}")
     pubkey = f"upy_host_pub_rsa{unique_id}.key"
     dev.wr_cmd(f"from rsa.rsautil import RSAPublicKey;pbk=RSAPublicKey('{pubkey}')")
     ftv = args.f.replace('.sign', '')
+    print(f"{device}: Verifying with {dev.wr_cmd('pbk', silent=True, rtn_resp=True)} ")
     dev.wr_cmd(f"vf = pbk.verifyfile('{ftv}', '{args.f}')", silent=False, follow=True)
     vf = dev.wr_cmd("vf", silent=True, rtn_resp=True)
     if vf is True:
