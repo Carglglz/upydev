@@ -21,8 +21,12 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.filters import Condition
+from upydevice import wsclient
 import asyncio
+from upydev import __path__ as ca_path
 import ssl
+
+CA_PATH = ca_path[0]
 
 
 # KEYPRESS EVENTS
@@ -474,12 +478,16 @@ def on_message(ws, message):
 
 
 def on_error(ws, error):
-    sys.stdout.write("### error("+error+") ###\n")
-    sys.stdout.flush()
+    if isinstance(error, websocket._exceptions.WebSocketConnectionClosedException):
+        pass
+    else:
+        sys.stdout.write(f"### error('{str(error)}')")  # \n")
+        sys.stdout.flush()
 
 
-def on_close(ws):
-    sys.stdout.write("### closed ###\n")
+def on_close(ws, status, close_msg):
+    dev_ip = sys.argv[1]
+    sys.stdout.write(f"Connection to {dev_ip} closed.\n")
     sys.stdout.flush()
     ws.close()
     sys.exit(1)
@@ -585,8 +593,13 @@ if __name__ == "__main__":
                                     on_message=on_message,
                                     on_error=on_error,
                                     on_close=on_close)
+        hostname = f"wss://{dev_ip}:{port}"
+        # key, cert = wsclient.load_cert_from_hostname(CA_PATH, f"wss://{dev_ip}:{port}")
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        context.load_verify_locations(cadata=wsclient.load_custom_CA_data(CA_PATH))
+        context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
         ws.on_open = on_open
-        ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE, "check_hostname": False})
+        ws.run_forever(sslopt={"context": context, "server_hostname": hostname})
     else:
         ws = websocket.WebSocketApp(f"ws://{dev_ip}:{port}",
                                     on_message=on_message,
