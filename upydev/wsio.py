@@ -289,19 +289,12 @@ def connect_ws(host, port, passwd, websec):
             # context.load_cert_chain(cert, key)
             context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
             s = context.wrap_socket(s, server_hostname=hostname)
-            # context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            # context.check_hostname = False
-            # context.verify_mode = ssl.CERT_NONE
-            # context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
-            # s = context.wrap_socket(s)
             s.connect(addr)
             wss_helper_host.client_handshake(s, ssl=True)
         else:
             s.connect(addr)
-        # s = s.makefile("rwb")
             websocket_helper.client_handshake(s)
     except socket.timeout:
-        # print(e, 'Device {} unreachable'.format(devname))
         try:
             if websec:
                 raise DeviceNotFound(
@@ -316,7 +309,6 @@ def connect_ws(host, port, passwd, websec):
     ws = websocket(s)
 
     login(ws, passwd)
-    # print("Remote WebREPL version:", get_ver(ws))
 
     # Set websocket to send data marked as "binary"
     ws.ioctl(9, 2)
@@ -339,6 +331,7 @@ def wsfileio(args, file, upyfile, devname, dev=None):
 
     if op == 'get':
         source = ''
+        assert isinstance(upyfile, tuple) is True, "file must be tuple (size, name)"
         if not websec:
             host, port, src_file = host, port, source + upyfile[1]
         else:
@@ -361,48 +354,27 @@ def wsfileio(args, file, upyfile, devname, dev=None):
             basename = src_file.rsplit("/", 1)[-1]
             dst_file += basename
 
-    # if True:
-        # print("op:%s, host:%s, port:%d, passwd:%s." %
-        #       (op, host, port, '*'*len(passwd)))
     if not args.fre:
         if op == 'put':
             abs_dst_file = dst_file
             if not dst_file.startswith('/'):
                 abs_dst_file = f'/{dst_file}'
-            print(f"{src_file} -> {devname,}:{abs_dst_file}")
+            print(f"{src_file} -> {devname}:{abs_dst_file}")
         if op == 'get':
             abs_src_file = src_file
             if not src_file.startswith('/'):
                 abs_src_file = f'/{src_file}'
             print(f"{devname}:{abs_src_file} -> {dst_file}")
             size_file_to_get = upyfile[0]
-                # dev.cmd(f"import uos, gc; uos.stat('{src_file}')[6]; gc.collect()",
-                #         silent=True)
 
-
-    else:
-        if op == 'get':
-
-            sizes_files_to_get = []
-            for fsz in args.fre:
-                if isinstance(fsz, tuple):
-                    sizes_files_to_get.append(fsz[0])
-                else:
-                    sz_cmd = f"import uos, gc; uos.stat('{fsz}')[6]; gc.collect()"
-                    sizes_files_to_get.append(
-                        dev.cmd(sz_cmd, silent=True, rtn_resp=True))
-
-    # HERE CATCH -wss and do handshake
-    if dev and dev.connected:
-        # if dev.connected:
-        dev.ws.sock.settimeout(10)
-        ws = websocket(dev.ws.sock)
+    if dev:
+        if dev.connected:
+            # if dev.connected:
+            dev.ws.sock.settimeout(10)
+            ws = websocket(dev.ws.sock)
     else:
         ws = connect_ws(host, port, passwd, websec)
-    # time.sleep(0.1)
-    # here pass dev ws.s to websocket # avoid multiple logins
 
-    # ws = connect_ws(host, port, passwd, websec)
     if ws:
 
         if op == "get":
@@ -422,20 +394,21 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                     except Exception as e:
                         print(f'ERROR {e}')
                         return False
-                except KeyboardInterrupt:
+                except (KeyboardInterrupt, Exception):
                     print('KeyboardInterrupt: get Operation Cancelled')
+                    # flush ws
+                    dev.flush()
+                    dev.disconnect()
                     if not dev.connected:
                         ws.s.close()
                     return False
             else:
-                fz_dict = dict(zip(args.fre, sizes_files_to_get))
-                for file in args.fre:
+                for size_file_to_get, file in args.fre:
                     src_file = file
                     dst_file = '.'
                     if os.path.isdir(dst_file):
                         basename = src_file.rsplit("/", 1)[-1]
                         dst_file += "/" + basename
-                    size_file_to_get = fz_dict[src_file]
                     abs_src_file = src_file
                     if not src_file.startswith('/'):
                         abs_src_file = f'/{src_file}'
@@ -443,8 +416,14 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                     print(f'\n{src_file} [{size_file_to_get/1000:.2f} kB]')
                     try:
                         get_file(ws, dst_file, src_file, size_file_to_get)
-                    except KeyboardInterrupt:
+                    except (KeyboardInterrupt, Exception):
                         print('KeyboardInterrupt: get Operation Cancelled')
+                        # flush ws and reset
+                        dev.flush()
+                        dev.disconnect()
+                        dev.connect(ssl=websec, auth=websec)
+                        dev.ws.sock.settimeout(10)
+                        ws = websocket(dev.ws.sock)
                         if not dev.connected:
                             ws.s.close()
                         time.sleep(0.2)
@@ -546,7 +525,7 @@ class WebSocketFileIO:
 
     def get_files(self, args, dev_name):
         args.m = 'get'
-        wsfileio(args, '', '', dev_name, self.dev)
+        wsfileio(args, '', ('', ''), dev_name, self.dev)
 
 
 def wstool(args, dev_name):
@@ -562,6 +541,10 @@ def wstool(args, dev_name):
             print('args -f or -fre required:')
             see_help(args.m)
             sys.exit()
+        if args.f:
+            if os.path.isdir(args.f):
+                os.chdir(args.f)
+                args.fre = ['.']
         if not args.fre:
             # One file:
             source = ''
@@ -578,9 +561,10 @@ def wstool(args, dev_name):
                 os.stat(file)[6]
                 if not os.path.isdir(file):
                     result = None
+                    dev = Device(args.t, args.p, init=True, ssl=args.wss,
+                                 auth=args.wss)
                     if args.s:
-                        dev = Device(args.t, args.p, init=True, ssl=args.wss,
-                                     auth=args.wss)
+
                         is_dir_cmd = f"import uos, gc; uos.stat('{source}')[0] & 0x4000"
                         is_dir = dev.cmd(is_dir_cmd, silent=True, rtn_resp=True)
                         # dev.disconnect()
@@ -594,18 +578,19 @@ def wstool(args, dev_name):
                         else:
                             if is_dir:
                                 print(f'Uploading file {file_in_upy} @ {dev_name}...')
-                                result = wsfileio(args, file, file_in_upy, dev_name)
+                                result = wsfileio(args, file, file_in_upy, dev_name,
+                                                  dev=dev)
                     else:
                         args.s = source
                         print(f'Uploading file {file_in_upy} @ {dev_name}...')
-                        result = wsfileio(args, file, file_in_upy, dev_name)
+                        result = wsfileio(args, file, file_in_upy, dev_name, dev)
 
                     # Reset:
                     if result:
                         if args.rst is None:
-                            time.sleep(0.1)
-                            dev = Device(args.t, args.p, init=True, ssl=args.wss,
-                                         auth=args.wss)
+                            # time.sleep(0.1)
+                            # dev = Device(args.t, args.p, init=True, ssl=args.wss,
+                            #              auth=args.wss)
                             time.sleep(0.2)
                             dev.reset(reconnect=False)
                             time.sleep(0.5)
@@ -653,9 +638,10 @@ def wstool(args, dev_name):
             if source:
                 args.s = source
             try:
+                dev = Device(args.t, args.p, init=True, ssl=args.wss,
+                             auth=args.wss)
                 if args.s:
-                    dev = Device(args.t, args.p, init=True, ssl=args.wss,
-                                 auth=args.wss)
+
                     is_dir_cmd = f"import uos, gc; uos.stat('{source}')[0] & 0x4000"
                     is_dir = dev.cmd(is_dir_cmd, silent=True, rtn_resp=True)
                     # dev.disconnect()
@@ -669,18 +655,18 @@ def wstool(args, dev_name):
                     else:
                         if is_dir:
                             print(f'\nUploading files @ {dev_name}...\n')
-                            result = wsfileio(args, 'fre', 'fre', dev_name)
+                            result = wsfileio(args, 'fre', 'fre', dev_name, dev)
                 else:
                     args.s = source
                     print(f'\nUploading files @ {dev_name}...\n')
-                    result = wsfileio(args, 'fre', 'fre', dev_name)
+                    result = wsfileio(args, 'fre', 'fre', dev_name, dev)
 
                 # Reset:
                 if result:
                     if args.rst is None:
-                        time.sleep(0.1)
-                        dev = Device(args.t, args.p, init=True,
-                                     ssl=args.wss, auth=args.wss)
+                        # time.sleep(0.1)
+                        # dev = Device(args.t, args.p, init=True,
+                        #              ssl=args.wss, auth=args.wss)
                         time.sleep(0.2)
                         dev.reset(reconnect=False)
                         time.sleep(0.2)
@@ -693,6 +679,12 @@ def wstool(args, dev_name):
             print('args -f or -fre required:')
             see_help(args.m)
             sys.exit()
+        if args.f:
+            if '/' in args.f:
+                if len(args.f.rsplit('/', 1)) > 1:
+                    args.dir, args.f = args.f.rsplit('/', 1)
+                    if args.f == '':
+                        args.fre = ['.']
         if not args.fre:
             if args.s is None and args.dir is None:
                 print(f'Looking for file in {dev_name}:/ dir ...')
@@ -704,9 +696,10 @@ def wstool(args, dev_name):
                 if args.s is not None:
                     args.dir = f'{args.s}/{args.dir}'
                 print(f'Looking for file in {dev_name}:/{args.dir} dir')
-                cmd_str = (f"import uos;[(uos.stat('/{args.dir}'/+file)[6], file) for file "
-                           f"uos.listdir('/{args.dir}') if file == '{args.f}' and not "
-                           f"uos.stat('/{args.dir}'/+file)[0] & 0x4000]")
+                cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6], file)"
+                           f" for file in uos.listdir('/{args.dir}')"
+                           f" if file == '{args.f}' and "
+                           f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
                 dir = f'/{args.dir}'
             try:
                 dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
@@ -746,38 +739,49 @@ def wstool(args, dev_name):
             # cwd:
             filter_files = []
             for file in args.fre:
-                if '*' not in file and file not in ['cwd', '.']:
-                    filter_files.append(file)
-                # elif '*' in file:
-                #     start_exp, end_exp = file.split('*')
-                #     for reg_file in file_exists:
-                #         if reg_file.startswith(start_exp) and reg_file.endswith(end_exp):
-                #             files_to_get.append(reg_file)
-                #             print(f'- {reg_file} ')
-                # else:
-                #     filesize = 'FileNotFoundError'
-                #     print(f'- {file} [{filesize}]')
-            filter_files_cmd = f"filter_files = {filter_files}"
+                if file not in ['cwd', '.']:
+                    filter_files.append(file.replace(
+                        '.', '\.').replace('*', '.*') + '$')
+            # print(filter_files)
             if args.s is None and args.dir is None:
                 print(f'Looking for files in {dev_name}:/ dir ...')
                 if filter_files:
-                    cmd_str = ("import uos;[file for file in uos.listdir() if file in "
-                               "filter_files and not uos.stat(file)[0] & 0x4000]")
+                    cmd_str = ("import uos;[(uos.stat(file)[6], file) for file in "
+                               "uos.listdir() if any([patt.match(file) for patt in "
+                               "pattrn]) and not uos.stat(file)[0] & 0x4000]")
                 else:
-                    cmd_str = ("import uos;[file for file in uos.listdir() if not  "
+                    cmd_str = ("import uos;[(uos.stat(file)[6], file) for file "
+                               "in uos.listdir() if not "
                                "uos.stat(file)[0] & 0x4000]")
                 dir = ''
             elif args.dir is not None or args.s is not None:
                 if args.s is not None:
                     args.dir = f'{args.s}/{args.dir}'
                 print(f'Looking for files in {dev_name}:/{args.dir} dir')
-                cmd_str = (f"import uos;[file for file in uos.listdir('/{args.dir}') if "
-                           f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
+                if filter_files:
+                    cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6], file) "
+                               f"for file in uos.listdir('/{args.dir}') if "
+                               f"any([patt.match(file) for patt in pattrn]) and "
+                               f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
+                else:
+                    cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6], file)"
+                               f"for file in uos.listdir('/{args.dir}') if "
+                               f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
                 dir = f'/{args.dir}'
             try:
                 dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
                 if filter_files:
-                    dev.cmd(filter_files_cmd, silent=True)
+                    if len(f"filter_files = {filter_files}") < 250:
+                        filter_files_cmd = f"filter_files = {filter_files}"
+                        dev.cmd(filter_files_cmd, silent=True)
+                    else:
+                        dev.cmd("filter_files = []", silent=True)
+                        for i in range(0, len(filter_files), 15):
+                            filter_files_cmd = f"filter_files += {filter_files[i:i+15]}"
+                            dev.cmd(filter_files_cmd, silent=True)
+                    dev.cmd("import re; pattrn = [re.compile(f) for "
+                            "f in filter_files]", silent=True)
+                    cmd_str += ';import gc;del(filter_files);del(pattrn);gc.collect()'
                 file_exists = dev.cmd(cmd_str, silent=True, rtn_resp=True)
                 if dev._traceback.decode() in dev.response:
                     try:
@@ -795,32 +799,43 @@ def wstool(args, dev_name):
                             args.fre = file_exists
                         elif '*' in args.fre[0]:
                             start_exp, end_exp = args.fre[0].split('*')
-                            args.fre = [file for file in file_exists if file.startswith(
-                                start_exp) and file.endswith(end_exp)]
+                            args.fre = [file for file in file_exists if
+                                        file[1].startswith(start_exp)
+                                        and file[1].endswith(end_exp)]
                     if dir == '':
                         dir = '/'
-                    print(f'Files in {dev_name}:{dir} to get: ')
+                    print(f'Files in {dev_name}:{dir} to get: \n')
+                    # print(file_exists)
+                    # print(args.fre)
+                    # print([nfile[1] for nfile in file_exists])
+                    if file_exists == args.fre:
+                        args.fre = [nfile[1] for nfile in file_exists]
                     for file in args.fre:
-                        if file in file_exists:
-                            files_to_get.append(file)
-                            print(f'- {file} ')
+                        if file in [nfile[1] for nfile in file_exists]:
+                            for sz, nfile in file_exists:
+                                # print(file, nfile)
+                                if file == nfile:
+                                    files_to_get.append((sz, nfile))
+                                    print(f'- {nfile} [{sz/1000:.2f} kB]')
                         elif '*' in file:
                             start_exp, end_exp = file.split('*')
                             for reg_file in file_exists:
-                                if reg_file.startswith(start_exp) and reg_file.endswith(end_exp):
+                                if reg_file[1].startswith(start_exp) and reg_file[1].endswith(end_exp):
                                     files_to_get.append(reg_file)
-                                    print(f'- {reg_file} ')
+                                    print(
+                                        f'- {reg_file[1]} [{reg_file[0]/1000:.2f} kB]')
                         else:
                             filesize = 'FileNotFoundError'
                             print(f'- {file} [{filesize}]')
                     if files_to_get:
-                        print(f'Downloading files @ {dev_name}...')
+                        print(f'\nDownloading files @ {dev_name}...')
                         # file_to_get = args.f
                         if args.dir is not None:
-                            args.fre = [f'/{args.dir}/{file}' for file in files_to_get]
+                            args.fre = [(file[0], f'/{args.dir}/{file[1]}')
+                                        for file in files_to_get]
                         else:
                             args.fre = files_to_get
-                        wsfileio(args, '', '', dev_name, dev=dev)
+                        wsfileio(args, '', ('', ''), dev_name, dev=dev)
                         print('Done!')
                     else:
                         if dir == '':
@@ -831,3 +846,9 @@ def wstool(args, dev_name):
             except KeyboardInterrupt:
                 print('KeyboardInterrupt: get Operation Cancelled')
         return
+
+# TODO: TEST ALL CASES
+# TODO: DEBUG DSYNCIO
+# TODO: DEBUG RSYNCIO
+# FIX SERIALIO GET PATTRN MATCH
+# FIX BLEIO GET PATTRN MATCH

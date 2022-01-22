@@ -2,7 +2,7 @@
 from upydev.wsio import wstool, WebSocketFileIO
 from upydev.serialio import serialtool, SerialFileIO
 from upydev.bleio import bletool, BleFileIO
-from upydev.rsyncio import synctool
+from upydev.rsyncio import synctool, SyncFileIO
 from upydev.dsyncio import d_sync_recursive, check_wdlog, dev2host_sync_recursive
 from upydev.helpinfo import see_help
 from upydevice import check_device_type, Device
@@ -150,6 +150,13 @@ def fileio_action(args, **kargs):
                                  args=args,
                                  dev_name=dev_name)
             else:
+                # check if sync_tool.py in device
+                use_SyncFileIO = dev.wr_cmd("'sync_tool.py' in os.listdir('lib')",
+                                            silent=True,
+                                            rtn_resp=True)
+                if use_SyncFileIO:
+                    wsdevIO = SyncFileIO(dev, args, dev_name, port=8005)
+                    wsdevIO.connect(args)
                 print('Syncing from @ {} '.format(dev_name), end='\n\n')
                 dev2host_sync_recursive(dir_lib, devIO=wsdevIO,
                                         show_tree=True, rootdir=dev_lib,

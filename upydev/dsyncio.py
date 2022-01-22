@@ -54,9 +54,11 @@ def check_wdlog(path='.', save_wdlog=True):
         with open('{}/'.format(path) + '.upydev_wdlog.json', 'r') as wd_logfile:
             hash_wdlog_dict = json.loads(wd_logfile.read())
             files_wdlog_list = list(hash_wdlog_dict.keys())
-            files_cwd = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and file not in _CONFG_FILES]
+            files_cwd = [file for file in os.listdir(path) if os.path.isfile(
+                os.path.join(path, file)) and file not in _CONFG_FILES]
             # New files in cwd:
-            new_files_to_upload = [file for file in files_cwd if file not in files_wdlog_list]
+            new_files_to_upload = [
+                file for file in files_cwd if file not in files_wdlog_list]
             if len(new_files_to_upload) > 0:
                 print('New files to upload:')
                 for nf in new_files_to_upload:
@@ -64,8 +66,10 @@ def check_wdlog(path='.', save_wdlog=True):
             # Files deleted in cwd:
             deleted_files = [file for file in files_wdlog_list if file not in files_cwd]
             # Files modified in cwd:
-            files_wdlog_list = [file for file in files_wdlog_list if file not in deleted_files]
-            modified_files = [file for file in files_wdlog_list if get_hash(os.path.join(path, file)) != hash_wdlog_dict[file]]
+            files_wdlog_list = [
+                file for file in files_wdlog_list if file not in deleted_files]
+            modified_files = [file for file in files_wdlog_list if get_hash(
+                os.path.join(path, file)) != hash_wdlog_dict[file]]
             if len(modified_files) > 0:
                 print('Modified files to upload:')
                 for mf in modified_files:
@@ -91,7 +95,8 @@ def check_wdlog(path='.', save_wdlog=True):
                 hash_cwd_dict = get_hash_cwd_dict(path=path)
                 wd_logfile.write(json.dumps(hash_cwd_dict))
             print('Done!')
-        global_files_to_upload = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and file not in _CONFG_FILES]
+        global_files_to_upload = [file for file in os.listdir(path) if os.path.isfile(
+            os.path.join(path, file)) and file not in _CONFG_FILES]
         for file in global_files_to_upload:
             print('- {}'.format(file))
         return global_files_to_upload, deleted_files
@@ -114,7 +119,8 @@ class LTREE:
             l = os.listdir(path)
         else:
             l = [f for f in os.listdir(path) if not f.startswith('.')]
-        nf = len([file for file in l if not os.stat("%s/%s" % (path, file))[0] & 0x4000])
+        nf = len([file for file in l if not os.stat(
+            "%s/%s" % (path, file))[0] & 0x4000])
         nd = len(l) - nf
         ns_f, ns_d = 0, 0
         l.sort()
@@ -125,7 +131,8 @@ class LTREE:
         for f in l:
             st = os.stat("%s/%s" % (path, f))
             if st[0] & 0x4000:  # stat.S_IFDIR
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + "  \u001b[34;1m%s\033[0m" % f)
+                print(self._treeindent(level, f, last_file, is_last=is_last,
+                                       carrier=carrier) + "  \u001b[34;1m%s\033[0m" % f)
                 if f == last_file and level == 0:
                     carrier = "    "
                 os.chdir(f)
@@ -146,7 +153,8 @@ class LTREE:
                 nf += ns_f
                 nd += ns_d
             else:
-                print(self._treeindent(level, f, last_file, is_last=is_last, carrier=carrier) + " %s" % (f))
+                print(self._treeindent(level, f, last_file,
+                                       is_last=is_last, carrier=carrier) + " %s" % (f))
         if is_root:
             nd_str = 'directories'
             nf_str = 'files'
@@ -184,37 +192,46 @@ class DISK_USAGE:
 
     def __call__(self, path=".", dlev=0, max_dlev=0, hidden=False, absp=True):
         if path != ".":
-                if not os.stat(path)[0] & 0x4000:
-                    print('{:9} {}'.format(self.print_filesys_info(os.stat(path)[6]), path))
+            if not os.stat(path)[0] & 0x4000:
+                print('{:9} {}'.format(self.print_filesys_info(os.stat(path)[6]), path))
+            else:
+                if hidden:
+                    resp = {path+'/'+dir: os.stat(path+'/'+dir)
+                            [6] for dir in os.listdir(path)}
                 else:
-                    if hidden:
-                        resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
-                    else:
-                        resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
-                    for dir in resp.keys():
+                    resp = {
+                        path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                for dir in resp.keys():
 
-                        if not os.stat(dir)[0] & 0x4000:
-                            if absp:
-                                print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir))
-                            else:
-                                print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir.split('/')[-1]))
-
+                    if not os.stat(dir)[0] & 0x4000:
+                        if absp:
+                            print('{:9} {}'.format(
+                                self.print_filesys_info(resp[dir]), dir))
                         else:
-                            if dlev < max_dlev:
-                                dlev += 1
-                                self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
-                                dlev += (-1)
+                            print('{:9} {}'.format(self.print_filesys_info(
+                                resp[dir]), dir.split('/')[-1]))
+
+                    else:
+                        if dlev < max_dlev:
+                            dlev += 1
+                            self.__call__(path=dir, dlev=dlev,
+                                          max_dlev=max_dlev, hidden=hidden)
+                            dlev += (-1)
+                        else:
+                            if absp:
+                                print('{:9} \u001b[34;1m{}\033[0m'.format(
+                                    self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
                             else:
-                                if absp:
-                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
-                                else:
-                                    print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
+                                print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(
+                                    self.get_dir_size_recursive(dir)), dir.split('/')[-1]))
 
         else:
             if hidden:
-                resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path)}
+                resp = {path+'/'+dir: os.stat(path+'/'+dir)
+                        [6] for dir in os.listdir(path)}
             else:
-                resp = {path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                resp = {
+                    path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
             for dir in resp.keys():
 
                 if not os.stat(dir)[0] & 0x4000:
@@ -223,10 +240,12 @@ class DISK_USAGE:
                 else:
                     if dlev < max_dlev:
                         dlev += 1
-                        self.__call__(path=dir, dlev=dlev, max_dlev=max_dlev, hidden=hidden)
+                        self.__call__(path=dir, dlev=dlev,
+                                      max_dlev=max_dlev, hidden=hidden)
                         dlev += (-1)
                     else:
-                        print('{:9} \u001b[34;1m{}\033[0m'.format(self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
+                        print('{:9} \u001b[34;1m{}\033[0m'.format(
+                            self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
 
     def print_filesys_info(self, filesize):
         _kB = 1000
@@ -261,8 +280,8 @@ def print_filesys_info(filesize):
 
 
 def get_dir_size_recursive(dir):
-    return sum([os.stat(dir+'/'+f)[6] if not os.stat(dir+'/'+f)[0] &
-                0x4000 else get_dir_size_recursive(dir+'/'+f) for f in
+    return sum([os.stat(dir+'/'+f)[6] if not os.stat(dir+'/'+f)[0]
+                & 0x4000 else get_dir_size_recursive(dir+'/'+f) for f in
                 os.listdir(dir)])
 
 
@@ -345,7 +364,7 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
     if not devIO.dev.connected:
         devIO.dev.connect()
     dev_root_list = devIO.dev.wr_cmd("import os;'{}' in os.listdir('{}')".format(current_dir.split('/')[-1],
-                                     rootdir), silent=True, rtn_resp=True)
+                                                                                 rootdir), silent=True, rtn_resp=True)
     if not dev_root_list and current_dir != '.':
         print('\n')
         print('MAKING DIR: {}'.format(current_dir))
@@ -357,7 +376,8 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
         print('UPLOADING FILES TO {}'.format(current_dir))
         if len(file_list_abs_path) > 1:
             if directory == '.':
-                file_list_abs_path = [file.split('/')[-1] for file in file_list_abs_path]
+                file_list_abs_path = [file.split('/')[-1]
+                                      for file in file_list_abs_path]
             for file in file_list_abs_path:
                 print('- {}'.format(file))
             args.fre = file_list_abs_path
@@ -411,7 +431,8 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
                 print('FILES TO REMOVE:')
                 for dfile in deleted_files:
                     try:
-                        devIO.dev.cmd("os.remove('{}/{}')".format(directory, dfile), silent=True, rtn_resp=True)
+                        devIO.dev.cmd("os.remove('{}/{}')".format(directory,
+                                                                  dfile), silent=True, rtn_resp=True)
                         if directory != '.':
                             print('- {}/{}'.format(directory, dfile))
                         else:
@@ -443,7 +464,6 @@ def d_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=None,
                     else:
                         devIO.dev.cmd("rmrf('{}')".format(ddir), silent=True,
                                       rtn_resp=True)
-
 
     root = directory
     for dir_ in dir_list_abs_path:
@@ -493,7 +513,17 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
     if directory != '.':
         print('CHECKING IF DIRECTORY {} IN: {}'.format(
             directory.split('/')[-1], rootdir))
-    check_dir = devIO.dev.wr_cmd("os.listdir('{}')".format(rootdir), silent=True,
+    _root_dir_in_dev = rootdir.replace('.', '')
+    _root_dir_in_dev_list = _root_dir_in_dev
+    _root_dir_in_dev_stat = _root_dir_in_dev
+    if len(_root_dir_in_dev_stat) > 1:
+        if _root_dir_in_dev_stat[-1] != '/':
+            _root_dir_in_dev_stat += '/'
+    check_dir = devIO.dev.wr_cmd((f"[dir for dir in "
+                                  f"os.listdir('{_root_dir_in_dev_list}')"
+                                  f" if os.stat('{_root_dir_in_dev_stat}'+dir)[0] & "
+                                  f"0x4000]"),
+                                 silent=True,
                                  rtn_resp=True)
     # print(check_dir)
     if directory.split('/')[-1] in check_dir or directory == '.':
@@ -509,28 +539,28 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
         #                            file, print_filesys_info(os.stat(os.path.join(current_dir, file))[6])))
         if directory == '':
             directory = '.'
-        file_list = devIO.dev.wr_cmd("os.listdir('{}')".format(directory), silent=True,
+        file_list_cmd_str = (f"[(os.stat('{current_dir}/'+file)[6], "
+                             f"file, os.stat('{current_dir}/'+file)[0] & "
+                             f"0x4000) for file in os.listdir('{current_dir}')]")
+        file_list = devIO.dev.wr_cmd(file_list_cmd_str, silent=True,
                                      rtn_resp=True)
         print('\n')
         # if args.wdl:
         #     modified_files, deleted_files = check_wdlog(path=directory)
-        is_dir_cmd = "import os; os.stat('{}')[0] & 0x4000"
-        for file in file_list:
-            if not devIO.dev.wr_cmd(is_dir_cmd.format(os.path.join(current_dir, file)),
-                                    silent=True, rtn_resp=True):  # os.path.join(current_dir, file)
-                # if args.wdl:
+        for filesize, file, is_dir_file in file_list:
+            if not is_dir_file:
                 #     wdl_file = file.split('/')[-1]
                 #     if wdl_file not in _CONFG_FILES and wdl_file in modified_files:
                 #         file_list_abs_path.append(os.path.join(current_dir, file))
                 # else:
-                file_list_abs_path.append(os.path.join(current_dir, file))
+                file_list_abs_path.append((filesize, os.path.join(current_dir, file)))
             else:
                 dir_list_abs_path.append(os.path.join(current_dir, file))
 
     if file_list_abs_path:
         print('LIST OF FILES TO DOWNLOAD:')
-        for file in file_list_abs_path:
-            print('- {}'.format(file.split('/')[-1]))
+        for filesize, file in file_list_abs_path:
+            print(f"- {file.split('/')[-1]} [{filesize/1000:.2f} kB]")
         print('\n')
     else:
         pass
@@ -564,18 +594,20 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
         os.chdir(current_dir)
         if len(file_list_abs_path) > 1:
             if directory == '.':
-                file_list_abs_path = [file.split('/')[-1] for file in file_list_abs_path]
-            for file in file_list_abs_path:
-                print('- {}'.format(file))
+                file_list_abs_path = [(sz, file.split('/')[-1])
+                                      for sz, file in file_list_abs_path]
+            for filesize, file in file_list_abs_path:
+                print(f"- {file} [{filesize/1000:.2f} kB]")
             args.fre = file_list_abs_path
             if directory != '.':
-                args.s = os.path.join(*file_list_abs_path[0].split('/')[:-1])
+                args.s = os.path.join(*file_list_abs_path[0][1].split('/')[:-1])
             else:
                 args.s = '/'
             print('\n')
             if args.rf:
                 # print(args.fre)
-                _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir() if os.path.isfile(_file) and os.path.join(current_dir, _file) not in file_list_abs_path]
+                _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir(
+                ) if os.path.isfile(_file) and os.path.join(current_dir, _file) not in file_list_abs_path]
                 # print(_files_to_delete_in_host)
             devIO.get_files(args, dev_name)
             args.fre = None
@@ -584,14 +616,15 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
             args.fre = None
             file_to_get = file_list_abs_path[0]
             if directory == '.':
-                file_to_get = file.split('/')[-1]
-            print('- {}'.format(file_to_get), end='\n\n')
-            file_to_get_from_dev = file_to_get.replace('./', '')
+                file_to_get = (file_to_get[0], file_to_get[1].split('/')[-1])
+            print(f"- {file_to_get[1]} [{file_to_get[0]/1000:.2f} kB]")
+            file_to_get_from_dev = (file_to_get[0], file_to_get[1].replace('./', ''))
             devIO.get(file_to_get, file_to_get_from_dev, ppath=True, dev_name=dev_name)
             time.sleep(0.2)
             if args.rf:
                 # print(file_to_get, file_to_get_from_dev)
-                _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir() if os.path.isfile(_file) and os.path.join(current_dir, _file) != file_to_get]
+                _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir(
+                ) if os.path.isfile(_file) and os.path.join(current_dir, _file) != file_to_get[1]]
                 # print(_files_to_delete_in_host)
         if current_dir != '.':
             for level in current_dir.split('/'):
@@ -601,7 +634,8 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
         print('NO FILES TO DOWNLOAD')
         # if args.rf check files to delete
         if args.rf:
-            _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir(current_dir) if os.path.isfile(os.path.join(current_dir, _file))]
+            _files_to_delete_in_host += [os.path.join(current_dir, _file) for _file in os.listdir(
+                current_dir) if os.path.isfile(os.path.join(current_dir, _file))]
             # print(_files_to_delete_in_host)
     # Now create subdirs:
     print('\n')
@@ -611,7 +645,8 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
         if args.rf:
             # print(current_dir, os.listdir(current_dir))
             if current_dir in os.listdir():
-                _dirs_to_delete_in_host += [os.path.join(current_dir, _dir) for _dir in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, _dir)) and os.path.join(current_dir, _dir) not in dir_list_abs_path]
+                _dirs_to_delete_in_host += [os.path.join(current_dir, _dir) for _dir in os.listdir(current_dir) if os.path.isdir(
+                    os.path.join(current_dir, _dir)) and os.path.join(current_dir, _dir) not in dir_list_abs_path]
             # print(_dirs_to_delete_in_host)
         for dir_ in dir_list_abs_path:
             print('\n')
@@ -634,7 +669,8 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
         # if args.rf check dirs to delete
         # print(current_dir, os.listdir(current_dir))
         if args.rf:
-            _dirs_to_delete_in_host += [os.path.join(current_dir, _dir) for _dir in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, _dir))]
+            _dirs_to_delete_in_host += [os.path.join(current_dir, _dir) for _dir in os.listdir(
+                current_dir) if os.path.isdir(os.path.join(current_dir, _dir))]
         # print(_dirs_to_delete_in_host)
 
     if args.rf:
@@ -666,7 +702,6 @@ def dev2host_sync_recursive(folder, devIO=None, rootdir='./', root_sync_folder=N
                 else:
                     rmrf(ddir)
             print('\nDIRS DELETED')
-
 
     root = directory
     for dir_ in dir_list_abs_path:

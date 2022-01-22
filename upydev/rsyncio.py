@@ -16,7 +16,7 @@ from upydev.helpinfo import see_help
 
 
 class SyncFileIO:
-    def __init__(self, dev, port=None):
+    def __init__(self, dev, args=None, devname='', port=None):
         self.host = None
         self.port = port
         self.dev = dev
@@ -30,6 +30,8 @@ class SyncFileIO:
         self.server_ip = self.get_ip()
         self.server_socket = None
         self.conn = None
+        self.args = args
+        self.dev_name = devname
 
     def get_pb(self):
         self.columns, self.rows = os.get_terminal_size(0)
@@ -77,29 +79,44 @@ class SyncFileIO:
         self.server_socket.bind((self.server_ip, self.port))
         self.server_socket.listen(1)
         # print('Server listening...')
-        sync_connect_cmd = "cli_soc = synct.connect_SOC('{}', {})".format(self.server_ip,
-                                                                          self.port)
+        sync_connect_cmd = (f"cli_soc = synct.connect_SOC('{self.server_ip}', "
+                            f"{self.port})")
         self.dev.wr_cmd(sync_connect_cmd, silent=True, follow=False)
         self.conn, addr = self.server_socket.accept()
         # print('Connection received from {}...'.format(addr))
         self.conn.settimeout(5)
 
+    def get(self, src, dst_file, ppath=False, dev_name=None):
+        self.args.f = src
+        self.sync_file(self.args, self.dev_name)
+
+    def get_files(self, args, dev_name):
+        self.sync_files(args, dev_name)
+
     def sync_file(self, args, dev_name, out=None):
         self.get_pb()
-        filetoget = args.f
-        cmd_filesize_str = f"synct.os.stat('{filetoget}')[6]"
-        # espdev.output = None
-        # while espdev.output is None:
-        filesize = self.dev.wr_cmd(cmd_filesize_str, silent=True, follow=False,
-                                   rtn_resp=True)
-        print('File size: {:>40.2f} kB'.format(filesize/1000))
+        filesize, filetoget = args.f
+        if filesize == 0:
+            print(f"{filetoget} [{filesize/1000:.2f} kB]")
+            filetoget = filetoget.split('/')[-1]
+            with open(filetoget, 'wb') as log:
+                pass
+            self.dev.cmd_nb(f"print('{filetoget}')")
+            return True
+        # cmd_filesize_str = f"synct.os.stat('{filetoget}')[6]"
+        # # espdev.output = None
+        # # while espdev.output is None:
+        # filesize = self.dev.wr_cmd(cmd_filesize_str, silent=True, follow=False,
+        #                            rtn_resp=True)
+        # print(f'File size: {filesize/1000:>40.2f} kB')
         time_h.sleep(1)
         sync_tool_cmd = f"synct.read_sd_file_sync_raw('{filetoget}',cli_soc)"
         self.dev.cmd_nb(sync_tool_cmd)
-        print('Syncing file {} from {}'.format(filetoget, dev_name))
+        # print(f'Syncing file {filetoget} from {dev_name}')
+        print(f"{filetoget} [{filesize/1000:.2f} kB]")
         filetoget = filetoget.split('/')[-1]
-        print('Saving {} file'.format(filetoget))
-        print('Progress:\n')
+        # print(f'Saving {filetoget} file')
+        # print('Progress:\n')
         t0 = 0
         buff = b''
         t_start = time_h.time()
@@ -119,12 +136,12 @@ class SyncFileIO:
                     loop_index_f = ((len(buff))/filesize)*self.bar_size
                     loop_index = int(loop_index_f)
                     loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                    nb_of_total = "{:.2f}/{:.2f} kB".format(
-                        len(buff)/(1000**1), filesize/(1000**1))
+                    nb_of_total = (f"{len(buff)/(1000**1):.2f}/{filesize/(1000**1):.2f}"
+                                   f" kB")
                     percentage = len(buff)/filesize
-                    tdiff = time_h.time() - t_0
+                    # tdiff = time_h.time() - t_0
                     t_elapsed = time_h.time() - t_start
-                    t_speed = "{:^2.2f}".format((len(buff)/(1000**1))/t_elapsed)
+                    t_speed = f"{(len(buff)/(1000**1))/t_elapsed:^2.2f}"
                     ett = filesize / (len(buff) / t_elapsed)
                     if self.pb:
                         self.do_pg_bar(loop_index, self.wheel,
@@ -155,24 +172,25 @@ class SyncFileIO:
         if not EOF:
             print('CONNECTION ERROR, TRYING AGAIN...')
             self.sync_file(args, dev_name, out=out)
-        print('\n\nDone in {} seconds'.format(round(t_elapsed, 2)))
-        print('Total data received: {:>30.2f} kB'.format(filesize/1000))
+        # print(f'\n\nDone in {round(t_elapsed, 2)} seconds')
+        # print(f'Total data received: {filesize/1000:>30.2f} kB')
+        print('')
         return True
 
     def sync_files(self, args, dev_name):
         files_to_get = args.fre
         for file in files_to_get:
-            src_file = file
-            dst_file = './{}'.format(file.split('/')[-1])
+            src_file = file[1]
+            dst_file = f"./{file[1].split('/')[-1]}"
             try:
                 if not src_file.startswith('/'):
-                    src_file = '/{}'.format(src_file)
-                print("{}:{} -> {}\n".format(dev_name, src_file, dst_file))
+                    src_file = f'/{src_file}'
+                print(f"{dev_name}:{src_file} -> {dst_file}\n")
                 args.f = file
                 self.sync_file(args, dev_name)
                 self.dev.output_queue.get()
                 print('')
-            except KeyboardInterrupt as e:
+            except KeyboardInterrupt:
                 print('KeyboardInterrupt: get Operation Cancelled')
             # time_h.sleep(1)
         return True
@@ -185,25 +203,36 @@ class SyncFileIO:
 
 def synctool(args, dev_name):
     try:
-        dev = Device(args.t, args.p, init=True, autodetect=True)
+        dev = Device(args.t, args.p, init=True, ssl=args.wss,
+                     auth=args.wss)
         rsyncio = SyncFileIO(dev, port=8005)
         if args.m == 'fget':
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
                 see_help(args.m)
                 sys.exit()
+            if args.f:
+                if '/' in args.f:
+                    if len(args.f.rsplit('/', 1)) > 1:
+                        args.dir, args.f = args.f.rsplit('/', 1)
+                        if args.f == '':
+                            args.fre = ['.']
             if not args.fre:
                 if args.s is None and args.dir is None:
-                    print('Looking for file in {}:/ dir ...'.format(dev_name))
-                    cmd_str = "import uos;'{}' in uos.listdir()".format(args.f)
+                    print(f'Looking for file in {dev_name}:/ dir ...')
+                    cmd_str = (f"import uos;[(uos.stat(file)[6], file) for file "
+                               f"in uos.listdir() if file == '{args.f}' and not "
+                               f"uos.stat(file)[0] & 0x4000]")
                     dir = ''
                 if args.dir is not None or args.s is not None:
                     if args.s is not None:
-                        args.dir = '{}/{}'.format(args.s, args.dir)
-                    print('Looking for file in {}:/{} dir'.format(dev_name, args.dir))
-                    cmd_str = "import uos; '{}' in uos.listdir('/{}')".format(
-                        args.f, args.dir)
-                    dir = '/{}'.format(args.dir)
+                        args.dir = f'{args.s}/{args.dir}'
+                    print(f'Looking for file in {dev_name}:/{args.dir} dir')
+                    cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6], file)"
+                               f" for file in uos.listdir('/{args.dir}')"
+                               f" if file == '{args.f}' and "
+                               f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
+                    dir = f'/{args.dir}'
 
                 try:
                     file_exists = dev.cmd(cmd_str, silent=True, rtn_resp=True)
@@ -212,68 +241,100 @@ def synctool(args, dev_name):
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} does NOT exist'.format(dev_name, dir))
+                            print(f'Directory {dev_name}:{dir} does NOT exist')
                             result = False
-                    else:
-                        if file_exists is True:
-                            cmd_str = "import uos; not uos.stat('{}')[0] & 0x4000 ".format(
-                                dir + '/' + args.f)
-                            is_file = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-                    if file_exists is True and is_file:
+
+                    if isinstance(file_exists, list) and file_exists:
                         rsyncio.connect(args)
-                        print('Downloading file {} @ {}...'.format(args.f, dev_name))
-                        file_to_get = args.f
+                        print(f'Downloading file {args.f} @ {dev_name}...')
+                        file_to_get = (file_exists[0][0], args.f)
                         if args.s == 'sd':
-                            file_to_get = '/sd/{}'.format(args.f)
+                            file_to_get = (file_exists[0][0], f'/sd/{args.f}')
                         if args.dir is not None:
-                            file_to_get = '/{}/{}'.format(args.dir, args.f)
+                            file_to_get = (file_exists[0][0], f'/{args.dir}/{args.f}')
                         # if not args.wss:
                         #     copyfile_str = 'upytool -p {} {}:{} .{}'.format(
                         #         passwd, target, file_to_get, id_file)
                         dst_file = args.f
                         # if dir == '':
                         #     dir = '/'
-                        src_file = file_to_get
+                        src_file = file_to_get[1]
                         if not src_file.startswith('/'):
                             src_file = '/'.join([dir, dst_file])
-                        print("{}:{} -> ./{}\n".format(dev_name, src_file, dst_file))
+                        print(f"{dev_name}:{src_file} -> ./{dst_file}\n")
                         args.f = file_to_get
                         result = rsyncio.sync_file(args, dev_name)
                         print('Done!')
                         time_h.sleep(0.2)
                         rsyncio.disconnect()
                     else:
-                        if file_exists is False:
+                        if not file_exists:
                             if dir == '':
                                 dir = '/'
-                            print('File Not found in {}:{} directory'.format(dev_name, dir))
-                        elif file_exists is True:
-                            if is_file is not True:
-                                print('{}:{} is a directory'.format(
-                                    dev_name, dir + '/' + args.f))
-                except KeyboardInterrupt as e:
+                            print(f'File Not found in {dev_name}:{dir} directory or')
+                            if dir == '/':
+                                dir = ''
+                            print(f'{dev_name}:{dir}/{args.f} is a directory')
+                except KeyboardInterrupt:
                     print('KeyboardInterrupt: get Operation Cancelled')
 
             else:
+                # list to filter files:
+                # regular names:
+                # wildcard names:
+                # cwd:
+                filter_files = []
+                for file in args.fre:
+                    if file not in ['cwd', '.']:
+                        filter_files.append(file.replace(
+                            '.', '\.').replace('*', '.*') + '$')
                 if args.s is None and args.dir is None:
-                    print('Looking for files in {}:/ dir ...'.format(dev_name))
-                    cmd_str = "import uos;[file for file in uos.listdir() if not uos.stat(file)[0] & 0x4000]"
+                    print(f'Looking for files in {dev_name}:/ dir ...')
+                    if filter_files:
+                        cmd_str = ("import uos;[(uos.stat(file)[6], file) for file in "
+                                   "uos.listdir() if any([patt.match(file) for patt in "
+                                   "pattrn]) and not uos.stat(file)[0] & 0x4000]")
+                    else:
+                        cmd_str = ("import uos;[(uos.stat(file)[6], file) for file "
+                                   "in uos.listdir() if not "
+                                   "uos.stat(file)[0] & 0x4000]")
                     dir = ''
                 elif args.dir is not None or args.s is not None:
                     if args.s is not None:
-                        args.dir = '{}/{}'.format(args.s, args.dir)
-                    print('Looking for files in {}:/{} dir'.format(dev_name, args.dir))
-                    cmd_str = "import uos;[file for file in uos.listdir('/{0}') if not uos.stat('/{0}/'+file)[0] & 0x4000]".format(
-                        args.dir)
-                    dir = '/{}'.format(args.dir)
+                        args.dir = f'{args.s}/{args.dir}'
+                    print(f'Looking for files in {dev_name}:/{args.dir} dir')
+                    if filter_files:
+                        cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6],"
+                                   f" file) for file in uos.listdir('/{args.dir}') if "
+                                   f"any([patt.match(file) for patt in pattrn]) and "
+                                   f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
+                    else:
+                        cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6], "
+                                   f"file) for file in uos.listdir('/{args.dir}') if "
+                                   f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
+                    dir = f'/{args.dir}'
                 try:
+                    if filter_files:
+                        if len(f"filter_files = {filter_files}") < 250:
+                            filter_files_cmd = f"filter_files = {filter_files}"
+                            dev.cmd(filter_files_cmd, silent=True)
+                        else:
+                            dev.cmd("filter_files = []", silent=True)
+                            for i in range(0, len(filter_files), 15):
+                                filter_files_cmd = (f"filter_files += "
+                                                    f"{filter_files[i:i+15]}")
+                                dev.cmd(filter_files_cmd, silent=True)
+                        dev.cmd("import re; pattrn = [re.compile(f) for "
+                                "f in filter_files]", silent=True)
+                        cmd_str += (';import gc;del(filter_files);del(pattrn);'
+                                    'gc.collect()')
                     file_exists = dev.cmd(cmd_str, silent=True, rtn_resp=True)
                     if dev._traceback.decode() in dev.response:
                         try:
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} does NOT exist'.format(dev_name, dir))
+                            print(f'Directory {dev_name}:{dir} does NOT exist')
                             result = False
                     else:
                         files_to_get = []
@@ -284,30 +345,38 @@ def synctool(args, dev_name):
                                 args.fre = file_exists
                             elif '*' in args.fre[0]:
                                 start_exp, end_exp = args.fre[0].split('*')
-                                args.fre = [file for file in file_exists if file.startswith(
-                                    start_exp) and file.endswith(end_exp)]
+                                args.fre = [file for file in file_exists if
+                                            file[1].startswith(start_exp)
+                                            and file[1].endswith(end_exp)]
                         if dir == '':
                             dir = '/'
-                        print('Files in {}:{} to get: '.format(dev_name, dir))
+                        print(f'Files in {dev_name}:{dir} to get: \n')
+                        if file_exists == args.fre:
+                            args.fre = [nfile[1] for nfile in file_exists]
                         for file in args.fre:
-                            if file in file_exists:
-                                files_to_get.append(file)
-                                print('- {} '.format(file))
+                            if file in [nfile[1] for nfile in file_exists]:
+                                for sz, nfile in file_exists:
+                                    # print(file, nfile)
+                                    if file == nfile:
+                                        files_to_get.append((sz, nfile))
+                                        print(f'- {nfile} [{sz/1000:.2f} kB]')
                             elif '*' in file:
                                 start_exp, end_exp = file.split('*')
                                 for reg_file in file_exists:
-                                    if reg_file.startswith(start_exp) and reg_file.endswith(end_exp):
+                                    if (reg_file[1].startswith(start_exp) and reg_file[1].endswith(end_exp)):
                                         files_to_get.append(reg_file)
-                                        print('- {} '.format(reg_file))
+                                        print(
+                                            (f'- {reg_file[1]} [{reg_file[0]/1000:.2f}'
+                                             f' kB]'))
                             else:
                                 filesize = 'FileNotFoundError'
-                                print('- {} [{}]'.format(file, filesize))
+                                print(f'- {file} [{filesize}]')
                         if files_to_get:
                             rsyncio.connect(args)
-                            print('Downloading files @ {}...'.format(dev_name))
+                            print(f'\nDownloading files @ {dev_name}...')
                             # file_to_get = args.f
                             if args.dir is not None:
-                                args.fre = ['/{}/{}'.format(args.dir, file)
+                                args.fre = [(file[0], f'/{args.dir}/{file[1]}')
                                             for file in files_to_get]
                             else:
                                 args.fre = files_to_get
@@ -318,10 +387,10 @@ def synctool(args, dev_name):
                         else:
                             if dir == '':
                                 dir = '/'
-                            print('Files Not found in {}:{} directory'.format(dev_name, dir))
-                except KeyboardInterrupt as e:
+                            print(f'Files Not found in {dev_name}:{dir} directory')
+                except KeyboardInterrupt:
                     print('KeyboardInterrupt: get Operation Cancelled')
     except DeviceNotFound as e:
-        print('ERROR {}'.format(e))
+        print(f'ERROR {e}')
 
     return

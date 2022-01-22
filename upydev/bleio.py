@@ -38,28 +38,26 @@ class BleFileIO:
         if index == self.bar_size:
             l_bloc = "█"
         sys.stdout.write("\033[K")
-        print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" *index + l_bloc  + " "*((self.bar_size+1) - len("█" *index + l_bloc)),
-                                                                        wheel[index % 4],
-                                                                        int((percentage)*100),
-                                                                        nb_of_total, speed,
-                                                                        str(timedelta(seconds=time_e)).split('.')[0][2:],
-                                                                        str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
+        print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" * index + l_bloc + " "*((self.bar_size+1) - len("█" * index + l_bloc)),
+                                                                    wheel[index % 4],
+                                                                    int((percentage)*100),
+                                                                    nb_of_total, speed,
+                                                                    str(timedelta(seconds=time_e)).split(
+                                                                        '.')[0][2:],
+                                                                    str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
         sys.stdout.flush()
 
-    def get(self, src, dst_file, chunk_size=256, ppath=False, dev_name=None):  # from Pyboard.py
+    def get(self, src, dst_file, chunk_size=512, ppath=False, dev_name=None):  # from Pyboard.py
         self.get_pb()
         cnt = 0
         t_start = time.time()
-        # def_chunk = chunk
-        sz = self.dev.cmd("import uos; uos.stat('{}')[6]".format(src), silent=True,
-                          rtn_resp=True)
-
+        sz = src[0]
+        src = src[1]
         dst_file = src.split('/')[-1]
         if ppath:
-            print('{}:{} -> {}'.format(dev_name, src, dst_file), end='\n\n')
-        print("{}  [{:.2f} kB]".format(src, sz / 1000))
+            print(f'{dev_name}:{src} -> {dst_file}', end='\n\n')
+        print(f"{src}  [{sz / 1000:.2f} kB]")
         self.dev.flush()
-        # self.start_SOC()
         self.dev.cmd("f=open('%s','rb');r=f.read" % src, silent=True)
         with open(dst_file, 'wb') as f:
             pass
@@ -75,35 +73,35 @@ class BleFileIO:
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                nb_of_total = "{:.2f}/{:.2f} kB".format(cnt/(1000), sz/(1000))
+                nb_of_total = f"{cnt/(1000):.2f}/{sz/(1000):.2f} kB"
                 percentage = cnt / sz
                 t_elapsed = time.time() - t_start
-                t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
+                t_speed = f"{(cnt/(1000))/t_elapsed:^2.2f}"
                 ett = sz / (cnt / t_elapsed)
                 if self.pb:
                     self.do_pg_bar(loop_index, self.wheel,
                                    nb_of_total, t_speed, t_elapsed,
                                    loop_index_l, percentage, ett)
         print('\n')
-        self.dev.cmd("f.close()")
+        self.dev.cmd("f.close()", silent=True)
         return True
 
     def get_files(self, args, dev_name):
         files_to_get = args.fre
         for file in files_to_get:
-            src_file = file
-            dst_file = './{}'.format(file.split('/')[-1])
+            src_file = file[1]
+            dst_file = f"./{file[1].split('/')[-1]}"
             try:
                 if not src_file.startswith('/'):
-                    src_file = '/{}'.format(src_file)
-                print("{}:{} -> {}\n".format(dev_name, src_file, dst_file))
+                    src_file = f'/{src_file}'
+                print(f"{dev_name}:{src_file} -> {dst_file}\n")
                 self.get(file, dst_file)
-            except KeyboardInterrupt as e:
+            except KeyboardInterrupt:
                 print('KeyboardInterrupt: get Operation Cancelled')
                 self.dev.cmd("f.close()", silent=True)
         return True
 
-    def put(self, src, dst_file, chunk_size=256, abs_path=True, ppath=False,
+    def put(self, src, dst_file, chunk_size=250, abs_path=True, ppath=False,
             dev_name=None):  # from Pyboard.py
         self.get_pb()
         sz = os.stat(src)[6]
@@ -114,10 +112,10 @@ class BleFileIO:
             src = src.split('/')[-1]
         if ppath:
             if not dst_file.startswith('/'):
-                print("{} -> {}:/{}\n".format(src, dev_name, dst_file))
+                print(f"{src} -> {dev_name}:/{dst_file}\n")
             else:
-                print("{} -> {}:{}\n".format(src, dev_name, dst_file))
-        print("{}  [{:.2f} kB]".format(src, sz / 1000))
+                print(f"{src} -> {dev_name}:{dst_file}\n")
+        print(f"{src}  [{sz / 1000:.2f} kB]")
         self.dev.cmd("f=open('%s','wb');w=f.write" % dst_file, silent=True)
         if not abs_path:
             src = src_ori
@@ -138,10 +136,10 @@ class BleFileIO:
                 loop_index_f = (cnt/sz)*self.bar_size
                 loop_index = int(loop_index_f)
                 loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                nb_of_total = "{:.2f}/{:.2f} kB".format(cnt/(1000), sz/(1000))
+                nb_of_total = f"{cnt/(1000):.2f}/{sz/(1000):.2f} kB"
                 percentage = cnt / sz
                 t_elapsed = time.time() - t_start
-                t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
+                t_speed = f"{(cnt/(1000))/t_elapsed:^2.2f}"
                 ett = sz / (cnt / t_elapsed)
                 if self.pb:
                     self.do_pg_bar(loop_index, self.wheel,
@@ -167,10 +165,10 @@ class BleFileIO:
             try:
                 abs_dst_file = dst_file
                 if not dst_file.startswith('/'):
-                    abs_dst_file = '/{}'.format(dst_file)
-                print("{} -> {}:{}\n".format(src_file, dev_name, abs_dst_file))
+                    abs_dst_file = f'/{dst_file}'
+                print(f"{src_file} -> {dev_name}:{abs_dst_file}\n")
                 self.put(src_file, dst_file)
-            except KeyboardInterrupt as e:
+            except KeyboardInterrupt:
                 print('KeyboardInterrupt: put Operation Cancelled')
                 self.dev.cmd("f.close()", silent=True)
         return True
@@ -184,7 +182,7 @@ class BleFileIO:
                 dev_lib = "./"
             pckg_content, pckg_dir = upip_host.install_pkg(lib, ".")
             # sync local lib to device lib
-            print('Installing {} to {}:/lib'.format(pckg_dir, dev_name))
+            print(f'Installing {pckg_dir} to {dev_name}:/lib')
             # cwd_now = self.dev.cmd('os.getcwd()', silent=True, rtn_resp=True)
             # if self.dev.dev_platform == 'pyboard':
             # self.dev.cmd("os.chdir('/flash')")
@@ -198,9 +196,9 @@ class BleFileIO:
             rm_lib = input('Do you want to remove local lib? (y/n): ')
             if rm_lib == 'y':
                 shutil.rmtree(dir_lib)
-            print("Successfully installed {} to {} :/lib".format(pckg_dir, dev_name))
+            print(f"Successfully installed {pckg_dir} to {dev_name}:/lib")
             # self.dev.cmd("os.chdir('{}')".format(cwd_now))
-        except Exception as e:
+        except Exception:
             print('Please indicate a library to install')
 
 
@@ -213,10 +211,15 @@ def bletool(args, dev_name):
         dev = Device(args.t, args.p, init=True)
         bleio = BleFileIO(dev)
         if args.m == 'put':
+            dev.len_buffer = 250
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
                 see_help(args.m)
                 sys.exit()
+            if args.f:
+                if os.path.isdir(args.f):
+                    os.chdir(args.f)
+                    args.fre = ['.']
             if not args.fre:
                 # One file:
                 source = ''
@@ -233,7 +236,8 @@ def bletool(args, dev_name):
                     os.stat(file)[6]
                     if not os.path.isdir(file):
                         if args.s:
-                            is_dir_cmd = "import uos, gc; uos.stat('{}')[0] & 0x4000".format(source)
+                            is_dir_cmd = (f"import uos, gc; uos.stat('{source}')[0] & "
+                                          f"0x4000")
                             is_dir = dev.cmd(is_dir_cmd, silent=True, rtn_resp=True)
                             # dev.disconnect()
                             if dev._traceback.decode() in dev.response:
@@ -241,22 +245,24 @@ def bletool(args, dev_name):
                                     raise DeviceException(dev.response)
                                 except Exception as e:
                                     print(e)
-                                    print('Directory {}:{} does NOT exist'.format(dev_name, source))
+                                    print(f'Directory {dev_name}:{source} does NOT '
+                                          f'exist')
                                     result = False
                             else:
                                 if is_dir:
-                                    print('Uploading file {} @ {}...'.format(file_in_upy, dev_name))
+                                    print(f'Uploading file {file_in_upy} @ {dev_name}'
+                                          f'...')
                                     src_file = file
                                     dst_file = args.s + file_in_upy
-                                    print("{} -> {}:{}\n".format(src_file, dev_name, dst_file))
+                                    print(f"{src_file} -> {dev_name}:{dst_file}\n")
                                     result = bleio.put(file, dst_file)
                         else:
-                            print('Uploading file {} @ {}...'.format(file_in_upy, dev_name))
+                            print(f'Uploading file {file_in_upy} @ {dev_name}...')
                             src_file = file
                             if not source:
                                 source = '/'
                             dst_file = source + file_in_upy
-                            print("{} -> {}:{}\n".format(src_file, dev_name, dst_file))
+                            print(f"{src_file} -> {dev_name}:{dst_file}\n")
                             result = bleio.put(file, file_in_upy)
 
                         # Reset:
@@ -266,16 +272,17 @@ def bletool(args, dev_name):
                                 dev.reset(reconnect=False)
                                 time.sleep(0.4)
                     else:
-                        print('FileNotFoundError: {} is a directory'.format(file))
+                        print(f'FileNotFoundError: {file} is a directory')
                 except FileNotFoundError as e:
                     print('FileNotFoundError:', e)
-                except KeyboardInterrupt as e:
+                except KeyboardInterrupt:
                     print('KeyboardInterrupt: put Operation Cancelled')
             else:
                 # Handle special cases:
                 # CASE [cwd]:
                 if args.fre[0] == 'cwd' or args.fre[0] == '.':
-                    args.fre = [fname for fname in os.listdir('./') if os.path.isfile(fname) and not fname.startswith('.')]
+                    args.fre = [fname for fname in os.listdir(
+                        './') if os.path.isfile(fname) and not fname.startswith('.')]
                     print('Files in ./{} to put: '.format(os.getcwd().split('/')[-1]))
 
                 elif '*' in args.fre[0]:
@@ -291,13 +298,13 @@ def bletool(args, dev_name):
                         filesize = os.stat(file)[6]
                         if not os.path.isdir(file):
                             files_to_put.append(file)
-                            print('- {} [{:.2f} kB]'.format(file, filesize/1000))
+                            print(f'- {file} [{filesize/1000:.2f} kB]')
                         else:
                             filesize = 'IsDirectory'
-                            print('- {} [{}]'.format(file, filesize))
-                    except Exception as e:
+                            print(f'- {file} [{filesize}]')
+                    except Exception:
                         filesize = 'FileNotFoundError'
-                        print('- {} [{}]'.format(file, filesize))
+                        print(f'- {file} [{filesize}]')
                 args.fre = files_to_put
                 # Multiple file:
                 source = ''
@@ -311,22 +318,22 @@ def bletool(args, dev_name):
                     args.s = source
                 try:
                     if args.s:
-                        is_dir_cmd = "import uos, gc; uos.stat('{}')[0] & 0x4000".format(source)
+                        is_dir_cmd = f"import uos, gc; uos.stat('{source}')[0] & 0x4000"
                         is_dir = dev.cmd(is_dir_cmd, silent=True, rtn_resp=True)
                         if dev._traceback.decode() in dev.response:
                             try:
                                 raise DeviceException(dev.response)
                             except Exception as e:
                                 print(e)
-                                print('Directory {}:{} does NOT exist'.format(dev_name, source))
+                                print(f'Directory {dev_name}:{source} does NOT exist')
                                 result = False
                         else:
                             if is_dir:
-                                print('\nUploading files @ {}...\n'.format(dev_name))
+                                print(f'\nUploading files @ {dev_name}...\n')
                                 result = bleio.put_files(args, dev_name)
                     else:
                         args.s = source
-                        print('\nUploading files @ {}...\n'.format(dev_name))
+                        print(f'\nUploading files @ {dev_name}...\n')
                         result = bleio.put_files(args, dev_name)
 
                     # Reset:
@@ -336,24 +343,36 @@ def bletool(args, dev_name):
                             dev.reset(reconnect=False)
                             time.sleep(0.4)
                             # dev.disconnect()
-                except KeyboardInterrupt as e:
+                except KeyboardInterrupt:
                     print('KeyboardInterrupt: put Operation Cancelled')
         elif args.m == 'get':
+            dev.len_buffer = 512
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
                 see_help(args.m)
                 sys.exit()
+            if args.f:
+                if '/' in args.f:
+                    if len(args.f.rsplit('/', 1)) > 1:
+                        args.dir, args.f = args.f.rsplit('/', 1)
+                        if args.f == '':
+                            args.fre = ['.']
             if not args.fre:
                 if args.s is None and args.dir is None:
-                    print('Looking for file in {}:/ dir ...'.format(dev_name))
-                    cmd_str = "import uos;'{}' in uos.listdir()".format(args.f)
+                    print(f'Looking for file in {dev_name}:/ dir ...')
+                    cmd_str = (f"import uos;[(uos.stat(file)[6], file) for file "
+                               f"in uos.listdir() if file == '{args.f}' and not "
+                               f"uos.stat(file)[0] & 0x4000]")
                     dir = ''
                 if args.dir is not None or args.s is not None:
                     if args.s is not None:
-                        args.dir = '{}/{}'.format(args.s, args.dir)
-                    print('Looking for file in {}:/{} dir'.format(dev_name, args.dir))
-                    cmd_str = "import uos; '{}' in uos.listdir('/{}')".format(args.f, args.dir)
-                    dir = '/{}'.format(args.dir)
+                        args.dir = f'{args.s}/{args.dir}'
+                    print(f'Looking for file in {dev_name}:/{args.dir} dir')
+                    cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6], file)"
+                               f" for file in uos.listdir('/{args.dir}')"
+                               f" if file == '{args.f}' and "
+                               f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
+                    dir = f'/{args.dir}'
 
                 try:
                     file_exists = dev.cmd(cmd_str, silent=True, rtn_resp=True)
@@ -362,61 +381,92 @@ def bletool(args, dev_name):
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} does NOT exist'.format(dev_name, dir))
+                            print(f'Directory {dev_name}:{dir} does NOT exist')
                             result = False
-                    else:
-                        if file_exists is True:
-                            cmd_str = "import uos; not uos.stat('{}')[0] & 0x4000 ".format(dir + '/' + args.f)
-                            is_file = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-                    if file_exists is True and is_file:
-                        print('Downloading file {} @ {}...'.format(args.f, dev_name))
-                        file_to_get = args.f
+
+                    if isinstance(file_exists, list) and file_exists:
+                        print(f'Downloading file {args.f} @ {dev_name}...')
+                        file_to_get = (file_exists[0][0], args.f)
                         if args.s == 'sd':
-                            file_to_get = '/sd/{}'.format(args.f)
+                            file_to_get = (file_exists[0][0], f'/sd/{args.f}')
                         if args.dir is not None:
-                            file_to_get = '/{}/{}'.format(args.dir, args.f)
-                        # if not args.wss:
-                        #     copyfile_str = 'upytool -p {} {}:{} .{}'.format(
-                        #         passwd, target, file_to_get, id_file)
+                            file_to_get = (file_exists[0][0], f'/{args.dir}/{args.f}')
+
                         dst_file = args.f
-                        # if dir == '':
-                        #     dir = '/'
-                        src_file = file_to_get
+                        src_file = file_to_get[1]
                         if not src_file.startswith('/'):
                             src_file = '/'.join([dir, dst_file])
-                        print("{}:{} -> ./{}\n".format(dev_name, src_file, dst_file))
+                        print(f"{dev_name}:{src_file} -> ./{dst_file}\n")
                         result = bleio.get(file_to_get, dst_file)
                         print('Done!')
                     else:
-                        if file_exists is False:
+                        if not file_exists:
                             if dir == '':
                                 dir = '/'
-                            print('File Not found in {}:{} directory'.format(dev_name, dir))
-                        elif file_exists is True:
-                            if is_file is not True:
-                                print('{}:{} is a directory'.format(dev_name, dir + '/' + args.f))
-                except KeyboardInterrupt as e:
+                            print(f'File Not found in {dev_name}:{dir} directory or')
+                            if dir == '/':
+                                dir = ''
+                            print(f'{dev_name}:{dir}/{args.f} is a directory')
+                except KeyboardInterrupt:
                     print('KeyboardInterrupt: get Operation Cancelled')
 
             else:
+                # list to filter files:
+                # regular names:
+                # wildcard names:
+                # cwd:
+                filter_files = []
+                for file in args.fre:
+                    if file not in ['cwd', '.']:
+                        filter_files.append(file.replace(
+                            '.', '\.').replace('*', '.*') + '$')
                 if args.s is None and args.dir is None:
-                    print('Looking for files in {}:/ dir ...'.format(dev_name))
-                    cmd_str = "import uos;[file for file in uos.listdir() if not uos.stat(file)[0] & 0x4000]"
+                    print(f'Looking for files in {dev_name}:/ dir ...')
+                    if filter_files:
+                        cmd_str = ("import uos;[(uos.stat(file)[6], file) for file in "
+                                   "uos.listdir() if any([patt.match(file) for patt in "
+                                   "pattrn]) and not uos.stat(file)[0] & 0x4000]")
+                    else:
+                        cmd_str = ("import uos;[(uos.stat(file)[6], file) for file "
+                                   "in uos.listdir() if not "
+                                   "uos.stat(file)[0] & 0x4000]")
                     dir = ''
                 elif args.dir is not None or args.s is not None:
                     if args.s is not None:
-                        args.dir = '{}/{}'.format(args.s, args.dir)
-                    print('Looking for files in {}:/{} dir'.format(dev_name, args.dir))
-                    cmd_str = "import uos;[file for file in uos.listdir('/{0}') if not uos.stat('/{0}/'+file)[0] & 0x4000]".format(args.dir)
-                    dir = '/{}'.format(args.dir)
+                        args.dir = f'{args.s}/{args.dir}'
+                    print(f'Looking for files in {dev_name}:/{args.dir} dir')
+                    if filter_files:
+                        cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6], "
+                                   f"file) for file in uos.listdir('/{args.dir}') if "
+                                   f"any([patt.match(file) for patt in pattrn]) and "
+                                   f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
+                    else:
+                        cmd_str = (f"import uos;[(uos.stat('/{args.dir}/'+file)[6], "
+                                   f"file) for file in uos.listdir('/{args.dir}') if "
+                                   f"not uos.stat('/{args.dir}/'+file)[0] & 0x4000]")
+                    dir = f'/{args.dir}'
                 try:
+                    if filter_files:
+                        if len(f"filter_files = {filter_files}") < 250:
+                            filter_files_cmd = f"filter_files = {filter_files}"
+                            dev.cmd(filter_files_cmd, silent=True)
+                        else:
+                            dev.cmd("filter_files = []", silent=True)
+                            for i in range(0, len(filter_files), 15):
+                                filter_files_cmd = (f"filter_files += "
+                                                    f"{filter_files[i:i+15]}")
+                                dev.cmd(filter_files_cmd, silent=True)
+                        dev.cmd("import re; pattrn = [re.compile(f) for "
+                                "f in filter_files]", silent=True)
+                        cmd_str += (';import gc;del(filter_files);del(pattrn);'
+                                    'gc.collect()')
                     file_exists = dev.cmd(cmd_str, silent=True, rtn_resp=True)
                     if dev._traceback.decode() in dev.response:
                         try:
                             raise DeviceException(dev.response)
                         except Exception as e:
                             print(e)
-                            print('Directory {}:{} does NOT exist'.format(dev_name, dir))
+                            print(f'Directory {dev_name}:{dir} does NOT exist')
                             result = False
                     else:
                         files_to_get = []
@@ -427,28 +477,38 @@ def bletool(args, dev_name):
                                 args.fre = file_exists
                             elif '*' in args.fre[0]:
                                 start_exp, end_exp = args.fre[0].split('*')
-                                args.fre = [file for file in file_exists if file.startswith(start_exp) and file.endswith(end_exp)]
+                                args.fre = [file for file in file_exists if
+                                            file[1].startswith(start_exp)
+                                            and file[1].endswith(end_exp)]
                         if dir == '':
                             dir = '/'
-                        print('Files in {}:{} to get: '.format(dev_name, dir))
+                        print(f'Files in {dev_name}:{dir} to get: \n')
+                        if file_exists == args.fre:
+                            args.fre = [nfile[1] for nfile in file_exists]
                         for file in args.fre:
-                            if file in file_exists:
-                                files_to_get.append(file)
-                                print('- {} '.format(file))
+                            if file in [nfile[1] for nfile in file_exists]:
+                                for sz, nfile in file_exists:
+                                    # print(file, nfile)
+                                    if file == nfile:
+                                        files_to_get.append((sz, nfile))
+                                        print(f'- {nfile} [{sz/1000:.2f} kB]')
                             elif '*' in file:
                                 start_exp, end_exp = file.split('*')
                                 for reg_file in file_exists:
-                                    if reg_file.startswith(start_exp) and reg_file.endswith(end_exp):
+                                    if (reg_file[1].startswith(start_exp) and reg_file[1].endswith(end_exp)):
                                         files_to_get.append(reg_file)
-                                        print('- {} '.format(reg_file))
+                                        print(
+                                            (f'- {reg_file[1]} [{reg_file[0]/1000:.2f}'
+                                             f' kB]'))
                             else:
                                 filesize = 'FileNotFoundError'
-                                print('- {} [{}]'.format(file, filesize))
+                                print(f'- {file} [{filesize}]')
                         if files_to_get:
                             print('Downloading files @ {}...'.format(dev_name))
                             # file_to_get = args.f
                             if args.dir is not None:
-                                args.fre = ['/{}/{}'.format(args.dir, file) for file in files_to_get]
+                                args.fre = [(file[0], f'/{args.dir}/{file[1]}')
+                                            for file in files_to_get]
                             else:
                                 args.fre = files_to_get
                             result = bleio.get_files(args, dev_name)
@@ -456,11 +516,11 @@ def bletool(args, dev_name):
                         else:
                             if dir == '':
                                 dir = '/'
-                            print('Files Not found in {}:{} directory'.format(dev_name, dir))
-                except KeyboardInterrupt as e:
+                            print(f'Files Not found in {dev_name}:{dir} directory')
+                except KeyboardInterrupt:
                     print('KeyboardInterrupt: get Operation Cancelled')
     except DeviceNotFound as e:
-        print('ERROR {}'.format(e))
+        print(f'ERROR {e}')
 
     if dev.is_connected():
         dev.disconnect()
