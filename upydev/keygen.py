@@ -48,6 +48,8 @@ KEYGEN_HELP = """
                    the signature file to verify or use alias form: $ upydev rsa verify [FILE]
                    * To verify in device a signature made with host RSA key: $ upydev rsa verify host [FILE]
 
+        - rsa_auth: To authenticate device with RSA encrypted challenge.
+
         - rf_wrkey: To "refresh" the WebREPL password with a new random password derivated from
                     the RSA key previously generated. A token then is sent to the device to generate
                     the same password from the RSA key previously uploaded. This won't leave
@@ -485,9 +487,6 @@ def rsa_verify(args, device):
         print('Verification failed: Invalid Signature')
 
 
-# TODO: SIGN HOST; VERIFY HOST
-
-
 def rsa_sign_host(args, **kargs):
     _sigfile = args.f.split('/')[-1]
     # fileio_action(args, **kargs)
@@ -564,6 +563,16 @@ def rsa_verify_host(args, device):
     dev.wr_cmd('import gc;del(vf);gc.collect()')
     dev.disconnect()
 
+
+# TODO: AUTHENTICATE CHALLENGE
+# load device public key,
+# generate random token
+# encrypt token with public key
+# send encrypted token
+# device decrypt and encrypt with host public key
+# send encrypted token
+# decrypt and verify is original token
+# interface --> same as probe
 
 def keygen_action(args, **kargs):
     dev_name = kargs.get('device')
