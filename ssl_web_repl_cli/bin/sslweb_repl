@@ -2168,9 +2168,9 @@ def custom_sh_cmd(cmd_inp):
                 if file == 'cwd':
                     get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(file,
                                                                                args.t, args.p, dev_dir, args.dev)
-                elif '*' in file:
+                elif '*' in file and len(cmd_inp.split(' ')) < 2:
                     get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(
-                        file.replace('*', ''), args.t, args.p, dev_dir, args.dev)
+                        file, args.t, args.p, dev_dir, args.dev)
                 elif len(cmd_inp.split(' ')) > 2:
                     file = ' '.join(cmd_inp.split(' ')[1:])
                     get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(
@@ -2279,9 +2279,9 @@ def custom_sh_cmd(cmd_inp):
             if file == 'cwd':
                 get_str = 'upydev fget -fre {} -t {} -p {} {} -@ {}'.format(
                     file, args.t, args.p, dev_dir, args.dev)
-            elif '*' in file:
+            elif '*' in file and len(cmd_inp.split(' ')) < 2:
                 get_str = 'upydev fget -fre {} -t {} -p {} {} -@ {}'.format(
-                    file.replace('*', ''), args.t, args.p, dev_dir, args.dev)
+                    file, args.t, args.p, dev_dir, args.dev)
             elif len(cmd_inp.split(' ')) > 2:
                 file = ' '.join(cmd_inp.split(' ')[1:])
                 get_str = 'upydev fget -fre {} -t {} -p {} {} -@ {}'.format(
