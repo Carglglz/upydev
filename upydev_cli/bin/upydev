@@ -129,7 +129,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
                  'backup', 'rsync', 'make_sgroup', 'mksg', 'set_localname',
                  'set_hostname', 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify',
-                 'shasum', 'shasum_c', 'ota', 'register', 'lsdevs']
+                 'shasum', 'shasum_c', 'ota', 'register', 'lsdevs', 'ls']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -335,7 +335,7 @@ args = parser.parse_args()
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
                      'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
                      'rsync', 'docs', 'udocs', 'mdocs', 'set_hostname', 'set_localname',
-                     'shasum_c', 'shasum', 'mpyx', 'ota', 'register']
+                     'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls']
 multiple_args_fw = ['fwr', 'flash']
 
 if len(args.m) == 1:
@@ -455,7 +455,7 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'ap_off', 'apstat', 'apconfig', 'apscan', 'i2c_config',
                     'i2c_scan', 'spi_config', 'set_localtime', 'set_ntptime',
                     'get_datetime', 'gc', 'set_hostname', 'set_localname',
-                    'shasum_c', 'shasum']
+                    'shasum_c', 'shasum', 'ls']
 # WLAN COMMANDS
 
 WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',

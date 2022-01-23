@@ -19,6 +19,7 @@ generation and export in PEM format
 - `gen_rsakey` added option `-rkey` to remove RSA private key from the host, so in combination with `-tfkey` option, the RSA private key will be stored only in the device.
 - `shasum.py` lib in `upyutils` to support hash SHA-256 check
 - `shasum` and `shasum_c` to compute hash SHA-256 of files and check shasum files.
+- `ls` command to improve ls from `upysh`, with mutiple dirs and pattern matching
 # Fix
 - `mpyx` command with multiple files
 - `rf_wrkey` now use RSA public key for password derivation and send encrypted password
@@ -26,7 +27,7 @@ that is decrypted and stored in device.
 - Load time in MacOS caused by upydevice->BleDevice->bleak->corebluetooth
 - Save in ecdsa key/cert directly in `DER`, no need for `openssl` in `PATH`.
 - Allow mdns name in ssl certificate.
-- Improved file io operations (put, get, fget, dsync, rsync, backup...), more flexibility indicating files / dirs / pattern matching etc. Improved overall performance, specially for WebSocketDevices. 
+- Improved file io operations (put, get, fget, dsync, rsync, backup...), more flexibility indicating files / dirs / pattern matching etc. Improved overall performance, specially for WebSocketDevices.
 ## [0.3.7] 2021-12-16
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)

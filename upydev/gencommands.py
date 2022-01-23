@@ -5,6 +5,7 @@ import ast
 from datetime import datetime, date
 from binascii import hexlify
 import time
+import os
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
@@ -13,9 +14,20 @@ KEY_N_ARGS = {'du': ['f', 's'], 'df': ['s'], 'netstat_conn': ['wp'],
               'apconfig': ['ap'], 'i2c_config': ['i2c'],
               'spi_config': ['spi'], 'set_ntptime': ['utc'], 'tree': ['f'],
               'set_hostname': ['f'], 'set_localname': ['f'],
-              'shasum_c': ['f'], 'shasum': ['f', 'fre']}
+              'shasum_c': ['f'], 'shasum': ['f', 'fre'], 'ls': ['f', 'fre']}
 
 VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc', 'fre']
+
+CRED = '\033[91;1m'
+CGREEN = '\33[32;1m'
+CEND = '\033[0m'
+YELLOW = '\u001b[33m'
+BCYAN = '\u001b[36;1m'
+ABLUE_bold = '\u001b[34;1m'
+MAGENTA_bold = '\u001b[35;1m'
+WHITE_ = '\u001b[37m'
+LIGHT_GRAY = "\033[0;37m"
+DARK_GRAY = "\033[1;30m"
 
 
 GENERAL_COMMANDS_HELP = """
@@ -29,6 +41,7 @@ GENERAL_COMMANDS_HELP = """
         - kbi : sends CTRL-C signal to stop an ongoing loop, to be able to access repl again
         - uhelp : just calls micropython help
         - umodules: just calls micropython help('modules')
+        - ls: improved ls version with multiple dirs and pattern matching
         - meminfo : for upy device RAM memory info; call it once to check actual memory,
                     call it twice and it will free some memory
         - du : to get the size of file in root dir (default) or sd with '-s sd' option;
@@ -59,6 +72,46 @@ GENERAL_COMMANDS_HELP = """
         - set_localname: to set localname of the device for ble device gap/advertising name
         - shasum_c: to check shasum file
         - shasum: to compute hash SHA-256 of a device file"""
+
+
+# from @The Data Scientician : https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
+def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
+                autocol_tab=False, sort=True, autowide=False, max_cols=4):
+    '''Prints formatted data on columns of given width.'''
+    if sort:
+        data.sort(key=str.lower)
+    if format_SH:
+        if autocols:
+            wide_data = max([len(namefile) for namefile in data]) + 2
+            if wide_data > wide:
+                wide = wide_data
+            columns, rows = os.get_terminal_size(0)
+            cols = int(columns/(wide))
+        data = ['{}{}{}{}'.format(ABLUE_bold, val, CEND, ' '*(wide-len(val)))
+                if '.' not in val else val for val in data]
+        data = ['{}{}{}{}'.format(MAGENTA_bold, val, CEND, ' '*(wide-len(val)))
+                if '.py' not in val and '.mpy' not in val and '.'
+                in val else val for val in data]
+        data = ['{}{}{}{}'.format(
+            CGREEN, val, CEND, ' '*(wide-len(val))) if '.mpy'
+            in val else val for val in data]
+    if autocol_tab:
+        data = [namefile if len(namefile) < wide else namefile
+                + '\n' for namefile in data]
+    if autowide:
+        wide_data = max([len(namefile) for namefile in data]) + 2
+        if wide_data > wide:
+            wide = wide_data
+        columns, rows = os.get_terminal_size(0)
+        cols = int(columns/(wide))
+        if max_cols < cols:
+            cols = max_cols
+    n, r = divmod(len(data), cols)
+    pat = '{{:{}}}'.format(wide)
+    line = '\n'.join(pat * cols for _ in range(n))
+    last_line = pat * r
+    print(line.format(*data))
+    print(last_line.format(*data[n*cols:]))
 
 
 def print_sizefile(file_name, filesize, tabs=0):
@@ -199,6 +252,100 @@ def gen_command(cmd, *args, **kargs):
     elif cmd == 'umodules':
         dev = Device(*args, **kargs)
         dev.cmd(_CMDDICT_['MOD'], long_string=True)
+        dev.disconnect()
+        return
+
+    # LS
+
+    elif cmd == 'ls':
+        dir_name = kargs.pop('f')
+        dir_names_or_pattrn = kargs.pop('fre')
+        dev = Device(*args, **kargs)
+        files_in_dir = []
+        if not dir_names_or_pattrn:  # single dir
+            if not dir_name:
+                dir_name = ''  # cwd
+
+            files_in_dir = dev.cmd(_CMDDICT_['LS'].format(dir_name), silent=True,
+                                   rtn_resp=True)
+            if dev._traceback.decode() in dev.response:
+                try:
+                    raise DeviceException(dev.response)
+                except Exception as e:
+                    print(e)
+        else:  # multiple dirs, or pattrn matching
+            if len(dir_names_or_pattrn) == 1:
+                dir_pattrn = dir_names_or_pattrn[0].rsplit('/', 1)
+                if len(dir_pattrn) > 1:
+                    dir, pattrn = dir_pattrn
+                else:
+                    dir = ''
+                    pattrn = dir_pattrn[0]
+                # list to filter files:
+                filter_files = []
+                filter_files.append(pattrn.replace('.', '\.').replace('*', '.*') + '$')
+                cmd_str = (f"import os;[file for file in "
+                           f"os.listdir('{dir}') if any([patt.match(file) for patt in "
+                           f"pattrn])]")
+                filter_files_cmd = f"filter_files = {filter_files}"
+                dev.cmd(filter_files_cmd, silent=True)
+                dev.cmd("import re; pattrn = [re.compile(f) for "
+                        "f in filter_files]", silent=True)
+                cmd_str += (';import gc;del(filter_files);del(pattrn);'
+                            'gc.collect()')
+                files_in_dir = dev.cmd(cmd_str, silent=True, rtn_resp=True)
+                if dev._traceback.decode() in dev.response:
+                    try:
+                        raise DeviceException(dev.response)
+                    except Exception as e:
+                        print(e)
+            else:
+                for dir_name in dir_names_or_pattrn:
+                    if '*' not in dir_name:
+                        files_in_dir = dev.cmd(_CMDDICT_['LS'].format(dir_name),
+                                               silent=True,
+                                               rtn_resp=True)
+                        if dev._traceback.decode() in dev.response:
+                            try:
+                                raise DeviceException(dev.response)
+                            except Exception as e:
+                                print(e)
+                    else:
+                        dir_pattrn = dir_name.rsplit('/', 1)
+                        if len(dir_pattrn) > 1:
+                            dir, pattrn = dir_pattrn
+                        else:
+                            dir = ''
+                            pattrn = dir_pattrn[0]
+                        dir_name = dir
+                        # list to filter files:
+                        filter_files = []
+                        filter_files.append(pattrn.replace(
+                            '.', '\.').replace('*', '.*') + '$')
+                        cmd_str = (f"import os;[file for file in "
+                                   f"os.listdir('{dir}') if any([patt.match(file) for "
+                                   f"patt in "
+                                   f"pattrn])]")
+                        filter_files_cmd = f"filter_files = {filter_files}"
+                        dev.cmd(filter_files_cmd, silent=True)
+                        dev.cmd("import re; pattrn = [re.compile(f) for "
+                                "f in filter_files]", silent=True)
+                        cmd_str += (';import gc;del(filter_files);del(pattrn);'
+                                    'gc.collect()')
+                        files_in_dir = dev.cmd(cmd_str, silent=True, rtn_resp=True)
+                        if dev._traceback.decode() in dev.response:
+                            try:
+                                raise DeviceException(dev.response)
+                            except Exception as e:
+                                print(e)
+
+                    if files_in_dir:
+                        print(f'\n{dir_name}/:')
+                        print_table(files_in_dir, wide=28, format_SH=True)
+                files_in_dir = []
+        if files_in_dir != []:
+            print_table(files_in_dir, wide=28, format_SH=True)
+
         dev.disconnect()
         return
 
