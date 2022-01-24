@@ -11,10 +11,11 @@ import glob
 
 
 class SerialFileIO:
-    def __init__(self, dev, port=None):
+    def __init__(self, dev, port=None, devname=None):
         self.host = None
         self.port = port
         self.dev = dev
+        self.dev_name = devname
         self.buff = bytearray(1024*2)
         self.bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
         self.columns, self.rows = os.get_terminal_size(0)
@@ -47,7 +48,9 @@ class SerialFileIO:
                                                                     str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
         sys.stdout.flush()
 
-    def get(self, src, dst_file, chunk_size=256, ppath=False, dev_name=None):  # from Pyboard.py
+    def get(self, src, dst_file, chunk_size=256, ppath=False, dev_name=None):
+        if not dev_name:
+            dev_name = self.dev_name
         self.get_pb()
         cnt = 0
         t_start = time.time()
@@ -103,6 +106,8 @@ class SerialFileIO:
 
     def put(self, src, dst_file, chunk_size=256, abs_path=True, ppath=False,
             dev_name=None):  # from Pyboard.py
+        if not dev_name:
+            dev_name = self.dev_name
         self.get_pb()
         sz = os.stat(src)[6]
         cnt = 0

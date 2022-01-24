@@ -177,7 +177,8 @@ Keygen
 ------
 
 
-    ACTIONS: ``gen_rsakey``, ``rsa_sign``, ``rsa_verify``, ``rf_wrkey``, ``sslgen_key``
+    ACTIONS: ``gen_rsakey``, ``rsa_sign``, ``rsa_verify``, ``rsa_auth``, ``rf_wrkey``, ``sslgen_key``
+
 
 
     - gen_rsakey:
@@ -197,6 +198,9 @@ Keygen
     - rsa_verify:
         To verify a signature of a file made with device RSA key, use ``-f`` to indicate the signature file to verify or use alias form: ``$ upydev rsa verify [FILE]``.
         To verify in device a signature made with host RSA key: ``$ upydev rsa verify host [FILE]``
+
+    - rsa_auth:
+        To authenticate a device with RSA encrypted challenge(Public Keys exchange must be done first)
 
     - rf_wrkey:
         To "refresh" the WebREPL password with a new random password derivated from

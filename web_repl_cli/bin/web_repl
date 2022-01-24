@@ -527,11 +527,6 @@ def on_open(ws):
                     sys.stdout.flush()
                 else:
 
-                    # PROGRAMS BLOCK HERE, WORKS WITH KEYBINDGS HANDELING THE
-                    # LINE BUFFER,
-                    # WS ON_MESSAGE CALLBACK DOES THE PRINTING WORK
-                    # ConditionalAutoSuggest(AutoSuggestFromHistory(), autosuggest_is_on)
-                    # AutoSuggestFromHistory()
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     inp = session_p.prompt(

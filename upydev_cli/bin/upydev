@@ -129,7 +129,8 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
                  'backup', 'rsync', 'make_sgroup', 'mksg', 'set_localname',
                  'set_hostname', 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify',
-                 'shasum', 'shasum_c', 'ota', 'register', 'lsdevs', 'ls']
+                 'shasum', 'shasum_c', 'ota', 'register', 'lsdevs', 'ls', 'rsa_auth',
+                 'auth']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -388,6 +389,9 @@ elif len(args.m) == 2:
         args.f = second_arg
     elif args.m == 'rsa_verify':
         args.f = second_arg
+    elif args.m == 'rsa' and second_arg == 'auth':
+        args.m = "rsa_auth"
+
 
 elif len(args.m) > 2:
     rest_args = args.m[1:]
@@ -426,7 +430,8 @@ FIRMWARE_ACTIONS = ['mpyx', 'fwr', 'flash', 'ota']
 
 # KEYGEN ACTIONS
 
-KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key', 'rsa_sign', 'rsa_verify']
+KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key', 'rsa_sign', 'rsa_verify',
+                  'rsa_auth']
 
 # REPL ACTIONS
 

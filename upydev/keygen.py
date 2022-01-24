@@ -1,6 +1,6 @@
 from upydevice import Device
 import sys
-from upydev.fileio import fileio_action
+from upydev.fileio import BleFileIO, SerialFileIO, WebSocketFileIO
 from upydevice import check_device_type
 import getpass
 import os
@@ -27,6 +27,11 @@ import uuid
 
 UPYDEV_PATH = upydev.__path__[0]
 
+CHECK = '[\033[92m\u2714\x1b[0m]'
+XF = '[\u001b[31;1m\u2718\u001b[0m]'
+OK = '\033[92mOK\x1b[0m'
+FAIL = '\u001b[31;1mF\u001b[0m'
+
 KEYGEN_HELP = """
 > KEYGEN: Usage '$ upydev ACTION [opts]'
     ACTIONS:
@@ -48,7 +53,7 @@ KEYGEN_HELP = """
                    the signature file to verify or use alias form: $ upydev rsa verify [FILE]
                    * To verify in device a signature made with host RSA key: $ upydev rsa verify host [FILE]
 
-        - rsa_auth: To authenticate device with RSA encrypted challenge.
+        - rsa_auth: To authenticate a device with RSA encrypted challenge (Public Keys exchange must be done first)
 
         - rf_wrkey: To "refresh" the WebREPL password with a new random password derivated from
                     the RSA key previously generated. A token then is sent to the device to generate
@@ -328,13 +333,14 @@ def get_rsa_key(args):
 def get_rsa_key_host(args):
     # print('Generating RSA key...')
     # print('Getting Host unique id...')
-    bb = 6
-    while True:
-        try:
-            unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
-            break
-        except OverflowError:
-            bb += 1
+    # bb = 6
+    # while True:
+    #     try:
+    #         unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
+    #         break
+    #     except OverflowError:
+    #         bb += 1
+    unique_id = hexlify(os.environ['USER'].encode()).decode()[:12]
 
     # print('Host ID: {}'.format(unique_id))
     pkey = rsa_keygen(args, dir=UPYDEV_PATH, show_key=args.show_key, id=unique_id,
@@ -431,9 +437,17 @@ def rsa_sign(args, **kargs):
     args.m = 'put'
     args.rst = False
     _sigfile = args.f.split('/')[-1]
-    fileio_action(args, **kargs)
-    print(f'Signing file {_sigfile} with {device} RSA key')
+    # fileio_action(args, **kargs)
+    dt = check_device_type(args.t)
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    if dt == 'WebSocketDevice':
+        devIO = WebSocketFileIO(dev, args, devname=device)
+    elif dt == 'SerialDevice':
+        devIO = SerialFileIO(dev, devname=device)
+    elif dt == 'BleDevice':
+        devIO = BleFileIO(dev, devname=device)
+    devIO.put(args.f, _sigfile, ppath=True)
+    print(f'Signing file {_sigfile} with {device} RSA key')
     id_bytes = dev.wr_cmd("from machine import unique_id; unique_id()",
                           silent=True, rtn_resp=True)
     unique_id = hexlify(id_bytes).decode()
@@ -490,13 +504,14 @@ def rsa_verify(args, device):
 def rsa_sign_host(args, **kargs):
     _sigfile = args.f.split('/')[-1]
     # fileio_action(args, **kargs)
-    bb = 6
-    while True:
-        try:
-            unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
-            break
-        except OverflowError:
-            bb += 1
+    # bb = 6
+    # while True:
+    #     try:
+    #         unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
+    #         break
+    #     except OverflowError:
+    #         bb += 1
+    unique_id = hexlify(os.environ['USER'].encode()).decode()[:12]
     print('Host ID: {}'.format(unique_id))
     print(f'Signing file {_sigfile} with Host RSA key')
     pvkey = f"upy_host_pv_rsa{unique_id}.key"
@@ -512,6 +527,7 @@ def rsa_sign_host(args, **kargs):
                 break
             except ValueError:
                 # print(e)
+                key_file.seek(0)
                 print('Passphrase incorrect, try again...')
     with open(args.f, 'rb') as file_to_sign:
         key_hash = hashlib.sha256()
@@ -532,13 +548,14 @@ def rsa_verify_host(args, device):
     print(f'{device} verifying {args.f} signature from Host RSA key')
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
     print(f"Assuming signed data in {args.f.replace('.sign', '')}")
-    bb = 6
-    while True:
-        try:
-            unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
-            break
-        except OverflowError:
-            bb += 1
+    # bb = 6
+    # while True:
+    #     try:
+    #         unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
+    #         break
+    #     except OverflowError:
+    #         bb += 1
+    unique_id = hexlify(os.environ['USER'].encode()).decode()[:12]
     print(f'Host ID: {unique_id}')
     key_abs = os.path.join(UPYDEV_PATH, f'upy_host_pub_rsa{unique_id}.key')
     # load key.pem
@@ -563,16 +580,99 @@ def rsa_verify_host(args, device):
     dev.wr_cmd('import gc;del(vf);gc.collect()')
     dev.disconnect()
 
+# AUTHENTICATE CHALLENGE
 
-# TODO: AUTHENTICATE CHALLENGE
-# load device public key,
-# generate random token
-# encrypt token with public key
-# send encrypted token
-# device decrypt and encrypt with host public key
-# send encrypted token
-# decrypt and verify is original token
-# interface --> same as probe
+
+def rsa_auth(args, device):
+    # load device public key
+    print(f'Authenticating {device} with RSA Challenge...')
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    id_bytes = dev.cmd("from machine import unique_id; unique_id()",
+                       silent=True, rtn_resp=True)
+    # dev.disconnect()
+    unique_id_dev = hexlify(id_bytes).decode()
+    print(f'{device} ID: {unique_id_dev}')
+    key_abs = os.path.join(UPYDEV_PATH, f'upy_pub_rsa{unique_id_dev}.key')
+    # load key.pem
+    with open(key_abs, "rb") as key_file:
+        pub_key = serialization.load_pem_public_key(key_file.read())
+        kz = pub_key.key_size
+        key_hash = hashlib.sha256()
+        key_hash.update(pub_key.public_bytes(serialization.Encoding.DER,
+                                             serialization.PublicFormat.PKCS1))
+        hashed_key = hexlify(key_hash.digest()).decode('ascii').upper()
+        print(f"Using {kz} bits RSA Public key {hashed_key[:40]}")
+    # generate random token
+    token = secrets.token_urlsafe(32).encode()
+    # encrypt token with public key
+    try:
+        token_challenge = pub_key.encrypt(token, padding.PKCS1v15())
+
+    except ValueError as e:
+        print(f'Encryption failed: {e}')
+    # send encrypted token
+    print('Sending challenge...')
+    if len(token_challenge) > 50:
+        dev.wr_cmd("token_challenge = b''", silent=True)
+        for i in range(0, len(token_challenge), 50):
+            dev.wr_cmd(f'token_challenge += {token_challenge[i:i+50]}', silent=True)
+    pvkey = f"upy_pv_rsa{unique_id_dev}.key"
+    dev.wr_cmd(f"from rsa.rsautil import RSAPrivateKey, "
+               f"RSAPublicKey;pk=RSAPrivateKey('{pvkey}')")
+    # print(f"Key ID: {dev.wr_cmd('pk', silent=True, rtn_resp=True)}")
+    print('Decrypting challenge...')
+    dev.wr_cmd("token = pk.decrypt(token_challenge)", silent=False, follow=True)
+    # bb = 6
+    # while True:
+    #     try:
+    #         unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
+    #         break
+    #     except OverflowError:
+    #         bb += 1
+    print('Encrypting challenge with host public key...')
+    unique_id = hexlify(os.environ['USER'].encode()).decode()[:12]
+    print(f'Host ID: {unique_id}')
+    # device decrypt and encrypt with host public key
+    host_pb_key = f'upy_host_pub_rsa{unique_id}.key'
+    dev.wr_cmd(f"pubk=RSAPublicKey('{host_pb_key}')", silent=True)
+    print(f"Host Key ID: {dev.wr_cmd('pubk', silent=True, rtn_resp=True)}")
+    dev.wr_cmd("token_resp = pubk.encrypt(token)", silent=False, follow=True)
+    # send encrypted token
+    token_resp = dev.wr_cmd("token_resp", silent=True, rtn_resp=True)
+    host_pv_key = f"upy_host_pv_rsa{unique_id}.key"
+    key_abs = os.path.join(UPYDEV_PATH, host_pv_key)
+    with open(key_abs, "rb") as key_file_host:
+        key_data = key_file_host.read()
+        while True:
+            try:
+                my_p = getpass.getpass(
+                    prompt=f"Enter passphrase for key '{host_pv_key}':", stream=None)
+                # print(my_p)
+                private_key = serialization.load_pem_private_key(key_data,
+                                                                 my_p.encode())
+                break
+            except ValueError:
+                # print(e)
+                print('Passphrase incorrect, try again...')
+
+    # decrypt and verify is original token
+    dev_type = check_device_type(args.t)
+
+    # decrypt and verify is original token
+    try:
+        token_dev = private_key.decrypt(token_resp, padding.PKCS1v15())
+        assert token == token_dev
+        print(f'Device {device} authenticated')
+        print(f'{device:10} -> {dev_type} @ {args.t} -> [AUTH {OK}] {CHECK}')
+    except (AssertionError, ValueError):
+        print("ERROR, AUTHENTICATION FAILED")
+        print(f'{device:10} -> {dev_type} @ {args.t} -> [AUTH {XF}] {FAIL}]')
+
+    dev.wr_cmd('import gc;del(token_resp);del(token_challenge);gc.collect()')
+    dev.disconnect()
+
+    # interface --> same as probe
+
 
 def keygen_action(args, **kargs):
     dev_name = kargs.get('device')
@@ -590,13 +690,14 @@ def keygen_action(args, **kargs):
         else:
             # Check if exists:
             print('Getting Host unique id...')
-            bb = 6
-            while True:
-                try:
-                    unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
-                    break
-                except OverflowError:
-                    bb += 1
+            # bb = 6
+            # while True:
+            #     try:
+            #         unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
+            #         break
+            #     except OverflowError:
+            #         bb += 1
+            unique_id = hexlify(os.environ['USER'].encode()).decode()[:12]
 
             print('Host ID: {}'.format(unique_id))
             pbkey = f"upy_host_pub_rsa{unique_id}.key"
@@ -658,6 +759,9 @@ def keygen_action(args, **kargs):
             rsa_verify_host(args, dev_name)
         sys.exit()
 
+    elif args.m == 'rsa_auth':
+        rsa_auth(args, dev_name)
+        sys.exit()
     # TODO: RSA key exchange
     #    -->: Host keypair (unique)
     #    -->: Device keypair (unique)
