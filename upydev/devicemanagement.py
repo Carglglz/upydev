@@ -50,6 +50,20 @@ KEY_N_ARGS = {}
 VALS_N_ARGS = []
 
 
+def check_zt_group(key, args):
+    # check if device in ZeroTier group.
+    zt_file_conf = '_zt_upydev_.config'
+    zt_file_path = os.path.join(UPYDEV_PATH, zt_file_conf)
+    if zt_file_conf in os.listdir(UPYDEV_PATH):
+        with open(zt_file_path, 'r', encoding='utf-8') as zt_conf:
+            zt_devices = json.loads(zt_conf.read())
+            if key in zt_devices:
+                args.zt = zt_devices[key]
+            else:
+                args.zt = False
+    return args.zt
+
+
 def address_entry_point(entry_point, group_file='', args=None):
     if group_file == '':
         group_file = 'UPY_G'
@@ -181,7 +195,13 @@ def devicemanagement_action(args, **kargs):
                     zt_conf.write(json.dumps({}))
             with open(zt_file_path, 'r', encoding='utf-8') as zt_conf:
                 zt_devices = json.loads(zt_conf.read())
-                zt_devices.update({upydev_name: args.zt})
+                if ':' in args.zt:
+                    zt_conf, fwd_dev_conf = args.zt.split(':')
+                    fwd_conf, dev_conf = fwd_dev_conf.split('/')
+                    zt_devices.update({upydev_name: dict(zt=zt_conf, fwd=fwd_conf,
+                                                         dev=dev_conf)})
+                else:
+                    zt_devices.update({upydev_name: args.zt})
             with open(zt_file_path, 'w', encoding='utf-8') as zt_conf:
                 zt_conf.write(json.dumps(zt_devices))
             print('{} {} settings saved in ZeroTier group!'.format(dt, upydev_name))
@@ -234,6 +254,9 @@ def devicemanagement_action(args, **kargs):
                     print('{}Device: {}'.format(space, dev))
                     dt = check_device_type(args.t)
                     if not args.i:
+                        args.zt = check_zt_group(dev, args)
+                        if isinstance(args.zt, dict):
+                            args.t = f"{args.t}/{args.zt['dev']}"
                         print('Address: {}, Device Type: {}'.format(args.t, dt))
                     else:
                         if not args.wss:
@@ -249,6 +272,9 @@ def devicemanagement_action(args, **kargs):
             print('Device: {}'.format(_dev_name))
             dt = check_device_type(args.t)
             if not args.i:
+                args.zt = check_zt_group(dev, args)
+                if isinstance(args.zt, dict):
+                    args.t = f"{args.t}/{args.zt['dev']}"
                 print('Address: {}, Device Type: {}'.format(args.t, dt))
             else:
                 if not args.wss:

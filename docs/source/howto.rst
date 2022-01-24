@@ -53,7 +53,7 @@ WEBSOCKET DEVICES (WIFI)
     In another window use upydev normally. Now in the terminal window with the serial repl you can see which commands are sent.
 
 
-  **Working with dchp_hostnames instead of IP**
+  **Working with dchp_hostname instead of IP**
 
   To do this activate station interface and set ``dhcp_hostname`` before connecting to the WLAN, e.g. in MicroPython REPL/script
 
@@ -115,6 +115,11 @@ WEBSOCKET DEVICES (WIFI)
       2 packets transmitted, 2 packets received, 0.0% packet loss
       round-trip min/avg/max/stddev = 56.655/66.203/75.751/9.548 ms
 
+.. note::
+
+  Be aware some systems default ``ping`` use ``ipv6`` first, and fallback to ``ipv4`` while
+  resolving mDNS names, which may cause some delay. Use  ``ping -4`` instead which will use
+  ``ipv4`` directly and resolve the name faster.
 
 ------
 
@@ -209,7 +214,7 @@ Now SSL shell-repl mode is available using ``-zt`` option: e.g.
 
 Where *192.168.1.79* is the IP of the raspberry pi in the local area network.
 
-Or configre a device with the ``-zt`` option so it is not required anymore, e.g.
+Or configure a device with the ``-zt`` option so it is not required anymore, e.g.
 
 .. code-block:: console
 
@@ -222,6 +227,28 @@ Now to access the SSL shell-repl mode through zerotier network:
 .. code-block:: console
 
     $ upydev shl@zerotdevice
+
+
+.. note::
+
+  To allow ``ping`` and ``probe`` work correctly instead of pinging the raspberry pi,
+  add the ssh alias of the raspberry pi and the local ip or mDNS name of the device to ``-zt`` option as ``:[ALIAS]/[DEVICE_IP]`` e.g. :
+
+    .. code-block:: console
+
+      $ upydev config -t 142.64.115.62 -p mypass -gg -@ zerowpy -zt 142.64.115.75/192.168.1.79:rpi/192.168.1.46
+      # OR
+      upydev config -t 142.64.115.62 -p mypass -gg -@ zerowpy -zt 142.64.115.75/192.168.1.79:rpi/weatpy.local
+
+  This expects the raspberry pi to be accesible through ``ssh [ALIAS]``, and the keys added to the ``ssh-agent``.
+  See `ssh add keys <https://www.ssh.com/academy/ssh/add>`_ and `ssh alias <https://ostechnix.com/how-to-create-ssh-alias-in-linux/>`_
+
+  Now ``ping`` and ``probe`` should actually reach the device through raspbery pi ping, e.g.:
+
+  .. code-block:: console
+
+      $ upydev ping -@ zerowpy
+
 
 TESTING DEVICES WITH PYTEST
 ---------------------------

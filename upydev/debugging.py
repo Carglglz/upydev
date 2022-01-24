@@ -4,6 +4,7 @@ from upydev.helpinfo import see_help
 from upydev.firmwaretools import get_fw_versions
 from upydev.gencommands import print_filesys_info, print_sizefile_all
 from upydev.commandlib import _CMDDICT_
+from upydev.devicemanagement import check_zt_group
 import os
 import json
 import upydev
@@ -147,10 +148,14 @@ def stop_by_pid(raw='ps ax', proc_name='upydev log'):  # upydev log, web_repl_cm
         return('NO DAEMON PROCESS FOUND')
 
 
-def ping(ip):
+def ping(ip, zt=False):
     if ':' in ip:
         ip, _ = ip.split(':')
-    ping_cmd_str = 'ping {}'.format(ip)
+    if zt:
+
+        ping_cmd_str = f'ssh {zt["fwd"]} ping {zt["dev"]}'
+    else:
+        ping_cmd_str = 'ping {}'.format(ip)
     ping_cmd = shlex.split(ping_cmd_str)
     try:
         proc = subprocess.Popen(
@@ -1216,7 +1221,7 @@ def pytest(args, devname):
         print('')
 
 
-def probe_device(addr, passwd):
+def probe_device(addr, passwd, args):
     dt = check_device_type(addr)
     if dt == 'SerialDevice':
         if addr.replace('tty', 'cu') in serial_scan():
@@ -1228,7 +1233,7 @@ def probe_device(addr, passwd):
     elif dt == 'WebSocketDevice':
         try:
             dev = Device(addr, passwd)
-            status = dev.is_reachable()
+            status = dev.is_reachable(zt=args.zt)
             if status:
                 return True
             else:
@@ -1289,7 +1294,11 @@ def debugging_action(args, **kargs):
                         tree = '┣━'
                     else:
                         tree = '┗━'
-                    is_reachable = probe_device(dev_add, dev_pass)
+                    # check if device in ZeroTier group.
+                    args.zt = check_zt_group(key, args)
+                    is_reachable = probe_device(dev_add, dev_pass, args)
+                    if isinstance(args.zt, dict):
+                        dev_add = f'{dev_add}/{args.zt["dev"]}'
                     if is_reachable:
                         print('{} {:10} -> {:} @ {:} -> {} {}'.format(tree,
                                                                       key, dev_type,
@@ -1301,9 +1310,13 @@ def debugging_action(args, **kargs):
                                                                       dev_add,
                                                                       FAIL, XF))
         else:
+            # check if device in ZeroTier group.
+            args.zt = check_zt_group(dev_name, args)
             print('Reaching {}...'.format(dev_name))
-            is_reachable = probe_device(args.t, args.p)
+            is_reachable = probe_device(args.t, args.p, args)
             dt = check_device_type(args.t)
+            if isinstance(args.zt, dict):
+                args.t = f'{args.t}/{args.zt["dev"]}'
             if is_reachable:
                 print('{:10} -> {:} @ {:} -> {} {}'.format(dev_name, dt, args.t,
                                                            OK, CHECK))
@@ -1424,10 +1437,19 @@ def debugging_action(args, **kargs):
     elif args.m == 'ping':
         dt = check_device_type(args.t)
         if dt == 'WebSocketDevice':
-            ping(args.t)
+            # check if device in ZeroTier group.
+            zt_file_conf = '_zt_upydev_.config'
+            zt_file_path = os.path.join(UPYDEV_PATH, zt_file_conf)
+            if zt_file_conf in os.listdir(UPYDEV_PATH):
+                with open(zt_file_path, 'r', encoding='utf-8') as zt_conf:
+                    zt_devices = json.loads(zt_conf.read())
+                    if dev_name in zt_devices:
+                        args.zt = zt_devices[dev_name]
+
+            ping(args.t, args.zt)
         else:
             print('Reaching {}...'.format(dev_name))
-            is_reachable = probe_device(args.t, args.p)
+            is_reachable = probe_device(args.t, args.p, args)
             if is_reachable:
                 print('{:10} -> {:} @ {:} -> {} {}'.format(dev_name, dt, args.t,
                                                            OK, CHECK))

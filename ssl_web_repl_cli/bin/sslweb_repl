@@ -903,6 +903,8 @@ if not args.nem:
             zt_devices = json.loads(zt_conf.read())
             if args.dev in zt_devices:
                 args.zt = zt_devices[args.dev]
+                if isinstance(args.zt, dict):
+                    args.zt = args.zt["zt"]
     ssl_cp = SSL_REPL_server(dev=espdev, key=ssl_key, cert=ssl_cert,
                              client_key=None, dev_id=unique_id, zt=args.zt)
     ssl_htool = SSL_TOOL(ssl_repl=ssl_cp, key=ssl_key, cert=ssl_cert, zt=args.zt)

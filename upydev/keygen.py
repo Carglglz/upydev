@@ -2,6 +2,7 @@ from upydevice import Device
 import sys
 from upydev.fileio import BleFileIO, SerialFileIO, WebSocketFileIO
 from upydevice import check_device_type
+from upydev.devicemanagement import check_zt_group
 import getpass
 import os
 import json
@@ -264,6 +265,7 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
                                                       critical=False
                                                       ).sign(key, hashes.SHA256(), default_backend())
     else:
+        dev_ip = args.zt["dev"]
         cert = x509.CertificateBuilder().subject_name(
                     subject).issuer_name(issuer).public_key(key.public_key()
                                                             ).serial_number(x509.random_serial_number()
@@ -276,7 +278,8 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
                                                                                                                      u"wss://{}:8833".format(args.t)),
                                                                                                                      x509.DNSName(
                                                                                                                          u"wss://192.168.4.1:8833"),
-                                                                                                                     x509.DNSName(u"wss://{}:8833".format(args.zt))]),
+                                                                                                                     x509.DNSName(
+                                                                                                                         u"wss://{}:8833".format(dev_ip))]),
                                                       critical=False
                                                       ).sign(key, hashes.SHA256(), default_backend())
     if store:
@@ -737,6 +740,8 @@ def keygen_action(args, **kargs):
 
     elif args.m == 'sslgen_key':
         print('Generating SSL ECDSA key, cert for : {}'.format(dev_name))
+        # check if device in ZeroTier group.
+        args.zt = check_zt_group(dev_name, args)
         ssl_key_cert = get_ssl_keycert(args)
         if ssl_key_cert:
             return ssl_key_cert
