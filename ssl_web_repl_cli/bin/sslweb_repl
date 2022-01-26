@@ -23,7 +23,9 @@ import shutil
 import webbrowser
 import argparse
 import json
+import glob
 from upydev import upip_host
+from upydev.wsio import wsfileio
 from upydev.style_customs import one_darkStyle
 from datetime import datetime, date, timedelta
 from sys import platform as _platform
@@ -184,6 +186,17 @@ def upy_session_keygen(rsa_key, save_sessionkey=False, token=None, uid='00'):
         return (pv_key, iv, [random_token + bytes(index_pvkey) + bytes(index_ivkey)])
     else:
         return (pv_key, iv)
+
+
+class FileArgs:
+    def __init__(self):
+        self.m = ''
+        self.t = ''
+        self.p = ''
+        self.wss = ''
+        self.s = ''
+        self.f = ''
+        self.fre = []
 
 
 class SSL_REPL_server:
@@ -853,7 +866,16 @@ if not args.nem:
         print('Initiating SECURE HANDSHAKE...')
 # espdev.kbi(output=False)
 if base_ws:
-    ws_upydevice.connect(ssl=args.wss, auth=True)
+    get_psphrase = None
+    # TODO: fix wrong passphrase loop
+    if args.wss:
+        get_psphrase = getpass.getpass(f'Enter passphrase for {args.dev} key: ',
+                                       stream=None)
+        ws_upydevice.passphrase = get_psphrase
+    ws_upydevice.connect(ssl=args.wss, auth=args.wss)
+    if args.wss:
+        print(f'WebSecREPL with {ws_upydevice.ws.sock.version()} connected')
+        print('{1} @ {0} - {2} bits Encryption'.format(*ws_upydevice.ws.sock.cipher()))
     ws_upydevice.wr_cmd(ws_upydevice._kbi)
     # espdev.wr_cmd("from machine import unique_id; unique_id()",
     #               silent=True)
@@ -916,9 +938,14 @@ if args.nem:
         pass
         # ws_upydevice.close_wconn()
         # espdev.connect(ssl=args.wss)
+    fileargs = FileArgs()
+    fileargs.t = args.t
+    fileargs.p = args.p
+    fileargs.wss = args.wss
     ssl_cp = WBREPL_IO(dev=espdev)
-    print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
-    print('')
+    if not args.wss:
+        print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
+        print('')
     espdev.banner()
     print('')
 # espdev.wr_cmd('B')
@@ -2156,46 +2183,105 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp.split(' ')[0] == 'get':
         if not encrypted_flag['sec']:
-            print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-            try:
-                ssl_cp.enable_wrepl_io()
-            except Exception as e:
-                pass
+            fileargs.m = 'get'
+            if not args.wss:
+                print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
+            # try:
+            #     ssl_cp.enable_wrepl_io()
+            # except Exception as e:
+            #     pass
+            files_result = False
             if dev_path['p'] != ' ':
-                dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
+                dev_dir = dev_path['p']
             else:
                 dev_dir = ''
             try:
-                file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
+                file = cmd_inp.split(' ')[1]
                 if file == 'cwd':
-                    get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(file,
-                                                                               args.t, args.p, dev_dir, args.dev)
-                elif '*' in file and len(cmd_inp.split(' ')) < 2:
-                    get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(
-                        file, args.t, args.p, dev_dir, args.dev)
-                elif len(cmd_inp.split(' ')) > 2:
-                    file = ' '.join(cmd_inp.split(' ')[1:])
-                    get_str = 'upydev get -fre {} -t {} -p {} {} -@ {}'.format(
-                        file, args.t, args.p, dev_dir, args.dev)
-                else:
-                    get_str = 'upydev get -f {} -t {} -p {} {} -@ {}'.format(
-                        file, args.t, args.p, dev_dir, args.dev)
-                get_cmd = shlex.split(get_str)
-                try:
-                    get_file = subprocess.call(get_cmd)
-                    try:
-                        ssl_cp.enable_wrepl_io()
-                    except Exception as e:
-                        pass
-                except KeyboardInterrupt:
-                    try:
-                        ssl_cp.enable_wrepl_io()
-                    except Exception as e:
-                        pass
-                    pass
-                    print('Operation aborted')
+                    if not dev_dir:
+                        cmd_file_str = ("import uos;[(uos.stat(file)[6], file) for file"
+                                        " in uos.listdir() if not "
+                                        "uos.stat(file)[0] & 0x4000]")
+                    else:
+                        cmd_file_str = (f"import uos;[(uos.stat('{dev_dir}/'+file)[6]"
+                                        f", file) for file in uos.listdir('{dev_dir}')"
+                                        f" if not uos.stat('{dev_dir}/'+file)[0]"
+                                        f" & 0x4000]")
+                    files_to_get = espdev.wr_cmd(cmd_file_str,
+                                                 silent=True, rtn_resp=True)
+                    if files_to_get:
+                        for size, file in files_to_get:
+                            print(f'- {file} [{size/1000:.2f} kB]')
+                        if dev_dir:
+                            fileargs.fre = [(file[0], f'{dev_dir}/{file[1]}')
+                                            for file in files_to_get]
+                        else:
+                            fileargs.fre = files_to_get
+                        files_result = wsfileio(fileargs, '', ('', ''), args.dev,
+                                                dev=espdev)
+                        fileargs.fre = []
+                    else:
+                        print(f'Files not Found in {dev_dir} (cwd) directory')
+
+                elif '*' in file or len(cmd_inp.split(' ')) > 1:
+                    filter_files = [file.replace(
+                                    '.', '\.').replace('*', '.*') + '$' for file in
+                                    cmd_inp.split(' ')[1:] if file not in ['cwd', '.']]
+                    if filter_files and not dev_dir:
+                        cmd_str = ("import uos;[(uos.stat(file)[6], file) for file in "
+                                   "uos.listdir() if any([patt.match(file) for patt in "
+                                   "pattrn]) and not uos.stat(file)[0] & 0x4000]")
+                    elif filter_files and dev_dir:
+                        cmd_str = (f"import uos;[(uos.stat('{dev_dir}/'+file)[6], "
+                                   f" file) for file in uos.listdir('{dev_dir}') if "
+                                   f"any([patt.match(file) for patt in pattrn]) and "
+                                   f"not uos.stat('{dev_dir}/'+file)[0] & 0x4000]")
+                    if filter_files:
+                        if len(f"filter_files = {filter_files}") < 250:
+                            filter_files_cmd = f"filter_files = {filter_files}"
+                            espdev.wr_cmd(filter_files_cmd, silent=True)
+                        else:
+                            espdev.wr_cmd("filter_files = []", silent=True)
+                            for i in range(0, len(filter_files), 15):
+                                filter_files_cmd = f"filter_files += {filter_files[i:i+15]}"
+                                espdev.wr_cmd(filter_files_cmd, silent=True)
+                        espdev.wr_cmd("import re; pattrn = [re.compile(f) for "
+                                      "f in filter_files]", silent=True)
+                        cmd_str += ';import gc;del(filter_files);del(pattrn);gc.collect()'
+
+                    files_to_get = espdev.wr_cmd(cmd_str,
+                                                 silent=True, rtn_resp=True)
+                    if files_to_get:
+                        print('File/s to get: ')
+                        for size, file in files_to_get:
+                            print(f'- {file} [{size/1000:.2f} kB]')
+                        if dev_dir:
+                            fileargs.fre = [(file[0], f'{dev_dir}/{file[1]}')
+                                            for file in files_to_get]
+                        else:
+                            fileargs.fre = files_to_get
+                        if len(fileargs.fre) > 1:
+                            files_result = wsfileio(fileargs, '', ('', ''), args.dev,
+                                                    dev=espdev)
+                        else:
+                            file_to_get = fileargs.fre[0]
+                            fileargs.fre = []
+                            files_result = wsfileio(fileargs, '', file_to_get,
+                                                    args.dev, dev=espdev)
+                        fileargs.fre = []
+                    else:
+                        print(f'Files not Found in {dev_dir} directory')
+
+            except KeyboardInterrupt:
+                print('KeyboardInterrupt: Operation Cancelled')
             except Exception as e:
-                print('File not Found\nIndicate a file to get')
+                print(e)
+                if not espdev.connected:
+                    print('KeyboardInterrupt: Operation Cancelled')
+                    try:
+                        espdev.connect(ssl=args.wss, auth=args.wss)
+                    except Exception as e:
+                        print(e)
 
         else:
             try:
@@ -2216,7 +2302,8 @@ def custom_sh_cmd(cmd_inp):
                     ssl_htool.stop_SOC()
                 elif '*' in file:
                     ssl_cp.ssl_repl("ssl_repl.get_files_re('{}')".format(
-                        file.replace('*', '')))
+                        file.replace(
+                            '.', '\.').replace('*', '.*') + '$'))
                     espdev.get_output()
                     files_to_put_re = espdev.output
                     if files_to_put_re is None or files_to_put_re == []:
@@ -2311,13 +2398,10 @@ def custom_sh_cmd(cmd_inp):
 
     if cmd_inp.split(' ')[0] == 'put':  # FIXME: * wildcard with glob, webrepl put with wsio.py
         if not encrypted_flag['sec']:
-            print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-            try:
-                ssl_cp.enable_wrepl_io()
-            except Exception as e:
-                pass
+            fileargs.m = 'put'
+            # print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
             if dev_path['p'] != ' ':
-                dev_dir = "-dir {}".format('/'.join(dev_path['p'].split('/')[1:]))
+                dev_dir = dev_path['p']
             else:
                 dev_dir = ''
             try:
@@ -2326,36 +2410,40 @@ def custom_sh_cmd(cmd_inp):
                 # put_cmd = shlex.split(put_str)
 
                 file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
-                if file == 'cwd':
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -@ {}'.format(
-                        file, args.t, args.p, dev_dir, args.dev)
+                if file in ['cwd', '.']:
+                    fileargs.fre = [fname for fname in os.listdir(
+                        './') if os.path.isfile(fname) and not fname.startswith('.')]
+                    print(f"Files in ./{os.getcwd().split('/')[-1]} to put: ")
                 elif '*' in file:
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -@ {}'.format(
-                        file.replace('*', ''), args.t, args.p, dev_dir, args.dev)
+                    fileargs.fre = glob.glob(file)
+                    print('Files to put: ')
                 elif len(cmd_inp.split(' ')) > 2:
-                    file = ' '.join(cmd_inp.split(' ')[1:])
-                    put_str = 'upydev put -fre {} -t {} -p {} {} -rst f -@ {}'.format(
-                        file, args.t, args.p, dev_dir, args.dev)
+                    fileargs.fre = cmd_inp.split(' ')[1:]
+                    print('Files to put: ')
                 else:
-                    put_str = 'upydev put -f {} -t {} -p {} {} -rst f -@ {}'.format(
-                        file, args.t, args.p, dev_dir, args.dev)
-                put_cmd = shlex.split(put_str)
-                try:
-                    put_file = subprocess.call(put_cmd)
+                    print('File to put: ')
+                    fileargs.fre = [file]
+                files_to_put = []
+                for file in fileargs.fre:
                     try:
-                        ssl_cp.enable_wrepl_io()
-                    except Exception as e:
-                        pass
-                except KeyboardInterrupt:
-                    try:
-                        ssl_cp.enable_wrepl_io()
-                    except Exception as e:
-                        pass
-                    pass
-                    print('Operation aborted')
+                        filesize = os.stat(file)[6]
+                        if not os.path.isdir(file):
+                            files_to_put.append(file)
+                            print(f'- {file} [{filesize/1000:.2f} kB]')
+                        else:
+                            filesize = 'IsDirectory'
+                            print(f'- {file} [{filesize}]')
+                    except Exception:
+                        filesize = 'FileNotFoundError'
+                        print(f'- {file} [{filesize}]')
+                fileargs.fre = files_to_put
+                result = wsfileio(fileargs, 'fre', 'fre', args.dev, dev=espdev)
+                fileargs.fre = []
+            except KeyboardInterrupt:
+                print('KeyboardInterrupt: Operation Cancelled')
             except Exception as e:
-                # print(e)
-                print('File not Found\nIndicate a valid file to put')
+                print(e)
+                # print('File not Found\nIndicate a valid file to put')
         else:
             try:
                 print('File/s to put:')

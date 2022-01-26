@@ -98,11 +98,14 @@ def ssl_wrepl(args, device):
 
         else:
             if device is not None:
-                sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -nem'.format(
-                    args.t, args.p, device)
+
+                sslweb_repl_cmd_str = (f'sslweb_repl -t {args.t} -p {args.p} -dev '
+                                       f'{device} -nem')
             else:
                 sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -nem'.format(
                     args.t, args.p)
+            if args.wss:
+                sslweb_repl_cmd_str += ' -wss'
             sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
 
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)

@@ -589,9 +589,10 @@ if __name__ == "__main__":
                                     on_error=on_error,
                                     on_close=on_close)
         hostname = f"wss://{dev_ip}:{port}"
-        # key, cert = wsclient.load_cert_from_hostname(CA_PATH, f"wss://{dev_ip}:{port}")
+        key, cert = wsclient.load_cert_from_hostname(CA_PATH, f"wss://{dev_ip}:{port}")
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         context.load_verify_locations(cadata=wsclient.load_custom_CA_data(CA_PATH))
+        context.load_cert_chain(cert, key)
         context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
         ws.on_open = on_open
         ws.run_forever(sslopt={"context": context, "server_hostname": hostname})

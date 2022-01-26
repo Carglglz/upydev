@@ -421,7 +421,12 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                         # flush ws and reset
                         dev.flush()
                         dev.disconnect()
-                        dev.connect(ssl=websec, auth=websec)
+                        if input('Continue get Operation with next file? [y/n]') == 'y':
+                            dev.connect(ssl=websec, auth=websec)
+                        else:
+                            print('Canceling file queue..')
+                            dev.connect(ssl=websec, auth=websec)
+                            raise KeyboardInterrupt
                         dev.ws.sock.settimeout(10)
                         ws = websocket(dev.ws.sock)
                         if not dev.connected:
@@ -481,6 +486,10 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                         put_file(ws, src_file, dst_file)
                     except KeyboardInterrupt:
                         print('KeyboardInterrupt: put Operation Cancelled')
+                        if input('Continue get Operation with next file? [y/n]') == 'y':
+                            pass
+                        else:
+                            raise KeyboardInterrupt
                         if not dev.connected:
                             ws.s.close()
                         time.sleep(0.2)

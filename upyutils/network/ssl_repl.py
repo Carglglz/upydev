@@ -7,7 +7,8 @@ import sys
 import gc
 from ubinascii import hexlify
 from machine import unique_id
-from hashlib import sha256
+# from hashlib import sha256
+import re
 
 
 class SSL_socket_client_repl:
@@ -233,7 +234,8 @@ def get_files_cwd():
 
 
 def get_files_re(reg):
-    return [file for file in get_files_cwd() if reg in file]
+    pattrn = re.compile(reg)
+    return [file for file in get_files_cwd() if pattrn.match(file)]
 
 
 def get_files_dir(filelist):
