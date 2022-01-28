@@ -51,8 +51,13 @@ class OTA:
         soc_addr = socket.getaddrinfo(host, port)[0][-1]
         cli_soc.connect(soc_addr)
         if self.tls:
-            cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert)
-            assert self.cert == cli_soc.getpeercert(True), "Peer Certificate Invalid"
+            try:
+                cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert,
+                                          ca_certs=self.cert,
+                                          cert_reqs=ssl.CERT_REQUIRED)
+            except Exception:
+                cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert)
+            # assert self.cert == cli_soc.getpeercert(True), "Peer Certificate Invalid"
         return cli_soc
 
     # handle processes one message with a chunk of data in msg. The sequence number seq needs

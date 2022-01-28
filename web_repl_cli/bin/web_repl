@@ -179,8 +179,10 @@ def enterpress(event):
             if event.app.current_buffer.document.text != '':
                 event.app.current_buffer.history.append_string(
                     event.app.current_buffer.document.text)
-            ws.send(event.app.current_buffer.document.text)
+            msg = event.app.current_buffer.document.text
             event.app.current_buffer.reset()
+            ws.send(msg)
+            # event.app.current_buffer.reset()
         ws.send('\x0d')
         # sleep(0.1)
         while not received:
@@ -385,6 +387,7 @@ paste_mode = False
 prompt = "Password: "
 prompt_seen = False
 passwd = None
+passphrase = None
 debug = False
 redirect = False
 exit_flag = None
@@ -399,6 +402,9 @@ for i in range(len(sys.argv)):
     if sys.argv[i] == '-p':
         sys.argv.pop(i)
         passwd = sys.argv.pop(i)
+        if ':' in passwd:
+            passwd, passphrase = passwd.split(':')
+            websec = True
         break
 
 for i in range(len(sys.argv)):
@@ -480,8 +486,10 @@ def on_message(ws, message):
 def on_error(ws, error):
     if isinstance(error, websocket._exceptions.WebSocketConnectionClosedException):
         pass
+    elif isinstance(error, websocket._exceptions.WebSocketTimeoutException):
+        pass
     else:
-        sys.stdout.write(f"### error('{str(error)}')")  # \n")
+        sys.stdout.write(f"### error('{str(error)}')\n")  # \n")
         sys.stdout.flush()
 
 
@@ -592,7 +600,7 @@ if __name__ == "__main__":
         key, cert = wsclient.load_cert_from_hostname(CA_PATH, f"wss://{dev_ip}:{port}")
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         context.load_verify_locations(cadata=wsclient.load_custom_CA_data(CA_PATH))
-        context.load_cert_chain(cert, key)
+        context.load_cert_chain(cert, key, password=passphrase)
         context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
         ws.on_open = on_open
         ws.run_forever(sslopt={"context": context, "server_hostname": hostname})

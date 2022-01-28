@@ -13,6 +13,7 @@ General Commands
         - **uhelp**: MicroPython device help
         - **umodules**: MicroPython help('modules')
         - **ls**: ls improved with multiple dirs and pattern matching
+        - **cat**: cat improved with multiple files and pattern matching
         - **meminfo**: to get device RAM memory info
         - **du**: to get the size of file in root dir (default) or sd with ``-s sd`` option. If no file name indicated with ``-f`` option, prints all files
         - **df**: to get memory info of the file system, (total capacity, free, used) (default root dir, ``-s`` option to change)

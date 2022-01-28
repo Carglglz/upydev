@@ -14,7 +14,8 @@ KEY_N_ARGS = {'du': ['f', 's'], 'df': ['s'], 'netstat_conn': ['wp'],
               'apconfig': ['ap'], 'i2c_config': ['i2c'],
               'spi_config': ['spi'], 'set_ntptime': ['utc'], 'tree': ['f'],
               'set_hostname': ['f'], 'set_localname': ['f'],
-              'shasum_c': ['f'], 'shasum': ['f', 'fre'], 'ls': ['f', 'fre']}
+              'shasum_c': ['f'], 'shasum': ['f', 'fre'], 'ls': ['f', 'fre'],
+              'cat': ['f', 'fre']}
 
 VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc', 'fre']
 
@@ -41,7 +42,8 @@ GENERAL_COMMANDS_HELP = """
         - kbi : sends CTRL-C signal to stop an ongoing loop, to be able to access repl again
         - uhelp : just calls micropython help
         - umodules: just calls micropython help('modules')
-        - ls: improved ls version with multiple dirs and pattern matching
+        - ls : improved ls version with multiple dirs and pattern matching
+        - cat : see file contents, it accepts multiple files and pattern matching
         - meminfo : for upy device RAM memory info; call it once to check actual memory,
                     call it twice and it will free some memory
         - du : to get the size of file in root dir (default) or sd with '-s sd' option;
@@ -345,6 +347,110 @@ def gen_command(cmd, *args, **kargs):
                 files_in_dir = []
         if files_in_dir != []:
             print_table(files_in_dir, wide=28, format_SH=True)
+
+        dev.disconnect()
+        return
+
+    # CAT
+
+    elif cmd == 'cat':
+        file_name = kargs.pop('f')
+        file_names_or_pattrn = kargs.pop('fre')
+        dev = Device(*args, **kargs)
+        files_in_dir = []
+        if not file_names_or_pattrn:  # single dir
+            if file_name:
+                dev.cmd("from upysh import cat", silent=True)
+                dev.wr_cmd(_CMDDICT_['CAT'].format(file_name), follow=True)
+                # if dev._traceback.decode() in dev.response:
+                #     try:
+                #         raise DeviceException(dev.response)
+                #     except Exception as e:
+                #         print(e)
+        else:  # multiple dirs, or pattrn matching
+            dev.cmd("from upysh import cat", silent=True)
+            if len(file_names_or_pattrn) == 1:
+                file_pattrn = file_names_or_pattrn[0].rsplit('/', 1)
+                if len(file_pattrn) > 1:
+                    dir, pattrn = file_pattrn
+                else:
+                    dir = ''
+                    pattrn = file_pattrn[0]
+                # list to filter files:
+                filter_files = []
+                filter_files.append(pattrn.replace('.', '\.').replace('*', '.*') + '$')
+                cmd_str = (f"import os;[file for file in "
+                           f"os.listdir('{dir}') if any([patt.match(file) for patt in "
+                           f"pattrn])]")
+                filter_files_cmd = f"filter_files = {filter_files}"
+                dev.cmd(filter_files_cmd, silent=True)
+                dev.cmd("import re; pattrn = [re.compile(f) for "
+                        "f in filter_files]", silent=True)
+                cmd_str += (';import gc;del(filter_files);del(pattrn);'
+                            'gc.collect()')
+                files_in_dir = dev.cmd(cmd_str, silent=True, rtn_resp=True)
+                if dev._traceback.decode() in dev.response:
+                    try:
+                        raise DeviceException(dev.response)
+                    except Exception as e:
+                        print(e)
+                if files_in_dir:
+                    for filecat in files_in_dir:
+                        print(f'\n\u001b[42;1m{dir}/\u001b[44;1m{filecat}:'
+                              f'\u001b[0m')
+                        dev.wr_cmd(_CMDDICT_['CAT'].format(f"{dir}/{filecat}"),
+                                   follow=True)
+                    files_in_dir = []
+            else:
+                # dev.cmd("from upysh import cat", silent=True)
+                for file_name in file_names_or_pattrn:
+                    if '*' not in dir_name:
+                        dev.wr_cmd(_CMDDICT_['CAT'].format(file_name), follow=True)
+                        # if dev._traceback.decode() in dev.response:
+                        #     try:
+                        #         raise DeviceException(dev.response)
+                        #     except Exception as e:
+                        #         print(e)
+                    else:
+                        file_pattrn = file_name.rsplit('/', 1)
+                        if len(file_pattrn) > 1:
+                            dir, pattrn = file_pattrn
+                        else:
+                            dir = ''
+                            pattrn = file_pattrn[0]
+                        dir_name = dir
+                        # list to filter files:
+                        filter_files = []
+                        filter_files.append(pattrn.replace(
+                            '.', '\.').replace('*', '.*') + '$')
+                        cmd_str = (f"import os;[file for file in "
+                                   f"os.listdir('{dir}') if any([patt.match(file) for "
+                                   f"patt in "
+                                   f"pattrn])]")
+                        filter_files_cmd = f"filter_files = {filter_files}"
+                        dev.cmd(filter_files_cmd, silent=True)
+                        dev.cmd("import re; pattrn = [re.compile(f) for "
+                                "f in filter_files]", silent=True)
+                        cmd_str += (';import gc;del(filter_files);del(pattrn);'
+                                    'gc.collect()')
+                        files_in_dir = dev.cmd(cmd_str, silent=True, rtn_resp=True)
+                        if dev._traceback.decode() in dev.response:
+                            try:
+                                raise DeviceException(dev.response)
+                            except Exception as e:
+                                print(e)
+
+                    if files_in_dir:
+                        for filecat in files_in_dir:
+                            print(f'\n\u001b[42;1m{dir_name}/\u001b[44;1m{filecat}:'
+                                  f'\u001b[0m')
+                            dev.wr_cmd(_CMDDICT_['CAT'].format(f"{dir_name}/{filecat}"),
+                                       follow=True)
+                files_in_dir = []
+        if files_in_dir != []:
+            for filecat in files_in_dir:
+                print(f'\n\u001b[44;1m{filecat}:\u001b[0m')
+                dev.wr_cmd(_CMDDICT_['CAT'].format(filecat), follow=True)
 
         dev.disconnect()
         return

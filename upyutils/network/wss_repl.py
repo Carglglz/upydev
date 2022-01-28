@@ -57,13 +57,11 @@ def accept_conn(listen_sock):
     if websslrepl:
         if hasattr(uos, 'dupterm_notify'):
             cl.setsockopt(socket.SOL_SOCKET, 20, uos.dupterm_notify)
-        cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert)
-        # Not possible client auth RN.
-        # if ssl_auth:
-        #     # check peer cert is the same
-        #
-        #     assert cert == cl.getpeercert(True), "Peer Certificate Invalid"
-        #    # todo check hostname: load cert and check remote_addr in peer certificate
+        try:
+            cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert,
+                                 ca_certs=cert, cert_reqs=ssl.CERT_REQUIRED)
+        except Exception:
+            cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert)
         wss_helper.server_handshake(cl, ssl=True)
     else:
         websocket_helper.server_handshake(cl)

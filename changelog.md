@@ -21,6 +21,7 @@ generation and export in PEM format
 - `shasum.py` lib in `upyutils` to support hash SHA-256 check
 - `shasum` and `shasum_c` to compute hash SHA-256 of files and check shasum files.
 - `ls` command to improve ls from `upysh`, with mutiple dirs and pattern matching
+- `cat` command that accepts mutiple files and pattern matching
 # Fix
 - `mpyx` command with multiple files
 - `rf_wrkey` now use RSA public key for password derivation and send encrypted password

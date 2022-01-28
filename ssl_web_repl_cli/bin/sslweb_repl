@@ -868,11 +868,28 @@ if not args.nem:
 if base_ws:
     get_psphrase = None
     # TODO: fix wrong passphrase loop
-    if args.wss:
-        get_psphrase = getpass.getpass(f'Enter passphrase for {args.dev} key: ',
-                                       stream=None)
-        ws_upydevice.passphrase = get_psphrase
-    ws_upydevice.connect(ssl=args.wss, auth=args.wss)
+    if ws_upydevice.passphrase:
+        ws_upydevice.connect()
+        args.wss = True
+        args.nem = True
+    elif args.wss:
+        while True:
+            try:
+                get_psphrase = getpass.getpass(f'Enter passphrase for {args.dev} key: ',
+                                               stream=None)
+                ws_upydevice.passphrase = get_psphrase
+                ws_upydevice.connect(ssl=args.wss, auth=args.wss)
+                if ws_upydevice.connected:
+                    break
+                else:
+                    print('Invalid passphrase or connection not available, try again...')
+            except OSError:
+                print('Invalid passphrase, try again...')
+            except ssl.SSLError:
+                print('Invalid passphrase, try again...')
+
+    else:
+        ws_upydevice.connect(ssl=args.wss, auth=args.wss)
     if args.wss:
         print(f'WebSecREPL with {ws_upydevice.ws.sock.version()} connected')
         print('{1} @ {0} - {2} bits Encryption'.format(*ws_upydevice.ws.sock.cipher()))
@@ -2408,7 +2425,7 @@ def custom_sh_cmd(cmd_inp):
                 # file = cmd_inp.split(' ')[1]
                 # put_str = 'upydev put -f {} -t {} -p {} -rst f'.format(file, args.t, args.p)
                 # put_cmd = shlex.split(put_str)
-
+                fileargs.s = dev_dir
                 file = cmd_inp.split(' ')[1]  #  HERE CALL ONE OR -FRE
                 if file in ['cwd', '.']:
                     fileargs.fre = [fname for fname in os.listdir(
@@ -3931,7 +3948,7 @@ def custom_sh_cmd(cmd_inp):
             espdev.close_wconn()
         # time.sleep(0.5)
         else:
-            espdev.close_wconn()
+            # espdev.close_wconn()
             if len(cmd_inp.split(' ')) > 1:
                 if cmd_inp.split(' ')[1] == '-r':
                     print('Rebooting device...')
@@ -3941,10 +3958,10 @@ def custom_sh_cmd(cmd_inp):
                     print('Device Hard Reset...')
                     espdev.reset(silent=True, reconnect=False, hr=True)
                     print('Done!')
-            if reset_flag['R']:
-                print('Rebooting device...')
-                espdev.reset(silent=True, reconnect=False)
-                print('Done!')
+            # if reset_flag['R']:
+                # print('Rebooting device...')
+                # espdev.reset(silent=True, reconnect=False)
+                # print('Done!')
         exit_flag['exit'] = True
 
 
