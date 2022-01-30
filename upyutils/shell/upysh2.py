@@ -12,8 +12,17 @@ class LTREE:
     def __call__(self, path=".", level=0, is_last=False, is_root=True,
                  carrier="│", hidden=False):
         if is_root:
-            print('\u001b[34;1m{}\033[0m'.format(path))
-        os.chdir(path)
+            current_dir = os.getcwd()
+            if os.stat(path)[0] & 0x4000:
+                print(f'\u001b[34;1m{path}\033[0m')
+            else:
+                print(f'tree: {path}: Not a directory')
+                return
+        try:
+            os.chdir(path)
+        except OSError:
+            print(f'tree: {path}: Not a directory')
+            return
         r_path = path
         path = "."
         if hidden:
@@ -66,6 +75,8 @@ class LTREE:
             print('\n{} {}, {} {}'.format(nd, nd_str, nf, nf_str))
             if r_path != ".":
                 os.chdir('..')
+            if os.getcwd() != current_dir:
+                os.chdir(current_dir)
         else:
             return (nf, nd)
 
@@ -167,6 +178,13 @@ def rmrf(d):  # Remove file or tree
             os.remove(d)
     except Exception as e:
         print("rm of '%s' failed" % d)
+
+
+def touch(*args):
+    files_to_create = args
+    for file in files_to_create:
+        nf = open(file, 'w')
+        nf.close()
 
 
 tree = LTREE()

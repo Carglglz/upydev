@@ -1,8 +1,10 @@
 import hashlib
 from binascii import hexlify
+import os
+import re
 
 
-def shasum(file, debug=True, save=False, rtn=False, filetosave=False):
+def _shasum(file, debug=True, save=False, rtn=False, filetosave=False):
     _hash = hashlib.sha256()
     with open(file, 'rb') as bfile:
         buff = bfile.read(1)
@@ -30,12 +32,42 @@ def shasum(file, debug=True, save=False, rtn=False, filetosave=False):
         return result
 
 
+def shasum(*args, **kargs):
+    files_to_hash = args
+    files_in_dir = []
+    for file_name in files_to_hash:
+        if '*' not in file_name:
+            _shasum(file_name, **kargs)
+
+        else:
+            file_pattrn = file_name.rsplit('/', 1)
+            if len(file_pattrn) > 1:
+                dir, pattrn = file_pattrn
+            else:
+                dir = ''
+                pattrn = file_pattrn[0]
+            dir_name = dir
+            # list to filter files:
+            filter_files = []
+            filter_files.append(pattrn.replace(
+                '.', r'\.').replace('*', '.*') + '$')
+            pattrn = [re.compile(f) for f in filter_files]
+            files_in_dir = [file for file in os.listdir(dir)
+                            if any([patt.match(file) for patt in pattrn])]
+
+            if files_in_dir:
+                for filehash in files_in_dir:
+                    # print(f'\n\u001b[42;1m{dir_name}/\u001b[44;1m{filehash}:'
+                    #       '\u001b[0m')
+                    _shasum(f"{dir_name}/{filehash}", *kargs)
+
+
 def shasum_check(shafile):
     with open(shafile, 'r') as shafile_check:
         shasum_lines = shafile_check.readlines()
         for shaline in shasum_lines:
             _sha256, filename = shaline.split()
-            _shacheck = shasum(filename, debug=False, rtn=True)
+            _shacheck = _shasum(filename, debug=False, rtn=True)
             if _sha256 == _shacheck:
                 print(f"{filename}: OK")
             else:

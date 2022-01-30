@@ -38,7 +38,7 @@ setup(name='upydev',
         'Topic :: Terminals'
       ],
       license='MIT',
-      packages=['upydev'],
+      packages=['upydev', 'upydev.shell'],
       zip_safe=False,
       scripts=['upydev_cli/bin/upydev',
                'web_repl_cli/bin/web_repl',
@@ -53,4 +53,5 @@ setup(name='upydev',
                         'esptool', 'prompt_toolkit', 'python-nmap',
                         'netifaces', 'requests', 'cryptography', 'Pygments',
                         'pyusb', 'packaging', 'upydevice>=0.3.4',
-                        'jupyter_micropython_upydevice>=0.0.5'])
+                        'jupyter_micropython_upydevice>=0.0.5',
+                        'braceexpand'])

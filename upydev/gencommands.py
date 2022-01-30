@@ -267,86 +267,19 @@ def gen_command(cmd, *args, **kargs):
         if not dir_names_or_pattrn:  # single dir
             if not dir_name:
                 dir_name = ''  # cwd
+            dir_names_or_pattrn = [dir_name]
 
-            files_in_dir = dev.cmd(_CMDDICT_['LS'].format(dir_name), silent=True,
-                                   rtn_resp=True)
-            if dev._traceback.decode() in dev.response:
-                try:
-                    raise DeviceException(dev.response)
-                except Exception as e:
-                    print(e)
-        else:  # multiple dirs, or pattrn matching
-            if len(dir_names_or_pattrn) == 1:
-                dir_pattrn = dir_names_or_pattrn[0].rsplit('/', 1)
-                if len(dir_pattrn) > 1:
-                    dir, pattrn = dir_pattrn
-                else:
-                    dir = ''
-                    pattrn = dir_pattrn[0]
-                # list to filter files:
-                filter_files = []
-                filter_files.append(pattrn.replace('.', '\.').replace('*', '.*') + '$')
-                cmd_str = (f"import os;[file for file in "
-                           f"os.listdir('{dir}') if any([patt.match(file) for patt in "
-                           f"pattrn])]")
-                filter_files_cmd = f"filter_files = {filter_files}"
-                dev.cmd(filter_files_cmd, silent=True)
-                dev.cmd("import re; pattrn = [re.compile(f) for "
-                        "f in filter_files]", silent=True)
-                cmd_str += (';import gc;del(filter_files);del(pattrn);'
-                            'gc.collect()')
-                files_in_dir = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-                if dev._traceback.decode() in dev.response:
-                    try:
-                        raise DeviceException(dev.response)
-                    except Exception as e:
-                        print(e)
-            else:
-                for dir_name in dir_names_or_pattrn:
-                    if '*' not in dir_name:
-                        files_in_dir = dev.cmd(_CMDDICT_['LS'].format(dir_name),
-                                               silent=True,
-                                               rtn_resp=True)
-                        if dev._traceback.decode() in dev.response:
-                            try:
-                                raise DeviceException(dev.response)
-                            except Exception as e:
-                                print(e)
-                    else:
-                        dir_pattrn = dir_name.rsplit('/', 1)
-                        if len(dir_pattrn) > 1:
-                            dir, pattrn = dir_pattrn
-                        else:
-                            dir = ''
-                            pattrn = dir_pattrn[0]
-                        dir_name = dir
-                        # list to filter files:
-                        filter_files = []
-                        filter_files.append(pattrn.replace(
-                            '.', '\.').replace('*', '.*') + '$')
-                        cmd_str = (f"import os;[file for file in "
-                                   f"os.listdir('{dir}') if any([patt.match(file) for "
-                                   f"patt in "
-                                   f"pattrn])]")
-                        filter_files_cmd = f"filter_files = {filter_files}"
-                        dev.cmd(filter_files_cmd, silent=True)
-                        dev.cmd("import re; pattrn = [re.compile(f) for "
-                                "f in filter_files]", silent=True)
-                        cmd_str += (';import gc;del(filter_files);del(pattrn);'
-                                    'gc.collect()')
-                        files_in_dir = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-                        if dev._traceback.decode() in dev.response:
-                            try:
-                                raise DeviceException(dev.response)
-                            except Exception as e:
-                                print(e)
-
-                    if files_in_dir:
-                        print(f'\n{dir_name}/:')
-                        print_table(files_in_dir, wide=28, format_SH=True)
-                files_in_dir = []
-        if files_in_dir != []:
-            print_table(files_in_dir, wide=28, format_SH=True)
+        files_to_list = f"*{dir_names_or_pattrn}"
+        term_size = tuple(os.get_terminal_size(0))
+        files_in_dir = dev.wr_cmd(_CMDDICT_['LS'].format(files_to_list, term_size,
+                                                         False),
+                                  silent=False,
+                                  follow=True)
+        if dev._traceback.decode() in dev.response:
+            try:
+                raise DeviceException(dev.response)
+            except Exception as e:
+                print(e)
 
         dev.disconnect()
         return
@@ -357,100 +290,16 @@ def gen_command(cmd, *args, **kargs):
         file_name = kargs.pop('f')
         file_names_or_pattrn = kargs.pop('fre')
         dev = Device(*args, **kargs)
-        files_in_dir = []
-        if not file_names_or_pattrn:  # single dir
-            if file_name:
-                dev.cmd("from upysh import cat", silent=True)
-                dev.wr_cmd(_CMDDICT_['CAT'].format(file_name), follow=True)
-                # if dev._traceback.decode() in dev.response:
-                #     try:
-                #         raise DeviceException(dev.response)
-                #     except Exception as e:
-                #         print(e)
-        else:  # multiple dirs, or pattrn matching
-            dev.cmd("from upysh import cat", silent=True)
-            if len(file_names_or_pattrn) == 1:
-                file_pattrn = file_names_or_pattrn[0].rsplit('/', 1)
-                if len(file_pattrn) > 1:
-                    dir, pattrn = file_pattrn
-                else:
-                    dir = ''
-                    pattrn = file_pattrn[0]
-                # list to filter files:
-                filter_files = []
-                filter_files.append(pattrn.replace('.', '\.').replace('*', '.*') + '$')
-                cmd_str = (f"import os;[file for file in "
-                           f"os.listdir('{dir}') if any([patt.match(file) for patt in "
-                           f"pattrn])]")
-                filter_files_cmd = f"filter_files = {filter_files}"
-                dev.cmd(filter_files_cmd, silent=True)
-                dev.cmd("import re; pattrn = [re.compile(f) for "
-                        "f in filter_files]", silent=True)
-                cmd_str += (';import gc;del(filter_files);del(pattrn);'
-                            'gc.collect()')
-                files_in_dir = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-                if dev._traceback.decode() in dev.response:
-                    try:
-                        raise DeviceException(dev.response)
-                    except Exception as e:
-                        print(e)
-                if files_in_dir:
-                    for filecat in files_in_dir:
-                        print(f'\n\u001b[42;1m{dir}/\u001b[44;1m{filecat}:'
-                              f'\u001b[0m')
-                        dev.wr_cmd(_CMDDICT_['CAT'].format(f"{dir}/{filecat}"),
-                                   follow=True)
-                    files_in_dir = []
-            else:
-                # dev.cmd("from upysh import cat", silent=True)
-                for file_name in file_names_or_pattrn:
-                    if '*' not in dir_name:
-                        dev.wr_cmd(_CMDDICT_['CAT'].format(file_name), follow=True)
-                        # if dev._traceback.decode() in dev.response:
-                        #     try:
-                        #         raise DeviceException(dev.response)
-                        #     except Exception as e:
-                        #         print(e)
-                    else:
-                        file_pattrn = file_name.rsplit('/', 1)
-                        if len(file_pattrn) > 1:
-                            dir, pattrn = file_pattrn
-                        else:
-                            dir = ''
-                            pattrn = file_pattrn[0]
-                        dir_name = dir
-                        # list to filter files:
-                        filter_files = []
-                        filter_files.append(pattrn.replace(
-                            '.', '\.').replace('*', '.*') + '$')
-                        cmd_str = (f"import os;[file for file in "
-                                   f"os.listdir('{dir}') if any([patt.match(file) for "
-                                   f"patt in "
-                                   f"pattrn])]")
-                        filter_files_cmd = f"filter_files = {filter_files}"
-                        dev.cmd(filter_files_cmd, silent=True)
-                        dev.cmd("import re; pattrn = [re.compile(f) for "
-                                "f in filter_files]", silent=True)
-                        cmd_str += (';import gc;del(filter_files);del(pattrn);'
-                                    'gc.collect()')
-                        files_in_dir = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-                        if dev._traceback.decode() in dev.response:
-                            try:
-                                raise DeviceException(dev.response)
-                            except Exception as e:
-                                print(e)
 
-                    if files_in_dir:
-                        for filecat in files_in_dir:
-                            print(f'\n\u001b[42;1m{dir_name}/\u001b[44;1m{filecat}:'
-                                  f'\u001b[0m')
-                            dev.wr_cmd(_CMDDICT_['CAT'].format(f"{dir_name}/{filecat}"),
-                                       follow=True)
-                files_in_dir = []
-        if files_in_dir != []:
-            for filecat in files_in_dir:
-                print(f'\n\u001b[44;1m{filecat}:\u001b[0m')
-                dev.wr_cmd(_CMDDICT_['CAT'].format(filecat), follow=True)
+        if not file_names_or_pattrn:  # single file
+            if not file_name:
+                print('Indicate a file/s or a matching pattrn to see')
+                return
+            else:
+                file_names_or_pattrn = [file_name]
+
+        files_to_see = f"*{file_names_or_pattrn}"
+        dev.wr_cmd(_CMDDICT_['CAT'].format(files_to_see), silent=False, follow=True)
 
         dev.disconnect()
         return
