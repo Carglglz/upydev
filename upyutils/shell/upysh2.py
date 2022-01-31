@@ -13,11 +13,14 @@ class LTREE:
                  carrier="│", hidden=False):
         if is_root:
             current_dir = os.getcwd()
-            if os.stat(path)[0] & 0x4000:
-                print(f'\u001b[34;1m{path}\033[0m')
+            if path != '.':
+                if os.stat(path)[0] & 0x4000:
+                    print(f'\u001b[34;1m{path}\033[0m')
+                else:
+                    print(f'tree: {path}: Not a directory')
+                    return
             else:
-                print(f'tree: {path}: Not a directory')
-                return
+                print(f'\u001b[34;1m{path}\033[0m')
         try:
             os.chdir(path)
         except OSError:

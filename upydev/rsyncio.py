@@ -200,6 +200,9 @@ class SyncFileIO:
         self.dev.wr_cmd('cli_soc.close()', silent=True)
         self.dev.disconnect()
 
+# SerialSyncFileIO:
+# get file with cat --> cat('file.txt') --> filter cmd then readline
+
 
 def synctool(args, dev_name):
     try:

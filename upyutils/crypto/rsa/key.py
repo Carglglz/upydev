@@ -69,8 +69,8 @@ class PrivateKey(AbstractKey):
         if not isinstance(other, PrivateKey):
             return False
 
-        return (self.n == other.n and
-                self.e == other.e
+        return (self.n == other.n
+                and self.e == other.e
                 and self.d == other.d
                 and self.p == other.p
                 and self.q == other.q
@@ -82,7 +82,8 @@ class PrivateKey(AbstractKey):
         return not (self == other)
 
     def __hash__(self):
-        return hash((self.n, self.e, self.d, self.p, self.q, self.exp1, self.exp2, self.coef))
+        return hash((self.n, self.e, self.d, self.p, self.q, self.exp1, self.exp2,
+                     self.coef))
 
     # Note that it doesn't use blinding to prevent side-channel attacks
     def encrypt(self, message):

@@ -6,6 +6,10 @@ from datetime import datetime, date
 from binascii import hexlify
 import time
 import os
+import signal
+import subprocess
+import shlex
+from upydev.shell.common import FileArgs
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
@@ -15,9 +19,9 @@ KEY_N_ARGS = {'du': ['f', 's'], 'df': ['s'], 'netstat_conn': ['wp'],
               'spi_config': ['spi'], 'set_ntptime': ['utc'], 'tree': ['f'],
               'set_hostname': ['f'], 'set_localname': ['f'],
               'shasum_c': ['f'], 'shasum': ['f', 'fre'], 'ls': ['f', 'fre'],
-              'cat': ['f', 'fre']}
+              'cat': ['f', 'fre'], 'vim': ['f', 'fre', 'device']}
 
-VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc', 'fre']
+VALS_N_ARGS = ['f', 's', 'wp', 'ap', 'i2c', 'spi', 'utc', 'fre', 'device']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -263,18 +267,15 @@ def gen_command(cmd, *args, **kargs):
         dir_name = kargs.pop('f')
         dir_names_or_pattrn = kargs.pop('fre')
         dev = Device(*args, **kargs)
-        files_in_dir = []
         if not dir_names_or_pattrn:  # single dir
             if not dir_name:
                 dir_name = ''  # cwd
             dir_names_or_pattrn = [dir_name]
-
+        dev.wr_cmd('from upysh import ls', silent=True)
         files_to_list = f"*{dir_names_or_pattrn}"
         term_size = tuple(os.get_terminal_size(0))
-        files_in_dir = dev.wr_cmd(_CMDDICT_['LS'].format(files_to_list, term_size,
-                                                         False),
-                                  silent=False,
-                                  follow=True)
+        dev.wr_cmd(_CMDDICT_['LS'].format(files_to_list, term_size, False),
+                   silent=False, follow=True)
         if dev._traceback.decode() in dev.response:
             try:
                 raise DeviceException(dev.response)
@@ -297,10 +298,66 @@ def gen_command(cmd, *args, **kargs):
                 return
             else:
                 file_names_or_pattrn = [file_name]
-
+        dev.wr_cmd('from upysh import cat', silent=True)
         files_to_see = f"*{file_names_or_pattrn}"
         dev.wr_cmd(_CMDDICT_['CAT'].format(files_to_see), silent=False, follow=True)
 
+        dev.disconnect()
+        return
+
+    # VIM
+    elif cmd == 'vim':
+        file_name = kargs.pop('f')
+        file_names_or_pattrn = kargs.pop('fre')
+        dev_name = kargs.pop('device')
+        dev = Device(*args, **kargs)
+        fileargs = FileArgs()
+
+        if not file_names_or_pattrn:  # single file
+            if not file_name:
+                print('Indicate a file/s or a matching pattrn to see')
+                return
+            else:
+                file_names_or_pattrn = [file_name]
+        file_to_edit = file_names_or_pattrn[0]
+        dev.wr_cmd('from upysh import cat', silent=True)
+        files_to_see = f"*{[file_to_edit]}"
+        filedata = dev.wr_cmd(_CMDDICT_['CAT'].format(files_to_see), silent=True,
+                              rtn_resp=True, multiline=True, long_string=True)
+
+        _file_to_edit = file_to_edit.rsplit('/')[-1]
+        with open(_file_to_edit, 'w') as fte:
+            fte.write(filedata)
+        shell_cmd_str = shlex.split(f"vim {_file_to_edit}")
+
+        old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        def preexec_function(action=old_action):
+            signal.signal(signal.SIGINT, action)
+        try:
+            subprocess.call(shell_cmd_str, preexec_fn=preexec_function)
+            signal.signal(signal.SIGINT, old_action)
+        except Exception as e:
+            print(e)
+
+        # Check if file changes:
+        with open(_file_to_edit, 'r') as fte:
+            filedata2 = fte.read()
+        if filedata != filedata2:
+            dest_file = file_to_edit
+            if dev.dev_class == 'SerialDevice':
+                from upydev.serialio import SerialFileIO
+                fileio = SerialFileIO(dev, devname=dev_name)
+                fileio.put(_file_to_edit, dest_file, ppath=True)
+            elif dev.dev_class == 'WebSocketDevice':
+                from upydev.wsio import WebSocketFileIO
+                fileargs.wss = kargs.get('ssl')
+                fileio = WebSocketFileIO(dev, args=fileargs, devname=dev_name)
+                fileio.put(_file_to_edit, dest_file, ppath=True)
+            elif dev.dev_class == 'BleDevice':
+                from upydev.bleio import BleFileIO
+                fileio = BleFileIO(dev, devname=dev_name)
+                fileio.put(_file_to_edit, dest_file, ppath=True)
         dev.disconnect()
         return
 
@@ -904,31 +961,10 @@ def gen_command(cmd, *args, **kargs):
         # print(f"Hash SHA-256 of file: {file_name}")
         if not files_names:
             files_names = [file_name]
-        # expand wildcards
-        _exp_str_b = "import os; [f for f in os.listdir() if f.endswith('{}')]"
-        _exp_str_e = "import os; [f for f in os.listdir() if f.startswith('{}')]"
-        _exp_str_m = "import os; [f for f in os.listdir() if f.endswith('{}') and f.startswith('{}')]"
-        _files_names = []
-        # print(files_names)
-        for file in files_names:
-            exp_files = []
-            if file.startswith('*'):
-                exp_files = dev.wr_cmd(_exp_str_b.format(file.replace('*', '')),
-                                       rtn_resp=True, silent=True)
-            elif file.endswith('*'):
-                exp_files = dev.wr_cmd(_exp_str_e.format(file.replace('*', '')),
-                                       rtn_resp=True, silent=True)
-            elif '*' in file:
-                start, end = file.split('*')
-                exp_files = dev.wr_cmd(_exp_str_m.format(end, start),
-                                       rtn_resp=True, silent=True)
-            else:
-                _files_names.append(file)
-            _files_names += exp_files
-
-        # print(_files_names)
-        for file in _files_names:
-            dev.wr_cmd(_CMDDICT_['SHASUM'].format(file), follow=True)
+        if files_names or file_name:
+            # print(_files_names)
+            files_to_hash = f"*{files_names}"
+            dev.wr_cmd(_CMDDICT_['SHASUM'].format(files_to_hash), follow=True)
             if dev._traceback.decode() in dev.response:
                 try:
                     raise DeviceException(dev.response)

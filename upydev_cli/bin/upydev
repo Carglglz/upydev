@@ -130,7 +130,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'backup', 'rsync', 'make_sgroup', 'mksg', 'set_localname',
                  'set_hostname', 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify',
                  'shasum', 'shasum_c', 'ota', 'register', 'lsdevs', 'ls', 'rsa_auth',
-                 'auth', 'cat']
+                 'auth', 'cat', 'vim']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -336,7 +336,8 @@ args = parser.parse_args()
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
                      'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
                      'rsync', 'docs', 'udocs', 'mdocs', 'set_hostname', 'set_localname',
-                     'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls', 'cat']
+                     'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls', 'cat',
+                     'vim']
 multiple_args_fw = ['fwr', 'flash']
 
 if len(args.m) == 1:
@@ -460,7 +461,7 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'ap_off', 'apstat', 'apconfig', 'apscan', 'i2c_config',
                     'i2c_scan', 'spi_config', 'set_localtime', 'set_ntptime',
                     'get_datetime', 'gc', 'set_hostname', 'set_localname',
-                    'shasum_c', 'shasum', 'ls', 'cat']
+                    'shasum_c', 'shasum', 'ls', 'cat', 'vim']
 # WLAN COMMANDS
 
 WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
@@ -734,9 +735,14 @@ def handle_action(args, exit=True, device_name=None):
 
     elif args.m in GENERAL_COMMANDS:
         from upydev.gencommands import gen_command
+        if vars(args)['@'] is not None:
+            dev_name = entryp
+        else:
+            dev_name = _dev_name
         gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
                     ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
-                    init=True, ssl=args.wss, auth=args.wss, fre=args.fre)
+                    init=True, ssl=args.wss, auth=args.wss, fre=args.fre,
+                    device=dev_name)
 
     #############################################
     # WLAN UTILS COMMANDS

@@ -57,9 +57,10 @@ def shasum(*args, **kargs):
 
             if files_in_dir:
                 for filehash in files_in_dir:
-                    # print(f'\n\u001b[42;1m{dir_name}/\u001b[44;1m{filehash}:'
-                    #       '\u001b[0m')
-                    _shasum(f"{dir_name}/{filehash}", *kargs)
+                    if dir_name != '':
+                        _shasum(f"{dir_name}/{filehash}", *kargs)
+                    else:
+                        _shasum(filehash, *kargs)
 
 
 def shasum_check(shafile):
