@@ -84,24 +84,25 @@ git_diff_files = {'diff': [], 'commit': '', 'n_commits': 0}
 # KEYBINDINGS INFO
 kb_info = """
 Custom keybindings:
-- CTRL-x : to exit SSLWebREPL Terminal
+- CTRL-x : to exit shell/repl
 - CTRL-p : toggle RAM STATUS right aligned message (USED/FREE)
-- CTRL-e : paste mode in repl,(in shell mode set cursor position at the end)/(edit mode after 'edit' shell command)
-- CTRL-d : ends paste mode in repl, (ends edit mode after 'edit' shell command)
-- CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste or edit mode
+- CTRL-e : paste vim mode in repl
+- CTRL-d : ends vim paste mode in repl and execute buffer
+- CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
 - CTRL-b : prints MicroPython version and sys platform
 - CTRL-r : to flush line buffer
 - CTRL-o : to list files in cwd (sz shorcut command)
 - CTRL-n : shows mem_info()
 - CTRL-y : gc.collect() shortcut command
 - CTRL-space : repeats last command
-- CTRL-t : runs test_code.py if present
+- CTRL-t : runs temp buffer ('_tmp_script.py' in cwd)
 - CTRL-w : flush test_code from sys modules, so it can be run again
 - CTRL-a : set cursor position at the beggining
+- CTRL-j : set cursor position at the end of line
 - CTRL-f : toggle autosuggest mode (Fish shell like)(use right arrow to complete)
 - CTRL-g : To active listen for device output (Timer or hardware interrupts), CTRL-c to break
 - CRTL-s : toggle shell mode to navigate filesystem (see shell commands)
-- CTRL-k : prints the custom keybindings (this list) (+ shell commands if in shell mode)
+- CTRL-k : prints the custom keybindings (this list)
 >>> """
 
 
@@ -245,8 +246,8 @@ RMDIR = dict(help="remove directories or pattern of directories",
              options={})
 
 DU = dict(help="display disk usage statistics",
-          subcmd=dict(help='Indicate a dir to see usage', default=[],
-                      metavar='dir', nargs='*'),
+          subcmd=dict(help='Indicate a dir to see usage', default='',
+                      metavar='dir', nargs='?'),
           options={"-d": dict(help='depth level', required=False,
                               default=0,
                               type=int)})
@@ -287,7 +288,8 @@ VIM = dict(help="Use vim to edit device's files",
 RUN = dict(help="Run device's scripts",
            subcmd=dict(help='Indicate a file/script to run', default='',
                        metavar='file', nargs=1),
-           options={"-r": dict(help='reload script so it can be run again', required=False,
+           options={"-r": dict(help='reload script so it can be run again',
+                               required=False,
                                default=False,
                                action='store_true'),
                     })
@@ -296,8 +298,34 @@ RELOAD = dict(help="Reload device's scripts",
               subcmd=dict(help='Indicate a file/script to reload', default='',
                           metavar='file', nargs=1),
               options={})
+LCD = dict(help="change local current working directory",
+           subcmd=dict(help='Indicate a dir to change to', default='',
+                       metavar='dir', nargs='?'),
+           options={})
+
+LSL = dict(help="list local files or directories",
+           subcmd=dict(help='Indicate a file/dir or pattern to see', default=[],
+                       metavar='file/dir/pattern', nargs='*'),
+           options={"-a": dict(help='list hidden files', required=False,
+                               default=False,
+                               action='store_true')})
+LPWD = dict(help="print local current working directory",
+            subcmd={},
+            options={})
+
+LDU = dict(help="display local disk usage statistics",
+           subcmd=dict(help='Indicate a dir to see usage', default='',
+                       metavar='dir', nargs='?'),
+           options={"-d": dict(help='depth level', required=False,
+                               default=0,
+                               type=int)})
+INFO = dict(help="prints device info",
+            subcmd={},
+            options={})
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "cd": CD, "rm": RM, "rmdir": RMDIR, "du": DU,
                          "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT,
-                         "vim": VIM, "run": RUN, "reload": RELOAD}
+                         "vim": VIM, "run": RUN, "reload": RELOAD,
+                         "info": INFO, "lcd": LCD,
+                         "lsl": LSL, "lpwd": LPWD, "ldu": LDU}

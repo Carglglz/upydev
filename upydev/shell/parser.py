@@ -10,9 +10,13 @@ command it is redirected to the underlying system shell. To redirect a command
 to the system shell use %%command\n
 """
 descmds = "upydev shell commands"
+_kb_info_cmd = "Do CTRL-k to see keybindings info"
+_help_subcmds = "[command] -h to see further help of any command"
 
 shparser = argparse.ArgumentParser(prog="upydev shell",
-                                   description='Shell for MicroPython devices',
+                                   description=('Shell for MicroPython devices'
+                                                '\n\n' + _kb_info_cmd + '\n'
+                                                + _help_subcmds),
                                    formatter_class=rawfmt,
                                    usage=usag, prefix_chars='-')
 subshparser_cmd = shparser.add_subparsers(title='commands', prog='', dest='m')
@@ -46,19 +50,7 @@ shparser.version = f'{uname}: {uversion}'
 # shparser.add_argument('-n', help='number of lines to print for "head" '
 #                       'command',
 #                       required=False, default=10, type=int)
-# MEM
-# shparser_mem = subshparser_cmd.add_parser('mem', help='Show mem info')
-# shparser_mem.add_argument('subcmd', default=[], choices=[[], 'dump'],
-#                           help='Show mem info or dump memory', nargs='?')
-# # dict {cmd:{'help':'command_help', 'subcommand':{'help':'subh', 'choices':[]}}...}
-# # add_argument(**dict['cmd']['subcmd'])
-# # DU
-# shparser_du = subshparser_cmd.add_parser('du', help='Show disk usage statistics')
-# shparser_du.add_argument('subcmd', default='',
-#                          help='Indicate a dir to show, defaults to "."', nargs='?',
-#                          metavar='dir')
-# shparser_du.add_argument("-d", help='indicate depth level',
-#                          required=False, default=0, type=int)
+
 for command, subcmd in SHELL_CMD_DICT_PARSER.items():
     _subparser = subshparser_cmd.add_parser(command, help=subcmd['help'])
     if subcmd['subcmd']:

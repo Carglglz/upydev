@@ -893,7 +893,7 @@ class ShellCmds:
                 du(max_dlev=args.d)
 
             else:
-                du_dir = rest_args[0]
+                du_dir = rest_args
                 du(path=f'./{du_dir}', max_dlev=args.d)
             return
         # PWD
@@ -904,7 +904,7 @@ class ShellCmds:
             if not rest_args:
                 os.chdir(os.environ['HOME'])
             else:
-                dir = rest_args[0]
+                dir = rest_args
                 try:
                     os.chdir(dir)
                 except OSError:
