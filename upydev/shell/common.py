@@ -22,6 +22,7 @@ import os
 import ast
 from upydev.shell.constants import (ABLUE_bold, CGREEN, MAGENTA_bold, CEND)
 from prompt_toolkit.formatted_text import HTML
+import re
 
 
 class FileArgs:
@@ -191,6 +192,110 @@ def _ft_datetime(t_now):
 
 def sortSecond(val):
     return val[1]
+
+
+def _print_files(filelist, dir_name, show=True, hidden=False):
+    if show:
+        if not hidden:
+            filelist = [file for file in filelist if not file.startswith('.')]
+        if dir_name != '.':
+            if os.stat(dir_name)[0] & 0x4000:
+                print(f'\n{ABLUE_bold}{dir_name.replace(os.getcwd(), ".")}:{CEND}')
+        if filelist:
+            print_table(filelist, wide=28, format_SH=True)
+
+
+def _expand_dirs_recursive(dir):
+    if '*' not in dir:
+        return [dir]
+    if len(dir.split('/')) > 1:
+        dir_matchs = []
+        root_dir, b_dir = dir.rsplit('/', 1)
+        for _rdir in _expand_dirs_recursive(root_dir):
+            dir_matchs += _os_match_dir(b_dir, _rdir)
+        return dir_matchs
+    else:
+        root_dir, b_dir = '.', dir
+        return _os_match_dir(b_dir, root_dir)
+
+
+def _os_match(patt, path):
+    pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
+    return [file for file in os.listdir(path) if pattrn.match(file)]
+
+
+def _os_match_dir(patt, path):
+    pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
+    if path == '' and os.getcwd() != '/':
+        path = os.getcwd()
+    return [f"{path}/{dir}" for dir in os.listdir(path) if pattrn.match(dir)
+            and os.stat(f"{path}/{dir}")[0] & 0x4000]
+
+
+class LS:
+
+    def __repr__(self):
+        self.__call__()
+        return ""
+
+    def __call__(self, *args, hidden=False, show=True, rtn=False, bydir=True):
+        dir_names_or_pattrn = args
+        files_in_dir = []
+        all_files = []
+        for dir_name in dir_names_or_pattrn:
+            if '*' not in dir_name and '/' not in dir_name:
+                try:
+                    st = os.stat(dir_name)
+                    if st[0] & 0x4000:  # stat.S_IFDIR
+                        files_in_dir = os.listdir(dir_name)
+                    else:
+                        if dir_name in os.listdir(os.getcwd()):
+                            files_in_dir.append(dir_name)
+                except OSError:
+                    print(f'ls: {dir_name}: No such a file or directory')
+
+            else:
+                dir_pattrn = dir_name.rsplit('/', 1)
+                if len(dir_pattrn) > 1:
+                    dir, pattrn = dir_pattrn
+                else:
+                    dir = '.'
+                    pattrn = dir_pattrn[0]
+                dir_name = dir
+                # expand dirs
+                if '*' in dir_name:
+                    expanded_dirs = _expand_dirs_recursive(dir_name)
+                    for exp_dir in expanded_dirs:
+                        _files_in_dir = _os_match(pattrn, exp_dir)
+                        if _files_in_dir:
+                            if bydir:
+                                _print_files(_files_in_dir, exp_dir, show=show,
+                                             hidden=hidden)
+                            else:
+                                files_in_dir += [f"{exp_dir.replace(os.getcwd(), '')}"
+                                                 f"/{file}".replace('./', '', 1)
+                                                 for file in _files_in_dir]
+
+                        _files_in_dir = []
+                else:
+                    if bydir:
+                        files_in_dir = _os_match(pattrn, dir)
+                    else:
+                        files_in_dir += [f"{dir.replace(os.getcwd(), '')}"
+                                         f"/{file}".replace('./', '', 1)
+                                         for file in _os_match(pattrn, dir)]
+
+            if files_in_dir:
+                if bydir:
+                    _print_files(files_in_dir, dir_name, show=show, hidden=hidden)
+                    files_in_dir = []
+        if files_in_dir:
+            _print_files(files_in_dir, '.', show=show, hidden=hidden)
+        if rtn:
+            return files_in_dir
+
+
+ls = LS()
 
 
 class LTREE:

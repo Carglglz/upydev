@@ -272,7 +272,7 @@ def devicemanagement_action(args, **kargs):
             print('Device: {}'.format(_dev_name))
             dt = check_device_type(args.t)
             if not args.i:
-                args.zt = check_zt_group(dev, args)
+                args.zt = check_zt_group(_dev_name, args)
                 if isinstance(args.zt, dict):
                     args.t = f"{args.t}/{args.zt['dev']}"
                 print('Address: {}, Device Type: {}'.format(args.t, dt))

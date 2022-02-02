@@ -1,11 +1,11 @@
 import os
-import sys
 import argparse
 import shlex
 from upydev import name as uname, version as uversion
-from upydev.shell.constants import (shell_commands_info, AUTHMODE_DICT,
+from upydev.shell.constants import (AUTHMODE_DICT,
                                     shell_commands, custom_sh_cmd_kw, shell_message)
-from upydev.shell.common import du, _ft_datetime, SHELL_ALIASES, print_table
+from upydev.shell.common import (du, _ft_datetime, SHELL_ALIASES, ls, FileArgs)
+from upydev.shell.parser import shparser
 from binascii import hexlify
 from upydev.commandlib import _CMDDICT_
 from upydev import upip_host
@@ -15,17 +15,10 @@ import ast
 from datetime import datetime, date
 import signal
 import subprocess
-import re
 import webbrowser
 
 # SHELL COMMAND PARSER
 rawfmt = argparse.RawTextHelpFormatter
-
-usag = """CMD [options]\n
-This means that if the first argument CMD is not a registered
-command it is redirected to the underlying system shell. To redirect a command
-to the system shell use %%[CMD]\n
-"""
 
 _SHELL_CMDS = custom_sh_cmd_kw + shell_commands
 
@@ -69,31 +62,7 @@ class ShellCmds:
         self.flags = flags
         self.topargs = topargs
         # Setup shell commands parser
-        self.parser = argparse.ArgumentParser(prog="upydev shell",
-                                              description='Shell for '
-                                                          'MicroPython devices',
-                                              formatter_class=rawfmt,
-                                              usage=usag, prefix_chars='-')
-        self.parser.version = f'{uname}: {uversion}'
-        self.parser.add_argument("m", metavar='CMD', help=shell_commands_info,
-                                 nargs='*')
-        self.parser.add_argument("-d", help='indicate depth level for "du" command',
-                                 required=False, default=0, type=int)
-        self.parser.add_argument("-t", help='table format for "ifconfig" command',
-                                 required=False, default=False, action='store_true')
-        self.parser.add_argument("-wp", help='[ssid] [passwd] for "net conn" '
-                                             'command', required=False, nargs=2)
-        self.parser.add_argument("-ap", help='[ssid] [passwd] for "ap config" '
-                                             'command', required=False, nargs=2)
-        self.parser.add_argument("-i2c", help='[scl] [sda] for "i2c config" '
-                                 'command', required=False, nargs=2, default=[22, 23])
-        self.parser.add_argument("-utc", help='[utc] for "set ntptime" '
-                                 'command', required=False, nargs=1, type=int)
-        self.parser.add_argument("-c", help='to check -c [shafile] for "shasum" '
-                                 'command', required=False)
-        self.parser.add_argument("-a", help='list hidden files for "tree" and "ls" '
-                                            'command',
-                                 required=False, default=False, action='store_true')
+        self.parser = shparser
 
     def print_filesys_info(self, filesize):
         _kB = 1000
@@ -122,8 +91,8 @@ class ShellCmds:
 
     def escape_sh_cmd(self, cmd_inp):
         # SHELL ESCAPE:
-        if cmd_inp.startswith('%') or cmd_inp.split()[0] not in _SHELL_CMDS:
-            if cmd_inp.split()[0] != 'ping' or len(cmd_inp.split()) == 1:
+        if cmd_inp.startswith('%') or cmd_inp.split()[0] not in _SHELL_CMDS + ['-h']:
+            if cmd_inp.split()[0] != 'ping':
                 try:
                     if cmd_inp.startswith('%'):
                         cmd_inp = cmd_inp[1:]
@@ -144,24 +113,27 @@ class ShellCmds:
                     print(e)
                     pass
             else:
-                try:
-                    if hasattr(self.dev, 'ip'):
+                try:  # TODO fix for zt
+                    if len(cmd_inp.split()) > 1:
+                        ping_cmd = shlex.split(cmd_inp)
+                    elif hasattr(self.dev, 'ip'):
                         if self.dev.hostname.endswith('.local'):
                             ping_dir = self.dev.hostname
                         else:
                             ping_dir = self.dev.ip
                         ping_cmd_str = 'ping {}'.format(ping_dir)
                         ping_cmd = shlex.split(ping_cmd_str)
-                        old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-                        def preexec_function(action=old_action):
-                            signal.signal(signal.SIGINT, action)
-                        try:
-                            subprocess.call(ping_cmd, preexec_fn=preexec_function)
-                            signal.signal(signal.SIGINT, old_action)
-                        except Exception as e:
-                            print(e)
-                except Exception as e:
+                    old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+                    def preexec_function(action=old_action):
+                        signal.signal(signal.SIGINT, action)
+                    try:
+                        subprocess.call(ping_cmd, preexec_fn=preexec_function)
+                        signal.signal(signal.SIGINT, old_action)
+                    except Exception as e:
+                        print(e)
+                except Exception:
                     print("Indicate a host to ping, e.g google.com")
 
             return True
@@ -205,7 +177,10 @@ class ShellCmds:
         args = self.parseap(command_line)
         if not args:
             return
-        command, rest_args = args.m[0], args.m[1:]
+        if hasattr(args, 'subcmd'):
+            command, rest_args = args.m, args.subcmd
+        else:
+            command, rest_args = args.m, []
 
         # LOCAL COMMANDS
         if command in _LOCAL_SHELL_CMDS:
@@ -241,7 +216,7 @@ class ShellCmds:
         # MEM_INFO
 
         if command == 'mem':
-            if not rest_args:
+            if rest_args == 'info':
                 RAM = self.send_cmd(_CMDDICT_['MEM'], raise_devexcept=True,
                                     capture_output=True)
 
@@ -260,7 +235,7 @@ class ShellCmds:
                 print(f"{'RAM':12}{total_mem_s:^12}{used_mem_s:^12}{free_mem_s:^12}"
                       f"{percent_mem:>8}")
             else:
-                if rest_args[0] == 'dump':
+                if rest_args == 'dump':
                     self.send_cmd('from micropython import mem_info;'
                                   'mem_info(1)', sh_silent=False, follow=True)
 
@@ -308,7 +283,7 @@ class ShellCmds:
                               sh_silent=False, follow=True)
 
             else:
-                du_dir = rest_args[0]
+                du_dir = rest_args
                 self.send_cmd(f"from upysh2 import du;du(path='./{du_dir}',"
                               f"max_dlev={args.d});gc.collect()",
                               sh_silent=False, follow=True)
@@ -322,7 +297,7 @@ class ShellCmds:
                               sh_silent=False, follow=True)
 
             else:
-                tree_dir = rest_args[0]
+                tree_dir = rest_args
                 self.send_cmd(f"from upysh2 import tree;tree('{tree_dir}', "
                               f"hidden={args.a})"
                               f";gc.collect()",
@@ -639,6 +614,68 @@ class ShellCmds:
 
             return
 
+        # MKDIR
+        if command == 'mkdir':
+            if not rest_args:
+                print('Indicate a directory to make')
+                return
+            else:
+                rest_args = self.brace_exp(rest_args)
+                for dir in rest_args:
+                    self.dev.wr_cmd(f'mkdir("{dir}")', follow=True)
+            return
+        # RM  --> TODO: pattrn match and -rf
+        if command == 'rm':
+            if not rest_args and not args.rf:
+                print('Indicate a file to remove')
+                return
+            else:
+                rest_args = self.brace_exp(rest_args)
+                if not args.rf:
+                    for file in rest_args:
+                        self.dev.wr_cmd(f'rm("{file}")', follow=True)
+                else:
+                    self.dev.wr_cmd('from upysh2 import rmrf', silent=True)
+                    rest_args = self.brace_exp(rest_args)
+                    for file in rest_args:
+                        self.dev.wr_cmd(f'rmrf("{file}")', follow=True)
+            return
+
+        # RMDIR --> TODO: pattrn match and -rf
+        if command == 'rmdir':
+            if not rest_args:
+                print('Indicate a dir to remove')
+                return
+            else:
+                rest_args = self.brace_exp(rest_args)
+                for dir in rest_args:
+                    self.dev.wr_cmd(f'rmdir("{dir}")', follow=True)
+            return
+
+        # PWD
+        if command == 'pwd':
+            self.dev.wr_cmd('pwd', follow=True)
+
+        # CD
+        if command == 'cd':
+            if not rest_args:
+                rest_args = '/'
+            self.dev.wr_cmd(f"cd('{rest_args}')", silent=False, follow=True)
+            self.dev.output = None
+            cwd = self.dev.wr_cmd('pwd', silent=True, rtn_resp=True)
+
+            if cwd is not None:
+                devpath = cwd
+                self.flags.dev_path['p'] = devpath
+                if devpath == '/':
+                    devpath = ' '
+                    self.flags.dev_path['p'] = ' '
+                self.flags.shell_prompt['s'][0] = ('class:userpath',
+                                                   self.flags.local_path['p'])
+                self.flags.shell_prompt['s'][5] = ('class:path', f'~{devpath}')
+                self.flags.prompt['p'] = self.flags.shell_prompt['s']
+            return
+
         # LS
 
         if command == 'ls':
@@ -659,6 +696,18 @@ class ShellCmds:
                 rest_args = self.brace_exp(rest_args)
                 files_to_see = f"*{rest_args}"
                 self.send_cmd(_CMDDICT_['CAT'].format(files_to_see),
+                              sh_silent=False, follow=True)
+
+            return
+
+        # head
+        if command == 'head':
+            if not rest_args:
+                print('Indicate a file/s or a matching pattrn to see')
+            else:
+                rest_args = self.brace_exp(rest_args)
+                files_to_see = f"*{rest_args}"
+                self.send_cmd(_CMDDICT_['HEAD'].format(files_to_see, args.n),
                               sh_silent=False, follow=True)
 
             return
@@ -729,6 +778,29 @@ class ShellCmds:
                 except Exception as e:
                     print(e)
 
+        # RUN
+        if command == 'run':
+            if not rest_args:
+                print('Indicate a script to run')
+                return
+            else:
+                script_name = rest_args[0].split('.')[0]
+                reload = f"del(sys.modules['{script_name}'])"
+                run_cmd = f"import {script_name}"
+                # print(run_cmd)
+                # if args.s is not None:
+                #     dir = args.s
+                #     sd_path = "import sys;sys.path.append('/{}')".format(dir)
+                #     run_cmd = "{};import {}".format(sd_path, script_name)
+                print(f'Running {rest_args[0]}...')
+                self.dev.wr_cmd(run_cmd, follow=True)
+                if args.r:
+                    print(f'Reloading {rest_args[0]}...')
+                    reload_cmd = (f"import sys;{reload};"
+                                  f"gc.collect()")
+                    self.dev.wr_cmd(reload_cmd)
+                    print('Done!')
+
         # RELOAD
         if command == 'reload':
             if not rest_args:
@@ -748,6 +820,59 @@ class ShellCmds:
                 webbrowser.open(search)
             else:
                 webbrowser.open('http://docs.micropython.org/en/latest/')
+
+        # DVIM
+        if command == 'dvim':
+            if not rest_args:
+                print('Indicate a file to edit')
+                return
+
+            fileargs = FileArgs()
+
+            file_to_edit = rest_args[0]
+            self.dev.wr_cmd('from upysh import cat', silent=True)
+            files_to_see = f"*{[file_to_edit]}"
+            filedata = self.dev.wr_cmd(_CMDDICT_['CAT'].format(files_to_see),
+                                       silent=True, rtn_resp=True, multiline=True,
+                                       long_string=True)
+
+            _file_to_edit = file_to_edit.rsplit('/')[-1]
+            with open(_file_to_edit, 'w') as fte:
+                fte.write(filedata)
+            shell_cmd_str = shlex.split(f"vim {_file_to_edit}")
+
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+            try:
+                subprocess.call(shell_cmd_str, preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+
+            # Check if file changes:
+            with open(_file_to_edit, 'r') as fte:
+                filedata2 = fte.read()
+            if filedata != filedata2:
+                dest_file = file_to_edit
+                if self.dev.dev_class == 'SerialDevice':
+                    from upydev.serialio import SerialFileIO
+                    fileio = SerialFileIO(self.dev,
+                                          devname=self.flags.shell_prompt['s'][3][1])
+                    fileio.put(_file_to_edit, dest_file, ppath=True)
+                elif self.dev.dev_class == 'WebSocketDevice':
+                    from upydev.wsio import WebSocketFileIO
+                    fileargs.wss = self.dev._uriprotocol == 'wss'
+                    fileio = WebSocketFileIO(self.dev, args=fileargs,
+                                             devname=self.flags.shell_prompt['s'][3][1])
+                    fileio.put(_file_to_edit, dest_file, ppath=True)
+                elif self.dev.dev_class == 'BleDevice':
+                    from upydev.bleio import BleFileIO
+                    fileio = BleFileIO(self.dev,
+                                       devname=self.flags.shell_prompt['s'][3][1])
+                    fileio.put(_file_to_edit, dest_file, ppath=True)
+            return
 
         if command in _SPECIAL_SHELL_CMDS:
             self.custom_sh_cmd(command, rest_args, args, self.topargs)
@@ -785,59 +910,15 @@ class ShellCmds:
             else:
                 self.flags.local_path['p'] = os.getcwd().split('/')[-1]+':/'
 
-            # SET ROOT USER PATH:
-            shell_message = [
-                ('class:userpath',    self.flags.local_path['p']),
-                ('class:username', self.dev.dev_platform),
-                ('class:at',       '@'),
-                ('class:host',     self.topargs.dev),
-                ('class:colon',    ':'),
-                ('class:path',     '~{}'.format(self.flags.dev_path['p'])),
-                ('class:pound',    '$ '),
-            ]
-            self.flags.shell_prompt['s'] = shell_message
+            self.flags.shell_prompt['s'][0] = ('class:userpath',
+                                               self.flags.local_path['p'])
             self.flags.prompt['p'] = self.flags.shell_prompt['s']
             return
 
         if command == 'lsl':
-            hidden = args.a
             if not rest_args:
                 rest_args = ['.']
             rest_args = self.brace_exp(rest_args)
             dir_names_or_pattrn = rest_args
-            files_in_dir = []
-            for dir_name in dir_names_or_pattrn:
-                if '*' not in dir_name and '/' not in dir_name:
-                    try:
-                        st = os.stat(dir_name)
-                        if st[0] & 0x4000:  # stat.S_IFDIR
-                            files_in_dir = os.listdir(dir_name)
-                        else:
-                            if dir_name in os.listdir(os.getcwd()):
-                                files_in_dir.append(dir_name)
-                    except OSError:
-                        print(f'lsl: {dir_name}: Not such file or directory')
-
-                else:
-                    dir_pattrn = dir_name.rsplit('/', 1)
-                    if len(dir_pattrn) > 1:
-                        dir, pattrn = dir_pattrn
-                    else:
-                        dir = '.'
-                        pattrn = dir_pattrn[0]
-                    dir_name = dir
-                    filter_files = []
-                    filter_files.append(pattrn.replace(
-                        '.', r'\.').replace('*', '.*') + '$')
-                    pattrn = [re.compile(f) for f in filter_files]
-                    files_in_dir = [file for file in os.listdir(dir)
-                                    if any([patt.match(file) for patt in pattrn])]
-
-                if files_in_dir:
-                    if not hidden:
-                        files_in_dir = [file for file in files_in_dir
-                                        if not file.startswith('.')]
-                    if dir_name != '.':
-                        if os.stat(dir_name)[0] & 0x4000:
-                            print(f'\n{dir_name}/:')
-                    print_table(files_in_dir, wide=28, format_SH=True)
+            ls(*dir_names_or_pattrn, hidden=args.a)
+            return

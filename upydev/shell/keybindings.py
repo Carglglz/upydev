@@ -1,13 +1,69 @@
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.application import run_in_terminal
+from upydev.shell.constants import (kb_info, shell_commands_info, d_prompt,
+                                    shell_commands, custom_sh_cmd_kw,
+                                    CGREEN, CEND, ABLUE_bold, MAGENTA_bold)
+from upydev.shell.common import print_table
+import os
 
+_BB = ABLUE_bold
+_CG = CGREEN
+_MB = MAGENTA_bold
+_CE = CEND
 
 # KEYBINDINGS
 
-def ShellKeyBindings(_flags, _dev):
+
+def ShellKeyBindings(_flags, _dev, _shell):
     kb = KeyBindings()
     flags = _flags
     dev = _dev
+
+    def _printpath():
+        if flags.local_path['p'] == '':
+            g_p = [val[1] for val in flags.prompt['p'][1:5]]
+            b_p = [val[1] for val in flags.prompt['p'][5:]]
+            color_p = (f"{_CG}{''.join(g_p[:-1])}{_CE}:{_BB}"
+                       f"{''.join(b_p)}{_CE}")
+            print(color_p)
+        else:
+            m_p = [flags.prompt['p'][0][1]]
+            g_p = [val[1] for val in flags.prompt['p'][1:5]]
+            b_p = [val[1] for val in flags.prompt['p'][5:]]
+            color_p = (f"{_MB}{''.join(m_p)}{_CE}{_CG}"
+                       f"{''.join(g_p[:-1])}{_CE}:{_BB}{''.join(b_p)}"
+                       f"{_CE}")
+            print(color_p)
+
+    def _printpath_cmd(last_cmd):
+        if flags.local_path['p'] == '':
+            g_p = [val[1] for val in
+                   flags.prompt['p'][1:5]]
+            b_p = [val[1]
+                   for val in flags.prompt['p'][5:]]
+            color_p = (f"{_CG}{''.join(g_p[:-1])}"
+                       f"{_CE}:{_BB}"
+                       f"{''.join(b_p)}{_CE}"
+                       f"{last_cmd}")
+            print(color_p)
+        else:
+            m_p = [flags.prompt['p'][0][1]]
+            g_p = [val[1]
+                   for val in flags.prompt['p'][1:5]]
+            b_p = [val[1]
+                   for val in flags.prompt['p'][5:]]
+            color_p = (f"{_MB}{''.join(m_p)}{_CE}"
+                       f"{_CG}{''.join(g_p[:-1])}"
+                       f"{_CE}:{_BB}"
+                       f"{''.join(b_p)}{_CE}"
+                       f"{last_cmd}")
+            print(color_p)
+
+    def _autocomplete_shell():
+        pass
+
+    def _autocomplete_repl():
+        pass
 
     @kb.add('c-x')
     def exitpress(event):
@@ -17,158 +73,88 @@ def ShellKeyBindings(_flags, _dev):
         else:
             print('\n>>> closing...')
         if flags.reset['R']:
-            # print('Rebooting device...')
+            # TODO: include hard reset
             dev.reset(reconnect=False)
             dev.disconnect()
-            # print('Done!')
         else:
             pass
-            # shr_cp.sh_repl("ssl_client.switch_wrepl()")
-            # time.sleep(0.5)
-            # espdev.serial.close()
+
         flags.exit['exit'] = True
-        # event.app.exit()
+        event.app.exit()
 
-    return kb
+    @kb.add('c-b')
+    def bannerpress(event):
+        "Prints MicroPython sys version info"
+        def upy_sysversion():
+            dev.banner()
 
+        run_in_terminal(upy_sysversion)
 
-# @kb.add('c-b')
-# def bannerpress(event):
-#     "Prints MicroPython sys version info"
-#     def upy_sysversion():
-#         shr_cp.sh_repl("\x02", banner=True)
-#
-#     run_in_terminal(upy_sysversion)
-#
-#
-# @kb.add('c-k')
-# def see_cmd_info_press(event):
-#     "CTRL-Commands info"
-#     # event.app.current_buffer.insert_text('import')
-#     def cmd_info():
-#         print(kb_info)
-#         if shell_mode['S']:
-#             print(shell_commands_info)
-#     run_in_terminal(cmd_info)
-#
-#
-# @kb.add('c-r')
-# def flush_line(event):
-#     event.app.current_buffer.reset()
-#
-#
-# @kb.add('c-o')
-# def cmd_ls(event):
-#     def ls_out():
-#         espdev.output = None
-#         print('>>> ls')
-#         shr_cp.sh_repl('ls();gc.collect()')
-#         if espdev.output is not None:
-#             print(espdev.output)
-#
-#     run_in_terminal(ls_out)
-#
-#
-# @kb.add('c-n')
-# def cmd_mem_info(event):
-#
-#     def mem_info_out():
-#         espdev.output = None
-#         print('>>> mem_info()')
-#         shr_cp.sh_repl('from micropython import mem_info; mem_info()')
-#         if espdev.output is not None:
-#             print(espdev.output)
-#
-#     run_in_terminal(mem_info_out)
-#
-#
-# @kb.add('c-y')
-# def cmd_gc_collect(event):
-#
-#     def gc_collect_out():
-#         espdev.output = None
-#         print('>>> gc.collect()')
-#         shr_cp.sh_repl('import gc;gc.collect()')
-#         if espdev.output is not None:
-#             print(espdev.output)
-#
-#     run_in_terminal(gc_collect_out)
-#
-#
-# @kb.add('c-f')
-# def toggle_autosgst(event):
-#     if autosuggest['A']:
-#         autosuggest['A'] = False
-#     else:
-#         autosuggest['A'] = True
-#
-#
-# @kb.add('c-space')
-# def autocomppress(event):
-#     "Send last command"
-#
-#     def print_last():
-#         espdev.output = None
-#         last_cmd = event.app.current_buffer.history.get_strings()[-1]
-#         if shell_mode['S']:
-#             if local_path['p'] == '':
-#                 g_p = [val[1] for val in prompt['p'][1:5]]
-#                 b_p = [val[1] for val in prompt['p'][5:]]
-#                 color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                     "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                 print(color_p)
-#             else:
-#                 m_p = [prompt['p'][0][1]]
-#                 g_p = [val[1] for val in prompt['p'][1:5]]
-#                 b_p = [val[1] for val in prompt['p'][5:]]
-#                 color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                     "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                 print(color_p)
-#             if last_cmd.split()[0] in custom_sh_cmd_kw:
-#                 custom_sh_cmd(last_cmd)
-#             else:
-#                 inp, frst_cmd = map_upysh(last_cmd)
-#                 if frst_cmd == 'run':
-#
-#                     try:
-#                         shr_cp.sh_repl(inp, follow=True)
-#                         # if espdev.output is not None:
-#                         #     print(espdev.output)
-#                     except KeyboardInterrupt:
-#                         time.sleep(0.2)
-#                         shr_cp.sh_repl('\x03', silent=True,
-#                                        traceback=True)  # KBI
-#                         time.sleep(1)
-#                         for i in range(3):
-#                             shr_cp.sh_repl('\x0d', silent=True)
-#                             shr_cp.flush_conn()
-#                         pass
-#                 else:
-#
-#                     if inp == 'ls()' or frst_cmd == 'tree' or frst_cmd == 'cat':
-#                         shr_cp.sh_repl(inp+';gc.collect()', follow=True)
-#                         # shr_cp.send_message('gc.collect()\r')
-#                     else:
-#                         shr_cp.sh_repl(inp)
-#                         if espdev.output is not None:
-#                             print(espdev.output)
-#         else:
-#             print('>>> {}'.format(last_cmd))
-#             try:
-#                 shr_cp.sh_repl(last_cmd, follow=True)
-#                 # if espdev.output is not None:
-#                 #     print(espdev.output)
-#             except KeyboardInterrupt:
-#                 time.sleep(0.2)
-#                 shr_cp.sh_repl('\x03', silent=True,
-#                                traceback=True)  # KBI
-#                 time.sleep(0.2)
-#                 for i in range(1):
-#                     shr_cp.sh_repl('\x0d', silent=True)
-#                     shr_cp.flush_conn()
-#                 pass
-#
-#     run_in_terminal(print_last)
+    @kb.add('c-k')
+    def see_cmd_info_press(event):
+        "CTRL-Commands info"
+        def cmd_info():
+            print(kb_info)
+            if flags.shell_mode['S']:
+                print(shell_commands_info)
+        run_in_terminal(cmd_info)
+
+    @kb.add('c-r')
+    def flush_line(event):
+        event.app.current_buffer.reset()
+
+    @kb.add('c-o')
+    def cmd_ls(event):
+        def ls_out():
+            print('>>> ls')
+            dev.wr_cmd('ls();gc.collect()', follow=True)
+
+        run_in_terminal(ls_out)
+
+    @kb.add('c-n')
+    def cmd_mem_info(event):
+
+        def mem_info_out():
+            print('>>> mem_info()')
+            dev.wr_cmd('from micropython import mem_info; mem_info()', follow=True)
+
+        run_in_terminal(mem_info_out)
+
+    @kb.add('c-y')
+    def cmd_gc_collect(event):
+
+        def gc_collect_out():
+            print('>>> gc.collect()')
+            dev.wr_cmd('import gc;gc.collect()', follow=True)
+
+        run_in_terminal(gc_collect_out)
+
+    @kb.add('c-f')
+    def toggle_autosgst(event):
+        if flags.autosuggest['A']:
+            flags.autosuggest['A'] = False
+        else:
+            flags.autosuggest['A'] = True
+
+    @kb.add('c-space')
+    def autocomppress(event):
+        "Send last command"
+
+        def print_last():
+            last_cmd = event.app.current_buffer.history.get_strings()[-1]
+            if flags.shell_mode['S']:
+                _printpath_cmd(last_cmd)
+                _shell.cmd(last_cmd)
+            else:
+                print('>>> {}'.format(last_cmd))
+                try:
+                    dev.wr_cmd(last_cmd, follow=True)
+                    # if espdev.output is not None:
+                    #     print(espdev.output)
+                except KeyboardInterrupt:
+                    pass
+
+        run_in_terminal(print_last)
 #
 #
 # @kb.add('c-t')
@@ -212,77 +198,68 @@ def ShellKeyBindings(_flags, _dev):
 #         edit_mode['E'] = False
 #
 #
-# @kb.add('c-a')
-# def reset_cursor(event):
-#     "Move cursor to init position"
-#     buff_text = event.app.current_buffer.document.text
-#     event.app.current_buffer.reset()
-#     event.app.current_buffer.insert_text(buff_text, move_cursor=False)
+
+    @kb.add('c-a')
+    def reset_cursor(event):
+        "Move cursor to init position"
+        buff_text = event.app.current_buffer.document.text
+        event.app.current_buffer.reset()
+        event.app.current_buffer.insert_text(buff_text, move_cursor=False)
 #
 #
-# @kb.add('c-s')
-# def toggle_shell_mode(event):
-#     def show_p():
-#         if shell_mode['S']:
-#             if local_path['p'] == '':
-#                 g_p = [val[1] for val in prompt['p'][1:5]]
-#                 b_p = [val[1] for val in prompt['p'][5:]]
-#                 color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m".format(
-#                     "".join(g_p[:-1]), "".join(b_p))
-#                 print(color_p)
-#             else:
-#                 m_p = [prompt['p'][0][1]]
-#                 g_p = [val[1] for val in prompt['p'][1:5]]
-#                 b_p = [val[1] for val in prompt['p'][5:]]
-#                 color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m".format(
-#                     "".join(m_p), "".join(g_p[:-1]), "".join(b_p))
-#                 print(color_p)
-#         else:
-#             print(prompt['p'])
+
+    @kb.add('c-s')
+    def toggle_shell_mode(event):
+        def show_p():
+            if flags.shell_mode['S']:
+                _printpath()
+            else:
+                print(flags.prompt['p'])
+
+            if flags.shell_mode['S']:
+                flags.prompt['p'] = d_prompt
+                flags.shell_mode['S'] = False
+            else:
+                flags.prompt['p'] = flags.shell_prompt['s']
+                flags.shell_mode['S'] = True
+                dev.wr_cmd('import gc;from upysh import *', silent=True)
+                dev.output = None
+
+        run_in_terminal(show_p)
+    #
 #
-#         if shell_mode['S']:
-#             prompt['p'] = d_prompt
-#             shell_mode['S'] = False
-#         else:
-#             prompt['p'] = shell_prompt['s']
-#             shell_mode['S'] = True
-#             shr_cp.sh_repl('import gc;from upysh import *', no_raw_buff=True)
-#             espdev.output = None
-#
-#     run_in_terminal(show_p)
-#
-#
-# @kb.add('c-c')
-# def send_KBI(event):
-#     # def send_KBI():
-#     try:
-#         last_cmd = ''
-#         if edit_mode['E']:
-#             prompt['p'] = shell_prompt['s']
-#             event.app.current_buffer.reset()
-#         else:
-#
-#             shr_cp.sh_repl('\x03')  # KBI
-#
-#             paste_flag['p'] = False
-#             if not shell_mode['S']:
-#                 prompt['p'] = d_prompt
-#                 last_cmd = event.app.current_buffer.document.text
-#             if shell_mode['S']:
-#                 print('^C')
-#             event.app.current_buffer.reset()
-#     except Exception as e:
-#         pass
-#
-#     def cmd_kbi(command=last_cmd):
-#         if prompt['p'] == ">>> ":
-#             print(prompt['p'] + command)
-#         elif prompt['p'] == shell_prompt['s']:
-#             if edit_mode['E'] is True:
-#                 edit_mode['E'] = False
-#                 print("<-----Edition Cancelled---->")
-#                 print('Press ESC, ENTER to exit and return to shell')
-#     run_in_terminal(cmd_kbi)
+
+    @kb.add('c-c')
+    def send_KBI(event):
+        # def send_KBI():
+        try:
+            last_cmd = ''
+            if flags.edit_mode['E']:
+                flags.prompt['p'] = flags.shell_prompt['s']
+                event.app.current_buffer.reset()
+            else:
+
+                dev.kbi(silent=False, long_string=True)  # KBI
+
+                flags.paste['p'] = False
+                if not flags.shell_mode['S']:
+                    flags.prompt['p'] = d_prompt
+                    last_cmd = event.app.current_buffer.document.text
+                if flags.shell_mode['S']:
+                    print('^C')
+                event.app.current_buffer.reset()
+        except Exception:
+            pass
+
+        def cmd_kbi(command=last_cmd):
+            if flags.prompt['p'] == ">>> ":
+                print(flags.prompt['p'] + command)
+            elif flags.prompt['p'] == flags.shell_prompt['s']:
+                if flags.edit_mode['E'] is True:
+                    flags.edit_mode['E'] = False
+                    print("<-----Edition Cancelled---->")
+                    print('Press ESC, ENTER to exit and return to shell')
+        run_in_terminal(cmd_kbi)
 #
 #
 # @kb.add('c-e')
@@ -631,237 +608,163 @@ def ShellKeyBindings(_flags, _dev):
 #         run_in_terminal(tab_cmd_info)
 #
 #
-# @kb.add('s-tab')
-# def shif_tab(event):
-#     "Autocomplete shell commands"
-#     def autocomplete_sh_cmd():
-#         if shell_mode['S']:
-#             buff_text = event.app.current_buffer.document.text
-#             result = [sh_cmd for sh_cmd in shell_commands
-#                       + custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
-#             if 'fw' in buff_text.split():
-#                 # print('Here: {}'.format(buff_text.split()))
-#                 if len(buff_text.split()) > 1:
-#                     result = [sh_cmd for sh_cmd in ['list', 'get', 'latest',
-#                                                     'update'] if sh_cmd.startswith(buff_text.split()[-1])]
-#                     # print(result)
-#                     buff_text = buff_text.split()[-1]
-#                 else:
-#                     result = ['list', 'get', 'latest', 'update']
-#                     buff_text = ''
-#             if len(result) > 1:
-#                 comm_part = os.path.commonprefix(result)
-#                 if comm_part == buff_text:
-#                     last_cmd = buff_text
-#                     if local_path['p'] == '':
-#                         g_p = [val[1] for val in prompt['p'][1:5]]
-#                         b_p = [val[1] for val in prompt['p'][5:]]
-#                         color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                             "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                         print(color_p)
-#                     else:
-#                         m_p = [prompt['p'][0][1]]
-#                         g_p = [val[1] for val in prompt['p'][1:5]]
-#                         b_p = [val[1] for val in prompt['p'][5:]]
-#                         color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                             "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                         print(color_p)
-#
-#                     print_table(result)
-#                 else:
-#                     event.app.current_buffer.insert_text(
-#                         comm_part[len(buff_text):])
-#             else:
-#                 if len(result) > 0:
-#                     event.app.current_buffer.insert_text(
-#                         result[0][len(buff_text):])
-#
-#     run_in_terminal(autocomplete_sh_cmd)
+
+    @kb.add('s-tab')
+    def shif_tab(event):
+        "Autocomplete shell commands"
+        def autocomplete_sh_cmd():
+            if flags.shell_mode['S']:
+                buff_text = event.app.current_buffer.document.text
+                result = [sh_cmd for sh_cmd in shell_commands
+                          + custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
+                if 'fw' in buff_text.split():
+                    # print('Here: {}'.format(buff_text.split()))
+                    if len(buff_text.split()) > 1:
+                        result = [sh_cmd
+                                  for sh_cmd in
+                                  ['list', 'get', 'latest', 'update']
+                                  if sh_cmd.startswith(buff_text.split()[-1])]
+                        # print(result)
+                        buff_text = buff_text.split()[-1]
+                    else:
+                        result = ['list', 'get', 'latest', 'update']
+                        buff_text = ''
+                if len(result) > 1:
+                    comm_part = os.path.commonprefix(result)
+                    if comm_part == buff_text:
+                        last_cmd = buff_text
+                        _printpath_cmd(last_cmd)
+
+                        print_table(result)
+                    else:
+                        event.app.current_buffer.insert_text(
+                            comm_part[len(buff_text):])
+                else:
+                    if len(result) > 0:
+                        event.app.current_buffer.insert_text(
+                            result[0][len(buff_text):])
+
+        run_in_terminal(autocomplete_sh_cmd)
 #
 #
-# @kb.add('s-right')
-# def autocomplete_locals(event):
-#     glb = False
-#     if shell_mode['S']:
-#         try:
-#             buff_text_frst_cmd = event.app.current_buffer.document.text.split(' ')[
-#                                                                               0]
-#             buff_text = event.app.current_buffer.document.text.split(' ')[-1]
-#             if isinstance(buff_text, str):
-#                 if '/' in buff_text:
-#                     root_text = '/'.join(buff_text.split('/')[:-1])
-#                     rest = buff_text.split('/')[-1]
-#                     if shell_mode['S']:
-#                         cmd_ls_glb = os.listdir(root_text)
-#                 else:
-#                     rest = ''
-#                     glb = True
-#                     if shell_mode['S']:
-#                            cmd_ls_glb = os.listdir()
-#             else:
-#                 pass
-#         except Exception as e:
-#             pass
-#
-#         def s_r_cmd_info(rest_part=rest, flag=glb, buff=buff_text, output=cmd_ls_glb):
-#             try:
-#                    if isinstance(cmd_ls_glb, str):
-#                         # print(espdev.output)
-#                         pass
-#                     else:
-#                         if rest != '':
-#                             result = [
-#                                 val for val in output if val.startswith(rest)]
-#                             if len(result) > 1:
-#                                 comm_part = os.path.commonprefix(result)
-#                                 if comm_part == rest:
-#                                     if shell_mode['S']:
-#                                         last_cmd = event.app.current_buffer.document.text
-#                                         if local_path['p'] == '':
-#                                             g_p = [val[1]
-#                                                    for val in prompt['p'][1:5]]
-#                                             b_p = [val[1]
-#                                                    for val in prompt['p'][5:]]
-#                                             color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                                                 "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                                             print(color_p)
-#                                         else:
-#                                             m_p = [prompt['p'][0][1]]
-#                                             g_p = [val[1]
-#                                                    for val in prompt['p'][1:5]]
-#                                             b_p = [val[1]
-#                                                    for val in prompt['p'][5:]]
-#                                             color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                                                 "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                                             print(color_p)
-#                                     print_table(result, wide=28, format_SH=True)
-#                                 else:
-#                                     event.app.current_buffer.insert_text(
-#                                         comm_part[len(rest):])
-#                             else:
-#                                 event.app.current_buffer.insert_text(
-#                                     result[0][len(rest):])
-#                         else:
-#                             if not glb:
-#                                 if shell_mode['S']:
-#                                     result = [val for val in output if val.startswith(
-#                                         buff_text.split('/')[-1])]
-#                                     if len(result) > 1:
-#                                         comm_part = os.path.commonprefix(result)
-#                                         if comm_part == buff_text.split('/')[-1]:
-#                                             if shell_mode['S']:
-#                                                 last_cmd = event.app.current_buffer.document.text
-#                                                 if local_path['p'] == '':
-#                                                     g_p = [val[1]
-#                                                            for val in prompt['p'][1:5]]
-#                                                     b_p = [val[1]
-#                                                            for val in prompt['p'][5:]]
-#                                                     color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                                                         "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                                                     print(color_p)
-#                                                 else:
-#                                                     m_p = [prompt['p'][0][1]]
-#                                                     g_p = [val[1]
-#                                                            for val in prompt['p'][1:5]]
-#                                                     b_p = [val[1]
-#                                                            for val in prompt['p'][5:]]
-#                                                     color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                                                         "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                                                     print(color_p)
-#                                                 # format ouput
-#                                                 print_table(
-#                                                     result, wide=28, format_SH=True)
-#                                         else:
-#                                             event.app.current_buffer.insert_text(
-#                                                 comm_part[len(buff_text.split('/')[-1]):])
-#                                     else:
-#                                         event.app.current_buffer.insert_text(
-#                                             result[0][len(buff_text.split('/')[-1]):])
-#                                 else:
-#                                     print_table(output, wide=28, format_SH=True)
-#                             else:
-#                                 result = [
-#                                     val for val in output if val.startswith(buff_text)]
-#                                 if len(result) > 1:
-#                                     comm_part = os.path.commonprefix(result)
-#                                     if comm_part == buff_text:
-#                                         if shell_mode['S']:
-#                                             last_cmd = event.app.current_buffer.document.text
-#                                             if local_path['p'] == '':
-#                                                 g_p = [val[1]
-#                                                        for val in prompt['p'][1:5]]
-#                                                 b_p = [val[1]
-#                                                        for val in prompt['p'][5:]]
-#                                                 color_p = "\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                                                     "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                                                 print(color_p)
-#                                             else:
-#                                                 m_p = [prompt['p'][0][1]]
-#                                                 g_p = [val[1]
-#                                                        for val in prompt['p'][1:5]]
-#                                                 b_p = [val[1]
-#                                                        for val in prompt['p'][5:]]
-#                                                 color_p = "\u001b[35;1m{}\033[0m\33[32;1m{}\033[0m:\u001b[34;1m{}\033[0m{}".format(
-#                                                     "".join(m_p), "".join(g_p[:-1]), "".join(b_p), last_cmd)
-#                                                 print(color_p)
-#
-#                                             # format ouput
-#                                             print_table(
-#                                                 result, wide=28, format_SH=True)
-#                                         else:
-#                                             print('>>> {}'.format(buff_text))
-#                                             print_table(
-#                                                 result, wide=28, format_SH=True)
-#                                     else:
-#                                         event.app.current_buffer.insert_text(
-#                                             comm_part[len(buff_text):])
-#                                 else:
-#                                     event.app.current_buffer.insert_text(
-#                                         result[0][len(buff_text):])
-#
-#             except Exception as e:
-#                 pass
-#         run_in_terminal(s_r_cmd_info)
+
+    @kb.add('s-right')
+    def autocomplete_locals(event):
+        glb = False
+        if flags.shell_mode['S']:
+            try:
+                buff_text_frst_cmd = event.app.current_buffer.document.text.split(' ')[
+                                                                                  0]
+                buff_text = event.app.current_buffer.document.text.split(' ')[-1]
+                if isinstance(buff_text, str):
+                    if '/' in buff_text:
+                        root_text = '/'.join(buff_text.split('/')[:-1])
+                        rest = buff_text.split('/')[-1]
+                        if flags.shell_mode['S']:
+                            cmd_ls_glb = os.listdir(root_text)
+                    else:
+                        rest = ''
+                        glb = True
+                        if flags.shell_mode['S']:
+                            cmd_ls_glb = os.listdir()
+                else:
+                    pass
+            except Exception:
+                pass
+
+            def s_r_cmd_info(rest_part=rest, flag=glb, buff=buff_text,
+                             output=cmd_ls_glb):
+                try:
+                    if isinstance(cmd_ls_glb, str):
+                        # print(espdev.output)
+                        pass
+                    else:
+                        if rest != '':
+                            result = [val for val in output if val.startswith(rest)]
+                            if len(result) > 1:
+                                comm_part = os.path.commonprefix(result)
+                                if comm_part == rest:
+                                    if flags.shell_mode['S']:
+                                        last_cmd = event.app.current_buffer.document.text
+                                        _printpath_cmd(last_cmd)
+                                    print_table(result, wide=28, format_SH=True)
+                                else:
+                                    event.app.current_buffer.insert_text(
+                                        comm_part[len(rest):])
+                            else:
+                                event.app.current_buffer.insert_text(
+                                    result[0][len(rest):])
+                        else:
+                            if not glb:
+                                if flags.shell_mode['S']:
+                                    result = [val for val in output if val.startswith(
+                                        buff_text.split('/')[-1])]
+                                    if len(result) > 1:
+                                        comm_part = os.path.commonprefix(result)
+                                        if comm_part == buff_text.split('/')[-1]:
+                                            if flags.shell_mode['S']:
+                                                last_cmd = event.app.current_buffer.document.text
+                                                _printpath_cmd(last_cmd)
+                                                # format ouput
+                                                print_table(
+                                                    result, wide=28, format_SH=True)
+                                        else:
+                                            event.app.current_buffer.insert_text(
+                                                comm_part[len(buff_text.split('/')[-1]):])
+                                    else:
+                                        event.app.current_buffer.insert_text(
+                                            result[0][len(buff_text.split('/')[-1]):])
+                                else:
+                                    print_table(output, wide=28, format_SH=True)
+                            else:
+                                result = [
+                                    val for val in output if val.startswith(buff_text)]
+                                if len(result) > 1:
+                                    comm_part = os.path.commonprefix(result)
+                                    if comm_part == buff_text:
+                                        if flags.shell_mode['S']:
+                                            last_cmd = event.app.current_buffer.document.text
+                                            _printpath_cmd(last_cmd)
+
+                                            # format ouput
+                                            print_table(
+                                                result, wide=28, format_SH=True)
+                                        else:
+                                            print('>>> {}'.format(buff_text))
+                                            print_table(
+                                                result, wide=28, format_SH=True)
+                                    else:
+                                        event.app.current_buffer.insert_text(
+                                            comm_part[len(buff_text):])
+                                else:
+                                    event.app.current_buffer.insert_text(
+                                        result[0][len(buff_text):])
+
+                except Exception:
+                    pass
+            run_in_terminal(s_r_cmd_info)
 #
 #
-# @kb.add('s-left')
-# def toggle_local_path(event):
-#     if shell_mode['S']:
-#         if show_local_path['s']:
-#             show_local_path['s'] = False
-#             local_path['p'] = ''
-#
-#             # SET ROOT USER PATH:
-#             shell_message = [
-#                 ('class:userpath',    local_path['p']),
-#                 ('class:username', dev_platform),
-#                 ('class:at',       '@'),
-#                 ('class:host',     host_name),
-#                 ('class:colon',    ':'),
-#                 ('class:path',     '~{}'.format(dev_path['p'])),
-#                 ('class:pound',    '$ '),
-#             ]
-#             shell_prompt['s'] = shell_message
-#             prompt['p'] = shell_prompt['s']
-#         else:
-#             show_local_path['s'] = True
-#             local_path['p'] = os.getcwd().split('/')[-1]+':/'
-#             if os.getcwd() == os.environ['HOME']:
-#                 local_path['p'] = '~:/'
-#
-#             # SET ROOT USER PATH:
-#             shell_message = [
-#                 ('class:userpath',    local_path['p']),
-#                 ('class:username', dev_platform),
-#                 ('class:at',       '@'),
-#                 ('class:host',     host_name),
-#                 ('class:colon',    ':'),
-#                 ('class:path',     '~{}'.format(dev_path['p'])),
-#                 ('class:pound',    '$ '),
-#             ]
-#             shell_prompt['s'] = shell_message
-#             prompt['p'] = shell_prompt['s']
-#
+
+    @kb.add('s-left')
+    def toggle_local_path(event):
+        if flags.shell_mode['S']:
+            if flags.show_local_path['s']:
+                flags.show_local_path['s'] = False
+                flags.local_path['p'] = ''
+
+                # SET ROOT USER PATH:
+                flags.shell_prompt['s'][0] = ('class:userpath', flags.local_path['p'])
+                flags.prompt['p'] = flags.shell_prompt['s']
+            else:
+                flags.show_local_path['s'] = True
+                flags.local_path['p'] = os.getcwd().split('/')[-1]+':/'
+                if os.getcwd() == os.environ['HOME']:
+                    flags.local_path['p'] = '~:/'
+
+                # SET ROOT USER PATH:
+                flags.shell_prompt['s'][0] = ('class:userpath', flags.local_path['p'])
+                flags.prompt['p'] = flags.shell_prompt['s']
 #
 # # @kb.add('c-u')
 # # def unsecure_mode(event):
@@ -927,3 +830,5 @@ def ShellKeyBindings(_flags, _dev):
 #         shr_cp.flush_conn()
 #         event.app.current_buffer.reset()
 #     run_in_terminal(echo_ouput)
+#     run_in_terminal(echo_ouput)
+    return kb

@@ -4,6 +4,33 @@ import os
 import re
 
 
+def _expand_dirs_recursive(dir):
+    if '*' not in dir:
+        return [dir]
+    if len(dir.split('/')) > 1:
+        dir_matchs = []
+        root_dir, b_dir = dir.rsplit('/', 1)
+        for _rdir in _expand_dirs_recursive(root_dir):
+            dir_matchs += _os_match_dir(b_dir, _rdir)
+        return dir_matchs
+    else:
+        root_dir, b_dir = '', dir
+        return _os_match_dir(b_dir, root_dir)
+
+
+def _os_match(patt, path):
+    pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
+    return [file for file in os.listdir(path) if pattrn.match(file)]
+
+
+def _os_match_dir(patt, path):
+    pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
+    if path == '' and os.getcwd() != '/':
+        path = os.getcwd()
+    return [f"{path}/{dir}" for dir in os.listdir(path) if pattrn.match(dir)
+            and os.stat(f"{path}/{dir}")[0] & 0x4000]
+
+
 def _shasum(file, debug=True, save=False, rtn=False, filetosave=False):
     _hash = hashlib.sha256()
     with open(file, 'rb') as bfile:
@@ -47,13 +74,20 @@ def shasum(*args, **kargs):
                 dir = ''
                 pattrn = file_pattrn[0]
             dir_name = dir
-            # list to filter files:
-            filter_files = []
-            filter_files.append(pattrn.replace(
-                '.', r'\.').replace('*', '.*') + '$')
-            pattrn = [re.compile(f) for f in filter_files]
-            files_in_dir = [file for file in os.listdir(dir)
-                            if any([patt.match(file) for patt in pattrn])]
+            # expand dirs
+            if '*' in dir_name:
+                expanded_dirs = _expand_dirs_recursive(dir_name)
+                for exp_dir in expanded_dirs:
+                    files_in_dir = _os_match(pattrn, exp_dir)
+                    if files_in_dir:
+                        for filehash in files_in_dir:
+                            if exp_dir != '':
+                                _shasum(f"{exp_dir}/{filehash}", *kargs)
+                            else:
+                                _shasum(filehash, *kargs)
+                files_in_dir = []
+            else:
+                files_in_dir = _os_match(pattrn, dir)
 
             if files_in_dir:
                 for filehash in files_in_dir:

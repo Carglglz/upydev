@@ -488,15 +488,12 @@ def gen_command(cmd, *args, **kargs):
         dir_name = kargs.pop('f')
         dev = Device(*args, **kargs)
         # check upysh2:
-        is_upysh2 = dev.cmd(_CMDDICT_['CHECK_UPYSH2'], silent=True, rtn_resp=True)
-        if is_upysh2:
-            if dir_name:
-                cmd_str = "from upysh2 import tree; tree('{}')".format(dir_name)
-            else:
-                cmd_str = "from upysh2 import tree; tree"
-            dev.wr_cmd(cmd_str, follow=True)
+        # is_upysh2 = dev.cmd(_CMDDICT_['CHECK_UPYSH2'], silent=True, rtn_resp=True)
+        if dir_name:
+            cmd_str = "from upysh2 import tree; tree('{}')".format(dir_name)
         else:
-            pass
+            cmd_str = "from upysh2 import tree; tree"
+        dev.wr_cmd(cmd_str, follow=True)
         dev.disconnect()
         return
 

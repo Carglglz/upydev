@@ -52,7 +52,7 @@ edit_mode = {'E': False, 'File': ''}
 shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
-shell_commands = ['sz', 'cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
+shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
                   'run']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'ap', 'mem', 'install', 'touch', 'edit', 'wrepl',
@@ -61,7 +61,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'getcert', 'bat', 'du', 'ldu', 'upip', 'uping',
                     'timeit', 'i2c', 'git', 'batstyle',
                     'upy-config', 'wss', 'jupyterc', 'pytest', 'rssi',
-                    'info', 'id', 'uhelp', 'modules', 'shasum']
+                    'info', 'id', 'uhelp', 'modules', 'shasum', 'dvim']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -202,3 +202,79 @@ shell_commands_info = """
 * Local shell special commands:
     Commands that start with %% or not registered will be forwarded to local shell.
 """
+# dict {cmd:{'help':'command_help', 'subcommand':{'help':'subh', 'choices':[]}}...}
+LS = dict(help="list device files or directories",
+          subcmd=dict(help='Indicate a file/dir or pattern to see', default=[],
+                      metavar='file/dir/pattern', nargs='*'),
+          options={"-a": dict(help='list hidden files', required=False,
+                              default=False,
+                              action='store_true')})
+HEAD = dict(help="display first lines of a file",
+            subcmd=dict(help='Indicate a file or pattern to see', default=[],
+                        metavar='file/pattern', nargs='*'),
+            options={"-n": dict(help='number of lines to print', required=False,
+                                default=10,
+                                type=int)})
+CAT = dict(help="concatenate and print files",
+           subcmd=dict(help='Indicate a file or pattern to see', default=[],
+                       metavar='file/pattern', nargs='*'),
+           options={})
+
+MKDIR = dict(help="make directories",
+             subcmd=dict(help='Indicate a dir/pattern to create', default=[],
+                         metavar='dir', nargs='*'),
+             options={})
+
+CD = dict(help="change current working directory",
+          subcmd=dict(help='Indicate a dir to change to', default='/',
+                      metavar='dir', nargs='?'),
+          options={})
+PWD = dict(help="print current working directory",
+           subcmd={},
+           options={})
+RM = dict(help="remove file or pattern of files",
+          subcmd=dict(help='Indicate a file/pattern to remove', default=[],
+                      metavar='file/dir/pattern', nargs='*'),
+          options={"-rf": dict(help='remove recursive force a dir or file',
+                               required=False,
+                               default=10,
+                               action='store_true')})
+RMDIR = dict(help="remove directories or pattern of directories",
+             subcmd=dict(help='Indicate a dir/pattern to remove', default=[],
+                         metavar='dir', nargs='*'),
+             options={})
+
+DU = dict(help="display disk usage statistics",
+          subcmd=dict(help='Indicate a dir to see usage', default=[],
+                      metavar='dir', nargs='*'),
+          options={"-d": dict(help='depth level', required=False,
+                              default=0,
+                              type=int)})
+TREE = dict(help="list contents of directories in a tree-like format",
+            subcmd=dict(help='Indicate a dir to see', default='',
+                        metavar='dir', nargs='?'),
+            options={"-a": dict(help='list hidden files', required=False,
+                                default=False,
+                                action='store_true')})
+DF = dict(help="display free disk space",
+          subcmd={},
+          options={})
+
+MEM = dict(help="show RAM usage info",
+           subcmd=dict(help='mem info (default) or dump memory',
+                       default='info',
+                       metavar='action', choices=['info', 'dump'], nargs='?'),
+           options={})
+
+EXIT = dict(help="exit upydev shell",
+            subcmd={},
+            options={"-r": dict(help='soft-reset after exit', required=False,
+                                default=False,
+                                action='store_true'),
+                     "-hr": dict(help='hard-reset after exit', required=False,
+                                 default=False,
+                                 action='store_true')})
+
+SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
+                         "cd": CD, "rm": RM, "rmdir": RMDIR, "du": DU,
+                         "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT}

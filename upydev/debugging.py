@@ -1338,6 +1338,8 @@ def debugging_action(args, **kargs):
                 for dev in devs_dict:
                     desc = devs_dict[dev][0]
                     man = devs_dict[dev][1]
+                    if not man:
+                        man = 'Unknown'
                     if len(desc) > 36:
                         desc = desc[:37]
 

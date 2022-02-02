@@ -2,16 +2,88 @@ import sys
 import os
 import re
 
-CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
 CEND = '\033[0m'
-YELLOW = '\u001b[33m'
-BCYAN = '\u001b[36;1m'
 ABLUE_bold = '\u001b[34;1m'
 MAGENTA_bold = '\u001b[35;1m'
-WHITE_ = '\u001b[37m'
-LIGHT_GRAY = "\033[0;37m"
-DARK_GRAY = "\033[1;30m"
+
+
+def print_table(data, cols=4, wide=16, format_SH=False, autocols=True,
+                autocol_tab=False, sort=True, autowide=False, max_cols=4,
+                gts=(40, 0)):
+    '''Prints formatted data on columns of given width.'''
+    if sort:
+        data.sort(key=str.lower)
+    if format_SH:
+        if autocols:
+            wide_data = max([len(namefile) for namefile in data]) + 2
+            if wide_data > wide:
+                wide = wide_data
+            columns, rows = gts
+            cols = int(columns/(wide))
+        data = ['{}{}{}{}'.format(ABLUE_bold, val, CEND, ' '*(wide-len(val)))
+                if '.' not in val else val for val in data]
+        data = ['{}{}{}{}'.format(MAGENTA_bold, val, CEND, ' '*(wide-len(val)))
+                if '.py' not in val and '.mpy'
+                not in val and '.' in val else val for val in data]
+        data = ['{}{}{}{}'.format(
+                CGREEN, val, CEND, ' '*(wide-len(val))) if '.mpy' in val else val
+                for val in data]
+    if autocol_tab:
+        data = [namefile if len(namefile) < wide else namefile
+                + '\n' for namefile in data]
+    if autowide:
+        wide_data = max([len(namefile) for namefile in data]) + 2
+        if wide_data > wide:
+            wide = wide_data
+        columns, rows = gts
+        cols = int(columns/(wide))
+        if max_cols < cols:
+            cols = max_cols
+    n, r = divmod(len(data), cols)
+    pat = '{{:{}}}'.format(wide)
+    line = '\n'.join(pat * cols for _ in range(n))
+    last_line = pat * r
+    print(line.format(*data))
+    print(last_line.format(*data[n*cols:]))
+
+
+def _print_files(filelist, dir_name, show=True, hidden=False, gts=(40, 0)):
+    if show:
+        if not hidden:
+            filelist = [file for file in filelist if not file.startswith('.')]
+        if dir_name != '':
+            if os.stat(dir_name)[0] & 0x4000:
+                print(f'\n{ABLUE_bold}{dir_name}:{CEND}')
+        if filelist:
+            print_table(filelist, wide=28, format_SH=True, gts=gts)
+
+
+def _expand_dirs_recursive(dir):
+    if '*' not in dir:
+        return [dir]
+    if len(dir.split('/')) > 1:
+        dir_matchs = []
+        root_dir, b_dir = dir.rsplit('/', 1)
+        for _rdir in _expand_dirs_recursive(root_dir):
+            dir_matchs += _os_match_dir(b_dir, _rdir)
+        return dir_matchs
+    else:
+        root_dir, b_dir = '', dir
+        return _os_match_dir(b_dir, root_dir)
+
+
+def _os_match(patt, path):
+    pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
+    return [file for file in os.listdir(path) if pattrn.match(file)]
+
+
+def _os_match_dir(patt, path):
+    pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
+    if path == '' and os.getcwd() != '/':
+        path = os.getcwd()
+    return [f"{path}/{dir}" for dir in os.listdir(path) if pattrn.match(dir)
+            and os.stat(f"{path}/{dir}")[0] & 0x4000]
 
 
 class LS:
@@ -20,10 +92,10 @@ class LS:
         self.__call__()
         return ""
 
-    def __call__(self, *args, gts=(40, 0), hidden=False, show=True, rtn=False):
+    def __call__(self, *args, gts=(40, 0), hidden=False, show=True,
+                 bydir=True, rtn=False):
         dir_names_or_pattrn = args
         files_in_dir = []
-        all_files = []
         for dir_name in dir_names_or_pattrn:
             if '*' not in dir_name and '/' not in dir_name:
                 try:
@@ -44,68 +116,35 @@ class LS:
                     dir = ''
                     pattrn = dir_pattrn[0]
                 dir_name = dir
-                filter_files = []
-                filter_files.append(pattrn.replace(
-                    '.', r'\.').replace('*', '.*') + '$')
-                pattrn = [re.compile(f) for f in filter_files]
-                files_in_dir = [file for file in os.listdir(dir)
-                                if any([patt.match(file) for patt in pattrn])]
+                # expand dirs
+                if '*' in dir_name:
+                    expanded_dirs = _expand_dirs_recursive(dir_name)
+                    for exp_dir in expanded_dirs:
+                        _files_in_dir = _os_match(pattrn, exp_dir)
+                        if _files_in_dir:
+                            if bydir:
+                                _print_files(_files_in_dir, exp_dir, show=show,
+                                             hidden=hidden, gts=gts)
+                            else:
+                                files_in_dir += [f"{exp_dir}/{file}" for file
+                                                 in _files_in_dir]
+                        _files_in_dir = []  # reset
+                else:
+                    if bydir:
+                        files_in_dir = _os_match(pattrn, dir)
+                    else:
+                        files_in_dir += [f"{exp_dir}/{file}" for file
+                                         in _os_match(pattrn, dir)]
 
             if files_in_dir:
-                if show:
-                    if not hidden:
-                        files_in_dir = [file for file in files_in_dir
-                                        if not file.startswith('.')]
-                    if dir_name != '':
-                        if os.stat(dir_name)[0] & 0x4000:
-                            print(f'\n{dir_name}/:')
-                    self.print_table(files_in_dir, wide=28, format_SH=True, gts=gts)
-                if rtn:
-                    all_files += [f"{dir_name}/{file}" for file in files_in_dir
-                                  if dir_name != '']
+                if bydir:
+                    _print_files(files_in_dir, dir_name, show=show,
+                                 hidden=hidden, gts=gts)
+                    files_in_dir = []  # reset
+        if files_in_dir:
+            _print_files(files_in_dir, '', show=show, hidden=hidden)
         if rtn:
-            return all_files
-
-        # from @The Data Scientician : https://stackoverflow.com/questions/9535954/\
-        # printing-\lists-as-tabular-data
-    def print_table(self, data, cols=4, wide=16, format_SH=False, autocols=True,
-                    autocol_tab=False, sort=True, autowide=False, max_cols=4,
-                    gts=(40, 0)):
-        '''Prints formatted data on columns of given width.'''
-        if sort:
-            data.sort(key=str.lower)
-        if format_SH:
-            if autocols:
-                wide_data = max([len(namefile) for namefile in data]) + 2
-                if wide_data > wide:
-                    wide = wide_data
-                columns, rows = gts
-                cols = int(columns/(wide))
-            data = ['{}{}{}{}'.format(ABLUE_bold, val, CEND, ' '*(wide-len(val)))
-                    if '.' not in val else val for val in data]
-            data = ['{}{}{}{}'.format(MAGENTA_bold, val, CEND, ' '*(wide-len(val)))
-                    if '.py' not in val and '.mpy'
-                    not in val and '.' in val else val for val in data]
-            data = ['{}{}{}{}'.format(
-                    CGREEN, val, CEND, ' '*(wide-len(val))) if '.mpy' in val else val
-                    for val in data]
-        if autocol_tab:
-            data = [namefile if len(namefile) < wide else namefile
-                    + '\n' for namefile in data]
-        if autowide:
-            wide_data = max([len(namefile) for namefile in data]) + 2
-            if wide_data > wide:
-                wide = wide_data
-            columns, rows = gts
-            cols = int(columns/(wide))
-            if max_cols < cols:
-                cols = max_cols
-        n, r = divmod(len(data), cols)
-        pat = '{{:{}}}'.format(wide)
-        line = '\n'.join(pat * cols for _ in range(n))
-        last_line = pat * r
-        print(line.format(*data))
-        print(last_line.format(*data[n*cols:]))
+            return files_in_dir
 
 
 class PWD:
@@ -145,18 +184,34 @@ def head(f, n=10):
             sys.stdout.write(l)
 
 
-def cat(*args):
-    files_to_cat = args
+def _catfile(files, path, n, prog):
+    for filecat in files:
+        if path != '':
+            print(f'\n\u001b[42;1m{path}/\u001b[44;1m{filecat}:'
+                  '\u001b[0m')
+            file_str = f"{path}/{filecat}"
+        else:
+            print(f'\n\u001b[44;1m{filecat}:'
+                  '\u001b[0m')
+            file_str = f"{filecat}"
+
+        if os.stat(file_str)[0] & 0x4000:
+            print(f'{prog}: {file_str}: Is a directory')
+        else:
+            head(file_str, n)
+
+
+def cat(*args, n=1 << 30, prog='cat'):
     files_in_dir = []
-    for file_name in files_to_cat:
+    for file_name in args:
         if '*' not in file_name:
             try:
                 if os.stat(f"{file_name}")[0] & 0x4000:
-                    print(f'cat: {file_name}: Is a directory')
+                    print(f'{prog}: {file_name}: Is a directory')
                 else:
-                    head(file_name, 1 << 30)
+                    head(file_name, n)
             except OSError:
-                print(f'cat: {file_name}: No such file in directory')
+                print(f'{prog}: {file_name}: No such file in directory')
 
         else:
             file_pattrn = file_name.rsplit('/', 1)
@@ -166,29 +221,19 @@ def cat(*args):
                 dir = ''
                 pattrn = file_pattrn[0]
             dir_name = dir
-            # list to filter files:
-            filter_files = []
-            filter_files.append(pattrn.replace(
-                '.', r'\.').replace('*', '.*') + '$')
-            pattrn = [re.compile(f) for f in filter_files]
-            files_in_dir = [file for file in os.listdir(dir)
-                            if any([patt.match(file) for patt in pattrn])]
+            # expand dirs
+            if '*' in dir_name:
+                expanded_dirs = _expand_dirs_recursive(dir_name)
+                for exp_dir in expanded_dirs:
+                    files_in_dir = _os_match(pattrn, exp_dir)
+                    if files_in_dir:
+                        _catfile(files_in_dir, exp_dir, n, prog)
+                files_in_dir = []
+            else:
+                files_in_dir = _os_match(pattrn, dir)
 
             if files_in_dir:
-                for filecat in files_in_dir:
-                    if dir_name != '':
-                        print(f'\n\u001b[42;1m{dir_name}/\u001b[44;1m{filecat}:'
-                              '\u001b[0m')
-                        file_str = f"{dir_name}/{filecat}"
-                    else:
-                        print(f'\n\u001b[44;1m{filecat}:'
-                              '\u001b[0m')
-                        file_str = f"{filecat}"
-
-                    if os.stat(file_str)[0] & 0x4000:
-                        print(f'cat: {file_str}: Is a directory')
-                    else:
-                        head(file_str, 1 << 30)
+                _catfile(files_in_dir, dir_name, n, prog)
 
 
 def newfile(path):
