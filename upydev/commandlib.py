@@ -116,6 +116,7 @@ LS = "ls({}, gts={}, hidden={});gc.collect()"
 CAT = "cat({});gc.collect()"
 TOUCH = "from upysh2 import touch;touch({});gc.collect()"
 HEAD = "cat({},n={},prog='head');gc.collect()"
+VIM = "cat({},prog='vim');gc.collect()"
 
 CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'MEM': MEM, 'OS_STAT': OS_STAT, 'FILE_STAT': FILE_STAT,
@@ -135,6 +136,7 @@ CMDDICT_ = {'UID': UID, 'UPYSH': UPYSH, 'HELP': HELP, 'MOD': MODULES,
             'SD_DEINIT': SD_DEINIT, 'SD_AUTO': SD_AUTO, 'CHECK_UPYSH2': CHECK_UPYSH2,
             'SET_HOSTNAME': SET_HOSTNAME, 'SET_LOCALNAME': SET_LOCALNAME,
             'SHASUM_CHECK': SHASUM_CHECK,
-            'SHASUM': SHASUM, 'LS': LS, 'CAT': CAT, 'TOUCH': TOUCH, 'HEAD': HEAD}
+            'SHASUM': SHASUM, 'LS': LS, 'CAT': CAT, 'TOUCH': TOUCH, 'HEAD': HEAD,
+            'VIM': VIM}
 
 _CMDDICT_ = {k: 'import gc;' + v for k, v in CMDDICT_.items()}

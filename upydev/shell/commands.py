@@ -822,7 +822,7 @@ class ShellCmds:
                 webbrowser.open('http://docs.micropython.org/en/latest/')
 
         # DVIM
-        if command == 'dvim':
+        if command == 'vim':
             if not rest_args:
                 print('Indicate a file to edit')
                 return
@@ -832,10 +832,12 @@ class ShellCmds:
             file_to_edit = rest_args[0]
             self.dev.wr_cmd('from upysh import cat', silent=True)
             files_to_see = f"*{[file_to_edit]}"
-            filedata = self.dev.wr_cmd(_CMDDICT_['CAT'].format(files_to_see),
+            filedata = self.dev.wr_cmd(_CMDDICT_['VIM'].format(files_to_see),
                                        silent=True, rtn_resp=True, multiline=True,
                                        long_string=True)
-
+            # print(filedata)
+            if filedata == f'vim: {file_to_edit}: No such file in directory\n':
+                filedata = ' '
             _file_to_edit = file_to_edit.rsplit('/')[-1]
             with open(_file_to_edit, 'w') as fte:
                 fte.write(filedata)
@@ -872,6 +874,13 @@ class ShellCmds:
                     fileio = BleFileIO(self.dev,
                                        devname=self.flags.shell_prompt['s'][3][1])
                     fileio.put(_file_to_edit, dest_file, ppath=True)
+            if args.r:
+                os.remove(_file_to_edit)
+            if args.e:
+                script_name = file_to_edit.replace('.py', '')
+                run_cmd = f"import {script_name}"
+                print(f'Running {script_name}...')
+                self.dev.wr_cmd(run_cmd, follow=True)
             return
 
         if command in _SPECIAL_SHELL_CMDS:

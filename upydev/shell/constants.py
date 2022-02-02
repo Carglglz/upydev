@@ -61,7 +61,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'getcert', 'bat', 'du', 'ldu', 'upip', 'uping',
                     'timeit', 'i2c', 'git', 'batstyle',
                     'upy-config', 'wss', 'jupyterc', 'pytest', 'rssi',
-                    'info', 'id', 'uhelp', 'modules', 'shasum', 'dvim']
+                    'info', 'id', 'uhelp', 'modules', 'shasum', 'vim']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -274,7 +274,30 @@ EXIT = dict(help="exit upydev shell",
                      "-hr": dict(help='hard-reset after exit', required=False,
                                  default=False,
                                  action='store_true')})
+VIM = dict(help="Use vim to edit device's files",
+           subcmd=dict(help='Indicate a file to edit', default='',
+                       metavar='file', nargs=1),
+           options={"-r": dict(help='remove local copy after upload', required=False,
+                               default=False,
+                               action='store_true'),
+                    "-e": dict(help='execute script after upload', required=False,
+                               default=False,
+                               action='store_true')})
+
+RUN = dict(help="Run device's scripts",
+           subcmd=dict(help='Indicate a file/script to run', default='',
+                       metavar='file', nargs=1),
+           options={"-r": dict(help='reload script so it can be run again', required=False,
+                               default=False,
+                               action='store_true'),
+                    })
+
+RELOAD = dict(help="Reload device's scripts",
+              subcmd=dict(help='Indicate a file/script to reload', default='',
+                          metavar='file', nargs=1),
+              options={})
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "cd": CD, "rm": RM, "rmdir": RMDIR, "du": DU,
-                         "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT}
+                         "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT,
+                         "vim": VIM, "run": RUN, "reload": RELOAD}

@@ -5,6 +5,9 @@ from upydev.shell.constants import (kb_info, shell_commands_info, d_prompt,
                                     CGREEN, CEND, ABLUE_bold, MAGENTA_bold)
 from upydev.shell.common import print_table
 import os
+import signal
+import subprocess
+import shlex
 
 _BB = ABLUE_bold
 _CG = CGREEN
@@ -157,28 +160,19 @@ def ShellKeyBindings(_flags, _dev, _shell):
         run_in_terminal(print_last)
 #
 #
-# @kb.add('c-t')
-# def testpress(event):
-#     "Test code command"
-#     def test_code():
-#         espdev.output = None
-#         test_cmd = 'import test_code'
-#         print('>>> {}'.format(test_cmd))
-#         try:
-#             shr_cp.sh_repl(test_cmd, follow=True)
-#             # if espdev.output is not None:
-#             #     print(espdev.output)
-#         except KeyboardInterrupt:
-#             time.sleep(0.2)
-#             shr_cp.sh_repl('\x03', silent=True,
-#                            traceback=True)  # KBI
-#             time.sleep(0.2)
-#             for i in range(1):
-#                 shr_cp.sh_repl('\x0d', silent=True)
-#                 shr_cp.flush_conn()
-#             pass
-#
-#     run_in_terminal(test_code)
+
+    @kb.add('c-t')
+    def runtempbuff(event):
+        "Run contents of _tmp_script.py"
+        def run_tmpcode():
+            print('Running Buffer')
+            with open('_tmp_script.py', 'r') as fbuff:
+                filebuffer = fbuff.read()
+            event.app.current_buffer.reset()
+            dev.paste_buff(filebuffer)
+            event.app.current_buffer.reset()
+            dev.wr_cmd('\x04', follow=True)
+        run_in_terminal(run_tmpcode)
 #
 #
 # @kb.add('c-w')
@@ -205,6 +199,13 @@ def ShellKeyBindings(_flags, _dev, _shell):
         buff_text = event.app.current_buffer.document.text
         event.app.current_buffer.reset()
         event.app.current_buffer.insert_text(buff_text, move_cursor=False)
+
+    @kb.add('c-j')
+    def eof_cursor(event):
+        "Move cursor to final position"
+        buff_text = event.app.current_buffer.document.text
+        event.app.current_buffer.reset()
+        event.app.current_buffer.insert_text(buff_text, move_cursor=True)
 #
 #
 
@@ -234,9 +235,10 @@ def ShellKeyBindings(_flags, _dev, _shell):
         # def send_KBI():
         try:
             last_cmd = ''
-            if flags.edit_mode['E']:
-                flags.prompt['p'] = flags.shell_prompt['s']
+            if flags.shell_mode['S']:
+                print('^C')
                 event.app.current_buffer.reset()
+                flags.paste['p'] = False
             else:
 
                 dev.kbi(silent=False, long_string=True)  # KBI
@@ -245,8 +247,6 @@ def ShellKeyBindings(_flags, _dev, _shell):
                 if not flags.shell_mode['S']:
                     flags.prompt['p'] = d_prompt
                     last_cmd = event.app.current_buffer.document.text
-                if flags.shell_mode['S']:
-                    print('^C')
                 event.app.current_buffer.reset()
         except Exception:
             pass
@@ -254,84 +254,79 @@ def ShellKeyBindings(_flags, _dev, _shell):
         def cmd_kbi(command=last_cmd):
             if flags.prompt['p'] == ">>> ":
                 print(flags.prompt['p'] + command)
-            elif flags.prompt['p'] == flags.shell_prompt['s']:
-                if flags.edit_mode['E'] is True:
-                    flags.edit_mode['E'] = False
-                    print("<-----Edition Cancelled---->")
-                    print('Press ESC, ENTER to exit and return to shell')
         run_in_terminal(cmd_kbi)
 #
 #
-# @kb.add('c-e')
-# def paste_mode(event):
-#     "PASTE MODE IN REPL, EDIT MODE IN SHELL MODE"
-#     if not shell_mode['S']:
-#         paste_flag['p'] = True
-#         event.app.current_buffer.reset()
-#         # event.app.current_buffer.insert_text('import')
+
+    @kb.add('c-e')
+    def paste_mode(event):
+        "ENTER PASTE VIM MODE"
+        if not flags.shell_mode['S']:
+            flags.paste['p'] = True
+            event.app.current_buffer.reset()
+            # event.app.current_buffer.insert_text('import')
+
+            def cmd_paste_vim():
+                shell_cmd_str = shlex.split("vim _tmp_script.py")
+
+                old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+                def preexec_function(action=old_action):
+                    signal.signal(signal.SIGINT, action)
+                try:
+                    subprocess.call(shell_cmd_str, preexec_fn=preexec_function)
+                    signal.signal(signal.SIGINT, old_action)
+                except Exception as e:
+                    print(e)
+                # SEND Buffer
+                with open('_tmp_script.py', 'r') as fbuff:
+                    filebuffer = fbuff.read()
+                dev.paste_buff(filebuffer)
+                print('Temp Buffer loaded do CTRL-D to execute or CTRL-C to cancel')
+                # dev.wr_cmd('\x04', follow=True)
+
+            run_in_terminal(cmd_paste_vim)
+        else:
+            pass
+            # if edit_mode['E']:
+            #     def cmd_paste():
+            #         print('Edit Mode; Ctrl-C to cancel, Ctrl-D to finish, then ESC, ENTER')
+            #         print("#<---- File: {} --->".format(edit_mode['File']))
+            #         prompt['p'] = ""
+            #     run_in_terminal(cmd_paste)
+            #     event.app.current_buffer.reset()
+            #     espdev.long_output = []
+            #     espdev.output = None
+            #     espdev.response = ''
+            #     shr_cp.sh_repl("cat('{}')".format(edit_mode['File']))
+            #     file_content = espdev.output
+            #     try:
+            #         process_content = file_content
+            #     except Exception as e:
+            #         process_content = ' '
+            #     if isinstance(file_content, str):
+            #         event.app.current_buffer.insert_text(process_content)
+            # else:
+            #     # "Move cursor to final position"
+            #     buff_text = event.app.current_buffer.document.text
+            #     event.app.current_buffer.reset()
+            #     event.app.current_buffer.insert_text(buff_text, move_cursor=True)
 #
-#         def cmd_paste():
-#             print(
-#                 'paste mode; Press ENTER to write, Ctrl-C to cancel, Ctrl-D to finish, Then ESC, ENTER to exit paste mode')
-#             print("===")
-#             prompt['p'] = ""
-#         run_in_terminal(cmd_paste)
-#     else:
-#         if edit_mode['E']:
-#             def cmd_paste():
-#                 print('Edit Mode; Ctrl-C to cancel, Ctrl-D to finish, then ESC, ENTER')
-#                 print("#<---- File: {} --->".format(edit_mode['File']))
-#                 prompt['p'] = ""
-#             run_in_terminal(cmd_paste)
-#             event.app.current_buffer.reset()
-#             espdev.long_output = []
-#             espdev.output = None
-#             espdev.response = ''
-#             shr_cp.sh_repl("cat('{}')".format(edit_mode['File']))
-#             file_content = espdev.output
-#             try:
-#                 process_content = file_content
-#             except Exception as e:
-#                 process_content = ' '
-#             if isinstance(file_content, str):
-#                 event.app.current_buffer.insert_text(process_content)
-#         else:
-#             # "Move cursor to final position"
-#             buff_text = event.app.current_buffer.document.text
-#             event.app.current_buffer.reset()
-#             event.app.current_buffer.insert_text(buff_text, move_cursor=True)
 #
-#
-# @kb.add('c-d')
-# def paste_mode_exit(event):
-#     "PASTE MODE exit in REPL, EDIT MODE exit in SHELL"
-#     # event.app.current_buffer.insert_text('import')
-#
-#     def cmd_paste_exit(buff_P=paste_buffer['B']):
-#            buff_text = '\n'.join(
-#                 buff_P + [event.app.current_buffer.document.text])
-#             if buff_text is not None and buff_text != '':
-#                 try:
-#                     shr_cp.paste_buff(buff_text)
-#                     shr_cp.sh_repl("\x04", follow=True)
-#                 except KeyboardInterrupt:
-#                     time.sleep(0.2)
-#                     shr_cp.sh_repl('\x03', silent=True,
-#                                    traceback=True)  # KBI
-#                     time.sleep(0.2)
-#                     for i in range(1):
-#                         shr_cp.sh_repl('\x0d', silent=True)
-#                         shr_cp.flush_conn()
-#                     pass
-#                 espdev.output = None
-#                 time.sleep(1)
-#                 shr_cp.flush_conn()
-#                 shr_cp.flush_conn()
-#
-#             event.app.current_buffer.reset()
-#
-#             print(">>> ")
-#             prompt['p'] = ">>> "
+
+    @kb.add('c-d')
+    def paste_mode_exit(event):
+        "PASTE MODE VIM EXEC, SOFT RESET IN REPL"
+        # event.app.current_buffer.insert_text('import')
+
+        def cmd_paste_exit():
+            print('Running Buffer...')
+            event.app.current_buffer.reset()
+            dev.wr_cmd('\x04', follow=True)
+            flags.paste['p'] = False
+
+        if flags.paste['p']:
+            run_in_terminal(cmd_paste_exit)
 #
 #     def cmd_edit_exit(file_to_edit=edit_mode['File']):
 #            buff_text = ''.join([event.app.current_buffer.document.text])
