@@ -19,7 +19,7 @@ _CE = CEND
 # KEYBINDINGS
 
 
-def ShellKeyBindings(_flags, _dev, _shell):
+def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
     kb = KeyBindings()
     flags = _flags
     dev = _dev
@@ -189,10 +189,12 @@ def ShellKeyBindings(_flags, _dev, _shell):
                     if len(result) > 1:
                         comm_part = os.path.commonprefix(result)
                         if comm_part == rest:
-                            if flags.shell_mode['S']:
-                                last_cmd = event.app.current_buffer.document.text
-                                _printpath_cmd(last_cmd)
-                            print_table(result, wide=28, format_SH=True)
+                            def pprint_result():
+                                if flags.shell_mode['S']:
+                                    last_cmd = event.app.current_buffer.document.text
+                                    _printpath_cmd(last_cmd)
+                                print_table(result, wide=28, format_SH=True)
+                            run_in_terminal(pprint_result)
                         else:
                             event.app.current_buffer.insert_text(
                                 comm_part[len(rest):])
@@ -209,10 +211,13 @@ def ShellKeyBindings(_flags, _dev, _shell):
                                 if comm_part == buff_text.split('/')[-1]:
                                     if flags.shell_mode['S']:
                                         lc = event.app.current_buffer.document.text
-                                        _printpath_cmd(lc)
-                                        # format ouput
-                                        print_table(
-                                            result, wide=28, format_SH=True)
+
+                                        def pprint_result():
+                                            _printpath_cmd(lc)
+                                            # format ouput
+                                            print_table(
+                                                result, wide=28, format_SH=True)
+                                        run_in_terminal(pprint_result)
                                 else:
                                     event.app.current_buffer.insert_text(
                                         comm_part[len(buff_text.split('/')[-1]):])
@@ -220,7 +225,9 @@ def ShellKeyBindings(_flags, _dev, _shell):
                                 event.app.current_buffer.insert_text(
                                     result[0][len(buff_text.split('/')[-1]):])
                         else:
-                            print_table(output, wide=28, format_SH=True)
+                            def pprint_result():
+                                print_table(output, wide=28, format_SH=True)
+                            run_in_terminal(pprint_result)
                     else:
                         result = [
                             val for val in output if val.startswith(buff_text)]
@@ -229,14 +236,17 @@ def ShellKeyBindings(_flags, _dev, _shell):
                             if comm_part == buff_text:
                                 if flags.shell_mode['S']:
                                     lc = event.app.current_buffer.document.text
-                                    _printpath_cmd(lc)
-                                    # format ouput
-                                    print_table(
-                                        result, wide=28, format_SH=True)
-                                else:
-                                    print('>>> {}'.format(buff_text))
-                                    print_table(
-                                        result, wide=28, format_SH=True)
+
+                                    def pprint_result():
+                                        _printpath_cmd(lc)
+                                        # format ouput
+                                        print_table(
+                                            result, wide=28, format_SH=True)
+                                    run_in_terminal(pprint_result)
+                                # else:
+                                #     print('>>> {}'.format(buff_text))
+                                #     print_table(
+                                #         result, wide=28, format_SH=True)
                             else:
                                 event.app.current_buffer.insert_text(
                                     comm_part[len(buff_text):])
@@ -363,8 +373,12 @@ def ShellKeyBindings(_flags, _dev, _shell):
                     if len(result) > 1:
                         comm_part = os.path.commonprefix(result)
                         if comm_part == rest:
-                            print('>>> {}'.format(buff_text))
-                            print_table(result, autowide=True, sort=False)
+                            # print('>>> {}'.format(buff_text))
+                            def pprint_result():
+                                print('>>> {}'.format(buff_text))
+                                print_table(
+                                    result, autowide=True, sort=False)
+                            run_in_terminal(pprint_result)
 
                         else:
                             event.app.current_buffer.insert_text(
@@ -374,9 +388,11 @@ def ShellKeyBindings(_flags, _dev, _shell):
                             result[0][len(rest):])
                 else:
                     if not glb:
-                        print('>>> {}'.format(buff_text))   # dir var
-                        print_table(output, wide=16,
-                                    autocol_tab=True, sort=False)
+                        # print('>>> {}'.format(buff_text))   # dir var
+                        def pprint_result():
+                            print('>>> {}'.format(buff_text))   # dir var
+                            print_table(output, wide=16, autocol_tab=True, sort=False)
+                        run_in_terminal(pprint_result)
 
                     else:
                         result = [
@@ -385,9 +401,12 @@ def ShellKeyBindings(_flags, _dev, _shell):
                             comm_part = os.path.commonprefix(result)
                             if comm_part == buff_text:
 
-                                print('>>> {}'.format(buff_text))  # globals
-                                print_table(result, wide=16,
-                                            autowide=True)
+                                # print('>>> {}'.format(buff_text))  # globals
+                                def pprint_result():
+                                    print('>>> {}'.format(buff_text))  # globals
+                                    print_table(result, wide=16,
+                                                autowide=True)
+                                run_in_terminal(pprint_result)
 
                             else:
                                 event.app.current_buffer.insert_text(
@@ -500,7 +519,7 @@ def ShellKeyBindings(_flags, _dev, _shell):
             event.app.current_buffer.reset()
             dev.paste_buff(filebuffer)
             event.app.current_buffer.reset()
-            dev.wr_cmd('\x04', follow=True)
+            dev.wr_cmd('\x04', follow=True, long_string=True)
         run_in_terminal(run_tmpcode)
 #
 #
@@ -628,7 +647,7 @@ def ShellKeyBindings(_flags, _dev, _shell):
         def cmd_paste_exit():
             print('Running Buffer...')
             event.app.current_buffer.reset()
-            dev.wr_cmd('\x04', follow=True)
+            dev.wr_cmd('\x04', follow=True, long_string=True)
             flags.paste['p'] = False
 
         if flags.paste['p']:
@@ -640,13 +659,14 @@ def ShellKeyBindings(_flags, _dev, _shell):
     @kb.add('tab')
     def tab_press(event):
         "Tab autocompletion info"
-        # event.app.current_buffer.insert_text('import')
+        # event.app.current_buffer.insert_text('import') # only run in terminal the printing
         def do_complete(event=event):
             if flags.shell_mode['S']:
                 _autocomplete_shell(event)
             else:
                 _autocomplete_repl(event)
-        run_in_terminal(do_complete)
+        do_complete()
+        # do_complete()
 #
 #
 
@@ -657,7 +677,7 @@ def ShellKeyBindings(_flags, _dev, _shell):
             if flags.shell_mode['S']:
                 buff_text = event.app.current_buffer.document.text
                 result = [sh_cmd for sh_cmd in shell_commands
-                          + custom_sh_cmd_kw if sh_cmd.startswith(buff_text)]
+                          + custom_sh_cmd_kw + spc_cmds if sh_cmd.startswith(buff_text)]
                 if any([cmd in buff_text.split()
                         for cmd in SHELL_CMD_DICT_PARSER.keys()]):
                     # print('Here: {}'.format(buff_text.split()))
@@ -665,6 +685,8 @@ def ShellKeyBindings(_flags, _dev, _shell):
                         cmd = buff_text.split()[0]
                         if SHELL_CMD_DICT_PARSER[cmd]['subcmd']:
                             ch = SHELL_CMD_DICT_PARSER[cmd]['subcmd'].get('choices')
+                            if 'alt_ops' in SHELL_CMD_DICT_PARSER[cmd].keys():
+                                ch = SHELL_CMD_DICT_PARSER[cmd]['alt_ops']
                             if ch:
                                 result = [sh_cmd
                                           for sh_cmd in
@@ -681,6 +703,8 @@ def ShellKeyBindings(_flags, _dev, _shell):
                         ch = []
                         if SHELL_CMD_DICT_PARSER[cmd]['subcmd']:
                             ch = SHELL_CMD_DICT_PARSER[cmd]['subcmd'].get('choices')
+                            if 'alt_ops' in SHELL_CMD_DICT_PARSER[cmd].keys():
+                                ch = SHELL_CMD_DICT_PARSER[cmd]['alt_ops']
                         if ch:
                             result = ch
                         else:

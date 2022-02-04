@@ -1,14 +1,15 @@
 import os
 import argparse
 import shlex
-from upydev import name as uname, version as uversion
 from upydev.shell.constants import (AUTHMODE_DICT,
                                     shell_commands, custom_sh_cmd_kw, shell_message)
-from upydev.shell.common import (du, _ft_datetime, SHELL_ALIASES, ls, FileArgs)
+from upydev.shell.common import (du, _ft_datetime, SHELL_ALIASES, ls, FileArgs,
+                                 find_localip)
 from upydev.shell.parser import shparser
 from binascii import hexlify
 from upydev.commandlib import _CMDDICT_
 from upydev import upip_host
+from upydev import __path__ as _UPYDEVPATH
 from upydevice import DeviceException
 from braceexpand import braceexpand
 import ast
@@ -27,7 +28,7 @@ _LOCAL_SHELL_CMDS = ['ldu', 'lsl', 'lpwd', 'lcd']
 _SPECIAL_SHELL_CMDS = ['wrepl', 'jupyterc', 'get', 'put', 'fget'
                        'fw', 'flash', 'dsync',
                        'srepl', 'pytest', 'getcert', 'git', 'update_upyutils',
-                       'uping', 'upy-config', 'wss', 'exit']
+                       'upy-config', 'wss']
 
 
 class ShellFlags:
@@ -63,6 +64,8 @@ class ShellCmds:
         self.topargs = topargs
         # Setup shell commands parser
         self.parser = shparser
+        self._shkw = _SHELL_CMDS
+        self.dev_name = self.flags.shell_prompt['s'][3][1]
 
     def print_filesys_info(self, filesize):
         _kB = 1000
@@ -85,13 +88,14 @@ class ShellCmds:
                 files_to_create.append(file_or_bexp)
         return files_to_create
 
-    def custom_sh_cmd(self, cmd, rest_args=None, args=None, topargs=None):
+    def custom_sh_cmd(self, cmd, rest_args=None, args=None, topargs=None,
+                      ukw_args=None):
         # To be implemented for each shell to manage special commands, e.g. fwr
         return
 
     def escape_sh_cmd(self, cmd_inp):
         # SHELL ESCAPE:
-        if cmd_inp.startswith('%') or cmd_inp.split()[0] not in _SHELL_CMDS + ['-h']:
+        if cmd_inp.startswith('%') or cmd_inp.split()[0] not in self._shkw + ['-h']:
             if cmd_inp.split()[0] != 'ping':
                 try:
                     if cmd_inp.startswith('%'):
@@ -155,7 +159,7 @@ class ShellCmds:
 
     def parseap(self, command_args):
         try:
-            return self.parser.parse_known_args(command_args)[0]
+            return self.parser.parse_known_args(command_args)
         except SystemExit:  # argparse throws these because it assumes you only want
             # to do the command line
             return None  # should be a default one
@@ -168,15 +172,24 @@ class ShellCmds:
 
     def sh_cmd(self, cmd_inp):
 
+        # debug command:
+        if cmd_inp.startswith('!'):
+            args = self.parseap(shlex.split(cmd_inp[1:]))
+            print(args)
+            return
         # SHELL ESCAPE:
         if self.escape_sh_cmd(cmd_inp):
             return
 
         # PARSE ARGS
         command_line = shlex.split(cmd_inp)
-        args = self.parseap(command_line)
-        if not args:
+
+        all_args = self.parseap(command_line)
+
+        if not all_args:
             return
+        else:
+            args, unknown_args = all_args
         if hasattr(args, 'subcmd'):
             command, rest_args = args.m, args.subcmd
         else:
@@ -336,17 +349,27 @@ class ShellCmds:
                 print('STA interface not connected')
             return
 
+        # UPING
+        if command == 'uping':
+            ping_dir = rest_args
+            if ping_dir == 'host':
+                ping_dir = find_localip()
+            inp = f"import uping;uping.ping('{ping_dir}', loop=True, rtn=False)"
+            self.dev.wr_cmd(inp, follow=True, multiline=True, long_string=True)
+            return
+
         # RSSI
         if command == 'rssi':
             if hasattr(self.dev, 'get_RSSI') and self.dev.connected:
                 resp = self.dev.get_RSSI()
-            print(f'{resp} dBm')
+                print(f'{resp} dBm')
             return
 
         # NET: STATION INTERFACE (STA_IF)
 
         if command == 'net':
-            if not rest_args:
+
+            if rest_args == 'status':
                 netstat = self.send_cmd(_CMDDICT_['NET_STAT'],
                                         raise_devexcept=True)
                 if netstat:
@@ -354,18 +377,18 @@ class ShellCmds:
                 else:
                     print('Station Disabled')
             else:
-                if rest_args[0] == 'on':
+                if rest_args == 'on':
                     stat_on = self.send_cmd(_CMDDICT_['NET_STAT_ON'],
                                             raise_devexcept=True)
                     if stat_on:
                         print('Station Enabled')
-                elif rest_args[0] == 'off':
+                elif rest_args == 'off':
                     stat_on = self.send_cmd(_CMDDICT_['NET_STAT_OFF']+'\r'*5,
                                             raise_devexcept=True)
                     if stat_on:
                         print('Station Disabled')
 
-                elif rest_args[0] == 'conn':
+                elif rest_args == 'conn':
                     if not args.wp:
                         print('arg -wp required, see help.')
                         return
@@ -373,7 +396,7 @@ class ShellCmds:
                     print(f'Connecting to {ssid}...')
                     connect_to = _CMDDICT_['NET_STAT_CONN'].format(ssid, passwd)
                     self.send_cmd(connect_to)
-                elif rest_args[0] == 'scan':
+                elif rest_args == 'scan':
                     if self.dev.dev_platform == 'esp8266':
                         enable_sta = self.send_cmd(
                             "import network;network.WLAN(network.STA_IF).active()")
@@ -418,14 +441,12 @@ class ShellCmds:
                     else:
                         print("Can't enable STA interface")
 
-                elif rest_args[0] == 'rssi':
-                    self.sh_cmd('rssi')
             return
 
         # AP (ACCES POINT INTERFACE (AP_IF))
         if command == 'ap':
 
-            if not rest_args:
+            if rest_args == 'status':
                 apconfig = self.send_cmd(_CMDDICT_['APSTAT'],
                                          raise_devexcept=True)
                 if not args.t:
@@ -454,7 +475,7 @@ class ShellCmds:
                             print(e)
                             pass
             else:
-                if rest_args[0] == 'on':
+                if rest_args == 'on':
                     ap_on = self.send_cmd(_CMDDICT_['AP_ON'],
                                           raise_devexcept=True)
                     if ap_on:
@@ -462,7 +483,7 @@ class ShellCmds:
                     else:
                         print('Access Point Disabled')
 
-                elif rest_args[0] == 'off':
+                elif rest_args == 'off':
                     ap_off = self.send_cmd(_CMDDICT_['AP_OFF'],
                                            raise_devexcept=True)
                     if ap_off:
@@ -470,7 +491,7 @@ class ShellCmds:
 
                     else:
                         print('Access Point Enabled')
-                elif rest_args[0] == 'scan':
+                elif rest_args == 'scan':
                     if self.dev.dev_platform == 'esp8266':
                         enable_sta = self.send_cmd(
                             "import network;network.WLAN(network.AP_IF).active()")
@@ -493,7 +514,7 @@ class ShellCmds:
                     else:
                         print("Can't enable AP interface")
 
-                elif rest_args[0] == 'config':
+                elif rest_args == 'config':
                     if not args.ap:
                         print('arg -ap required, see help.')
                         return
@@ -510,87 +531,81 @@ class ShellCmds:
 
         # I2C
         if command == 'i2c':
-            if not rest_args:
-                print('scan   config')
-            else:
-                if rest_args[0] == 'config':
-                    if not args.i2c:
-                        print('arg -i2c required, see help.')
-                        return
-                    scl, sda = args.i2c
-                    if self.dev.dev_platform == 'pyboard':
-                        self.send_cmd(_CMDDICT_['I2C_CONFIG_PYB'].format(scl, sda),
-                                      raise_devexcept=True)
-                    else:
-                        self.send_cmd(_CMDDICT_['I2C_CONFIG'].format(
-                            scl, sda), raise_devexcept=True)
+            if rest_args == 'config':
+                if not args.i2c:
+                    print('arg -i2c required, see help.')
+                    return
+                scl, sda = args.i2c
+                if self.dev.dev_platform == 'pyboard':
+                    self.send_cmd(_CMDDICT_['I2C_CONFIG_PYB'].format(scl, sda),
+                                  raise_devexcept=True)
+                else:
+                    self.send_cmd(_CMDDICT_['I2C_CONFIG'].format(
+                        scl, sda), raise_devexcept=True)
 
-                    print(f'I2C configured:\nSCL = Pin({scl}), SDA = Pin({sda})')
-                elif rest_args[0] == 'scan':
-                    i2c_scan_list = self.send_cmd(_CMDDICT_['I2C_SCAN'],
-                                                  raise_devexcept=True)
+                print(f'I2C configured:\nSCL = Pin({scl}), SDA = Pin({sda})')
+            elif rest_args == 'scan':
+                i2c_scan_list = self.send_cmd(_CMDDICT_['I2C_SCAN'],
+                                              raise_devexcept=True)
 
-                    if len(i2c_scan_list) > 0:
-                        i2c_devices = i2c_scan_list
-                        print(f'Found {len(i2c_devices)} devices:')
-                        print(i2c_devices)
-                        print('Hex:')
-                        print([hex(i2c_dev) for i2c_dev in i2c_devices])
-                    else:
-                        print('No device found')
+                if len(i2c_scan_list) > 0:
+                    i2c_devices = i2c_scan_list
+                    print(f'Found {len(i2c_devices)} devices:')
+                    print(i2c_devices)
+                    print('Hex:')
+                    print([hex(i2c_dev) for i2c_dev in i2c_devices])
+                else:
+                    print('No device found')
             return
 
         # SET
         if command == 'set':
-            if not rest_args:
-                print('localtime    ntptime    hostname    localname')
-            else:
-                #  * RTC *
+            #  * RTC *
 
-                # SET LOCAL TIME
-                if rest_args[0] == 'localtime':
-                    print('Setting local time: {}'.format(
-                        datetime.now().strftime("%Y-%m-%d T %H:%M:%S")))
-                    wkoy = date.today().isocalendar()[1]
-                    datetime_local = [val for val in datetime.now().timetuple()[:-3]]
-                    datetime_tuple = datetime_local[:3]
-                    datetime_tuple.append(wkoy)
-                    datetime_final = datetime_tuple + datetime_local[3:] + [0]
-                    self.send_cmd(_CMDDICT_['SET_RTC_LT'].format(*datetime_final),
-                                  raise_devexcept=True)
+            # SET LOCAL TIME
+            if rest_args[0] == 'localtime':
+                print('Setting local time: {}'.format(
+                    datetime.now().strftime("%Y-%m-%d T %H:%M:%S")))
+                wkoy = date.today().isocalendar()[1]
+                datetime_local = [val for val in datetime.now().timetuple()[:-3]]
+                datetime_tuple = datetime_local[:3]
+                datetime_tuple.append(wkoy)
+                datetime_final = datetime_tuple + datetime_local[3:] + [0]
+                self.send_cmd(_CMDDICT_['SET_RTC_LT'].format(*datetime_final),
+                              raise_devexcept=True)
 
+                print('Done!')
+            # SET NTP TIME
+            elif rest_args[0] == 'ntptime':
+                utc = args.utc
+                print(f'Setting time UTC+{utc} from NTP Server')
+                for ntp_cmd in _CMDDICT_['SET_RTC_NT'].format(utc).split(';'):
+                    self.send_cmd(ntp_cmd, raise_devexcept=True)
+                print('Done!')
+
+            # SET HOSTNAME
+            elif rest_args[0] == 'hostname':
+                if len(rest_args) < 2:
+                    print('Indicate a name to set')
+                else:
+                    hostname = rest_args[1]
+                    print(f"Setting hostname: {hostname}")
+                    self.send_cmd(
+                        _CMDDICT_['SET_HOSTNAME'].format(f'NAME="{hostname}"'),
+                        raise_devexcept=True)
                     print('Done!')
-                # SET NTP TIME
-                elif rest_args[0] == 'ntptime':
-                    utc = args.utc
-                    print(f'Setting time UTC+{utc} from NTP Server')
-                    for ntp_cmd in _CMDDICT_['SET_RTC_NT'].format(utc).split(';'):
-                        self.send_cmd(ntp_cmd, raise_devexcept=True)
+
+            # SET LOCALNAME
+            elif rest_args[0] == 'localname':
+                if len(rest_args) < 2:
+                    print('Indicate a name to set')
+                else:
+                    localname = rest_args[1]
+                    print(f"Setting localname: {localname}")
+                    self.send_cmd(
+                        _CMDDICT_['SET_LOCALNAME'].format(f'NAME="{localname}"'),
+                        raise_devexcept=True)
                     print('Done!')
-
-                # SET HOSTNAME
-                elif rest_args[0] == 'hostname':
-                    if len(rest_args) < 2:
-                        print('Indicate a name to set')
-                    else:
-                        hostname = rest_args[1]
-                        print(f"Setting hostname: {hostname}")
-                        self.send_cmd(
-                            _CMDDICT_['SET_HOSTNAME'].format(f'NAME="{hostname}"'),
-                            raise_devexcept=True)
-                        print('Done!')
-
-                # SET LOCALNAME
-                elif rest_args[0] == 'localname':
-                    if len(rest_args) < 2:
-                        print('Indicate a name to set')
-                    else:
-                        localname = rest_args[1]
-                        print(f"Setting localname: {localname}")
-                        self.send_cmd(
-                            _CMDDICT_['SET_LOCALNAME'].format(f'NAME="{localname}"'),
-                            raise_devexcept=True)
-                        print('Done!')
             return
 
         # DATETIME
@@ -784,7 +799,7 @@ class ShellCmds:
                 print('Indicate a script to run')
                 return
             else:
-                script_name = rest_args[0].split('.')[0]
+                script_name = rest_args.split('.')[0]
                 reload = f"del(sys.modules['{script_name}'])"
                 run_cmd = f"import {script_name}"
                 # print(run_cmd)
@@ -792,10 +807,14 @@ class ShellCmds:
                 #     dir = args.s
                 #     sd_path = "import sys;sys.path.append('/{}')".format(dir)
                 #     run_cmd = "{};import {}".format(sd_path, script_name)
-                print(f'Running {rest_args[0]}...')
-                self.dev.wr_cmd(run_cmd, follow=True)
+                print(f'Running {rest_args}...')
+                try:
+                    self.dev.wr_cmd(run_cmd, follow=True)
+                except KeyboardInterrupt:
+                    self.dev.kbi()
+
                 if args.r:
-                    print(f'Reloading {rest_args[0]}...')
+                    print(f'Reloading {rest_args}...')
                     reload_cmd = (f"import sys;{reload};"
                                   f"gc.collect()")
                     self.dev.wr_cmd(reload_cmd)
@@ -814,12 +833,22 @@ class ShellCmds:
         # DOCS
         if command == 'docs':
             if rest_args:
-                key = rest_args[0]
-                search = (f'http://docs.micropython.org/en/latest/search.html?q={key}&'
+                key = rest_args
+                search = (f'https://upydev.readthedocs.io/en/latest/search.html?q={key}&'
                           'check_keywords=yes&area=default')
                 webbrowser.open(search)
             else:
-                webbrowser.open('http://docs.micropython.org/en/latest/')
+                webbrowser.open('https://upydev.readthedocs.io/en/latest/')
+
+        # MDOCS
+        if command == 'mdocs':
+            if rest_args:
+                key = rest_args
+                search = (f'https://docs.micropython.org/en/latest/search.html?q={key}&'
+                          'check_keywords=yes&area=default')
+                webbrowser.open(search)
+            else:
+                webbrowser.open('https://docs.micropython.org/en/latest/')
 
         # DVIM
         if command == 'vim':
@@ -837,6 +866,8 @@ class ShellCmds:
                                        long_string=True)
             # print(filedata)
             if filedata == f'vim: {file_to_edit}: No such file in directory\n':
+                filedata = ' '
+            if not filedata:
                 filedata = ' '
             _file_to_edit = file_to_edit.rsplit('/')[-1]
             with open(_file_to_edit, 'w') as fte:
@@ -861,18 +892,18 @@ class ShellCmds:
                 if self.dev.dev_class == 'SerialDevice':
                     from upydev.serialio import SerialFileIO
                     fileio = SerialFileIO(self.dev,
-                                          devname=self.flags.shell_prompt['s'][3][1])
+                                          devname=self.dev_name)
                     fileio.put(_file_to_edit, dest_file, ppath=True)
                 elif self.dev.dev_class == 'WebSocketDevice':
                     from upydev.wsio import WebSocketFileIO
                     fileargs.wss = self.dev._uriprotocol == 'wss'
                     fileio = WebSocketFileIO(self.dev, args=fileargs,
-                                             devname=self.flags.shell_prompt['s'][3][1])
+                                             devname=self.dev_name)
                     fileio.put(_file_to_edit, dest_file, ppath=True)
                 elif self.dev.dev_class == 'BleDevice':
                     from upydev.bleio import BleFileIO
                     fileio = BleFileIO(self.dev,
-                                       devname=self.flags.shell_prompt['s'][3][1])
+                                       devname=self.dev_name)
                     fileio.put(_file_to_edit, dest_file, ppath=True)
             if args.r:
                 os.remove(_file_to_edit)
@@ -883,8 +914,55 @@ class ShellCmds:
                 self.dev.wr_cmd(run_cmd, follow=True)
             return
 
+        # UPDATE UPYUTILS:
+        if command == 'update_upyutils':
+            fileargs = FileArgs()
+            SRCDIR = os.path.join(_UPYDEVPATH[0], 'upyutils_dir')
+            files = [os.path.join(SRCDIR, file)
+                     for file in os.listdir(SRCDIR) if file.endswith('.py')]
+            fileargs.fre = files
+            if self.dev.dev_class == 'SerialDevice':
+                from upydev.serialio import SerialFileIO
+                if self.dev.dev_platform == 'pyboard':
+                    fileargs.s = '/flash/lib'
+                else:
+                    fileargs.s = '/lib'
+                fileio = SerialFileIO(self.dev,
+                                      devname=self.dev_name)
+                fileio.put_files(fileargs,
+                                 self.dev_name
+                                 )
+            elif self.dev.dev_class == 'WebSocketDevice':
+                from upydev.wsio import WebSocketFileIO
+                fileargs.wss = self.dev._uriprotocol == 'wss'
+                fileargs.s = '/lib'
+                fileio = WebSocketFileIO(self.dev, args=fileargs,
+                                         devname=self.dev_name)
+                fileio.put_files(fileargs,
+                                 self.dev_name)
+            elif self.dev.dev_class == 'BleDevice':
+                from upydev.bleio import BleFileIO
+                fileargs.s = '/lib'
+                fileio = BleFileIO(self.dev,
+                                   devname=self.dev_name)
+                fileio.put_files(fileargs,
+                                 self.dev_name)
+            return
+
+        # EXIT
+        if command == 'exit':
+            if args.r:
+                print('Rebooting device...')
+                self.dev.reset(silent=True, reconnect=False)
+                print('Done!')
+            elif args.hr:
+                print('Device Hard Reset...')
+                self.dev.reset(silent=True, reconnect=False, hr=True)
+                print('Done!')
+            self.flags.exit['exit'] = True
+
         if command in _SPECIAL_SHELL_CMDS:
-            self.custom_sh_cmd(command, rest_args, args, self.topargs)
+            self.custom_sh_cmd(command, rest_args, args, self.topargs, unknown_args)
 
     def local_sh_cmds(self, command, args, rest_args):
         # DISK USAGE STATISTICS

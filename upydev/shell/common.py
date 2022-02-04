@@ -23,6 +23,7 @@ import ast
 from upydev.shell.constants import (ABLUE_bold, CGREEN, MAGENTA_bold, CEND)
 from prompt_toolkit.formatted_text import HTML
 import re
+import socket
 
 
 class FileArgs:
@@ -34,6 +35,15 @@ class FileArgs:
         self.s = ''
         self.f = ''
         self.fre = []
+        self.dir = ''
+
+
+def find_localip():
+    ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    ip_soc.connect(('8.8.8.8', 1))
+    local_ip = ip_soc.getsockname()[0]
+    ip_soc.close()
+    return local_ip
 
 
 def parse_bash_profile():

@@ -246,6 +246,7 @@ class CRYPTOGRAPHER:
                 self.err_buff.seek(0)
                 return self.encrypt_hex(self.resp_msg)
 
+
 # TODO: ENCRYPT/DECRYPT FILE
 
 # TODO: DECRYPT/ENCRYPT MESSAGE

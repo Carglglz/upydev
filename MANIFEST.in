@@ -5,7 +5,8 @@ include upydev/upyutils_dir/sync_tool.py
 include upydev/upyutils_dir/upylog.py
 include upydev/upyutils_dir/upynotify.py
 include upydev/upyutils_dir/upysecrets.py
-include upydev/upyutils_dir/ssl_repl.py
+include upydev/upyutils_dir/upysh.py
+include upydev/upyutils_dir/nanoglob.py
 include upydev/upyutils_dir/upysh2.py
 include upydev/upyutils_dir/uping.py
 include upydev/upyutils_dir/time_it.py

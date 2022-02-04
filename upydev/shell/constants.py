@@ -53,15 +53,16 @@ shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
 shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
-                  'run']
+                  'run', '-v']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
-                    'ap', 'mem', 'install', 'touch', 'edit', 'wrepl',
+                    'ap', 'mem', 'install', 'touch', 'edit',
                     'whoami', 'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
                     'set', 'tree', 'fget', 'dsync', 'reload', 'docs',
-                    'getcert', 'bat', 'du', 'ldu', 'upip', 'uping',
+                    'bat', 'du', 'ldu', 'upip', 'uping',
                     'timeit', 'i2c', 'git', 'batstyle',
                     'upy-config', 'wss', 'jupyterc', 'pytest', 'rssi',
-                    'info', 'id', 'uhelp', 'modules', 'shasum', 'vim']
+                    'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
+                    'update_upyutils', 'mdocs']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -83,27 +84,32 @@ git_diff_files = {'diff': [], 'commit': '', 'n_commits': 0}
 
 # KEYBINDINGS INFO
 kb_info = """
-Custom keybindings:
-- CTRL-x : to exit shell/repl
-- CTRL-p : toggle RAM STATUS right aligned message (USED/FREE)
-- CTRL-e : paste vim mode in repl
-- CTRL-d : ends vim paste mode in repl and execute buffer
-- CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
-- CTRL-b : prints MicroPython version and sys platform
-- CTRL-r : to flush line buffer
-- CTRL-o : to list files in cwd (sz shorcut command)
-- CTRL-n : shows mem_info()
-- CTRL-y : gc.collect() shortcut command
-- CTRL-space : repeats last command
-- CTRL-t : runs temp buffer ('_tmp_script.py' in cwd)
-- CTRL-w : flush test_code from sys modules, so it can be run again
-- CTRL-a : set cursor position at the beggining
-- CTRL-j : set cursor position at the end of line
-- CTRL-f : toggle autosuggest mode (Fish shell like)(use right arrow to complete)
-- CTRL-g : To active listen for device output (Timer or hardware interrupts), CTRL-c to break
-- CRTL-s : toggle shell mode to navigate filesystem (see shell commands)
-- CTRL-k : prints the custom keybindings (this list)
->>> """
+* Autocompletion keybindings:
+     - tab to autocomplete device file / dirs names / raw micropython (repl commands)
+     - shift-tab to autocomplete shell commands
+     - shift-right to autocomplete local file / dirs names
+     - shift-left to toggle local path in prompt
+* CTRL - keybindings:
+    - CTRL-x : to exit shell/repl
+    - CTRL-p : toggle RAM STATUS right aligned message (USED/FREE)
+    - CTRL-e : paste vim mode in repl
+    - CTRL-d : ends vim paste mode in repl and execute buffer
+    - CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
+    - CTRL-b : prints MicroPython version and sys platform
+    - CTRL-r : to flush line buffer
+    - CTRL-o :
+    - CTRL-n : shows mem_info()
+    - CTRL-y : gc.collect() shortcut command
+    - CTRL-space : repeats last command
+    - CTRL-t : runs temp buffer ('_tmp_script.py' in cwd)
+    - CTRL-w :
+    - CTRL-a : set cursor position at the beggining
+    - CTRL-j : set cursor position at the end of line
+    - CTRL-f : toggle autosuggest mode (Fish shell like)(use right arrow to complete)
+    - CTRL-g : To active listen for device output (Timer or hardware interrupts), CTRL-c to break
+    - CRTL-s : toggle shell mode to navigate filesystem (see shell commands)
+    - CTRL-k : prints the custom keybindings (this list)
+"""
 
 
 shell_commands_info = """
@@ -261,7 +267,7 @@ DF = dict(help="display free disk space",
           subcmd={},
           options={})
 
-MEM = dict(help="show RAM usage info",
+MEM = dict(help="show ram usage info",
            subcmd=dict(help='mem info (default) or dump memory',
                        default='info',
                        metavar='action', choices=['info', 'dump'], nargs='?'),
@@ -275,7 +281,7 @@ EXIT = dict(help="exit upydev shell",
                      "-hr": dict(help='hard-reset after exit', required=False,
                                  default=False,
                                  action='store_true')})
-VIM = dict(help="Use vim to edit device's files",
+VIM = dict(help="use vim to edit device's files",
            subcmd=dict(help='Indicate a file to edit', default='',
                        metavar='file', nargs=1),
            options={"-r": dict(help='remove local copy after upload', required=False,
@@ -285,19 +291,20 @@ VIM = dict(help="Use vim to edit device's files",
                                default=False,
                                action='store_true')})
 
-RUN = dict(help="Run device's scripts",
+RUN = dict(help="run device's scripts",
            subcmd=dict(help='Indicate a file/script to run', default='',
-                       metavar='file', nargs=1),
+                       metavar='file'),
            options={"-r": dict(help='reload script so it can be run again',
                                required=False,
                                default=False,
                                action='store_true'),
                     })
 
-RELOAD = dict(help="Reload device's scripts",
+RELOAD = dict(help="reload device's scripts",
               subcmd=dict(help='Indicate a file/script to reload', default='',
                           metavar='file', nargs=1),
               options={})
+
 LCD = dict(help="change local current working directory",
            subcmd=dict(help='Indicate a dir to change to', default='',
                        metavar='dir', nargs='?'),
@@ -323,9 +330,136 @@ INFO = dict(help="prints device info",
             subcmd={},
             options={})
 
+ID = dict(help="prints device unique id",
+          subcmd={},
+          options={})
+
+UHELP = dict(help="prints device's help info",
+             subcmd={},
+             options={})
+
+MODULES = dict(help="prints device frozen modules",
+               subcmd={},
+               options={})
+
+UPING = dict(help="device send ICMP ECHO_REQUEST packets to network hosts",
+             subcmd=dict(help='Indicate an IP address to ping', default='host',
+                         metavar='IP', nargs='?'),
+             options={})
+
+RSSI = dict(help="prints device RSSI (WiFi or BLE)",
+            subcmd={},
+            options={})
+
+NET = dict(help="manage network station interface (STA._IF)",
+           subcmd=dict(help='{status, on, off, conn, scan}',
+                       default='status',
+                       metavar='action',
+                       choices=['status', 'on', 'off', 'conn', 'scan'],
+                       nargs='?'),
+           options={"-wp": dict(help='ssid, password for conn command',
+                                required=False,
+                                nargs=2)})
+IFCONFIG = dict(help="prints network interface configuration (STA._IF)",
+                subcmd={},
+                options={"-t": dict(help='print info in table format',
+                                    required=False,
+                                    default=False,
+                                    action='store_true')})
+
+AP = dict(help="manage network acces point interface (AP._IF)",
+          subcmd=dict(help='{status, on, off, scan, config}',
+                      default='status',
+                      metavar='action',
+                      choices=['status', 'on', 'off', 'config', 'scan'],
+                      nargs='?'),
+          options={"-ap": dict(help='ssid, password for config command',
+                               required=False,
+                               nargs=2),
+                   "-t": dict(help='print info in table format',
+                              required=False,
+                              default=False,
+                              action='store_true')})
+
+I2C = dict(help="manage I2C interface",
+           subcmd=dict(help='{config, scan}',
+                       default='config',
+                       metavar='action',
+                       choices=['config', 'scan'],
+                       nargs='?'),
+           options={"-i2c": dict(help='[scl] [sda] for config command',
+                                 required=False,
+                                 default=[22, 23],
+                                 nargs=2)})
+
+SET = dict(help="set device configuration {rtc, hostname, localname}",
+           subcmd=dict(help=('set parameter configuration {localtime, ntptime,'
+                             ' hostname, localname}'),
+                       default='localtime',
+                       metavar='parameter', nargs='+'),
+           options={"-utc": dict(help='[utc] for "set ntptime" '
+                                 'command', required=False, nargs=1, type=int)},
+           alt_ops=['localtime', 'ntptime', 'hostname', 'localname'])
+
+DATETIME = dict(help="prints device RTC time",
+                subcmd={},
+                options={})
+
+SHASUM = dict(help="shasum SHA-256 tool",
+              subcmd=dict(help='Get the hash of a file or check a shasum file',
+                          default=[],
+                          metavar='file/pattern',
+                          nargs='*'),
+              options={"-c": dict(help='check a shasum file',
+                                  required=False,
+                                  default='')})
+TOUCH = dict(help="create a new file",
+             subcmd=dict(help='Indicate a new file/pattern to create',
+                         default=[],
+                         metavar='file/pattern',
+                         nargs='*'),
+             options={})
+
+UPIP = dict(help="install or manage MicroPython libs",
+            subcmd=dict(help='Indicate a lib/module to {install, info, find}',
+                        default=[],
+                        metavar='file/pattern',
+                        nargs='*'),
+            options={},
+            alt_ops=['install', 'info', 'find'])
+
+TIMEIT = dict(help="measure execution time of a script/function",
+              subcmd=dict(help='Indicate a script/function to measure',
+                          default=[],
+                          metavar='script/function',
+                          nargs='*'),
+              options={})
+
+UPDATE_UPYUTILS = dict(help="update upyutils scripts",
+                       subcmd={},
+                       options={})
+
+DOCS = dict(help="see upydev docs at https://upydev.readthedocs.io/en/latest/",
+            subcmd=dict(help='Indicate a keyword to search',
+                        metavar='keyword', nargs='?'),
+            options={})
+
+MDOCS = dict(help="see MicroPython docs at docs.micropython.org",
+             subcmd=dict(help='Indicate a keyword to search',
+                         metavar='keyword', nargs='?'),
+             options={})
+
+
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
-                         "cd": CD, "rm": RM, "rmdir": RMDIR, "du": DU,
+                         "touch": TOUCH, "cd": CD, "pwd": PWD,
+                         "rm": RM, "rmdir": RMDIR, "du": DU,
                          "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT,
                          "vim": VIM, "run": RUN, "reload": RELOAD,
-                         "info": INFO, "lcd": LCD,
-                         "lsl": LSL, "lpwd": LPWD, "ldu": LDU}
+                         "info": INFO, "id": ID, "uhelp": UHELP, "modules": MODULES,
+                         "uping": UPING, "rssi": RSSI, "net": NET, "ifconfig": IFCONFIG,
+                         "ap": AP, "i2c": I2C, "set": SET, "datetime": DATETIME,
+                         "shasum": SHASUM, "upip": UPIP, "timeit": TIMEIT,
+                         "update_upyutils": UPDATE_UPYUTILS,
+                         "lcd": LCD,
+                         "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
+                         "mdocs": MDOCS}

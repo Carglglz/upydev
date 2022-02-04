@@ -133,7 +133,7 @@ class LS:
                     if bydir:
                         files_in_dir = _os_match(pattrn, dir)
                     else:
-                        files_in_dir += [f"{exp_dir}/{file}" for file
+                        files_in_dir += [f"{dir}/{file}" for file
                                          in _os_match(pattrn, dir)]
 
             if files_in_dir:
