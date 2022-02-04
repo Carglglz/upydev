@@ -513,13 +513,14 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
     def runtempbuff(event):
         "Run contents of _tmp_script.py"
         def run_tmpcode():
-            print('Running Buffer')
-            with open('_tmp_script.py', 'r') as fbuff:
-                filebuffer = fbuff.read()
-            event.app.current_buffer.reset()
-            dev.paste_buff(filebuffer)
-            event.app.current_buffer.reset()
-            dev.wr_cmd('\x04', follow=True, long_string=True)
+            if '_tmp_script.py' in os.listdir():
+                print('Running Buffer...')
+                with open('_tmp_script.py', 'r') as fbuff:
+                    filebuffer = fbuff.read()
+                event.app.current_buffer.reset()
+                dev.paste_buff(filebuffer)
+                event.app.current_buffer.reset()
+                dev.wr_cmd('\x04', follow=True, long_string=True)
         run_in_terminal(run_tmpcode)
 #
 #
@@ -627,11 +628,14 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
                 except Exception as e:
                     print(e)
                 # SEND Buffer
-                with open('_tmp_script.py', 'r') as fbuff:
-                    filebuffer = fbuff.read()
-                dev.paste_buff(filebuffer)
-                print('Temp Buffer loaded do CTRL-D to execute or CTRL-C to cancel')
+                if '_tmp_script.py' in os.listdir():
+                    with open('_tmp_script.py', 'r') as fbuff:
+                        filebuffer = fbuff.read()
+                    dev.paste_buff(filebuffer)
+                    print('Temp Buffer loaded do CTRL-D to execute or CTRL-C to cancel')
                 # dev.wr_cmd('\x04', follow=True)
+                else:
+                    flags.paste['p'] = False
 
             run_in_terminal(cmd_paste_vim)
         else:

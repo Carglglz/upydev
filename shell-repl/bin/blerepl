@@ -94,7 +94,7 @@ time.sleep(0.2)
 basedev.banner()
 # ble_cp.sh_repl("\x02", banner=True)
 # ble_cp.flush()
-print('- CTRL-k to see keybindings or -h/--help to see help\n'
+print('- CTRL-k to see keybindings or -h to see help\n'
       '- CTRL-s to toggle shell/repl mode\n'
       '- CTRL-x or "exit" to exit')
 
@@ -117,9 +117,10 @@ else:
 
     basedev.wr_cmd('import gc;import os;from upysh import *;gc.collect()', silent=True)
     # # espdev.close_wconn()
-    # basedev.wr_cmd("help('modules')", silent=True, long_string=True)
+    if not _IS_WASPDEV:
+        basedev.wr_cmd("help('modules')", silent=True, long_string=True)
     # # espdev.open_wconn()
-    # _SHELL_FLAGS.frozen_modules['FM'] = basedev.output.split()[:-6]
+        _SHELL_FLAGS.frozen_modules['FM'] = basedev.output.split()[:-6]
     #
     basedev.output = None
 

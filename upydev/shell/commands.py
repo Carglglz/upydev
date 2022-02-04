@@ -38,9 +38,7 @@ class ShellFlags:
         self.dev_path = {'p': ' '}
         self.local_path = {'p': ''}
         self.show_local_path = {'s': False}
-        # self.status_encryp_msg = {'S': False, 'Toggle': True}
         self.exit = {'exit': False}
-        # encrypted_flag = {'sec': True}
         self.prompt = {'p': '>>> '}
         self.paste = {'p': False}
         self.paste_buffer = {'B': []}
@@ -95,7 +93,8 @@ class ShellCmds:
 
     def escape_sh_cmd(self, cmd_inp):
         # SHELL ESCAPE:
-        if cmd_inp.startswith('%') or cmd_inp.split()[0] not in self._shkw + ['-h']:
+        if cmd_inp.startswith('%') or cmd_inp.split()[0] not in self._shkw + ['-h',
+                                                                              '-v']:
             if cmd_inp.split()[0] != 'ping':
                 try:
                     if cmd_inp.startswith('%'):
@@ -292,13 +291,13 @@ class ShellCmds:
         if command == 'du':
             if not rest_args:
                 self.send_cmd(f'from upysh2 import du;'
-                              f'du(max_dlev={args.d});gc.collect()',
+                              f'du(max_dlev={args.d}, pattrn={args.p});gc.collect()',
                               sh_silent=False, follow=True)
 
             else:
                 du_dir = rest_args
                 self.send_cmd(f"from upysh2 import du;du(path='./{du_dir}',"
-                              f"max_dlev={args.d});gc.collect()",
+                              f"max_dlev={args.d}, pattrn={args.p});gc.collect()",
                               sh_silent=False, follow=True)
             return
 
@@ -697,6 +696,13 @@ class ShellCmds:
             if not rest_args:
                 rest_args = ['']
             rest_args = self.brace_exp(rest_args)
+            if args.d:
+                _rest_args = [[('*/' * i) + patt for i in range(args.d)] for patt in
+                              rest_args]
+                rest_args = []
+                for gpatt in _rest_args:
+                    for dpatt in gpatt:
+                        rest_args.append(dpatt)
             files_to_list = f"*{rest_args}"
             term_size = tuple(os.get_terminal_size(0))
             self.send_cmd(_CMDDICT_['LS'].format(files_to_list, term_size, args.a),
@@ -709,6 +715,13 @@ class ShellCmds:
                 print('Indicate a file/s or a matching pattrn to see')
             else:
                 rest_args = self.brace_exp(rest_args)
+                if args.d:
+                    _rest_args = [[('*/' * i) + patt for i in range(args.d)] for patt in
+                                  rest_args]
+                    rest_args = []
+                    for gpatt in _rest_args:
+                        for dpatt in gpatt:
+                            rest_args.append(dpatt)
                 files_to_see = f"*{rest_args}"
                 self.send_cmd(_CMDDICT_['CAT'].format(files_to_see),
                               sh_silent=False, follow=True)

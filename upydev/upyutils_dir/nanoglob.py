@@ -62,7 +62,7 @@ class GLOB:
                 if len(dir_pattrn) > 1:
                     dir, pattrn = dir_pattrn
                 else:
-                    dir = ''
+                    dir = '.'
                     pattrn = dir_pattrn[0]
                 dir_name = dir
                 # expand dirs

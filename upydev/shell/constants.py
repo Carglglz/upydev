@@ -53,7 +53,7 @@ shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
 shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
-                  'run', '-v']
+                  'run']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'ap', 'mem', 'install', 'touch', 'edit',
                     'whoami', 'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
@@ -215,7 +215,10 @@ LS = dict(help="list device files or directories",
                       metavar='file/dir/pattern', nargs='*'),
           options={"-a": dict(help='list hidden files', required=False,
                               default=False,
-                              action='store_true')})
+                              action='store_true'),
+                   "-d": dict(help='depth level', required=False,
+                              default=0,
+                              type=int)})
 HEAD = dict(help="display first lines of a file",
             subcmd=dict(help='Indicate a file or pattern to see', default=[],
                         metavar='file/pattern', nargs='*'),
@@ -225,7 +228,9 @@ HEAD = dict(help="display first lines of a file",
 CAT = dict(help="concatenate and print files",
            subcmd=dict(help='Indicate a file or pattern to see', default=[],
                        metavar='file/pattern', nargs='*'),
-           options={})
+           options={"-d": dict(help='depth level', required=False,
+                               default=0,
+                               type=int)})
 
 MKDIR = dict(help="make directories",
              subcmd=dict(help='Indicate a dir/pattern to create', default=[],
@@ -256,7 +261,10 @@ DU = dict(help="display disk usage statistics",
                       metavar='dir', nargs='?'),
           options={"-d": dict(help='depth level', required=False,
                               default=0,
-                              type=int)})
+                              type=int),
+                   "-p": dict(help='pattern to match', required=False,
+                              default=[],
+                              nargs='*')})
 TREE = dict(help="list contents of directories in a tree-like format",
             subcmd=dict(help='Indicate a dir to see', default='',
                         metavar='dir', nargs='?'),

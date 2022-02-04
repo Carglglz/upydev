@@ -10,9 +10,8 @@ import shlex
 import signal
 import shutil
 import os
-import glob
 
-shws_cmd_kw = ["wrepl", "getcert"]
+shws_cmd_kw = ["wrepl", "getcert", "fw", "flash"]
 
 WREPL = dict(help="enter WebREPL",
              subcmd={},

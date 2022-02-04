@@ -133,18 +133,20 @@ if args.nem:
     if not args.wss:
         print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
         print('')
-    espdev.banner()
     print('')
 # espdev.wr_cmd('B')
 if not args.nem:
+    pass
     # print('SSLWebREPL {} connected'.format(ssl_cp.version))
     # print('{1} @ {0} - {2} bits Encryption'.format(*ssl_cp.cipher))
     # # ssl_cp.ssl_repl("\x0d")
     # # time.sleep(0.2)
     # ssl_cp.ssl_repl("\x02", banner=True)
     # ssl_cp.flush_conn()
-    espdev.output = None
-print('- CTRL-k to see keybindings or -h/--help to see help\n'
+espdev.banner()
+espdev.output = None
+
+print('- CTRL-k to see keybindings or -h to see help\n'
       '- CTRL-s to toggle shell/repl mode\n'
       '- CTRL-x or "exit" to exit')
 # PROMT SESSION CONFIGURATION

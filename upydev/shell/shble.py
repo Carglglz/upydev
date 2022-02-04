@@ -9,7 +9,7 @@ import signal
 import shutil
 import os
 
-shbl_cmd_kw = ["fw"]
+shbl_cmd_kw = ["fw", "brepl", "getservices"]
 
 # SREPL = dict(help="enter REPL",
 #              subcmd={},
@@ -67,7 +67,7 @@ class ShellBleCmds(ShellCmds):
     def custom_sh_cmd(self, cmd, rest_args=None, args=None, topargs=None,
                       ukw_args=None):
         # To be implemented for each shell to manage special commands, e.g. fwr
-        if cmd == 'srepl':
+        if cmd == 'brepl':
             print('<-- Device {} MicroPython -->'.format(self.dev_name))
             print('Use CTRL-a,CTRL-x to exit')
             try:

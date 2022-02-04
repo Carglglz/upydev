@@ -59,7 +59,7 @@ if args.v:
     print('{}@{}'.format(dev_platform, unique_id))
 print('SERIAL SHELL-REPL connected')
 espdev.banner()
-print('- CTRL-k to see keybindings or -h/--help to see help\n'
+print('- CTRL-k to see keybindings or -h to see help\n'
       '- CTRL-s to toggle shell/repl mode\n'
       '- CTRL-x or "exit" to exit')
 # PROMT SESSION CONFIGURATION
