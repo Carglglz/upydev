@@ -28,7 +28,7 @@ _LOCAL_SHELL_CMDS = ['ldu', 'lsl', 'lpwd', 'lcd']
 _SPECIAL_SHELL_CMDS = ['wrepl', 'jupyterc', 'get', 'put', 'fget'
                        'fw', 'flash', 'dsync',
                        'srepl', 'pytest', 'getcert', 'git', 'update_upyutils',
-                       'upy-config', 'wss']
+                       'upy-config']
 
 
 class ShellFlags:
@@ -640,19 +640,25 @@ class ShellCmds:
             return
         # RM  --> TODO: pattrn match and -rf
         if command == 'rm':
-            if not rest_args and not args.rf:
+            if not rest_args:
                 print('Indicate a file to remove')
                 return
             else:
                 rest_args = self.brace_exp(rest_args)
+                if args.d:
+                    _rest_args = [[('*/' * i) + patt for i in range(args.d)] for patt in
+                                  rest_args]
+                    rest_args = []
+                    for gpatt in _rest_args:
+                        for dpatt in gpatt:
+                            rest_args.append(dpatt)
+                self.dev.wr_cmd('from nanoglob import glob', silent=True)
                 if not args.rf:
-                    for file in rest_args:
-                        self.dev.wr_cmd(f'rm("{file}")', follow=True)
+                    self.dev.wr_cmd(f'rm(*glob(*{rest_args}))', follow=True)
                 else:
                     self.dev.wr_cmd('from upysh2 import rmrf', silent=True)
-                    rest_args = self.brace_exp(rest_args)
-                    for file in rest_args:
-                        self.dev.wr_cmd(f'rmrf("{file}")', follow=True)
+                    self.dev.wr_cmd(f'rmrf(*glob(*{rest_args},dir_only={args.dd}))',
+                                    follow=True)
             return
 
         # RMDIR --> TODO: pattrn match and -rf
@@ -662,8 +668,17 @@ class ShellCmds:
                 return
             else:
                 rest_args = self.brace_exp(rest_args)
-                for dir in rest_args:
-                    self.dev.wr_cmd(f'rmdir("{dir}")', follow=True)
+                self.dev.wr_cmd('from nanoglob import glob', silent=True)
+                if args.d:
+                    _rest_args = [[('*/' * i) + patt for i in range(args.d)] for patt in
+                                  rest_args]
+                    rest_args = []
+                    for gpatt in _rest_args:
+                        for dpatt in gpatt:
+                            rest_args.append(dpatt)
+
+                self.dev.wr_cmd(f'rmdir(*glob(*{rest_args}, dir_only=True))',
+                                follow=True)
             return
 
         # PWD

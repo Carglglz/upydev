@@ -100,7 +100,7 @@ class SerialFileIO:
                 print(f"{dev_name}:{src_file} -> {dst_file}\n")
                 self.get(file, dst_file)
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: get Operation Cancelled')
+                print('KeyboardInterrupt: get Operation Canceled')
                 self.dev.cmd("f.close()", silent=True)
         return True
 
@@ -169,7 +169,7 @@ class SerialFileIO:
                 print(f"{src_file} -> {dev_name}:{abs_dst_file}\n")
                 self.put(src_file, dst_file)
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: put Operation Cancelled')
+                print('KeyboardInterrupt: put Operation Canceled')
                 self.dev.cmd("f.close()", silent=True)
         return True
 
@@ -275,7 +275,7 @@ def serialtool(args, dev_name):
                 except FileNotFoundError as e:
                     print('FileNotFoundError:', e)
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: put Operation Cancelled')
+                    print('KeyboardInterrupt: put Operation Canceled')
             else:
                 # Handle special cases:
                 # CASE [cwd]:
@@ -341,7 +341,7 @@ def serialtool(args, dev_name):
                             dev.reset(reconnect=False)
                             # dev.disconnect()
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: put Operation Cancelled')
+                    print('KeyboardInterrupt: put Operation Canceled')
         elif args.m == 'get':
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
@@ -403,7 +403,7 @@ def serialtool(args, dev_name):
                                 dir = ''
                             print(f'{dev_name}:{dir}/{args.f} is a directory')
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: get Operation Cancelled')
+                    print('KeyboardInterrupt: get Operation Canceled')
 
             else:
                 # list to filter files:
@@ -514,7 +514,7 @@ def serialtool(args, dev_name):
                                 dir = '/'
                             print(f'Files Not found in {dev_name}:{dir} directory')
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: get Operation Cancelled')
+                    print('KeyboardInterrupt: get Operation Canceled')
     except DeviceNotFound as e:
         print(f'ERROR {e}')
 

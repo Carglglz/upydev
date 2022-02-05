@@ -48,7 +48,10 @@ GET = dict(help="download files from device",
                        nargs='+'),
            options={"-dir": dict(help='path to download from',
                                  required=False,
-                                 default='')})
+                                 default=''),
+                    "-d": dict(help='depth level search for pattrn', required=False,
+                               default=0,
+                               type=int)})
 
 SHELLWS_CMD_DICT_PARSER = {"wrepl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET}
@@ -239,7 +242,7 @@ class ShellWsCmds(ShellCmds):
                     try:
                         put_file(ws, src_file, dst_file)
                     except KeyboardInterrupt:
-                        print('KeyboardInterrupt: put Operation Cancelled')
+                        print('KeyboardInterrupt: put Operation Canceled')
                         if input('Continue put Operation with next file? [y/n]') == 'y':
                             pass
                         else:
@@ -260,6 +263,13 @@ class ShellWsCmds(ShellCmds):
 
         if cmd == 'get':
             file_match = []
+            if args.d:
+                _rest_args = [[('*/' * i) + patt for i in range(args.d)] for patt in
+                              rest_args]
+                rest_args = []
+                for gpatt in _rest_args:
+                    for dpatt in gpatt:
+                        rest_args.append(dpatt)
             if args.dir:
                 rest_args = [f"{args.dir}/{file}" for file in rest_args]
                 # check dir
@@ -303,7 +313,7 @@ class ShellWsCmds(ShellCmds):
                     try:
                         get_file(ws, dst_file, src_file, size_file_to_get)
                     except (KeyboardInterrupt, Exception):
-                        print('KeyboardInterrupt: get Operation Cancelled')
+                        print('KeyboardInterrupt: get Operation Canceled')
                         # flush ws and reset
                         self.dev.flush()
                         self.dev.disconnect()

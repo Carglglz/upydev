@@ -100,7 +100,7 @@ class BleFileIO:
                 print(f"{dev_name}:{src_file} -> {dst_file}\n")
                 self.get(file, dst_file)
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: get Operation Cancelled')
+                print('KeyboardInterrupt: get Operation Canceled')
                 self.dev.cmd("f.close()", silent=True)
         return True
 
@@ -174,7 +174,7 @@ class BleFileIO:
                 print(f"{src_file} -> {dev_name}:{abs_dst_file}\n")
                 self.put(src_file, dst_file)
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: put Operation Cancelled')
+                print('KeyboardInterrupt: put Operation Canceled')
                 self.dev.cmd("f.close()", silent=True)
         return True
 
@@ -281,7 +281,7 @@ def bletool(args, dev_name):
                 except FileNotFoundError as e:
                     print('FileNotFoundError:', e)
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: put Operation Cancelled')
+                    print('KeyboardInterrupt: put Operation Canceled')
             else:
                 # Handle special cases:
                 # CASE [cwd]:
@@ -349,7 +349,7 @@ def bletool(args, dev_name):
                             time.sleep(0.4)
                             # dev.disconnect()
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: put Operation Cancelled')
+                    print('KeyboardInterrupt: put Operation Canceled')
         elif args.m == 'get':
             dev.len_buffer = 512
             if not args.f and not args.fre:
@@ -413,7 +413,7 @@ def bletool(args, dev_name):
                                 dir = ''
                             print(f'{dev_name}:{dir}/{args.f} is a directory')
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: get Operation Cancelled')
+                    print('KeyboardInterrupt: get Operation Canceled')
 
             else:
                 # list to filter files:
@@ -523,7 +523,7 @@ def bletool(args, dev_name):
                                 dir = '/'
                             print(f'Files Not found in {dev_name}:{dir} directory')
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: get Operation Cancelled')
+                    print('KeyboardInterrupt: get Operation Canceled')
     except DeviceNotFound as e:
         print(f'ERROR {e}')
 

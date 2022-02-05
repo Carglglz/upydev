@@ -169,6 +169,20 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
                 rest = buff_text.split('/')[-1]
                 cmd_ls_glb = (f"[val for val in os.listdir('{dir_to_list}') "
                               f"if val.startswith('{rest}')]")
+            else:
+                if dev.dev_class == 'WebSocketDevice':
+
+                    def pprint_result():
+                        sz, wd = os.get_terminal_size(0)
+                        last_cmd = event.app.current_buffer.document.text
+                        _printpath_cmd(last_cmd)
+                        dev.wr_cmd(f"print_table({cmd_ls_glb}, wide=28, format_SH=True,"
+                                   f" gts={(sz, wd)});gc.collect()",
+                                   follow=True,
+                                   long_string=True)
+
+                    run_in_terminal(pprint_result)
+                    return
 
         else:
             rest = ''
@@ -177,6 +191,18 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
             if buff_text != '':
                 cmd_ls_glb = (f"[val for val in os.listdir() if "
                               f"val.startswith('{buff_text}')]")
+            else:
+                if dev.dev_class == 'WebSocketDevice':
+                    def pprint_result():
+                        sz, wd = os.get_terminal_size(0)
+                        last_cmd = event.app.current_buffer.document.text
+                        _printpath_cmd(last_cmd)
+                        dev.wr_cmd(f"print_table({cmd_ls_glb}, wide=28, format_SH=True,"
+                                   f" gts={(sz, wd)});gc.collect()", follow=True,
+                                   long_string=True)
+
+                    run_in_terminal(pprint_result)
+                    return
 
         output = dev.wr_cmd(cmd_ls_glb+';gc.collect()', silent=True, rtn_resp=True)
         try:
@@ -243,10 +269,7 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
                                         print_table(
                                             result, wide=28, format_SH=True)
                                     run_in_terminal(pprint_result)
-                                # else:
-                                #     print('>>> {}'.format(buff_text))
-                                #     print_table(
-                                #         result, wide=28, format_SH=True)
+
                             else:
                                 event.app.current_buffer.insert_text(
                                     comm_part[len(buff_text):])

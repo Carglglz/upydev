@@ -171,8 +171,34 @@ clear = CLEAR()
 cd = os.chdir
 mkdir = os.mkdir
 mv = os.rename
-rm = os.remove
-rmdir = os.rmdir
+# rm = os.remove
+# rmdir = os.rmdir
+
+
+def rm(*args):
+    if not args:
+        print(f'rm: No such file in directory')
+    for file in args:
+        try:
+            if os.stat(file)[0] & 0x4000:
+                print(f'rm: {file}: is a directory, use rmdir')
+            else:
+                os.remove(file)
+        except Exception:
+            print(f'rm: {file}: No such file in directory')
+
+
+def rmdir(*args):
+    if not args:
+        print(f'rmdir: No such directory')
+    for dir in args:
+        try:
+            if not os.stat(dir)[0] & 0x4000:
+                print(f'rmdir: {dir}: is a file, use rm')
+            else:
+                os.rmdir(dir)
+        except Exception:
+            print(f'rmdir: {dir}: No such directory or directory not empty')
 
 
 def head(f, n=10):

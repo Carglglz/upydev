@@ -2468,11 +2468,11 @@ def custom_sh_cmd(cmd_inp):
                                         'import gc;import os;from upysh import *;gc.collect()', silent=True)
                                     shr_cp.flush_conn()
                                 else:
-                                    print('Operation cancelled')
+                                    print('Operation Canceled')
 
                             except Exception as e:
                                 print(e)
-                                print('Operation cancelled')
+                                print('Operation Canceled')
 
                     # print(fw_req.decode())
                 except Exception as e:
@@ -3478,7 +3478,7 @@ def send_KBI(event):
         elif prompt['p'] == shell_prompt['s']:
             if edit_mode['E'] is True:
                 edit_mode['E'] = False
-                print("<-----Edition Cancelled---->")
+                print("<-----Edition Canceled---->")
                 print('Press ESC, ENTER to exit and return to shell')
     run_in_terminal(cmd_kbi)
 

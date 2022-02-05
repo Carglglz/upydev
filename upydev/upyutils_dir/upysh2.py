@@ -1,6 +1,7 @@
 import sys
 import os
 import gc
+import re
 
 
 class LTREE:
@@ -14,10 +15,14 @@ class LTREE:
         if is_root:
             current_dir = os.getcwd()
             if path != '.':
-                if os.stat(path)[0] & 0x4000:
-                    print(f'\u001b[34;1m{path}\033[0m')
-                else:
-                    print(f'tree: {path}: Not a directory')
+                try:
+                    if os.stat(path)[0] & 0x4000:
+                        print(f'\u001b[34;1m{path}\033[0m')
+                    else:
+                        print(f'tree: {path}: Not a directory')
+                        return
+                except OSError:
+                    print(f'tree: {path}: Not such directory')
                     return
             else:
                 print(f'\u001b[34;1m{path}\033[0m')
@@ -102,58 +107,64 @@ class DISK_USAGE:
         self.__call__()
         return ""
 
-    def __call__(self, path=".", dlev=0, max_dlev=0, hidden=False):
+    def __call__(self, path=".", dlev=0, max_dlev=0, hidden=False, pattrn=False):
+        if pattrn:
+            rpatt = [re.compile(pat.replace('.', r'\.').replace('*', '.*') + '$')
+                     for pat in pattrn]
+        else:
+            rpatt = False
         if path != ".":
             if not os.stat(path)[0] & 0x4000:
-                print('{:9} {}'.format(self.print_filesys_info(os.stat(path)[6]), path))
+                self.pprint(path, path, rpatt)
             else:
                 if hidden:
                     resp = {path+'/'+dir: os.stat(path+'/'+dir)
                             [6] for dir in os.listdir(path)}
                 else:
-                    resp = {
-                        path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                    resp = {path+'/'+dir: os.stat(path+'/'+dir)[6]
+                            for dir in os.listdir(path)
+                            if not dir.startswith('.')}
                 for dir in resp.keys():
 
                     if not os.stat(dir)[0] & 0x4000:
-                        print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir))
+                        self.pprint(resp[dir], dir, rpatt)
 
                     else:
                         if dlev < max_dlev:
                             dlev += 1
                             self.__call__(path=dir, dlev=dlev,
-                                          max_dlev=max_dlev, hidden=hidden)
+                                          max_dlev=max_dlev, hidden=hidden,
+                                          pattrn=pattrn)
                             dlev += (-1)
                         else:
-                            print('{:9} \u001b[34;1m{}\033[0m'.format(
-                                self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
-                        gc.collect()
+                            self.pprint(self.get_dir_sz_recv(dir),
+                                        f'\u001b[34;1m{dir}\033[0m', rpatt)
 
         else:
             if hidden:
                 resp = {path+'/'+dir: os.stat(path+'/'+dir)
                         [6] for dir in os.listdir(path)}
             else:
-                resp = {
-                    path+'/'+dir: os.stat(path+'/'+dir)[6] for dir in os.listdir(path) if not dir.startswith('.')}
+                resp = {path+'/'+dir: os.stat(path+'/'+dir)[6]
+                        for dir in os.listdir(path) if not dir.startswith('.')}
             for dir in resp.keys():
 
                 if not os.stat(dir)[0] & 0x4000:
-                    print('{:9} {}'.format(self.print_filesys_info(resp[dir]), dir))
+                    self.pprint(resp[dir], dir, rpatt)
 
                 else:
                     if dlev < max_dlev:
                         dlev += 1
                         self.__call__(path=dir, dlev=dlev,
-                                      max_dlev=max_dlev, hidden=hidden)
+                                      max_dlev=max_dlev, hidden=hidden, pattrn=pattrn)
                         dlev += (-1)
                     else:
-                        print('{:9} \u001b[34;1m{}\033[0m'.format(
-                            self.print_filesys_info(self.get_dir_size_recursive(dir)), dir))
+                        self.pprint(self.get_dir_sz_recv(dir),
+                                    f'\u001b[34;1m{dir}\033[0m', rpatt)
 
                     gc.collect()
 
-    def print_filesys_info(self, filesize):
+    def print_fs_info(self, filesize):
         _kB = 1000
         if filesize < _kB:
             sizestr = str(filesize) + " by"
@@ -165,22 +176,35 @@ class DISK_USAGE:
             sizestr = "%0.1f GB" % (filesize / _kB**3)
         return sizestr
 
-    def get_dir_size_recursive(self, dir):
-        return sum([os.stat(dir+'/'+f)[6] if not os.stat(dir+'/'+f)[0] & 0x4000 else self.get_dir_size_recursive(dir+'/'+f) for f in os.listdir(dir)])
+    def pprint(self, sz, path, _patt):
+        if sz == path:
+            sz = os.stat(path)[6]
+        if _patt:
+            if any([patt.match(path) for patt in _patt]):
+                print(f'{self.print_fs_info(sz):9} {path}')
+        else:
+            print(f'{self.print_fs_info(sz):9} {path}')
+
+    def get_dir_sz_recv(self, dir):
+        return sum([os.stat(dir+'/'+f)[6]
+                    if not os.stat(dir+'/'+f)[0] & 0x4000
+                    else self.get_dir_sz_recv(dir+'/'+f)
+                    for f in os.listdir(dir)])
 
 
 # from @Roberthh #https://forum.micropython.org/viewtopic.php?f=2&t=7512
-def rmrf(d):  # Remove file or tree
-    try:
-        if os.stat(d)[0] & 0x4000:  # Dir
-            for f in os.ilistdir(d):
-                if f[0] not in ('.', '..'):
-                    rmrf("/".join((d, f[0])))  # File or Dir
-            os.rmdir(d)
-        else:  # File
-            os.remove(d)
-    except Exception as e:
-        print("rm of '%s' failed" % d)
+def rmrf(*args):  # Remove file or tree
+    for d in args:
+        try:
+            if os.stat(d)[0] & 0x4000:  # Dir
+                for f in os.ilistdir(d):
+                    if f[0] not in ('.', '..'):
+                        rmrf("/".join((d, f[0])))  # File or Dir
+                os.rmdir(d)
+            else:  # File
+                os.remove(d)
+        except Exception:
+            print(f"rm: {d}: remove failed")
 
 
 def touch(*args):

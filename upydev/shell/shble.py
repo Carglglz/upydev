@@ -46,7 +46,10 @@ GET = dict(help="download files from device",
                        nargs='+'),
            options={"-dir": dict(help='path to download from',
                                  required=False,
-                                 default='')})
+                                 default=''),
+                    "-d": dict(help='depth level search for pattrn', required=False,
+                               default=0,
+                               type=int)})
 
 SHELLBLE_CMD_DICT_PARSER = {"jupyterc": JUPYTERC,
                             "pytest": PYTEST, "put": PUT, "get": GET}
@@ -228,7 +231,7 @@ class ShellBleCmds(ShellCmds):
                     try:
                         self.fileio.put(src_file, dst_file)
                     except KeyboardInterrupt:
-                        print('KeyboardInterrupt: put Operation Cancelled')
+                        print('KeyboardInterrupt: put Operation Canceled')
                         self.dev.cmd("f.close()", follow=True)
                         if input('Continue put Operation with next file? [y/n]') == 'y':
                             pass
@@ -241,6 +244,13 @@ class ShellBleCmds(ShellCmds):
 
         if cmd == 'get':
             file_match = []
+            if args.d:
+                _rest_args = [[('*/' * i) + patt for i in range(args.d)] for patt in
+                              rest_args]
+                rest_args = []
+                for gpatt in _rest_args:
+                    for dpatt in gpatt:
+                        rest_args.append(dpatt)
             if args.dir:
                 rest_args = [f"{args.dir}/{file}" for file in rest_args]
                 # check dir
@@ -282,7 +292,7 @@ class ShellBleCmds(ShellCmds):
                     try:
                         self.fileio.get((size_file_to_get, src_file), dst_file)
                     except (KeyboardInterrupt, Exception):
-                        print('KeyboardInterrupt: get Operation Cancelled')
+                        print('KeyboardInterrupt: get Operation Canceled')
                         # flush ws and reset
                         self.dev.cmd("f.close()", follow=True)
                         if input('Continue get Operation with next file? [y/n]') == 'y':

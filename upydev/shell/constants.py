@@ -56,11 +56,11 @@ shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
                   'run']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'ap', 'mem', 'install', 'touch', 'edit',
-                    'whoami', 'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
+                    'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
                     'set', 'tree', 'fget', 'dsync', 'reload', 'docs',
                     'bat', 'du', 'ldu', 'upip', 'uping',
                     'timeit', 'i2c', 'git', 'batstyle',
-                    'upy-config', 'wss', 'jupyterc', 'pytest', 'rssi',
+                    'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs']
 
@@ -246,15 +246,23 @@ PWD = dict(help="print current working directory",
            options={})
 RM = dict(help="remove file or pattern of files",
           subcmd=dict(help='Indicate a file/pattern to remove', default=[],
-                      metavar='file/dir/pattern', nargs='*'),
+                      metavar='file/dir/pattern', nargs='+'),
           options={"-rf": dict(help='remove recursive force a dir or file',
                                required=False,
-                               default=10,
+                               default=False,
+                               action='store_true'),
+                   "-d": dict(help='depth level search', required=False,
+                              default=0,
+                              type=int),
+                   "-dd": dict(help='filter for directories only', required=False,
+                               default=False,
                                action='store_true')})
 RMDIR = dict(help="remove directories or pattern of directories",
              subcmd=dict(help='Indicate a dir/pattern to remove', default=[],
-                         metavar='dir', nargs='*'),
-             options={})
+                         metavar='dir', nargs='+'),
+             options={"-d": dict(help='depth level search', required=False,
+                                 default=0,
+                                 type=int)})
 
 DU = dict(help="display disk usage statistics",
           subcmd=dict(help='Indicate a dir to see usage', default='',

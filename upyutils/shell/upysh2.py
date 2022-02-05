@@ -15,10 +15,14 @@ class LTREE:
         if is_root:
             current_dir = os.getcwd()
             if path != '.':
-                if os.stat(path)[0] & 0x4000:
-                    print(f'\u001b[34;1m{path}\033[0m')
-                else:
-                    print(f'tree: {path}: Not a directory')
+                try:
+                    if os.stat(path)[0] & 0x4000:
+                        print(f'\u001b[34;1m{path}\033[0m')
+                    else:
+                        print(f'tree: {path}: Not a directory')
+                        return
+                except OSError:
+                    print(f'tree: {path}: Not such directory')
                     return
             else:
                 print(f'\u001b[34;1m{path}\033[0m')
@@ -189,17 +193,18 @@ class DISK_USAGE:
 
 
 # from @Roberthh #https://forum.micropython.org/viewtopic.php?f=2&t=7512
-def rmrf(d):  # Remove file or tree
-    try:
-        if os.stat(d)[0] & 0x4000:  # Dir
-            for f in os.ilistdir(d):
-                if f[0] not in ('.', '..'):
-                    rmrf("/".join((d, f[0])))  # File or Dir
-            os.rmdir(d)
-        else:  # File
-            os.remove(d)
-    except Exception:
-        print(f"rm: {d}: remove failed")
+def rmrf(*args):  # Remove file or tree
+    for d in args:
+        try:
+            if os.stat(d)[0] & 0x4000:  # Dir
+                for f in os.ilistdir(d):
+                    if f[0] not in ('.', '..'):
+                        rmrf("/".join((d, f[0])))  # File or Dir
+                os.rmdir(d)
+            else:  # File
+                os.remove(d)
+        except Exception:
+            print(f"rm: {d}: remove failed")
 
 
 def touch(*args):

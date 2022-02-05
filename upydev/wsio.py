@@ -395,7 +395,7 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                         print(f'ERROR {e}')
                         return False
                 except (KeyboardInterrupt, Exception):
-                    print('KeyboardInterrupt: get Operation Cancelled')
+                    print('KeyboardInterrupt: get Operation Canceled')
                     # flush ws
                     dev.flush()
                     dev.disconnect()
@@ -417,7 +417,7 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                     try:
                         get_file(ws, dst_file, src_file, size_file_to_get)
                     except (KeyboardInterrupt, Exception):
-                        print('KeyboardInterrupt: get Operation Cancelled')
+                        print('KeyboardInterrupt: get Operation Canceled')
                         # flush ws and reset
                         dev.flush()
                         dev.disconnect()
@@ -464,7 +464,7 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                         print(f'ERROR {e}')
                         return False
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: put Operation Cancelled')
+                    print('KeyboardInterrupt: put Operation Canceled')
                     if not dev.connected:
                         ws.s.close()
                     return False
@@ -485,7 +485,7 @@ def wsfileio(args, file, upyfile, devname, dev=None):
                     try:
                         put_file(ws, src_file, dst_file)
                     except KeyboardInterrupt:
-                        print('KeyboardInterrupt: put Operation Cancelled')
+                        print('KeyboardInterrupt: put Operation Canceled')
                         if input('Continue get Operation with next file? [y/n]') == 'y':
                             pass
                         else:
@@ -608,7 +608,7 @@ def wstool(args, dev_name):
             except FileNotFoundError as e:
                 print('FileNotFoundError:', e)
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: put Operation Cancelled')
+                print('KeyboardInterrupt: put Operation Canceled')
         else:
             # Handle special cases:
             # CASE [cwd]:
@@ -681,7 +681,7 @@ def wstool(args, dev_name):
                         time.sleep(0.2)
                         # dev.disconnect()
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: put Operation Cancelled')
+                print('KeyboardInterrupt: put Operation Canceled')
         return
     elif args.m == 'get':
         if not args.f and not args.fre:
@@ -740,7 +740,7 @@ def wstool(args, dev_name):
             except DeviceNotFound as e:
                 print(f'ERROR {e}')
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: get Operation Cancelled')
+                print('KeyboardInterrupt: get Operation Canceled')
         else:
             # list to filter files:
             # regular names:
@@ -853,7 +853,7 @@ def wstool(args, dev_name):
             except DeviceNotFound as e:
                 print(f'ERROR {e}')
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: get Operation Cancelled')
+                print('KeyboardInterrupt: get Operation Canceled')
         return
 
 # TODO: TEST ALL CASES

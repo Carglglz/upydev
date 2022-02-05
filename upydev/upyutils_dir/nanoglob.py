@@ -41,7 +41,7 @@ class GLOB:
         self.__call__()
         return ""
 
-    def __call__(self, *args, size=False):
+    def __call__(self, *args, size=False, dir_only=False):
         dir_names_or_pattrn = args
         files_in_dir = []
         for dir_name in dir_names_or_pattrn:
@@ -49,8 +49,10 @@ class GLOB:
                 try:
                     st = os.stat(dir_name)
                     if st[0] & 0x4000:  # stat.S_IFDIR
-                        files_in_dir += [f"{dir_name}/{file}" for file
-                                         in os.listdir(dir_name)]
+                        files_in_dir.append(dir_name)
+                        # if not dir_only:
+                        #     files_in_dir += [f"{dir_name}/{file}" for file
+                        #                      in os.listdir(dir_name)]
                     else:
                         if dir_name in os.listdir(os.getcwd()):
                             files_in_dir.append(dir_name)
@@ -61,6 +63,8 @@ class GLOB:
                 dir_pattrn = dir_name.rsplit('/', 1)
                 if len(dir_pattrn) > 1:
                     dir, pattrn = dir_pattrn
+                    if '' == pattrn:
+                        pattrn = '*'
                 else:
                     dir = '.'
                     pattrn = dir_pattrn[0]
@@ -83,7 +87,10 @@ class GLOB:
             return [(os.stat(file)[6], file) for file in files_in_dir
                     if not os.stat(file)[0] & 0x4000]
         else:
-            return files_in_dir
+            if dir_only:
+                return [dir for dir in files_in_dir if os.stat(dir)[0] & 0x4000]
+            else:
+                return files_in_dir
 
 
 glob = GLOB()

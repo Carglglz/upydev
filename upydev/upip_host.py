@@ -219,7 +219,7 @@ def install_pkg(pkg_spec, install_path, read_pkg_info=False):
         proc = subprocess.call(curl_cmd)
         # print('Done!')
     except KeyboardInterrupt:
-        print('Operation cancelled')
+        print('Operation Canceled')
     try:
         tarfile = [f for f in os.listdir() if pkg_spec.replace('micropython-', '') in f and f.endswith('.tar.gz')][0]
         shutil.unpack_archive(tarfile)

@@ -37,7 +37,7 @@ FILEIO_HELP = """
         - install : install libs to '/lib' path with upip; indicate lib with -f option
 
         - update_upyutils: to update the latest versions of sync_tool.py, upylog.py,
-                        upynotify.py, upysecrets.py, upysh2.py, ssl_repl.py, uping.py, time_it.py,
+                        upynotify.py, upysecrets.py, upysh2.py, nanoglob.py, uping.py, time_it.py,
                         wss_repl.py and wss_helper.py.
 
 """

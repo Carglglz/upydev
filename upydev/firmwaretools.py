@@ -214,7 +214,7 @@ def firmwaretools_action(args, **kargs):
                                     proc = subprocess.call(curl_cmd)
                                     print('Done!')
                                 except KeyboardInterrupt:
-                                    print('Operation cancelled')
+                                    print('Operation Canceled')
                         else:
                             print('No firmware available that match: {}'.format(args.b))
                     else:
@@ -226,7 +226,7 @@ def firmwaretools_action(args, **kargs):
                             proc = subprocess.call(curl_cmd)
                             print('Done!')
                         except KeyboardInterrupt:
-                            print('Operation cancelled')
+                            print('Operation Canceled')
                 else:
                     if not args.b:  # Autodetect
                         try:
@@ -275,7 +275,7 @@ def firmwaretools_action(args, **kargs):
                             proc = subprocess.call(curl_cmd)
                             print('Done!')
                         except KeyboardInterrupt:
-                            print('Operation cancelled')
+                            print('Operation Canceled')
 
     elif args.m == 'flash':
         devname = kargs.get('device')
@@ -321,7 +321,7 @@ def firmwaretools_action(args, **kargs):
                         proc = subprocess.call(esptool_cmd)
                         print('Done!')
                     except KeyboardInterrupt:
-                        print('Operation cancelled')
+                        print('Operation Canceled')
                 elif 'esp8266' in args.f:
                     if args.i:
                         print('Checking firmware and device platform match')
@@ -351,7 +351,7 @@ def firmwaretools_action(args, **kargs):
                         proc = subprocess.call(esptool_cmd)
                         print('Done!')
                     except KeyboardInterrupt:
-                        print('Operation cancelled')
+                        print('Operation Canceled')
 
                 elif 'pyb' in args.f:
                     dev = Device(args.t, args.p, init=True, autodetect=True,

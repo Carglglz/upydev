@@ -2290,11 +2290,11 @@ def custom_sh_cmd(cmd_inp):
                         print(f'Files not Found in {dev_dir} directory')
 
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: Operation Cancelled')
+                print('KeyboardInterrupt: Operation Canceled')
             except Exception as e:
                 print(e)
                 if not espdev.connected:
-                    print('KeyboardInterrupt: Operation Cancelled')
+                    print('KeyboardInterrupt: Operation Canceled')
                     try:
                         espdev.connect(ssl=args.wss, auth=args.wss)
                     except Exception as e:
@@ -2457,7 +2457,7 @@ def custom_sh_cmd(cmd_inp):
                 result = wsfileio(fileargs, 'fre', 'fre', args.dev, dev=espdev)
                 fileargs.fre = []
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: Operation Cancelled')
+                print('KeyboardInterrupt: Operation Canceled')
             except Exception as e:
                 print(e)
                 # print('File not Found\nIndicate a valid file to put')
@@ -4276,7 +4276,7 @@ def send_KBI(event):
         elif prompt['p'] == shell_prompt['s']:
             if edit_mode['E'] is True:
                 edit_mode['E'] = False
-                print("<-----Edition Cancelled---->")
+                print("<-----Edition Canceled---->")
                 print('Press ESC, ENTER to exit and return to shell')
     run_in_terminal(cmd_kbi)
 

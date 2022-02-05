@@ -191,7 +191,7 @@ class SyncFileIO:
                 self.dev.output_queue.get()
                 print('')
             except KeyboardInterrupt:
-                print('KeyboardInterrupt: get Operation Cancelled')
+                print('KeyboardInterrupt: get Operation Canceled')
             # time_h.sleep(1)
         return True
 
@@ -279,7 +279,7 @@ def synctool(args, dev_name):
                                 dir = ''
                             print(f'{dev_name}:{dir}/{args.f} is a directory')
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: get Operation Cancelled')
+                    print('KeyboardInterrupt: get Operation Canceled')
 
             else:
                 # list to filter files:
@@ -392,7 +392,7 @@ def synctool(args, dev_name):
                                 dir = '/'
                             print(f'Files Not found in {dev_name}:{dir} directory')
                 except KeyboardInterrupt:
-                    print('KeyboardInterrupt: get Operation Cancelled')
+                    print('KeyboardInterrupt: get Operation Canceled')
     except DeviceNotFound as e:
         print(f'ERROR {e}')
 
