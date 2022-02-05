@@ -84,7 +84,8 @@ else:
     _SHELL_FLAGS.prompt['p'] = _SHELL_FLAGS.shell_prompt['s']
     _SHELL_FLAGS.shell_mode['S'] = True
 
-    espdev.wr_cmd('import gc;import os;from upysh import *;gc.collect()', silent=True)
+    espdev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
+                  ';gc.collect()', silent=True)
     # espdev.close_wconn()
     espdev.wr_cmd("help('modules')", silent=True, long_string=True)
     # espdev.open_wconn()

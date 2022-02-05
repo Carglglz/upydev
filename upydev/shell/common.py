@@ -315,10 +315,26 @@ class LTREE:
         return ""
 
     def __call__(self, path=".", level=0, is_last=False, is_root=True,
-                 carrier="│   ", hidden=False):
+                 carrier="│", hidden=False):
         if is_root:
-            print('\u001b[34;1m{}\033[0m'.format(path))
-        os.chdir(path)
+            current_dir = os.getcwd()
+            if path != '.':
+                try:
+                    if os.stat(path)[0] & 0x4000:
+                        print(f'\u001b[34;1m{path}\033[0m')
+                    else:
+                        print(f'tree: {path}: Not a directory')
+                        return
+                except OSError:
+                    print(f'tree: {path}: Not such directory')
+                    return
+            else:
+                print(f'\u001b[34;1m{path}\033[0m')
+        try:
+            os.chdir(path)
+        except OSError:
+            print(f'tree: {path}: Not a directory')
+            return
         r_path = path
         path = "."
         if hidden:
@@ -338,22 +354,22 @@ class LTREE:
             st = os.stat("%s/%s" % (path, f))
             if st[0] & 0x4000:  # stat.S_IFDIR
                 print(self._treeindent(level, f, last_file, is_last=is_last,
-                                       carrier=carrier) + "  \u001b[34;1m%s\033[0m" % f)
+                                       carrier=carrier) + " \u001b[34;1m%s\033[0m" % f)
                 if f == last_file and level == 0:
-                    carrier = "    "
+                    carrier = "   "
                 os.chdir(f)
                 level += 1
                 lf = last_file == f
                 if level > 1:
                     if lf:
-                        carrier += "     "
+                        carrier += "    "
                     else:
-                        carrier += "    │"
+                        carrier += "   │"
                 ns_f, ns_d = self.__call__(level=level, is_last=lf,
                                            is_root=False, carrier=carrier,
                                            hidden=hidden)
                 if level > 1:
-                    carrier = carrier[:-5]
+                    carrier = carrier[:-4]
                 os.chdir('..')
                 level += (-1)
                 nf += ns_f
@@ -371,6 +387,8 @@ class LTREE:
             print('\n{} {}, {} {}'.format(nd, nd_str, nf, nf_str))
             if r_path != ".":
                 os.chdir('..')
+            if os.getcwd() != current_dir:
+                os.chdir(current_dir)
         else:
             return (nf, nd)
 
@@ -382,9 +400,9 @@ class LTREE:
                 return "└──"
         else:
             if f != lastfile:
-                return carrier + "    ├────"
+                return carrier + "   ├──"
             else:
-                return carrier + "    └────"
+                return carrier + "   └──"
 
 
 tree = LTREE()

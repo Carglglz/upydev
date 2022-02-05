@@ -31,7 +31,7 @@ def _os_match_dir(patt, path):
             and os.stat(f"{path}/{dir}")[0] & 0x4000]
 
 
-def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=False):
+def _shasum(file, debug=True, save=False, rtn=False, filetosave=False):
     _hash = hashlib.sha256()
     try:
         with open(file, 'rb') as bfile:
@@ -42,9 +42,9 @@ def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=Fals
                     buff = bfile.read(256)
                     if buff != b'':
                         _hash.update(buff)
-                except Exception:
+                except OSError:
                     return
-    except Exception:
+    except OSError:
         return
     _result = _hash.digest()
     result = hexlify(_result).decode()
@@ -64,7 +64,6 @@ def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=Fals
 def shasum(*args, **kargs):
     files_to_hash = args
     rtn = kargs.get('rtn')
-    size = kargs.get('size')
     files_in_dir = []
     hashlist = []
     for file_name in files_to_hash:
@@ -77,10 +76,8 @@ def shasum(*args, **kargs):
             file_pattrn = file_name.rsplit('/', 1)
             if len(file_pattrn) > 1:
                 dir, pattrn = file_pattrn
-                if '' == pattrn:
-                    pattrn = '*'
             else:
-                dir = '.'
+                dir = ''
                 pattrn = file_pattrn[0]
             dir_name = dir
             # expand dirs
@@ -123,11 +120,7 @@ def shasum(*args, **kargs):
                         else:
                             _shasum(filehash, **kargs)
     if rtn:
-        if not size:
-            return [(fname, fhash) for fname, fhash in hashlist if fhash]
-        else:
-            return [(fname, os.stat(fname)[6], fhash)
-                    for fname, fhash in hashlist if fhash]
+        return hashlist
 
 
 def shasum_check(shafile):

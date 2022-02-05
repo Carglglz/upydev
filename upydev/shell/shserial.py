@@ -1,8 +1,10 @@
 from upydev.shell.commands import ShellCmds, _SHELL_CMDS, _UPYDEVPATH
 from upydev.shell.parser import subshparser_cmd
-from upydev.shell.nanoglob import glob as nglob
+from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydevice import DeviceException
 from upydev.serialio import SerialFileIO
+from upydev.shell.common import tree
+from upydev.shell.shasum import shasum
 import subprocess
 import shlex
 import signal
@@ -51,8 +53,24 @@ GET = dict(help="download files from device",
                                default=0,
                                type=int)})
 
+DSYNC = dict(help="recursively sync a folder in device filesystem",
+             subcmd=dict(help='Indicate a dir/pattern to '
+                         'sync',
+                         default=['.'],
+                         metavar='dir/pattern',
+                         nargs='+'),
+             options={"-rf": dict(help='remove recursive force a dir or file deleted'
+                                       ' in local directory',
+                                  required=False,
+                                  default=False,
+                                  action='store_true'),
+                      "-d": dict(help='sync from device to host', required=False,
+                                 default=False,
+                                 action='store_true')})
+
 SHELLSR_CMD_DICT_PARSER = {"srepl": SREPL, "jupyterc": JUPYTERC,
-                           "pytest": PYTEST, "put": PUT, "get": GET}
+                           "pytest": PYTEST, "put": PUT, "get": GET,
+                           "dsync": DSYNC}
 
 
 class ShellSrCmds(ShellCmds):
@@ -308,3 +326,207 @@ class ShellSrCmds(ShellCmds):
                     print(f'get: {", ".join(rest_args)}: No matching files found in '
                           f'{self.dev_name}:/ ')
             return
+
+        if cmd == 'dsync':
+            # 1: copy dir structure
+            #    get depth level path
+            #    get local dirs glob (dir_only)
+            #    get device dirs glob()
+            #    if dir not in glob dir mkdir
+            #    match option -rf:
+            #    if dir
+            # 2: copy files if modified or new
+            #   get (files, hash) local
+            #   get (files,  hash) device
+            #   match: options -rf (remove if not present local)
+            #   if in device and not in local:
+            #      device rm
+            #
+            if not args.d:
+                dir_match = nglob(*rest_args, dir_only=True)
+                if dir_match:
+                    for dir in dir_match:
+                        tree(dir)
+                        depth_level = _get_path_depth(dir) + 1
+                        pattern_dir = [f"{dir}/*{'/*'* i}" for i in range(depth_level)]
+                        pattern_dir = [dir] + pattern_dir
+                        local_dirs = nglob(*pattern_dir, dir_only=True)
+                        dev_dirs = self.dev.wr_cmd(f"glob(*{pattern_dir}, "
+                                                   f"dir_only=True)",
+                                                   silent=True, rtn_resp=True)
+                        dirs_to_make = [ldir for ldir in local_dirs
+                                        if ldir not in dev_dirs]
+                        if dirs_to_make:
+                            print('dsync: making new dirs:')
+                            for ndir in dirs_to_make:
+                                print(f'- {ndir}')
+                                self.dev.wr_cmd(f'mkdir("{ndir}")', follow=True)
+                        else:
+                            print('dsync: no new directories to make')
+
+                        if args.rf:
+                            dirs_to_delete = [ddir for ddir in dev_dirs
+                                              if ddir not in local_dirs]
+                            if dirs_to_delete:
+                                print('dsync: deleting old dirs:')
+                                for ndir in dirs_to_delete:
+                                    print(f'- {ndir}')
+                                self.dev.wr_cmd('from upysh2 import rmrf', silent=True)
+                                self.dev.wr_cmd(f'rmrf(*{dirs_to_delete})',
+                                                follow=True)
+
+                        local_files = shasum(*pattern_dir, debug=False, rtn=True)
+                        local_files_dict = {
+                            fname: fhash for fname, fhash in local_files}
+                        if local_files:
+                            dev_cmd_files = (f"from shasum import shasum;"
+                                             f"shasum(*{pattern_dir}, debug=False, "
+                                             f"rtn=True)")
+                            dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                                                        rtn_resp=True)
+                            if dev_files:
+                                files_to_sync = [(os.stat(fts[0])[6], fts[0])
+                                                 for fts in local_files if fts not in
+                                                 dev_files]
+                            else:
+                                files_to_sync = [(os.stat(fts)[6], fts)
+                                                 for fts in local_files_dict.keys()]
+                            # print(local_files)
+                            # print(dev_files)
+                            # print(files_to_sync)
+                            if files_to_sync:
+                                print('\ndsync: syncing new or modified files:')
+                                for sz, name in files_to_sync:
+                                    print(f'- {name} [{sz/1000:.2f} kB]')
+                                print('')
+                                for sz, name in files_to_sync:
+                                    print(f"{name} -> {self.dev_name}:{name}")
+                                    try:
+                                        self.fileio.put(name, name)
+                                    except KeyboardInterrupt:
+                                        print('KeyboardInterrupt: put Operation Canceled')
+                                        self.dev.cmd("f.close()", silent=True)
+                                        if input('Continue put Operation with next file? [y/n]') == 'y':
+                                            pass
+                                        else:
+                                            raise KeyboardInterrupt
+                            else:
+                                print('dsync: no new or modified files to sync')
+
+                            if args.rf:
+                                _local_files = [lf[0] for lf in local_files]
+                                files_to_delete = [dfile[0] for dfile in dev_files
+                                                   if dfile[0] not in _local_files]
+                                if files_to_delete:
+                                    print('dsync: deleting old files:')
+                                    for ndir in files_to_delete:
+                                        print(f'- {ndir}')
+                                    self.dev.wr_cmd(
+                                        'from upysh2 import rmrf', silent=True)
+                                    self.dev.wr_cmd(f'rmrf(*{files_to_delete})',
+                                                    follow=True)
+                                else:
+                                    print('dsync: no old files to delete')
+
+                        else:
+                            print('dsync: no files found directory tree')
+
+                else:
+                    print(
+                        f'dsync: {", ".join(rest_args)}: No matching dirs found in ./')
+                return
+            else:
+                # DEVICE TO HOST
+                dir_match = self.dev.wr_cmd(f"glob(*{rest_args}, dir_only=True)",
+                                            silent=True, rtn_resp=True)
+                if dir_match:
+                    self.dev.wr_cmd("from nanoglob import _get_path_depth",
+                                    silent=True)
+                    for dir in dir_match:
+                        self.dev.wr_cmd(f"tree('{dir}')", follow=True)
+                        depth_level = self.dev.wr_cmd(f"_get_path_depth('{dir}') + 1",
+                                                      silent=True, rtn_resp=True)
+                        pattern_dir = [f"{dir}/*{'/*'* i}" for i in range(depth_level)]
+                        pattern_dir = [dir] + pattern_dir
+                        local_dirs = nglob(*pattern_dir, dir_only=True)
+                        dev_dirs = self.dev.wr_cmd(f"glob(*{pattern_dir}, "
+                                                   f"dir_only=True)",
+                                                   silent=True, rtn_resp=True)
+                        dirs_to_make = [
+                            ddir for ddir in dev_dirs if ddir not in local_dirs]
+                        if dirs_to_make:
+                            print('dsync: making new dirs:')
+                            for ndir in dirs_to_make:
+                                print(f'- {ndir}')
+                                os.makedirs(ndir)
+                                # self.dev.wr_cmd(f'mkdir("{ndir}")', follow=True)
+                        else:
+                            print('dsync: no new directories to make')
+                        if args.rf:
+                            dirs_to_delete = [ldir for ldir in local_dirs
+                                              if ldir not in dev_dirs]
+                            if dirs_to_delete:
+                                print('dsync: deleting old dirs:')
+                                for ndir in dirs_to_delete:
+                                    print(f'- {ndir}')
+                                shutil.rmtree(ndir)
+
+                        dev_cmd_files = (f"from shasum import shasum;"
+                                         f"shasum(*{pattern_dir}, debug=False, "
+                                         f"rtn=True, size=True)")
+                        dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                                                    rtn_resp=True)
+
+                        if dev_files:
+                            local_files = shasum(*pattern_dir, debug=False, rtn=True,
+                                                 size=True)
+
+                            if local_files:
+                                files_to_sync = [(fts[1], fts[0])
+                                                 for fts in dev_files if fts not in
+                                                 local_files]
+                            else:
+                                files_to_sync = [(fts[1], fts[0])
+                                                 for fts in dev_files]
+
+                            if files_to_sync:
+                                print('\ndsync: syncing new or modified files:')
+                                for sz, name in files_to_sync:
+                                    print(f'- {name} [{sz/1000:.2f} kB]')
+                                print('')
+                                for sz, name in files_to_sync:
+                                    print(f"{self.dev_name}:{name} -> {name}")
+                                    try:
+                                        self.fileio.get((sz, name), name, fullpath=True)
+                                    except (KeyboardInterrupt, Exception):
+                                        print('KeyboardInterrupt: get Operation Canceled')
+                                        # flush ws and reset
+                                        self.dev.cmd("f.close()", silent=True)
+                                        if input('Continue get Operation with next file? [y/n]') == 'y':
+                                            pass
+                                        else:
+                                            print('Canceling file queue..')
+                                            raise KeyboardInterrupt
+
+                            else:
+                                print('dsync: no new or modified files to sync')
+
+                            if args.rf:
+                                _dev_files = [df[0] for df in dev_files]
+                                files_to_delete = [dfile[0] for dfile in local_files
+                                                   if dfile[0] not in _dev_files]
+                                if files_to_delete:
+                                    print('dsync: deleting old files:')
+                                    for ndir in files_to_delete:
+                                        print(f'- {ndir}')
+                                    os.remove(ndir)
+                                else:
+                                    print('dsync: no old files to delete')
+
+                        else:
+                            print('dsync: no files found directory tree')
+
+                else:
+                    print(
+                        f'dsync: {", ".join(rest_args)}: No matching dirs found in ./')
+                return

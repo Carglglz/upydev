@@ -35,6 +35,20 @@ def _os_match_dir(patt, path):
         return []
 
 
+def _get_path_depth(path, lev=0):
+
+    if os.stat(path)[0] & 0x4000:  # Dir
+        if any([os.stat(f"{path}/{dir}")[0] & 0x4000 for dir in os.listdir(path)]):
+            lev += 1
+            _lev = max([_get_path_depth(f"{path}/{dir}", lev=0)
+                        for dir in os.listdir(path)
+                        if os.stat(f"{path}/{dir}")[0] & 0x4000])
+            lev += _lev
+        return lev
+    else:  # File
+        return 0
+
+
 class GLOB:
 
     def __repr__(self):

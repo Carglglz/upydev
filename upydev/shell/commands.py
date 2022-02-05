@@ -126,6 +126,9 @@ class ShellCmds:
                             ping_dir = self.dev.ip
                         ping_cmd_str = 'ping {}'.format(ping_dir)
                         ping_cmd = shlex.split(ping_cmd_str)
+                    else:
+                        ping_cmd_str = 'ping'
+                        ping_cmd = shlex.split(ping_cmd_str)
 
                     old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 

@@ -48,7 +48,8 @@ class BleFileIO:
                                                                     str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
         sys.stdout.flush()
 
-    def get(self, src, dst_file, chunk_size=512, ppath=False, dev_name=None):  # from Pyboard.py
+    def get(self, src, dst_file, chunk_size=512, ppath=False, dev_name=None,
+            fullpath=False):  # from Pyboard.py
         if not dev_name:
             dev_name = self.dev_name
         self.get_pb()
@@ -56,7 +57,8 @@ class BleFileIO:
         t_start = time.time()
         sz = src[0]
         src = src[1]
-        dst_file = src.split('/')[-1]
+        if not fullpath:
+            dst_file = src.split('/')[-1]
         if ppath:
             print(f'{dev_name}:{src} -> {dst_file}', end='\n\n')
         print(f"{src}  [{sz / 1000:.2f} kB]")
