@@ -4,8 +4,9 @@ from upydev.shell.parser import subshparser_cmd
 from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydev.wsio import websocket, get_file, put_file
 from upydevice import DeviceException, DeviceNotFound
-from upydev.shell.common import tree
+from upydev.shell.common import tree, CatFileIO
 from upydev.shell.shasum import shasum
+from upydev.commandlib import _CMDDICT_
 import socket
 import subprocess
 import shlex
@@ -53,7 +54,10 @@ GET = dict(help="download files from device",
                                  default=''),
                     "-d": dict(help='depth level search for pattrn', required=False,
                                default=0,
-                               type=int)})
+                               type=int),
+                    "-fg": dict(help='use a faster get method', required=False,
+                                default=False,
+                                action='store_true')})
 
 DSYNC = dict(help="recursively sync a folder in device filesystem",
              subcmd=dict(help='Indicate a dir/pattern to '
@@ -68,7 +72,10 @@ DSYNC = dict(help="recursively sync a folder in device filesystem",
                                   action='store_true'),
                       "-d": dict(help='sync from device to host', required=False,
                                  default=False,
-                                 action='store_true')})
+                                 action='store_true'),
+                      "-fg": dict(help='use a faster get method', required=False,
+                                  default=False,
+                                  action='store_true')})
 
 SHELLWS_CMD_DICT_PARSER = {"wrepl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
@@ -85,6 +92,7 @@ class ShellWsCmds(ShellCmds):
             for option, op_kargs in subcmd['options'].items():
                 _subparser.add_argument(option, **op_kargs)
         self._shkw = _SHELL_CMDS + shws_cmd_kw
+        self.fileio = CatFileIO()
 
     def custom_sh_cmd(self, cmd, rest_args=None, args=None, topargs=None,
                       ukw_args=None):
@@ -328,32 +336,47 @@ class ShellWsCmds(ShellCmds):
                         abs_src_file = f'/{src_file}'
                     print(f"{self.dev_name}:{abs_src_file} -> {dst_file}")
                     print(f'\n{src_file} [{size_file_to_get/1000:.2f} kB]')
-                    try:
-                        get_file(ws, dst_file, src_file, size_file_to_get)
-                    except (KeyboardInterrupt, Exception):
-                        print('KeyboardInterrupt: get Operation Canceled')
-                        # flush ws and reset
-                        self.dev.flush()
-                        self.dev.disconnect()
-                        if input('Continue get Operation with next file? [y/n]') == 'y':
-                            self.dev.connect()
-                        else:
-                            print('Canceling file queue..')
-                            self.dev.connect()
-                            raise KeyboardInterrupt
-                        self.dev.ws.sock.settimeout(10)
-                        ws = websocket(self.dev.ws.sock)
-                    except socket.timeout:
-                        # print(e, 'Device {} unreachable'.format(devname))
+                    if not args.fg or src_file.endswith('.mpy'):
                         try:
+                            get_file(ws, dst_file, src_file, size_file_to_get)
+                        except (KeyboardInterrupt, Exception):
+                            print('KeyboardInterrupt: get Operation Canceled')
+                            # flush ws and reset
+                            self.dev.flush()
+                            self.dev.disconnect()
+                            if input('Continue get Operation with next file? [y/n]') == 'y':
+                                self.dev.connect()
+                            else:
+                                print('Canceling file queue..')
+                                self.dev.connect()
+                                raise KeyboardInterrupt
+                            self.dev.ws.sock.settimeout(10)
+                            ws = websocket(self.dev.ws.sock)
+                        except socket.timeout:
+                            # print(e, 'Device {} unreachable'.format(devname))
+                            try:
 
-                            raise DeviceNotFound(f"WebSocketDevice @ "
-                                                 f"{self.dev._uriprotocol}://"
-                                                 f"{self.dev.ip}:{self.dev.port} "
-                                                 f"is not reachable")
-                        except Exception as e:
-                            print(f'ERROR {e}')
-                            return
+                                raise DeviceNotFound(f"WebSocketDevice @ "
+                                                     f"{self.dev._uriprotocol}://"
+                                                     f"{self.dev.ip}:{self.dev.port} "
+                                                     f"is not reachable")
+                            except Exception as e:
+                                print(f'ERROR {e}')
+                                return
+                    else:
+                        try:  # FAST GET
+                            self.fileio.init_get(src_file, size_file_to_get)
+                            self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{src_file}'"),
+                                            follow=True, long_string=True,
+                                            multiline=True, pipe=self.fileio.get)
+                            print('\n')
+                        except (KeyboardInterrupt, Exception):
+                            print('KeyboardInterrupt: get Operation Canceled')
+                            if input('Continue get Operation with next file? [y/n]') == 'y':
+                                pass
+                            else:
+                                print('Canceling file queue..')
+                                return
             else:
                 if args.dir:
                     print(f'get: {", ".join(rest_args)}: No matching files found in '
@@ -419,6 +442,7 @@ class ShellWsCmds(ShellCmds):
                             dev_cmd_files = (f"from shasum import shasum;"
                                              f"shasum(*{pattern_dir}, debug=False, "
                                              f"rtn=True)")
+                            print('dsync: checking files...')
                             dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
                                                         rtn_resp=True)
                             if dev_files:
@@ -486,7 +510,8 @@ class ShellWsCmds(ShellCmds):
                 dir_match = self.dev.wr_cmd(f"glob(*{rest_args}, dir_only=True)",
                                             silent=True, rtn_resp=True)
                 if dir_match:
-                    self.dev.wr_cmd("from nanoglob import _get_path_depth",
+                    self.dev.wr_cmd("from nanoglob import _get_path_depth;"
+                                    "from upysh2 import tree",
                                     silent=True)
                     for dir in dir_match:
                         self.dev.wr_cmd(f"tree('{dir}')", follow=True)
@@ -520,6 +545,7 @@ class ShellWsCmds(ShellCmds):
                         dev_cmd_files = (f"from shasum import shasum;"
                                          f"shasum(*{pattern_dir}, debug=False, "
                                          f"rtn=True, size=True)")
+                        print('dsync: checking files...')
                         dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
                                                     rtn_resp=True)
 
@@ -545,33 +571,50 @@ class ShellWsCmds(ShellCmds):
                                 for sz, name in files_to_sync:
                                     print(f"{self.dev_name}:{name} -> {name}")
                                     print(f'\n{name} [{sz/1000:.2f} kB]')
-                                    try:
-                                        get_file(ws, name, name,
-                                                 sz)
-                                    except (KeyboardInterrupt, Exception):
-                                        print('KeyboardInterrupt: get Operation Canceled')
-                                        # flush ws and reset
-                                        self.dev.flush()
-                                        self.dev.disconnect()
-                                        if input('Continue get Operation with next file? [y/n]') == 'y':
-                                            self.dev.connect()
-                                        else:
-                                            print('Canceling file queue..')
-                                            self.dev.connect()
-                                            raise KeyboardInterrupt
-                                        self.dev.ws.sock.settimeout(10)
-                                        ws = websocket(self.dev.ws.sock)
-                                    except socket.timeout:
-                                        # print(e, 'Device {} unreachable'.format(devname))
+                                    if not args.fg or name.endswith('.mpy'):
                                         try:
+                                            get_file(ws, name, name,
+                                                     sz)
+                                        except (KeyboardInterrupt, Exception):
+                                            print('KeyboardInterrupt: get Operation '
+                                                  'Canceled')
+                                            # flush ws and reset
+                                            self.dev.flush()
+                                            self.dev.disconnect()
+                                            if input('Continue get Operation with next file? [y/n]') == 'y':
+                                                self.dev.connect()
+                                            else:
+                                                print('Canceling file queue..')
+                                                self.dev.connect()
+                                                raise KeyboardInterrupt
+                                            self.dev.ws.sock.settimeout(10)
+                                            ws = websocket(self.dev.ws.sock)
+                                        except socket.timeout:
+                                            try:
 
-                                            raise DeviceNotFound(f"WebSocketDevice @ "
-                                                                 f"{self.dev._uriprotocol}://"
-                                                                 f"{self.dev.ip}:{self.dev.port} "
-                                                                 f"is not reachable")
-                                        except Exception as e:
-                                            print(f'ERROR {e}')
-                                            return
+                                                raise DeviceNotFound(f"WebSocketDevice @ "
+                                                                     f"{self.dev._uriprotocol}://"
+                                                                     f"{self.dev.ip}:{self.dev.port} "
+                                                                     f"is not reachable")
+                                            except Exception as e:
+                                                print(f'ERROR {e}')
+                                                return
+                                    else:  # FAST GET
+                                        try:
+                                            self.fileio.init_get(name, sz)
+                                            self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{name}'"),
+                                                            follow=True, long_string=True,
+                                                            multiline=True, pipe=self.fileio.get)
+                                            print('\n')
+                                        except (KeyboardInterrupt, Exception) as e:
+                                            print(e)
+                                            print(
+                                                'KeyboardInterrupt: get Operation Canceled')
+                                            if input('Continue get Operation with next file? [y/n]') == 'y':
+                                                pass
+                                            else:
+                                                print('Canceling file queue..')
+                                                return
                             else:
                                 print('dsync: no new or modified files to sync')
 

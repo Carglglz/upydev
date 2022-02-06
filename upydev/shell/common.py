@@ -24,6 +24,9 @@ from upydev.shell.constants import (ABLUE_bold, CGREEN, MAGENTA_bold, CEND)
 from prompt_toolkit.formatted_text import HTML
 import re
 import socket
+import sys
+from datetime import timedelta
+import time
 
 
 class FileArgs:
@@ -491,6 +494,121 @@ class DISK_USAGE:
 
 
 du = DISK_USAGE()
+
+
+class CatFileIO:
+    def __init__(self):
+        self.buff = bytearray(1024*2)
+        self.bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+        self.columns, self.rows = os.get_terminal_size(0)
+        self.cnt_size = 65
+        self.bar_size = int((self.columns - self.cnt_size))
+        self.pb = False
+        self.wheel = ['|', '/', '-', "\\"]
+        self.filesize = 0
+        self.filename = ''
+        self.cnt = 0
+        self.t_start = 0
+        self.percentage = 0
+        self.dev = None
+        self._commandline = 0
+
+    def get_pb(self):
+        self.columns, self.rows = os.get_terminal_size(0)
+        if self.columns > self.cnt_size:
+            self.bar_size = int((self.columns - self.cnt_size))
+            self.pb = True
+        else:
+            self.bar_size = 1
+            self.pb = False
+
+    def do_pg_bar(self, index, wheel, nb_of_total, speed, time_e, loop_l,
+                  percentage, ett):
+        l_bloc = self.bloc_progress[loop_l]
+        if index == self.bar_size:
+            l_bloc = "█"
+        sys.stdout.write("\033[K")
+        print('▏{}▏{:>2}{:>5} % | {} | '
+              '{:>5} kB/s | {}/{} s'.format("█" * index + l_bloc + " "*((self.bar_size+1) - len("█" * index + l_bloc)),
+                                            wheel[index % 4],
+                                            int((percentage)*100),
+                                            nb_of_total, speed,
+                                            str(timedelta(seconds=time_e)).split(
+                                                                        '.')[0][2:],
+                                            str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
+        sys.stdout.flush()
+
+    def init_get(self, filename, filesize, cnt=0):
+        self.filesize = filesize
+        self.filename = filename
+        self.cnt = cnt
+        self.get_pb()
+        self.t_start = time.time()
+        self._commandline = 0
+        with open(self.filename, 'w') as f:
+            pass
+
+    def get(self, data, std=True, exec_prompt=False):
+        if std != 'stderr':
+            data = data.encode()
+            with open(self.filename, 'ab') as f:
+                if data == b'':
+                    return
+                self.cnt += len(data)
+                if self.cnt > self.filesize:
+                    data = data[:-1]
+                f.write(data)
+                loop_index_f = (self.cnt/self.filesize)*self.bar_size
+                loop_index = int(loop_index_f)
+                loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                nb_of_total = f"{self.cnt/(1000):.2f}/{self.filesize/(1000):.2f} kB"
+                percentage = self.cnt / self.filesize
+                self.percentage = int((percentage)*100)
+                t_elapsed = time.time() - self.t_start
+                t_speed = f"{(self.cnt/(1000))/t_elapsed:^2.2f}"
+                ett = self.filesize / (self.cnt / t_elapsed)
+                if self.pb:
+                    self.do_pg_bar(loop_index, self.wheel,
+                                   nb_of_total, t_speed, t_elapsed,
+                                   loop_index_l, percentage, ett)
+        if exec_prompt:
+            print('')
+
+    def fake_get(self, data, std=True, exec_prompt=False):
+        if std != 'stderr':
+            data = data.encode()
+            if not self._commandline:
+                self._commandline = len(self.dev.raw_buff.splitlines()[0])
+            # with open(self.filename, 'ab') as f:
+            if data == b'':
+                return
+            self.cnt = len(self.dev.raw_buff) - self._commandline
+            if self.cnt > self.filesize:
+                self.cnt = self.filesize
+            # f.write(data)
+            loop_index_f = (self.cnt/self.filesize)*self.bar_size
+            loop_index = int(loop_index_f)
+            loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+            nb_of_total = f"{self.cnt/(1000):.2f}/{self.filesize/(1000):.2f} kB"
+            percentage = self.cnt / self.filesize
+            self.percentage = int((percentage)*100)
+            t_elapsed = time.time() - self.t_start
+            t_speed = f"{(self.cnt/(1000))/t_elapsed:^2.2f}"
+            ett = self.filesize / (self.cnt / t_elapsed)
+            if self.pb:
+                self.do_pg_bar(loop_index, self.wheel,
+                               nb_of_total, t_speed, t_elapsed,
+                               loop_index_l, percentage, ett)
+        if exec_prompt:
+            print('')
+
+    def save_file(self):
+        data = self.dev.raw_buff.splitlines()
+        data = b'\n'.join(data[1:])
+        data = data[:self.filesize]
+        with open(self.filename, 'ab') as f:
+            f.write(data)
+        # get raw buffer from cat
 
 
 def get_dir_size_recursive(dir):

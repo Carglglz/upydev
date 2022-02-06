@@ -3,8 +3,9 @@ from upydev.shell.parser import subshparser_cmd
 from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydevice import DeviceException
 from upydev.bleio import BleFileIO
-from upydev.shell.common import tree
+from upydev.shell.common import tree, CatFileIO
 from upydev.shell.shasum import shasum
+from upydev.commandlib import _CMDDICT_
 import subprocess
 import shlex
 import signal
@@ -51,7 +52,10 @@ GET = dict(help="download files from device",
                                  default=''),
                     "-d": dict(help='depth level search for pattrn', required=False,
                                default=0,
-                               type=int)})
+                               type=int),
+                    "-fg": dict(help='use a faster get method', required=False,
+                                default=False,
+                                action='store_true')})
 
 DSYNC = dict(help="recursively sync a folder in device filesystem",
              subcmd=dict(help='Indicate a dir/pattern to '
@@ -66,7 +70,10 @@ DSYNC = dict(help="recursively sync a folder in device filesystem",
                                   action='store_true'),
                       "-d": dict(help='sync from device to host', required=False,
                                  default=False,
-                                 action='store_true')})
+                                 action='store_true'),
+                      "-fg": dict(help='use a faster get method', required=False,
+                                  default=False,
+                                  action='store_true')})
 
 SHELLBLE_CMD_DICT_PARSER = {"jupyterc": JUPYTERC,
                             "pytest": PYTEST, "put": PUT, "get": GET,
@@ -84,6 +91,8 @@ class ShellBleCmds(ShellCmds):
                 _subparser.add_argument(option, **op_kargs)
         self._shkw = _SHELL_CMDS + shbl_cmd_kw
         self.fileio = BleFileIO(self.dev, devname=self.dev_name)
+        self.fastfileio = CatFileIO()
+        self.fastfileio.dev = self.dev
 
     def custom_sh_cmd(self, cmd, rest_args=None, args=None, topargs=None,
                       ukw_args=None):
@@ -307,17 +316,35 @@ class ShellBleCmds(ShellCmds):
                         abs_src_file = f'/{src_file}'
                     print(f"{self.dev_name}:{abs_src_file} -> {dst_file}\n")
                     # print(f'\n{src_file} [{size_file_to_get/1000:.2f} kB]')
-                    try:
-                        self.fileio.get((size_file_to_get, src_file), dst_file)
-                    except (KeyboardInterrupt, Exception):
-                        print('KeyboardInterrupt: get Operation Canceled')
-                        # flush ws and reset
-                        self.dev.cmd("f.close()", follow=True)
-                        if input('Continue get Operation with next file? [y/n]') == 'y':
-                            pass
-                        else:
-                            print('Canceling file queue..')
-                            raise KeyboardInterrupt
+                    if not args.fg:
+                        try:
+                            self.fileio.get((size_file_to_get, src_file), dst_file)
+                        except (KeyboardInterrupt, Exception):
+                            print('KeyboardInterrupt: get Operation Canceled')
+                            # flush ws and reset
+                            self.dev.cmd("f.close()", follow=True)
+                            if input('Continue get Operation with next file? [y/n]') == 'y':
+                                pass
+                            else:
+                                print('Canceling file queue..')
+                                raise KeyboardInterrupt
+                    else:
+                        try:  # FAST GET
+                            self.fastfileio.init_get(src_file, size_file_to_get)
+                            self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{src_file}'"),
+                                            follow=True, long_string=True,
+                                            multiline=True,
+                                            pipe=self.fastfileio.fake_get)
+                            self.fastfileio.save_file()
+                            print('\n')
+                        except (KeyboardInterrupt, Exception) as e:
+                            print(e)
+                            print('KeyboardInterrupt: get Operation Canceled')
+                            if input('Continue get Operation with next file? [y/n]') == 'y':
+                                pass
+                            else:
+                                print('Canceling file queue..')
+                                return
             else:
                 if args.dir:
                     print(f'get: {", ".join(rest_args)}: No matching files found in '
@@ -440,7 +467,8 @@ class ShellBleCmds(ShellCmds):
                 dir_match = self.dev.wr_cmd(f"glob(*{rest_args}, dir_only=True)",
                                             silent=True, rtn_resp=True)
                 if dir_match:
-                    self.dev.wr_cmd("from nanoglob import _get_path_depth",
+                    self.dev.wr_cmd("from nanoglob import _get_path_depth"
+                                    ";from upysh2 import tree",
                                     silent=True)
                     for dir in dir_match:
                         self.dev.wr_cmd(f"tree('{dir}')", follow=True)
@@ -496,17 +524,39 @@ class ShellBleCmds(ShellCmds):
                                 print('')
                                 for sz, name in files_to_sync:
                                     print(f"{self.dev_name}:{name} -> {name}")
-                                    try:
-                                        self.fileio.get((sz, name), name, fullpath=True)
-                                    except (KeyboardInterrupt, Exception):
-                                        print('KeyboardInterrupt: get Operation Canceled')
-                                        # flush ws and reset
-                                        self.dev.cmd("f.close()", silent=True)
-                                        if input('Continue get Operation with next file? [y/n]') == 'y':
-                                            pass
-                                        else:
-                                            print('Canceling file queue..')
-                                            raise KeyboardInterrupt
+                                    if not args.fg:
+                                        try:
+                                            self.fileio.get(
+                                                (sz, name), name, fullpath=True)
+                                        except (KeyboardInterrupt, Exception):
+                                            print(
+                                                'KeyboardInterrupt: get Operation Canceled')
+                                            # flush ws and reset
+                                            self.dev.cmd("f.close()", silent=True)
+                                            if input('Continue get Operation with next file? [y/n]') == 'y':
+                                                pass
+                                            else:
+                                                print('Canceling file queue..')
+                                                raise KeyboardInterrupt
+                                    else:
+                                        try:  # FAST GET
+                                            self.fastfileio.init_get(name, sz)
+                                            self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{name}'"),
+                                                            follow=True,
+                                                            long_string=True,
+                                                            multiline=True,
+                                                            pipe=self.fastfileio.fake_get)
+                                            self.fastfileio.save_file()
+                                            print('\n')
+                                        except (KeyboardInterrupt, Exception) as e:
+                                            print(e)
+                                            print(
+                                                'KeyboardInterrupt: get Operation Canceled')
+                                            if input('Continue get Operation with next file? [y/n]') == 'y':
+                                                pass
+                                            else:
+                                                print('Canceling file queue..')
+                                                return
 
                             else:
                                 print('dsync: no new or modified files to sync')
