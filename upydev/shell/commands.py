@@ -6,14 +6,18 @@ from upydev.shell.constants import (AUTHMODE_DICT,
 from upydev.shell.common import (du, _ft_datetime, SHELL_ALIASES, ls, FileArgs,
                                  find_localip)
 from upydev.shell.parser import shparser
+from upydev.shell import redirectsh
 from binascii import hexlify
 from upydev.commandlib import _CMDDICT_
 from upydev import upip_host
 from upydev import __path__ as _UPYDEVPATH
 from upydevice import DeviceException
 from braceexpand import braceexpand
+from datetime import datetime, date, timedelta
+from contextlib import redirect_stdout, closing
+from upydev.shell.redirectsh import Tee
 import ast
-from datetime import datetime, date
+import time
 import signal
 import subprocess
 import webbrowser
@@ -64,6 +68,7 @@ class ShellCmds:
         self.parser = shparser
         self._shkw = _SHELL_CMDS
         self.dev_name = self.flags.shell_prompt['s'][3][1]
+        self._pipe_flags = ['>', '>>', '|']
 
     def print_filesys_info(self, filesize):
         _kB = 1000
@@ -200,6 +205,112 @@ class ShellCmds:
         # LOCAL COMMANDS
         if command in _LOCAL_SHELL_CMDS:
             self.local_sh_cmds(command, args, rest_args)
+            return
+
+        # ENABLE PIPES >, >>, |
+        if any([pipecmd in rest_args for pipecmd in self._pipe_flags]):
+            if '>' in rest_args:
+                pflag = '>'
+                ix = rest_args.index(pflag)
+            elif '>>' in rest_args:
+                pflag = '>>'
+                ix = rest_args.index(pflag)
+            elif '|' in rest_args:
+                pflag = '|'
+                ix = rest_args.index(pflag)
+            rest_args, filetopipe = rest_args[:ix], rest_args[ix:]
+            cmd_to_pipe = f"{command} {' '.join(rest_args)}"
+            try:
+                if pflag == '>':
+                    wmode = 'wb'
+                elif pflag == '>>':
+                    wmode = 'ab'
+                elif pflag == '|':
+                    wmode = 'ab'
+                else:
+                    return
+                with open(filetopipe[-1], wmode[:-1]) as f:
+                    pass
+                if pflag in ['>', '>>']:
+                    with open(filetopipe[-1], wmode[:-1]) as f:
+                        with redirect_stdout(f):
+                            self.sh_cmd(cmd_to_pipe)
+
+                elif pflag == '|':
+                    with closing(Tee(f"{filetopipe[-1]}",
+                                     wmode[:-1], channel="stdout")) as outstream:
+                        self.sh_cmd(cmd_to_pipe)
+
+                if len(filetopipe) > 1:
+                    with open(f"{filetopipe[-1]}.{self.dev_name}", wmode) as pipfile:
+                        data = self.dev.buff.replace(b'\r',
+                                                     b'').replace(b'\r\n>>> ',
+                                                                  b'').replace(b'>>> ',
+                                                                               b'')
+                        pipfile.write(data)
+            except Exception as e:
+                print(e)
+            return
+            # save
+
+        if any([pipecmd in unknown_args for pipecmd in self._pipe_flags]):
+            if '>' in unknown_args:
+                pflag = '>'
+                ix = unknown_args.index(pflag)
+            elif '>>' in unknown_args:
+                pflag = '>>'
+                ix = unknown_args.index(pflag)
+            elif '|' in unknown_args:
+                pflag = '|'
+                ix = unknown_args.index(pflag)
+            filetopipe = unknown_args[ix:]
+            opt_args = [f'-{opt} {val}' for opt, val in vars(args).items()
+                        if opt not in ['m', 'subcmd'] and opt in command_line]
+            if not isinstance(rest_args, list):
+                rest_args = [rest_args]
+            cmd_to_pipe = (f"{command} {' '.join(rest_args)} "
+                           f"{' '.join(opt_args)}")
+            # print(cmd_to_pipe)
+            try:
+                if pflag == '>':
+                    wmode = 'wb'
+                elif pflag == '>>':
+                    wmode = 'ab'
+                elif pflag == '|':
+                    wmode = 'ab'
+                else:
+                    return
+                # SHELL LOG
+                if pflag in ['>', '>>']:
+                    with open(filetopipe[-1], wmode[:-1]) as f:
+                        with redirect_stdout(f):
+                            self.sh_cmd(cmd_to_pipe)
+                elif pflag == '|':
+                    with closing(Tee(f"{filetopipe[-1]}",
+                                     wmode[:-1], channel="stdout")) as outstream:
+                        self.sh_cmd(cmd_to_pipe)
+                if len(filetopipe) > 1:
+                    with open(f"{filetopipe[-1]}.{self.dev_name}", wmode) as pipfile:
+                        data = self.dev.buff.replace(b'\r',
+                                                     b'').replace(b'\r\n>>> ',
+                                                                  b'').replace(b'>>> ',
+                                                                               b'')
+                        pipfile.write(data)
+            except Exception as e:
+                print(e)
+            return
+            # CTIME
+        if command == 'ctime':
+            start_time = time.time()
+            if rest_args != 'ctime':
+                cmd_profile = f"{rest_args} {' '.join(unknown_args)}"
+                print(f"ctime: {cmd_profile}")
+                try:
+                    self.sh_cmd(cmd_profile)
+                except Exception:
+                    pass
+                end_time = time.time()
+                print(f"command time: {timedelta(seconds=(end_time-start_time))}")
             return
 
         # INFO :
@@ -628,6 +739,9 @@ class ShellCmds:
                 files_to_hash = f"*{rest_args}"
                 self.send_cmd(_CMDDICT_['SHASUM'].format(files_to_hash),
                               sh_silent=False, follow=True)
+                # if '>' in unknown_args:  # create a file
+                #     with open(unknown_args[-1], 'w') as shafile:
+                #         shafile.write(self.dev.response.encode('utf-8'))
 
             return
 
@@ -1039,4 +1153,5 @@ class ShellCmds:
             rest_args = self.brace_exp(rest_args)
             dir_names_or_pattrn = rest_args
             ls(*dir_names_or_pattrn, hidden=args.a)
+            return
             return

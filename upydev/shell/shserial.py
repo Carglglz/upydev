@@ -331,10 +331,8 @@ class ShellSrCmds(ShellCmds):
                     else:
                         try:  # FAST GET
                             self.fastfileio.init_get(src_file, size_file_to_get)
-                            self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{src_file}'"),
-                                            follow=True, long_string=True,
-                                            multiline=True,
-                                            pipe=self.fastfileio.fake_get)
+                            cmd_get_file = _CMDDICT_['CAT'].format(f"'{src_file}'")
+                            self.fastfileio.sr_get_file(cmd_get_file)
                             self.fastfileio.save_file()
                             print('\n')
                         except (KeyboardInterrupt, Exception) as e:
@@ -370,6 +368,66 @@ class ShellSrCmds(ShellCmds):
             #      device rm
             #
             if not args.d:
+                if rest_args == ['.'] or rest_args == ['*']:  # CWD
+                    rest_args = ['*']
+                    tree()
+                    file_match = nglob(*rest_args, size=True)
+                    if file_match:
+                        local_files = shasum(*rest_args, debug=False, rtn=True)
+                        local_files_dict = {
+                            fname: fhash for fname, fhash in local_files}
+                        if local_files:
+                            dev_cmd_files = (f"from shasum import shasum;"
+                                             f"shasum(*{rest_args}, debug=False, "
+                                             f"rtn=True)")
+                            print('dsync: checking files...')
+                            dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                                                        rtn_resp=True)
+                            if dev_files:
+                                files_to_sync = [(os.stat(fts[0])[6], fts[0])
+                                                 for fts in local_files if fts not in
+                                                 dev_files]
+                            else:
+                                files_to_sync = [(os.stat(fts)[6], fts)
+                                                 for fts in local_files_dict.keys()]
+
+                            if files_to_sync:
+                                print('\ndsync: syncing new or modified files:')
+                                for sz, name in files_to_sync:
+                                    print(f'- {name} [{sz/1000:.2f} kB]')
+                                print('')
+                                for sz, name in files_to_sync:
+                                    print(f"{name} -> {self.dev_name}:{name}")
+                                    try:
+                                        self.fileio.put(name, name)
+                                    except KeyboardInterrupt:
+                                        print('KeyboardInterrupt: put Operation Canceled')
+                                        self.dev.cmd("f.close()", silent=True)
+                                        if input('Continue put Operation with next file? [y/n]') == 'y':
+                                            pass
+                                        else:
+                                            raise KeyboardInterrupt
+                            else:
+                                print('dsync: no new or modified files to sync')
+
+                            if args.rf:
+                                _local_files = [lf[0] for lf in local_files]
+                                files_to_delete = [dfile[0] for dfile in dev_files
+                                                   if dfile[0] not in _local_files]
+                                if files_to_delete:
+                                    print('dsync: deleting old files:')
+                                    for ndir in files_to_delete:
+                                        print(f'- {ndir}')
+                                    self.dev.wr_cmd(
+                                        'from upysh2 import rmrf', silent=True)
+                                    self.dev.wr_cmd(f'rmrf(*{files_to_delete})',
+                                                    follow=True)
+                                else:
+                                    print('dsync: no old files to delete')
+
+                        else:
+                            print('dsync: no files found directory tree')
+                # LOCAL DIRS
                 dir_match = nglob(*rest_args, dir_only=True)
                 if dir_match:
                     for dir in dir_match:
@@ -464,6 +522,84 @@ class ShellSrCmds(ShellCmds):
                 return
             else:
                 # DEVICE TO HOST
+                if rest_args == ['.'] or rest_args == ['*']:  # CWD
+                    rest_args = ['*']
+                    self.dev.wr_cmd("tree", follow=True)
+                    dev_cmd_files = (f"from shasum import shasum;"
+                                     f"shasum(*{rest_args}, debug=False, "
+                                     f"rtn=True, size=True)")
+                    print('dsync: checking files in ./ ...')
+                    dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                                                rtn_resp=True)
+
+                    if dev_files:
+                        local_files = shasum(*rest_args, debug=False, rtn=True,
+                                             size=True)
+
+                        if local_files:
+                            files_to_sync = [(fts[1], fts[0])
+                                             for fts in dev_files if fts not in
+                                             local_files]
+                        else:
+                            files_to_sync = [(fts[1], fts[0])
+                                             for fts in dev_files]
+
+                        if files_to_sync:
+                            print('\ndsync: syncing new or modified files:')
+                            for sz, name in files_to_sync:
+                                print(f'- {name} [{sz/1000:.2f} kB]')
+                            print('')
+                            for sz, name in files_to_sync:
+                                print(f"{self.dev_name}:{name} -> {name}")
+                                if not args.fg:
+                                    try:
+                                        self.fileio.get((sz, name), name,
+                                                        fullpath=True)
+                                    except (KeyboardInterrupt, Exception):
+                                        print(
+                                            'KeyboardInterrupt: get Operation Canceled')
+                                        # flush ws and reset
+                                        self.dev.cmd("f.close()", silent=True)
+                                        if input('Continue get Operation with next file? [y/n]') == 'y':
+                                            pass
+                                        else:
+                                            print('Canceling file queue..')
+                                            raise KeyboardInterrupt
+                                else:
+                                    try:  # FAST GET
+                                        self.fastfileio.init_get(name, sz)
+                                        cmd_gf = _CMDDICT_['CAT'].format(f"'{name}'")
+                                        self.fastfileio.sr_get_file(cmd_gf)
+                                        self.fastfileio.save_file()
+                                        print('\n')
+                                    except (KeyboardInterrupt, Exception) as e:
+                                        print(e)
+                                        print(
+                                            'KeyboardInterrupt: get Operation Canceled')
+                                        if input('Continue get Operation with next file? [y/n]') == 'y':
+                                            pass
+                                        else:
+                                            print('Canceling file queue..')
+                                            return
+
+                        else:
+                            print('dsync: no new or modified files to sync')
+
+                        if args.rf:
+                            _dev_files = [df[0] for df in dev_files]
+                            files_to_delete = [dfile[0] for dfile in local_files
+                                               if dfile[0] not in _dev_files]
+                            if files_to_delete:
+                                print('dsync: deleting old files:')
+                                for ndir in files_to_delete:
+                                    print(f'- {ndir}')
+                                os.remove(ndir)
+                            else:
+                                print('dsync: no old files to delete')
+
+                    else:
+                        print('dsync: no files found directory tree')
+                # DEVICE DIRS
                 dir_match = self.dev.wr_cmd(f"glob(*{rest_args}, dir_only=True)",
                                             silent=True, rtn_resp=True)
                 if dir_match:
@@ -541,11 +677,8 @@ class ShellSrCmds(ShellCmds):
                                     else:
                                         try:  # FAST GET
                                             self.fastfileio.init_get(name, sz)
-                                            self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{name}'"),
-                                                            follow=True,
-                                                            long_string=True,
-                                                            multiline=True,
-                                                            pipe=self.fastfileio.fake_get)
+                                            cmdgf = _CMDDICT_['CAT'].format(f"'{name}'")
+                                            self.fastfileio.sr_get_file(cmdgf)
                                             self.fastfileio.save_file()
                                             print('\n')
                                         except (KeyboardInterrupt, Exception) as e:

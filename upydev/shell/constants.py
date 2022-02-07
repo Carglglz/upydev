@@ -62,7 +62,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'timeit', 'i2c', 'git', 'batstyle',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
-                    'update_upyutils', 'mdocs']
+                    'update_upyutils', 'mdocs', 'ctime']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -465,6 +465,13 @@ MDOCS = dict(help="see MicroPython docs at docs.micropython.org",
                          metavar='keyword', nargs='?'),
              options={})
 
+CTIME = dict(help="measure execution time of a shell command",
+             subcmd=dict(help='Indicate a command to measure',
+                         default='info',
+                         choices=shell_commands+custom_sh_cmd_kw,
+                         metavar='command'),
+             options={})
+
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "touch": TOUCH, "cd": CD, "pwd": PWD,
@@ -478,4 +485,4 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "update_upyutils": UPDATE_UPYUTILS,
                          "lcd": LCD,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
-                         "mdocs": MDOCS}
+                         "mdocs": MDOCS, "ctime": CTIME}

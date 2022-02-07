@@ -22,6 +22,7 @@ import os
 import ast
 from upydev.shell.constants import (ABLUE_bold, CGREEN, MAGENTA_bold, CEND)
 from prompt_toolkit.formatted_text import HTML
+from upydevice import wsprotocol
 import re
 import socket
 import sys
@@ -507,11 +508,175 @@ class CatFileIO:
         self.wheel = ['|', '/', '-', "\\"]
         self.filesize = 0
         self.filename = ''
+        self.file_buff = b''
         self.cnt = 0
         self.t_start = 0
         self.percentage = 0
         self.dev = None
         self._commandline = 0
+
+    def sr_get_file(self, cmd, filter_cmd=True):
+        self.dev._is_traceback = False
+        self.dev.response = ''
+        self.dev.output = None
+        self.dev.flush_conn()
+        self.dev.buff = b''
+        self.bytes_sent = self.dev.serial.write(bytes(cmd + '\r', 'utf-8'))
+        if filter_cmd:
+            cmd_filt = bytes(cmd + '\r\n', 'utf-8')
+            _cmd_filt_buff = b''
+            while len(_cmd_filt_buff) < len(cmd_filt):
+                _cmd_filt_buff += self.dev.serial.read(1)
+        try:
+            while len(self.file_buff) < self.filesize:
+                data = self.dev.serial.read_all().replace(b'\r', b'')
+                if data:
+                    if len(self.file_buff + data) <= self.filesize:
+                        pass
+                    else:
+                        offset = len(self.file_buff + data) - self.filesize
+                        data = data[:-offset]
+                        assert len(self.file_buff + data) == self.filesize, "Mismatch"
+                    self.cnt += len(data)
+                    self.file_buff += data
+                    loop_index_f = (self.cnt/self.filesize)*self.bar_size
+                    loop_index = int(loop_index_f)
+                    loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                    nb_of_total = f"{self.cnt/(1000):.2f}/{self.filesize/(1000):.2f} kB"
+                    percentage = self.cnt / self.filesize
+                    self.percentage = int((percentage)*100)
+                    t_elapsed = time.time() - self.t_start
+                    t_speed = f"{(self.cnt/(1000))/t_elapsed:^2.2f}"
+                    ett = self.filesize / (self.cnt / t_elapsed)
+                    if self.pb:
+                        self.do_pg_bar(loop_index, self.wheel,
+                                       nb_of_total, t_speed, t_elapsed,
+                                       loop_index_l, percentage, ett)
+
+                if len(self.file_buff) == self.filesize:
+                    break
+
+        except KeyboardInterrupt:
+            # time.sleep(0.2)
+            self.dev.kbi(silent=True)
+            time.sleep(0.2)
+            for i in range(1):
+                self.dev.serial.write(b'\r')
+                self.dev.flush_conn()
+            raise KeyboardInterrupt
+
+    def ws_readline(self, eof=b'\r\n'):
+        self.dev.ws.sock.settimeout(10)
+        buffdata = b''
+        while eof not in buffdata:
+            try:
+                fin, opcode, data = self.dev.ws.read_frame()
+                buffdata += data
+            except AttributeError:
+                pass
+        return buffdata
+
+    def flush(self):
+        self.dev.ws.sock.settimeout(0.1)
+        self._flush = b''
+        data = 1
+        while data:
+            try:
+                fin, opcode, data = self.dev.ws.read_frame()
+                self._flush += data
+            except socket.timeout:
+                break
+            except wsprotocol.NoDataException:
+                break
+
+    def ws_get_file(self, cmd, filter_cmd=True):
+        self.dev._is_traceback = False
+        self.dev.response = ''
+        self.dev.output = None
+        # for i in range(2):
+        self.flush()
+        self.dev.buff = b''
+        self.bytes_sent = self.dev.write(cmd+'\r')
+        end_prompt = b''
+        if filter_cmd:
+            # len_cmd_filt = len(bytes(cmd + '\r\n', 'utf-8'))
+            _cmd_filt_buff = b''
+            while b'\r\n' not in _cmd_filt_buff:
+                _cmd_filt_buff += self.ws_readline()
+            recv_cmd, rest = _cmd_filt_buff.split(b'\r\n')
+            try:
+                assert recv_cmd == bytes(cmd, 'utf-8'), "Command missmatch"
+            except Exception:
+                print(f'command: {cmd}')
+                print(f'recv command: {recv_cmd}')
+                print(f'rest: {rest}')
+                raise Exception
+            if rest:
+                self.file_buff += rest.replace(b'\r', b'')
+                self.cnt += len(rest.replace(b'\r', b''))
+
+            # while len(_cmd_filt_buff) < len_cmd_filt:
+            #     cmd_buff = self.ws_readline()
+            #     # if len(_cmd_filt_buff + cmd_buff) <= len_cmd_filt:
+            #     #     pass
+            #     # else:
+            #     #     offset = len(_cmd_filt_buff + cmd_buff) - len_cmd_filt
+            #     #     rest, init_file = cmd_buff[:-offset], cmd_buff[-offset:]
+            #     #     assert len(_cmd_filt_buff + rest) == len(cmd_filt), "Mismatch"
+            #     #     _cmd_filt_buff += rest
+            #     #     self.file_buff += init_file
+            #     #     self.cnt += len(init_file)
+        try:
+            while len(self.file_buff) < self.filesize:
+                try:
+                    fin, opcode, data = self.dev.ws.read_frame()
+                except AttributeError:
+                    pass
+                # data = self.ws_readline().replace(b'\r', b'')
+                if data:
+                    data = data.replace(b'\r', b'')
+                    if len(self.file_buff + data) <= self.filesize:
+                        pass
+                    else:
+                        offset = len(self.file_buff + data) - self.filesize
+                        data, end_prompt = data[:-offset], data[-offset:]
+                        assert len(self.file_buff + data) == self.filesize, "Missmatch"
+                    self.cnt += len(data)
+                    self.file_buff += data
+                    loop_index_f = (self.cnt/self.filesize)*self.bar_size
+                    loop_index = int(loop_index_f)
+                    loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                    nb_of_total = f"{self.cnt/(1000):.2f}/{self.filesize/(1000):.2f} kB"
+                    percentage = self.cnt / self.filesize
+                    self.percentage = int((percentage)*100)
+                    t_elapsed = time.time() - self.t_start
+                    t_speed = f"{(self.cnt/(1000))/t_elapsed:^2.2f}"
+                    ett = self.filesize / (self.cnt / t_elapsed)
+                    if self.pb:
+                        self.do_pg_bar(loop_index, self.wheel,
+                                       nb_of_total, t_speed, t_elapsed,
+                                       loop_index_l, percentage, ett)
+                if len(self.file_buff) == self.filesize:
+                    # assert end_prompt
+                    while self.dev.prompt not in end_prompt:
+                        try:
+                            fin, opcode, data = self.dev.ws.read_frame()
+                        except AttributeError:
+                            pass
+                        end_prompt += data
+                    # self.flush()
+                    break
+            self.flush()
+
+        except KeyboardInterrupt:
+            # time.sleep(0.2)
+            self.dev.kbi(silent=True)
+            time.sleep(0.2)
+            for i in range(1):
+                self.dev.write('\r')
+                self.dev.flush_conn()
+
+            raise KeyboardInterrupt
 
     def get_pb(self):
         self.columns, self.rows = os.get_terminal_size(0)
@@ -539,6 +704,7 @@ class CatFileIO:
         sys.stdout.flush()
 
     def init_get(self, filename, filesize, cnt=0):
+        self.file_buff = b''
         self.filesize = filesize
         self.filename = filename
         self.cnt = cnt
@@ -574,7 +740,7 @@ class CatFileIO:
         if exec_prompt:
             print('')
 
-    def fake_get(self, data, std=True, exec_prompt=False):
+    def show_pgb(self, data, std=True, exec_prompt=False):
         if std != 'stderr':
             data = data.encode()
             if not self._commandline:
@@ -600,14 +766,52 @@ class CatFileIO:
                                nb_of_total, t_speed, t_elapsed,
                                loop_index_l, percentage, ett)
         if exec_prompt:
-            print('')
+            pass
+
+    def show_pgb_alt(self, data, std=True, exec_prompt=False):
+        if std != 'stderr':
+            data = data.encode()
+            # with open(self.filename, 'ab') as f:
+            if data == b'':
+                return
+            self.cnt = len(self.dev.buff)
+            if self.cnt > self.filesize:
+                self.cnt = self.filesize
+            # f.write(data)
+            loop_index_f = (self.cnt/self.filesize)*self.bar_size
+            loop_index = int(loop_index_f)
+            loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+            nb_of_total = f"{self.cnt/(1000):.2f}/{self.filesize/(1000):.2f} kB"
+            percentage = self.cnt / self.filesize
+            self.percentage = int((percentage)*100)
+            t_elapsed = time.time() - self.t_start
+            t_speed = f"{(self.cnt/(1000))/t_elapsed:^2.2f}"
+            ett = self.filesize / (self.cnt / t_elapsed)
+            if self.pb:
+                self.do_pg_bar(loop_index, self.wheel,
+                               nb_of_total, t_speed, t_elapsed,
+                               loop_index_l, percentage, ett)
+        if exec_prompt:
+            pass
+            # print('')
 
     def save_file(self):
-        data = self.dev.raw_buff.splitlines()
-        data = b'\n'.join(data[1:])
-        data = data[:self.filesize]
         with open(self.filename, 'ab') as f:
-            f.write(data)
+            f.write(self.file_buff[:self.filesize])
+
+    # def save_file(self):
+    #     data = self.dev.raw_buff.splitlines()
+    #     data = b'\n'.join(data[1:])
+    #     data = data[:self.filesize]
+    #     with open(self.filename, 'ab') as f:
+    #         f.write(data)
+
+    # def save_file_alt(self):
+    #     data = self.dev.buff.split(b'\r\n')
+    #     data = b'\n'.join(data)
+    #     data = data[:self.filesize]
+    #     with open(self.filename, 'ab') as f:
+    #         f.write(data)
         # get raw buffer from cat
 
 
@@ -615,6 +819,25 @@ def get_dir_size_recursive(dir):
     return sum([os.stat(dir+'/'+f)[6] if not os.stat(dir+'/'+f)[0]
                 & 0x4000 else get_dir_size_recursive(dir+'/'+f)
                 for f in os.listdir(dir)])
+
+
+def print_size(name, sz, nl=False):
+    if not nl:
+        if sz:
+            print(f'- {name} [{sz/1000:.2f} kB]')
+        else:
+            print(f'- {name} [{sz:.2f} kB]')
+    else:
+        if sz:
+            print(f'\n{name} [{sz/1000:.2f} kB]')
+        else:
+            print(f'\n{name} [{sz:.2f} kB]')
+
+
+def check_filetype(file):
+    if not file.endswith('.py') and not file.endswith('.txt'):
+        return True
+    return False
 
 
 def get_rprompt(mem_show_rp, shll):

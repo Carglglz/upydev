@@ -4,7 +4,7 @@ from upydev.shell.parser import subshparser_cmd
 from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydev.wsio import websocket, get_file, put_file
 from upydevice import DeviceException, DeviceNotFound
-from upydev.shell.common import tree, CatFileIO
+from upydev.shell.common import tree, CatFileIO, print_size, check_filetype
 from upydev.shell.shasum import shasum
 from upydev.commandlib import _CMDDICT_
 import socket
@@ -93,6 +93,7 @@ class ShellWsCmds(ShellCmds):
                 _subparser.add_argument(option, **op_kargs)
         self._shkw = _SHELL_CMDS + shws_cmd_kw
         self.fileio = CatFileIO()
+        self.fileio.dev = self.dev
 
     def custom_sh_cmd(self, cmd, rest_args=None, args=None, topargs=None,
                       ukw_args=None):
@@ -247,7 +248,7 @@ class ShellWsCmds(ShellCmds):
                 else:
                     print(f'Uploading files @ {self.dev_name}:/ \n')
                 for sz, name in file_match:
-                    print(f'- {name} [{sz/1000:.2f} kB]')
+                    print_size(name, sz)
 
                 self.dev.ws.sock.settimeout(10)
                 ws = websocket(self.dev.ws.sock)
@@ -264,7 +265,7 @@ class ShellWsCmds(ShellCmds):
                         basename = src_file.rsplit("/", 1)[-1]
                         dst_file += basename
                     print(f"{src_file} -> {self.dev_name}:{dst_file}")
-                    print(f'\n{src_file} [{sz/1000:.2f} kB]')
+                    print_size(src_file, sz, nl=True)
                     try:
                         put_file(ws, src_file, dst_file)
                     except KeyboardInterrupt:
@@ -311,6 +312,7 @@ class ShellWsCmds(ShellCmds):
                             return
                 except Exception:
                     return
+            print('get: searching files...')
             file_match = self.dev.cmd(f"from nanoglob import glob; "
                                       f"glob(*{rest_args}, size=True)",
                                       silent=True,
@@ -321,11 +323,12 @@ class ShellWsCmds(ShellCmds):
                 else:
                     print(f'Downloading files @ {self.dev_name}:/ : \n')
                 for sz, name in file_match:
-                    print(f'- {name} [{sz/1000:.2f} kB]')
+                    print_size(name, sz)
 
                 self.dev.ws.sock.settimeout(10)
                 ws = websocket(self.dev.ws.sock)
                 for size_file_to_get, file in file_match:
+                    sz = size_file_to_get
                     src_file = file
                     dst_file = '.'
                     if os.path.isdir(dst_file):
@@ -335,8 +338,8 @@ class ShellWsCmds(ShellCmds):
                     if not src_file.startswith('/'):
                         abs_src_file = f'/{src_file}'
                     print(f"{self.dev_name}:{abs_src_file} -> {dst_file}")
-                    print(f'\n{src_file} [{size_file_to_get/1000:.2f} kB]')
-                    if not args.fg or src_file.endswith('.mpy'):
+                    print_size(src_file, size_file_to_get, nl=True)
+                    if (not args.fg) or check_filetype(src_file):
                         try:
                             get_file(ws, dst_file, src_file, size_file_to_get)
                         except (KeyboardInterrupt, Exception):
@@ -366,11 +369,18 @@ class ShellWsCmds(ShellCmds):
                     else:
                         try:  # FAST GET
                             self.fileio.init_get(src_file, size_file_to_get)
-                            self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{src_file}'"),
-                                            follow=True, long_string=True,
-                                            multiline=True, pipe=self.fileio.get)
+                            cmd_getfile = _CMDDICT_['CAT'].format(f"'{src_file}'")
+                            if size_file_to_get > 0:
+                                self.fileio.ws_get_file(cmd_getfile)
+                                self.fileio.save_file()
+                            else:
+                                self.fileio.do_pg_bar(self.fileio.bar_size,
+                                                      self.fileio.wheel,
+                                                      f"{0:.2f}/{0:.2f} KB",
+                                                      "0", 0, 0, 1, 0)
                             print('\n')
-                        except (KeyboardInterrupt, Exception):
+                        except (KeyboardInterrupt, Exception) as e:
+                            print(e)
                             print('KeyboardInterrupt: get Operation Canceled')
                             if input('Continue get Operation with next file? [y/n]') == 'y':
                                 pass
@@ -387,6 +397,7 @@ class ShellWsCmds(ShellCmds):
             return
 
         if cmd == 'dsync':
+            dir_only = True
             # be aware of name length error
             # 1: copy dir structure
             #    get depth level path
@@ -404,7 +415,78 @@ class ShellWsCmds(ShellCmds):
             #
             if not args.d:
                 # HOST TO DEVICE
-                dir_match = nglob(*rest_args, dir_only=True)
+                if rest_args == ['.'] or rest_args == ['*']:  # CWD
+                    rest_args = ['*']
+                    tree()
+                    file_match = nglob(*rest_args, size=True)
+                    if file_match:
+                        local_files = shasum(*rest_args, debug=False, rtn=True)
+                        local_files_dict = {
+                            fname: fhash for fname, fhash in local_files}
+                        if local_files:
+                            dev_cmd_files = (f"from shasum import shasum;"
+                                             f"shasum(*{rest_args}, debug=False, "
+                                             f"rtn=True);gc.collect()")
+                            print('dsync: checking files...')
+                            dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                                                        rtn_resp=True)
+                            if dev_files:
+                                files_to_sync = [(os.stat(fts[0])[6], fts[0])
+                                                 for fts in local_files if fts not in
+                                                 dev_files]
+                            else:
+                                files_to_sync = [(os.stat(fts)[6], fts)
+                                                 for fts in local_files_dict.keys()]
+
+                            if files_to_sync:
+                                print('\ndsync: syncing new or modified files:')
+                                for sz, name in files_to_sync:
+                                    print_size(name, sz)
+                                self.dev.ws.sock.settimeout(10)
+                                ws = websocket(self.dev.ws.sock)
+                                print('')
+                                for sz, name in files_to_sync:
+                                    print(f"{name} -> {self.dev_name}:{name}")
+                                    print_size(name, sz, nl=True)
+                                    try:
+                                        put_file(ws, name, name)
+                                    except KeyboardInterrupt:
+                                        print('KeyboardInterrupt: put Operation Canceled')
+                                        if input('Continue put Operation with next file? [y/n]') == 'y':
+                                            pass
+                                        else:
+                                            raise KeyboardInterrupt
+                                    except socket.timeout:
+                                        # print(e, 'Device {} unreachable'.format(devname))
+                                        try:
+                                            raise DeviceNotFound(f"WebSocketDevice @ "
+                                                                 f"{self.dev._uriprotocol}://"
+                                                                 f"{self.dev.ip}:{self.dev.port} "
+                                                                 f"is not reachable")
+                                        except Exception as e:
+                                            print(f'ERROR {e}')
+                            else:
+                                print('dsync: no new or modified files to sync')
+
+                            if args.rf:
+                                _local_files = [lf[0] for lf in local_files]
+                                files_to_delete = [dfile[0] for dfile in dev_files
+                                                   if dfile[0] not in _local_files]
+                                if files_to_delete:
+                                    print('dsync: deleting old files:')
+                                    for ndir in files_to_delete:
+                                        print(f'- {ndir}')
+                                    self.dev.wr_cmd(
+                                        'from upysh2 import rmrf', silent=True)
+                                    self.dev.wr_cmd(f'rmrf(*{files_to_delete})',
+                                                    follow=True)
+                                else:
+                                    print('dsync: no old files to delete')
+                    else:
+                        print(f'dsync: {", ".join(rest_args)}: '
+                              f'No files found in ./')
+
+                dir_match = nglob(*rest_args, dir_only=True)  # LOCAL DIRS
                 if dir_match:
                     for dir in dir_match:
                         tree(dir)
@@ -413,7 +495,7 @@ class ShellWsCmds(ShellCmds):
                         pattern_dir = [dir] + pattern_dir
                         local_dirs = nglob(*pattern_dir, dir_only=True)
                         dev_dirs = self.dev.wr_cmd(f"glob(*{pattern_dir}, "
-                                                   f"dir_only=True)",
+                                                   f"dir_only=True);gc.collect()",
                                                    silent=True, rtn_resp=True)
                         dirs_to_make = [
                             ldir for ldir in local_dirs if ldir not in dev_dirs]
@@ -434,6 +516,8 @@ class ShellWsCmds(ShellCmds):
                                 self.dev.wr_cmd('from upysh2 import rmrf', silent=True)
                                 self.dev.wr_cmd(f'rmrf(*{dirs_to_delete})',
                                                 follow=True)
+                            else:
+                                print('dsync: no old directories to delete')
 
                         local_files = shasum(*pattern_dir, debug=False, rtn=True)
                         local_files_dict = {
@@ -441,7 +525,7 @@ class ShellWsCmds(ShellCmds):
                         if local_files:
                             dev_cmd_files = (f"from shasum import shasum;"
                                              f"shasum(*{pattern_dir}, debug=False, "
-                                             f"rtn=True)")
+                                             f"rtn=True);gc.collect()")
                             print('dsync: checking files...')
                             dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
                                                         rtn_resp=True)
@@ -456,13 +540,13 @@ class ShellWsCmds(ShellCmds):
                             if files_to_sync:
                                 print('\ndsync: syncing new or modified files:')
                                 for sz, name in files_to_sync:
-                                    print(f'- {name} [{sz/1000:.2f} kB]')
+                                    print_size(name, sz)
                                 self.dev.ws.sock.settimeout(10)
                                 ws = websocket(self.dev.ws.sock)
                                 print('')
                                 for sz, name in files_to_sync:
                                     print(f"{name} -> {self.dev_name}:{name}")
-                                    print(f'\n{name} [{sz/1000:.2f} kB]')
+                                    print_size(name, sz, nl=True)
                                     try:
                                         put_file(ws, name, name)
                                     except KeyboardInterrupt:
@@ -507,7 +591,109 @@ class ShellWsCmds(ShellCmds):
                 return
             else:
                 # DEVICE TO HOST
-                dir_match = self.dev.wr_cmd(f"glob(*{rest_args}, dir_only=True)",
+                if rest_args == ['.'] or rest_args == ['*']:  # CWD
+                    rest_args = ['*']
+                    self.dev.wr_cmd("from upysh2 import tree;tree", follow=True)
+                    dev_cmd_files = (f"from shasum import shasum;"
+                                     f"shasum(*{rest_args}, debug=False, "
+                                     f"rtn=True, size=True);gc.collect()")
+                    print('dsync: checking files in ./ ...')
+                    dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                                                rtn_resp=True)
+
+                    if dev_files:
+                        local_files = shasum(*rest_args, debug=False, rtn=True,
+                                             size=True)
+
+                        if local_files:
+                            files_to_sync = [(fts[1], fts[0])
+                                             for fts in dev_files if fts not in
+                                             local_files]
+                        else:
+                            files_to_sync = [(fts[1], fts[0])
+                                             for fts in dev_files]
+
+                        if files_to_sync:
+                            print('\ndsync: syncing new or modified files:')
+                            for sz, name in files_to_sync:
+                                print_size(name, sz)
+                            self.dev.ws.sock.settimeout(10)
+                            ws = websocket(self.dev.ws.sock)
+                            print('')
+                            for sz, name in files_to_sync:
+                                print(f"{self.dev_name}:{name} -> {name}")
+                                print_size(name, sz, nl=True)
+                                if not args.fg or check_filetype(name):
+                                    try:
+                                        get_file(ws, name, name,
+                                                 sz)
+                                    except (KeyboardInterrupt, Exception):
+                                        print('KeyboardInterrupt: get Operation '
+                                              'Canceled')
+                                        # flush ws and reset
+                                        self.dev.flush()
+                                        self.dev.disconnect()
+                                        if input('Continue get Operation with next file? [y/n]') == 'y':
+                                            self.dev.connect()
+                                        else:
+                                            print('Canceling file queue..')
+                                            self.dev.connect()
+                                            raise KeyboardInterrupt
+                                        self.dev.ws.sock.settimeout(10)
+                                        ws = websocket(self.dev.ws.sock)
+                                    except socket.timeout:
+                                        try:
+
+                                            raise DeviceNotFound(f"WebSocketDevice @ "
+                                                                 f"{self.dev._uriprotocol}://"
+                                                                 f"{self.dev.ip}:{self.dev.port} "
+                                                                 f"is not reachable")
+                                        except Exception as e:
+                                            print(f'ERROR {e}')
+                                            return
+                                else:  # FAST GET
+                                    try:
+                                        self.fileio.init_get(name, sz)
+                                        cmd_gf = _CMDDICT_['CAT'].format(f"'{name}'")
+                                        if sz > 0:
+                                            self.fileio.ws_get_file(cmd_gf)
+                                            self.fileio.save_file()
+                                        else:
+                                            self.fileio.do_pg_bar(self.fileio.bar_size,
+                                                                  self.fileio.wheel,
+                                                                  f"{0:.2f}/{0:.2f} KB",
+                                                                  "0", 0, 0, 1, 0)
+                                        print('\n')
+                                    except (KeyboardInterrupt, Exception) as e:
+                                        print(e)
+                                        print(
+                                            'KeyboardInterrupt: get Operation Canceled')
+                                        if input('Continue get Operation with next file? [y/n]') == 'y':
+                                            pass
+                                        else:
+                                            print('Canceling file queue..')
+                                            return
+                        else:
+                            print('dsync: no new or modified files to sync')
+
+                        if args.rf:
+                            _dev_files = [df[0] for df in dev_files]
+                            files_to_delete = [dfile[0] for dfile in local_files
+                                               if dfile[0] not in _dev_files]
+                            if files_to_delete:
+                                print('dsync: deleting old files:')
+                                for ndir in files_to_delete:
+                                    print(f'- {ndir}')
+                                os.remove(ndir)
+                            else:
+                                print('dsync: no old files to delete')
+
+                    else:
+                        print('dsync: no files found directory tree')
+
+                # DEVICE DIRS
+                dir_match = self.dev.wr_cmd(f"glob(*{rest_args}, dir_only=True)"
+                                            f";gc.collect()",
                                             silent=True, rtn_resp=True)
                 if dir_match:
                     self.dev.wr_cmd("from nanoglob import _get_path_depth;"
@@ -521,7 +707,7 @@ class ShellWsCmds(ShellCmds):
                         pattern_dir = [dir] + pattern_dir
                         local_dirs = nglob(*pattern_dir, dir_only=True)
                         dev_dirs = self.dev.wr_cmd(f"glob(*{pattern_dir}, "
-                                                   f"dir_only=True)",
+                                                   f"dir_only=True);gc.collect()",
                                                    silent=True, rtn_resp=True)
                         dirs_to_make = [
                             ddir for ddir in dev_dirs if ddir not in local_dirs]
@@ -530,21 +716,22 @@ class ShellWsCmds(ShellCmds):
                             for ndir in dirs_to_make:
                                 print(f'- {ndir}')
                                 os.makedirs(ndir)
-                                # self.dev.wr_cmd(f'mkdir("{ndir}")', follow=True)
                         else:
                             print('dsync: no new directories to make')
                         if args.rf:
                             dirs_to_delete = [ldir for ldir in local_dirs
                                               if ldir not in dev_dirs]
                             if dirs_to_delete:
-                                print('dsync: deleting old dirs:')
+                                print('dsync: deleting old directories:')
                                 for ndir in dirs_to_delete:
                                     print(f'- {ndir}')
                                 shutil.rmtree(ndir)
+                            else:
+                                print('dsync: no old directories to delete')
 
                         dev_cmd_files = (f"from shasum import shasum;"
                                          f"shasum(*{pattern_dir}, debug=False, "
-                                         f"rtn=True, size=True)")
+                                         f"rtn=True, size=True);gc.collect()")
                         print('dsync: checking files...')
                         dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
                                                     rtn_resp=True)
@@ -564,14 +751,14 @@ class ShellWsCmds(ShellCmds):
                             if files_to_sync:
                                 print('\ndsync: syncing new or modified files:')
                                 for sz, name in files_to_sync:
-                                    print(f'- {name} [{sz/1000:.2f} kB]')
+                                    print_size(name, sz)
                                 self.dev.ws.sock.settimeout(10)
                                 ws = websocket(self.dev.ws.sock)
                                 print('')
                                 for sz, name in files_to_sync:
                                     print(f"{self.dev_name}:{name} -> {name}")
-                                    print(f'\n{name} [{sz/1000:.2f} kB]')
-                                    if not args.fg or name.endswith('.mpy'):
+                                    print_size(name, sz, nl=True)
+                                    if not args.fg or check_filetype(name):
                                         try:
                                             get_file(ws, name, name,
                                                      sz)
@@ -602,9 +789,16 @@ class ShellWsCmds(ShellCmds):
                                     else:  # FAST GET
                                         try:
                                             self.fileio.init_get(name, sz)
-                                            self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{name}'"),
-                                                            follow=True, long_string=True,
-                                                            multiline=True, pipe=self.fileio.get)
+                                            cmdgf = _CMDDICT_['CAT'].format(f"'{name}'")
+                                            if sz > 0:
+                                                self.fileio.ws_get_file(cmdgf)
+                                                self.fileio.save_file()
+                                            else:
+                                                self.fileio.do_pg_bar(self.fileio.bar_size,
+                                                                      self.fileio.wheel,
+                                                                      f"{0:.2f}/{0:.2f}"
+                                                                      f" KB",
+                                                                      "0", 0, 0, 1, 0)
                                             print('\n')
                                         except (KeyboardInterrupt, Exception) as e:
                                             print(e)

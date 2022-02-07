@@ -172,9 +172,6 @@ def put_file(ws, local_file, remote_file):
     # print('\n')
     with open(local_file, "rb") as f:
         while True:
-            # t_0 = time.time()
-            # sys.stdout.write("Sent %d of %d bytes\r" % (cnt, sz))
-            # sys.stdout.flush()
             buf = f.read(1024)
             if not buf:
                 break
@@ -194,6 +191,20 @@ def put_file(ws, local_file, remote_file):
             else:
                 sys.stdout.write("Sent %d of %d bytes\r" % (cnt, sz))
                 sys.stdout.flush()
+        if sz == 0:
+            sz = 1
+            cnt += len(buf)
+            loop_index_f = (cnt/sz)*size_bar
+            loop_index = int(loop_index_f)
+            loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+            nb_of_total = f"{0:.2f}/{0:.2f} kB"
+            percentage = cnt/sz
+            t_elapsed = time.time() - t_start
+            t_speed = f"{0:^2.2f}"
+            ett = 0
+            if pb:
+                do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed,
+                          loop_index_l, percentage, ett, size_bar)
 
     print('\n')
     print()
@@ -234,19 +245,35 @@ def get_file(ws, local_file, remote_file, file_size):
                 f.write(buf)
                 sz -= len(buf)
                 if pb:
-                    loop_index_f = (cnt/sz_r)*size_bar
-                    loop_index = int(loop_index_f)
-                    loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
-                    nb_of_total = f"{cnt/(1000):.2f}/{sz_r/(1000):.2f} kB"
-                    percentage = cnt / sz_r
-                    t_elapsed = time.time() - t_start
-                    t_speed = f"{(cnt/(1000))/t_elapsed:^2.2f}"
-                    ett = sz_r / (cnt / t_elapsed)
-                    do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
-                              t_elapsed, loop_index_l, percentage, ett, size_bar)
+                    if file_size > 0:
+                        loop_index_f = (cnt/sz_r)*size_bar
+                        loop_index = int(loop_index_f)
+                        loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                        nb_of_total = f"{cnt/(1000):.2f}/{sz_r/(1000):.2f} kB"
+                        percentage = cnt / sz_r
+                        t_elapsed = time.time() - t_start
+                        t_speed = f"{(cnt/(1000))/t_elapsed:^2.2f}"
+                        ett = sz_r / (cnt / t_elapsed)
+                        do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
+                                  t_elapsed, loop_index_l, percentage, ett, size_bar)
                 else:
                     sys.stdout.write("Received %d bytes\r" % cnt)
                     sys.stdout.flush()
+        if file_size == 0:
+            sz = 1
+            cnt = 1
+            loop_index_f = (cnt/sz)*size_bar
+            loop_index = int(loop_index_f)
+            loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+            nb_of_total = f"{0:.2f}/{0:.2f} kB"
+            percentage = cnt/sz
+            t_elapsed = time.time() - t_start
+            t_speed = f"{0:^2.2f}"
+            ett = 0
+            if pb:
+                do_pg_bar(loop_index, wheel, nb_of_total, t_speed, t_elapsed,
+                          loop_index_l, percentage, ett, size_bar)
+
     print()
     print('\n')
     assert read_resp(ws) == 0
