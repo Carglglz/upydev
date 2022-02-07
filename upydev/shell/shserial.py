@@ -378,11 +378,20 @@ class ShellSrCmds(ShellCmds):
                             fname: fhash for fname, fhash in local_files}
                         if local_files:
                             dev_cmd_files = (f"from shasum import shasum;"
-                                             f"shasum(*{rest_args}, debug=False, "
-                                             f"rtn=True)")
+                                             f"shasum(*{rest_args}, debug=True, "
+                                             f"rtn=False, size=True)")
                             print('dsync: checking files...')
-                            dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                                                        rtn_resp=True)
+                            # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                            #                             rtn_resp=True)
+                            self.fastfileio.init_sha()
+                            dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                        rtn_resp=True, long_string=True,
+                                                        pipe=self.fastfileio.shapipe)
+                            # print(local_files[0])
+                            if not dev_files:
+                                dev_files = [(hf[0], hf[2])
+                                             for hf in self.fastfileio._shafiles]
+                                print('')
                             if dev_files:
                                 files_to_sync = [(os.stat(fts[0])[6], fts[0])
                                                  for fts in local_files if fts not in
@@ -464,11 +473,26 @@ class ShellSrCmds(ShellCmds):
                         local_files_dict = {
                             fname: fhash for fname, fhash in local_files}
                         if local_files:
+                            # dev_cmd_files = (f"from shasum import shasum;"
+                            #                  f"shasum(*{pattern_dir}, debug=False, "
+                            #                  f"rtn=True)")
+                            # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                            #                             rtn_resp=True)
                             dev_cmd_files = (f"from shasum import shasum;"
-                                             f"shasum(*{pattern_dir}, debug=False, "
-                                             f"rtn=True)")
-                            dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                                                        rtn_resp=True)
+                                             f"shasum(*{pattern_dir}, debug=True, "
+                                             f"rtn=False, size=True)")
+                            print('dsync: checking files...')
+                            # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                            #                             rtn_resp=True)
+                            self.fastfileio.init_sha()
+                            dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                        rtn_resp=True, long_string=True,
+                                                        pipe=self.fastfileio.shapipe)
+                            # print(local_files[0])
+                            if not dev_files:
+                                dev_files = [(hf[0], hf[2])
+                                             for hf in self.fastfileio._shafiles]
+                                print('')
                             if dev_files:
                                 files_to_sync = [(os.stat(fts[0])[6], fts[0])
                                                  for fts in local_files if fts not in
@@ -525,12 +549,23 @@ class ShellSrCmds(ShellCmds):
                 if rest_args == ['.'] or rest_args == ['*']:  # CWD
                     rest_args = ['*']
                     self.dev.wr_cmd("tree", follow=True)
+                    # dev_cmd_files = (f"from shasum import shasum;"
+                    #                  f"shasum(*{rest_args}, debug=False, "
+                    #                  f"rtn=True, size=True)")
+                    # print('dsync: checking files in ./ ...')
+                    # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                    #                             rtn_resp=True)
                     dev_cmd_files = (f"from shasum import shasum;"
-                                     f"shasum(*{rest_args}, debug=False, "
-                                     f"rtn=True, size=True)")
+                                     f"shasum(*{rest_args}, debug=True, "
+                                     f"rtn=False, size=True);gc.collect()")
                     print('dsync: checking files in ./ ...')
-                    dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                                                rtn_resp=True)
+                    self.fastfileio.init_sha()
+                    dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                rtn_resp=True, long_string=True,
+                                                pipe=self.fastfileio.shapipe)
+                    if not dev_files:
+                        dev_files = self.fastfileio._shafiles
+                        print('')
 
                     if dev_files:
                         local_files = shasum(*rest_args, debug=False, rtn=True,
@@ -635,11 +670,22 @@ class ShellSrCmds(ShellCmds):
                                     print(f'- {ndir}')
                                 shutil.rmtree(ndir)
 
+                        # dev_cmd_files = (f"from shasum import shasum;"
+                        #                  f"shasum(*{pattern_dir}, debug=False, "
+                        #                  f"rtn=True, size=True)")
+                        # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
+                        #                             rtn_resp=True)
                         dev_cmd_files = (f"from shasum import shasum;"
-                                         f"shasum(*{pattern_dir}, debug=False, "
-                                         f"rtn=True, size=True)")
-                        dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                                                    rtn_resp=True)
+                                         f"shasum(*{pattern_dir}, debug=True, "
+                                         f"rtn=False, size=True);gc.collect()")
+                        print('dsync: checking files...')
+                        self.fastfileio.init_sha()
+                        dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                    rtn_resp=True, long_string=True,
+                                                    pipe=self.fastfileio.shapipe)
+                        if not dev_files:
+                            dev_files = self.fastfileio._shafiles
+                            print('')
 
                         if dev_files:
                             local_files = shasum(*pattern_dir, debug=False, rtn=True,

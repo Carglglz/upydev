@@ -425,11 +425,19 @@ class ShellWsCmds(ShellCmds):
                             fname: fhash for fname, fhash in local_files}
                         if local_files:
                             dev_cmd_files = (f"from shasum import shasum;"
-                                             f"shasum(*{rest_args}, debug=False, "
-                                             f"rtn=True);gc.collect()")
-                            print('dsync: checking files...')
-                            dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                                                        rtn_resp=True)
+                                             f"shasum(*{rest_args}, debug=True, "
+                                             f"rtn=False, size=True);gc.collect()")
+                            print('dsync: checking files in ./ ...')
+                            self.fileio.init_sha()
+                            dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                        rtn_resp=True, long_string=True,
+                                                        pipe=self.fileio.shapipe)
+                            # print(local_files[0])
+                            if not dev_files:
+                                dev_files = [(hf[0], hf[2])
+                                             for hf in self.fileio._shafiles]
+                                print('')
+                                # print(dev_files[0])
                             if dev_files:
                                 files_to_sync = [(os.stat(fts[0])[6], fts[0])
                                                  for fts in local_files if fts not in
@@ -524,11 +532,17 @@ class ShellWsCmds(ShellCmds):
                             fname: fhash for fname, fhash in local_files}
                         if local_files:
                             dev_cmd_files = (f"from shasum import shasum;"
-                                             f"shasum(*{pattern_dir}, debug=False, "
-                                             f"rtn=True);gc.collect()")
+                                             f"shasum(*{pattern_dir}, debug=True, "
+                                             f"rtn=False, size=True);gc.collect()")
                             print('dsync: checking files...')
-                            dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                                                        rtn_resp=True)
+                            self.fileio.init_sha()
+                            dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                        rtn_resp=True, long_string=True,
+                                                        pipe=self.fileio.shapipe)
+                            if not dev_files:
+                                dev_files = [(hf[0], hf[2])
+                                             for hf in self.fileio._shafiles]
+                                print('')
                             if dev_files:
                                 files_to_sync = [(os.stat(fts[0])[6], fts[0])
                                                  for fts in local_files if fts not in
@@ -595,11 +609,16 @@ class ShellWsCmds(ShellCmds):
                     rest_args = ['*']
                     self.dev.wr_cmd("from upysh2 import tree;tree", follow=True)
                     dev_cmd_files = (f"from shasum import shasum;"
-                                     f"shasum(*{rest_args}, debug=False, "
-                                     f"rtn=True, size=True);gc.collect()")
+                                     f"shasum(*{rest_args}, debug=True, "
+                                     f"rtn=False, size=True);gc.collect()")
                     print('dsync: checking files in ./ ...')
-                    dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                                                rtn_resp=True)
+                    self.fileio.init_sha()
+                    dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                rtn_resp=True, long_string=True,
+                                                pipe=self.fileio.shapipe)
+                    if not dev_files:
+                        dev_files = self.fileio._shafiles
+                        print('')
 
                     if dev_files:
                         local_files = shasum(*rest_args, debug=False, rtn=True,
@@ -624,10 +643,13 @@ class ShellWsCmds(ShellCmds):
                                 print(f"{self.dev_name}:{name} -> {name}")
                                 print_size(name, sz, nl=True)
                                 if not args.fg or check_filetype(name):
+                                    self.dev.ws.sock.settimeout(10)
+                                    ws = websocket(self.dev.ws.sock)
                                     try:
                                         get_file(ws, name, name,
                                                  sz)
-                                    except (KeyboardInterrupt, Exception):
+                                    except (KeyboardInterrupt, Exception) as e:
+                                        print(e)
                                         print('KeyboardInterrupt: get Operation '
                                               'Canceled')
                                         # flush ws and reset
@@ -730,11 +752,20 @@ class ShellWsCmds(ShellCmds):
                                 print('dsync: no old directories to delete')
 
                         dev_cmd_files = (f"from shasum import shasum;"
-                                         f"shasum(*{pattern_dir}, debug=False, "
-                                         f"rtn=True, size=True);gc.collect()")
+                                         f"shasum(*{pattern_dir}, debug=True, "
+                                         f"rtn=False, size=True);gc.collect()")
                         print('dsync: checking files...')
-                        dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                                                    rtn_resp=True)
+                        self.fileio.init_sha()
+                        dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                    rtn_resp=True, long_string=True,
+                                                    pipe=self.fileio.shapipe)
+                        if not dev_files:
+                            dev_files = self.fileio._shafiles
+                            print('')
+                        # print(dev_files)
+
+                        # dev_files = [(hf.split()[1], int(hf.split()[2]), hf.split()[0])
+                        #              for hf in dev_files.splitlines()]
 
                         if dev_files:
                             local_files = shasum(*pattern_dir, debug=False, rtn=True,
@@ -759,10 +790,13 @@ class ShellWsCmds(ShellCmds):
                                     print(f"{self.dev_name}:{name} -> {name}")
                                     print_size(name, sz, nl=True)
                                     if not args.fg or check_filetype(name):
+                                        self.dev.ws.sock.settimeout(10)
+                                        ws = websocket(self.dev.ws.sock)
                                         try:
                                             get_file(ws, name, name,
                                                      sz)
-                                        except (KeyboardInterrupt, Exception):
+                                        except (KeyboardInterrupt, Exception) as e:
+                                            print(e)
                                             print('KeyboardInterrupt: get Operation '
                                                   'Canceled')
                                             # flush ws and reset

@@ -22,6 +22,7 @@ import os
 import ast
 from upydev.shell.constants import (ABLUE_bold, CGREEN, MAGENTA_bold, CEND)
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.application import run_in_terminal
 from upydevice import wsprotocol
 import re
 import socket
@@ -514,6 +515,8 @@ class CatFileIO:
         self.percentage = 0
         self.dev = None
         self._commandline = 0
+        self._hf_index = 0
+        self._shafiles = []
 
     def sr_get_file(self, cmd, filter_cmd=True):
         self.dev._is_traceback = False
@@ -615,17 +618,6 @@ class CatFileIO:
                 self.file_buff += rest.replace(b'\r', b'')
                 self.cnt += len(rest.replace(b'\r', b''))
 
-            # while len(_cmd_filt_buff) < len_cmd_filt:
-            #     cmd_buff = self.ws_readline()
-            #     # if len(_cmd_filt_buff + cmd_buff) <= len_cmd_filt:
-            #     #     pass
-            #     # else:
-            #     #     offset = len(_cmd_filt_buff + cmd_buff) - len_cmd_filt
-            #     #     rest, init_file = cmd_buff[:-offset], cmd_buff[-offset:]
-            #     #     assert len(_cmd_filt_buff + rest) == len(cmd_filt), "Mismatch"
-            #     #     _cmd_filt_buff += rest
-            #     #     self.file_buff += init_file
-            #     #     self.cnt += len(init_file)
         try:
             while len(self.file_buff) < self.filesize:
                 try:
@@ -799,20 +791,38 @@ class CatFileIO:
         with open(self.filename, 'ab') as f:
             f.write(self.file_buff[:self.filesize])
 
-    # def save_file(self):
-    #     data = self.dev.raw_buff.splitlines()
-    #     data = b'\n'.join(data[1:])
-    #     data = data[:self.filesize]
-    #     with open(self.filename, 'ab') as f:
-    #         f.write(data)
+    def init_sha(self):
+        self._hf_index = 0
+        self._shafiles = []
 
-    # def save_file_alt(self):
-    #     data = self.dev.buff.split(b'\r\n')
-    #     data = b'\n'.join(data)
-    #     data = data[:self.filesize]
-    #     with open(self.filename, 'ab') as f:
-    #         f.write(data)
-        # get raw buffer from cat
+    def shapipe(self, data, std=True, exec_prompt=False):
+        if std != 'stderr':
+
+            sys.stdout.write("\033[K")
+            sys.stdout.write("\033[A")
+            print(f"dsync: checking files... {self.wheel[self._hf_index % 4]}")
+            if data.endswith('\n'):
+                print(data[:-1], end='\r')
+            else:
+                print(data, end='\r')
+            sys.stdout.flush()
+            hf, nf, sf = data.split()
+            self._shafiles.append((nf, int(sf), hf))
+            self._hf_index += 1
+            # def save_file(self):
+            #     data = self.dev.raw_buff.splitlines()
+            #     data = b'\n'.join(data[1:])
+            #     data = data[:self.filesize]
+            #     with open(self.filename, 'ab') as f:
+            #         f.write(data)
+
+            # def save_file_alt(self):
+            #     data = self.dev.buff.split(b'\r\n')
+            #     data = b'\n'.join(data)
+            #     data = data[:self.filesize]
+            #     with open(self.filename, 'ab') as f:
+            #         f.write(data)
+            # get raw buffer from cat
 
 
 def get_dir_size_recursive(dir):
