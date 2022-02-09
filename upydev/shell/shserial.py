@@ -3,9 +3,9 @@ from upydev.shell.parser import subshparser_cmd
 from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydevice import DeviceException
 from upydev.serialio import SerialFileIO
-from upydev.shell.common import tree, CatFileIO
+from upydev.shell.common import tree, CatFileIO, print_size
+from upydev.shell.constants import CHECK
 from upydev.shell.shasum import shasum
-from upydev.commandlib import _CMDDICT_
 import subprocess
 import shlex
 import signal
@@ -55,16 +55,19 @@ GET = dict(help="download files from device",
                                type=int),
                     "-fg": dict(help='use a faster get method', required=False,
                                 default=False,
-                                action='store_true')})
+                                action='store_true'),
+                    "-b": dict(help='read buffer for faster get method', required=False,
+                               default=512,
+                               type=int)})
 
-DSYNC = dict(help="recursively sync a folder in device filesystem",
+DSYNC = dict(help="recursively sync a folder from/to device filesystem",
              subcmd=dict(help='Indicate a dir/pattern to '
                          'sync',
                          default=['.'],
                          metavar='dir/pattern',
-                         nargs='+'),
+                         nargs='*'),
              options={"-rf": dict(help='remove recursive force a dir or file deleted'
-                                       ' in local directory',
+                                       ' in local/device directory',
                                   required=False,
                                   default=False,
                                   action='store_true'),
@@ -73,7 +76,17 @@ DSYNC = dict(help="recursively sync a folder in device filesystem",
                                  action='store_true'),
                       "-fg": dict(help='use a faster get method', required=False,
                                   default=False,
-                                  action='store_true')})
+                                  action='store_true'),
+                      "-b": dict(help='read buffer for faster get method',
+                                 required=False,
+                                 default=512,
+                                 type=int),
+                      "-t": dict(help='show tree of directory to sync', required=False,
+                                 default=False,
+                                 action='store_true'),
+                      "-f": dict(help='force sync, no hash check', required=False,
+                                 default=False,
+                                 action='store_true')})
 
 SHELLSR_CMD_DICT_PARSER = {"srepl": SREPL, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
@@ -119,25 +132,6 @@ class ShellSrCmds(ShellCmds):
                     pass
                 pass
                 print('')
-
-        # if cmd == 'getcert':
-        #     if self.dev._uriprotocol == 'wss':
-        #         devcert = self.dev.ws.sock.getpeercert()
-        #         for key in devcert.keys():
-        #             value = devcert[key]
-        #             try:
-        #                 if not isinstance(value, str):
-        #                     if len(value) > 1:
-        #                         print('{}:'.format(key.upper()))
-        #                         for val in value:
-        #                             if len(val) == 1:
-        #                                 print('- {} : {}'.format(*val[0]))
-        #                             else:
-        #                                 print('- {} : {}'.format(*val))
-        #                 else:
-        #                     print("{}: {}".format(key.upper(), devcert[key]))
-        #             except Exception:
-        #                 print("{}: {}".format(key.upper(), devcert[key]))
 
         if cmd == 'jupyterc':
             # print('<-- Device {} MicroPython -->'.format(dev_platform))
@@ -249,15 +243,17 @@ class ShellSrCmds(ShellCmds):
                             source = source.replace('.', '')
                         dst_file = source + '/' + file.split('/')[-1]
                     else:
-                        dst_file = '/' + file.split('/')[-1]
+                        dst_file = './' + file.split('/')[-1]
                     if dst_file[-1] == "/":
                         basename = src_file.rsplit("/", 1)[-1]
                         dst_file += basename
                     print(f"{src_file} -> {self.dev_name}:{dst_file}\n")
-                    # print(f'\n{src_file} [{sz/1000:.2f} kB]')
+                    print_size(src_file, sz, nl=True)
                     try:
-                        self.fileio.put(src_file, dst_file)
-                    except KeyboardInterrupt:
+                        # self.fileio.put(src_file, dst_file)
+                        self.fastfileio.init_put(src_file, sz)
+                        self.fastfileio.sraw_put_file(src_file, dst_file)
+                    except (KeyboardInterrupt, Exception):
                         print('KeyboardInterrupt: put Operation Canceled')
                         self.dev.cmd("f.close()", silent=True)
                         if input('Continue put Operation with next file? [y/n]') == 'y':
@@ -331,9 +327,16 @@ class ShellSrCmds(ShellCmds):
                     else:
                         try:  # FAST GET
                             self.fastfileio.init_get(src_file, size_file_to_get)
-                            cmd_get_file = _CMDDICT_['CAT'].format(f"'{src_file}'")
-                            self.fastfileio.sr_get_file(cmd_get_file)
-                            self.fastfileio.save_file()
+                            cmd_get_file = (f"rcat('{src_file}', buff={args.b});"
+                                            f"gc.collect()")
+                            if size_file_to_get > 0:
+                                self.fastfileio.sr_get_file(cmd_get_file)
+                                self.fastfileio.save_file()
+                            else:
+                                self.fastfileio.do_pg_bar(self.fastfileio.bar_size,
+                                                          self.fastfileio.wheel,
+                                                          f"{0:.2f}/{0:.2f} KB",
+                                                          "0", 0, 0, 1, 0)
                             print('\n')
                         except (KeyboardInterrupt, Exception) as e:
                             print(e)
@@ -370,28 +373,36 @@ class ShellSrCmds(ShellCmds):
             if not args.d:
                 if rest_args == ['.'] or rest_args == ['*']:  # CWD
                     rest_args = ['*']
-                    tree()
+                    if args.t:
+                        tree()
+                    else:
+                        print("dsync: syncing path ./:")
                     file_match = nglob(*rest_args, size=True)
                     if file_match:
                         local_files = shasum(*rest_args, debug=False, rtn=True)
                         local_files_dict = {
                             fname: fhash for fname, fhash in local_files}
                         if local_files:
-                            dev_cmd_files = (f"from shasum import shasum;"
-                                             f"shasum(*{rest_args}, debug=True, "
-                                             f"rtn=False, size=True)")
-                            print('dsync: checking files...')
-                            # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                            #                             rtn_resp=True)
-                            self.fastfileio.init_sha()
-                            dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
-                                                        rtn_resp=True, long_string=True,
-                                                        pipe=self.fastfileio.shapipe)
-                            # print(local_files[0])
-                            if not dev_files:
-                                dev_files = [(hf[0], hf[2])
-                                             for hf in self.fastfileio._shafiles]
-                                print('')
+                            if not args.f:
+                                dev_cmd_files = (f"from shasum import shasum;"
+                                                 f"shasum(*{rest_args}, debug=True, "
+                                                 f"rtn=False, size=True)")
+                                print('dsync: checking files...')
+                                ff = self.fastfileio
+                                ff.init_sha()
+                                dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                            rtn_resp=True,
+                                                            long_string=True,
+                                                            pipe=ff.shapipe)
+                                # print(local_files[0])
+                                if not dev_files:
+                                    dev_files = [(hf[0], hf[2])
+                                                 for hf in ff._shafiles]
+                                    if dev_files:
+                                        ff.end_sha()
+                            else:
+                                dev_files = []
+
                             if dev_files:
                                 files_to_sync = [(os.stat(fts[0])[6], fts[0])
                                                  for fts in local_files if fts not in
@@ -403,12 +414,15 @@ class ShellSrCmds(ShellCmds):
                             if files_to_sync:
                                 print('\ndsync: syncing new or modified files:')
                                 for sz, name in files_to_sync:
-                                    print(f'- {name} [{sz/1000:.2f} kB]')
+                                    print_size(name, sz)
                                 print('')
                                 for sz, name in files_to_sync:
                                     print(f"{name} -> {self.dev_name}:{name}")
+                                    print_size(name, sz, nl=True)
                                     try:
-                                        self.fileio.put(name, name)
+                                        # self.fileio.put(name, name)
+                                        self.fastfileio.init_put(name, sz)
+                                        self.fastfileio.sraw_put_file(name, name)
                                     except KeyboardInterrupt:
                                         print('KeyboardInterrupt: put Operation Canceled')
                                         self.dev.cmd("f.close()", silent=True)
@@ -417,7 +431,7 @@ class ShellSrCmds(ShellCmds):
                                         else:
                                             raise KeyboardInterrupt
                             else:
-                                print('dsync: no new or modified files to sync')
+                                print(f'dsync: ./ : OK{CHECK}')
 
                             if args.rf:
                                 _local_files = [lf[0] for lf in local_files]
@@ -440,23 +454,30 @@ class ShellSrCmds(ShellCmds):
                 dir_match = nglob(*rest_args, dir_only=True)
                 if dir_match:
                     for dir in dir_match:
-                        tree(dir)
+                        if args.t:
+                            tree(dir)
+                        else:
+                            print(f"dsync: syncing path {dir}:")
                         depth_level = _get_path_depth(dir) + 1
                         pattern_dir = [f"{dir}/*{'/*'* i}" for i in range(depth_level)]
                         pattern_dir = [dir] + pattern_dir
                         local_dirs = nglob(*pattern_dir, dir_only=True)
-                        dev_dirs = self.dev.wr_cmd(f"glob(*{pattern_dir}, "
-                                                   f"dir_only=True)",
-                                                   silent=True, rtn_resp=True)
+                        if not args.f:
+                            dev_dirs = self.dev.wr_cmd(f"glob(*{pattern_dir}, "
+                                                       f"dir_only=True)",
+                                                       silent=True, rtn_resp=True)
+                        else:
+                            dev_dirs = []
                         dirs_to_make = [ldir for ldir in local_dirs
                                         if ldir not in dev_dirs]
                         if dirs_to_make:
                             print('dsync: making new dirs:')
                             for ndir in dirs_to_make:
                                 print(f'- {ndir}')
-                                self.dev.wr_cmd(f'mkdir("{ndir}")', follow=True)
+                            self.dev.wr_cmd(f'mkdir(*{dirs_to_make})', follow=True)
                         else:
-                            print('dsync: no new directories to make')
+                            print(f'dsync: dirs: OK{CHECK}')
+                            # print('dsync: no new directories to make')
 
                         if args.rf:
                             dirs_to_delete = [ddir for ddir in dev_dirs
@@ -473,26 +494,25 @@ class ShellSrCmds(ShellCmds):
                         local_files_dict = {
                             fname: fhash for fname, fhash in local_files}
                         if local_files:
-                            # dev_cmd_files = (f"from shasum import shasum;"
-                            #                  f"shasum(*{pattern_dir}, debug=False, "
-                            #                  f"rtn=True)")
-                            # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                            #                             rtn_resp=True)
-                            dev_cmd_files = (f"from shasum import shasum;"
-                                             f"shasum(*{pattern_dir}, debug=True, "
-                                             f"rtn=False, size=True)")
-                            print('dsync: checking files...')
-                            # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                            #                             rtn_resp=True)
-                            self.fastfileio.init_sha()
-                            dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
-                                                        rtn_resp=True, long_string=True,
-                                                        pipe=self.fastfileio.shapipe)
-                            # print(local_files[0])
-                            if not dev_files:
-                                dev_files = [(hf[0], hf[2])
-                                             for hf in self.fastfileio._shafiles]
-                                print('')
+                            if not args.f:
+                                dev_cmd_files = (f"from shasum import shasum;"
+                                                 f"shasum(*{pattern_dir}, debug=True, "
+                                                 f"rtn=False, size=True)")
+                                print('dsync: checking files...')
+                                ff = self.fastfileio
+                                ff.init_sha()
+                                dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                            rtn_resp=True,
+                                                            long_string=True,
+                                                            pipe=ff.shapipe)
+                                # print(local_files[0])
+                                if not dev_files:
+                                    dev_files = [(hf[0], hf[2])
+                                                 for hf in ff._shafiles]
+                                    if dev_files:
+                                        ff.end_sha()
+                            else:
+                                dev_files = []
                             if dev_files:
                                 files_to_sync = [(os.stat(fts[0])[6], fts[0])
                                                  for fts in local_files if fts not in
@@ -506,12 +526,16 @@ class ShellSrCmds(ShellCmds):
                             if files_to_sync:
                                 print('\ndsync: syncing new or modified files:')
                                 for sz, name in files_to_sync:
-                                    print(f'- {name} [{sz/1000:.2f} kB]')
+                                    print_size(name, sz)
                                 print('')
                                 for sz, name in files_to_sync:
                                     print(f"{name} -> {self.dev_name}:{name}")
+                                    print_size(name, sz, nl=True)
                                     try:
-                                        self.fileio.put(name, name)
+                                        # self.fileio.put(name, name)
+                                        self.fastfileio.init_put(name, sz)
+                                        self.fastfileio.sraw_put_file(name, name)
+                                        print('')
                                     except KeyboardInterrupt:
                                         print('KeyboardInterrupt: put Operation Canceled')
                                         self.dev.cmd("f.close()", silent=True)
@@ -520,7 +544,8 @@ class ShellSrCmds(ShellCmds):
                                         else:
                                             raise KeyboardInterrupt
                             else:
-                                print('dsync: no new or modified files to sync')
+                                print(f'dsync: files: OK{CHECK}')
+                                # print('dsync: no new or modified files to sync')
 
                             if args.rf:
                                 _local_files = [lf[0] for lf in local_files]
@@ -548,24 +573,22 @@ class ShellSrCmds(ShellCmds):
                 # DEVICE TO HOST
                 if rest_args == ['.'] or rest_args == ['*']:  # CWD
                     rest_args = ['*']
-                    self.dev.wr_cmd("tree", follow=True)
-                    # dev_cmd_files = (f"from shasum import shasum;"
-                    #                  f"shasum(*{rest_args}, debug=False, "
-                    #                  f"rtn=True, size=True)")
-                    # print('dsync: checking files in ./ ...')
-                    # dev_files = self.dev.wr_cmd(dev_cmd_files, silent=True,
-                    #                             rtn_resp=True)
+                    if args.t:
+                        self.dev.wr_cmd("from upysh2 import tree;tree", follow=True)
+                    else:
+                        print("dsync: syncing path ./:")
                     dev_cmd_files = (f"from shasum import shasum;"
                                      f"shasum(*{rest_args}, debug=True, "
                                      f"rtn=False, size=True);gc.collect()")
-                    print('dsync: checking files in ./ ...')
+                    print('dsync: checking files...')
                     self.fastfileio.init_sha()
                     dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
                                                 rtn_resp=True, long_string=True,
                                                 pipe=self.fastfileio.shapipe)
                     if not dev_files:
                         dev_files = self.fastfileio._shafiles
-                        print('')
+                        if dev_files:
+                            self.fastfileio.end_sha()
 
                     if dev_files:
                         local_files = shasum(*rest_args, debug=False, rtn=True,
@@ -582,10 +605,11 @@ class ShellSrCmds(ShellCmds):
                         if files_to_sync:
                             print('\ndsync: syncing new or modified files:')
                             for sz, name in files_to_sync:
-                                print(f'- {name} [{sz/1000:.2f} kB]')
+                                print_size(name, sz)
                             print('')
                             for sz, name in files_to_sync:
                                 print(f"{self.dev_name}:{name} -> {name}")
+                                print_size(name, sz, nl=True)
                                 if not args.fg:
                                     try:
                                         self.fileio.get((sz, name), name,
@@ -603,9 +627,17 @@ class ShellSrCmds(ShellCmds):
                                 else:
                                     try:  # FAST GET
                                         self.fastfileio.init_get(name, sz)
-                                        cmd_gf = _CMDDICT_['CAT'].format(f"'{name}'")
-                                        self.fastfileio.sr_get_file(cmd_gf)
-                                        self.fastfileio.save_file()
+                                        cmd_gf = (f"rcat('{name}', buff={args.b});"
+                                                  f"gc.collect()")
+                                        if sz > 0:
+                                            self.fastfileio.sr_get_file(cmd_gf)
+                                            self.fastfileio.save_file()
+                                        else:
+                                            ff = self.fastfileio
+                                            ff.do_pg_bar(self.fastfileio.bar_size,
+                                                         self.fastfileio.wheel,
+                                                         f"{0:.2f}/{0:.2f} KB",
+                                                         "0", 0, 0, 1, 0)
                                         print('\n')
                                     except (KeyboardInterrupt, Exception) as e:
                                         print(e)
@@ -616,9 +648,9 @@ class ShellSrCmds(ShellCmds):
                                         else:
                                             print('Canceling file queue..')
                                             return
-
                         else:
-                            print('dsync: no new or modified files to sync')
+                            print(f'dsync: ./ : OK{CHECK}')
+                            # print('dsync: no new or modified files to sync')
 
                         if args.rf:
                             _dev_files = [df[0] for df in dev_files]
@@ -628,7 +660,7 @@ class ShellSrCmds(ShellCmds):
                                 print('dsync: deleting old files:')
                                 for ndir in files_to_delete:
                                     print(f'- {ndir}')
-                                os.remove(ndir)
+                                    os.remove(ndir)
                             else:
                                 print('dsync: no old files to delete')
 
@@ -642,7 +674,10 @@ class ShellSrCmds(ShellCmds):
                                     ";from upysh2 import tree",
                                     silent=True)
                     for dir in dir_match:
-                        self.dev.wr_cmd(f"tree('{dir}')", follow=True)
+                        if args.t:
+                            self.dev.wr_cmd(f"tree('{dir}')", follow=True)
+                        else:
+                            print(f"dsync: syncing path {dir}:")
                         depth_level = self.dev.wr_cmd(f"_get_path_depth('{dir}') + 1",
                                                       silent=True, rtn_resp=True)
                         pattern_dir = [f"{dir}/*{'/*'* i}" for i in range(depth_level)]
@@ -660,7 +695,8 @@ class ShellSrCmds(ShellCmds):
                                 os.makedirs(ndir)
                                 # self.dev.wr_cmd(f'mkdir("{ndir}")', follow=True)
                         else:
-                            print('dsync: no new directories to make')
+                            # print('dsync: no new directories to make')
+                            print(f'dsync: dirs: OK{CHECK}')
                         if args.rf:
                             dirs_to_delete = [ldir for ldir in local_dirs
                                               if ldir not in dev_dirs]
@@ -668,7 +704,7 @@ class ShellSrCmds(ShellCmds):
                                 print('dsync: deleting old dirs:')
                                 for ndir in dirs_to_delete:
                                     print(f'- {ndir}')
-                                shutil.rmtree(ndir)
+                                    shutil.rmtree(ndir)
 
                         # dev_cmd_files = (f"from shasum import shasum;"
                         #                  f"shasum(*{pattern_dir}, debug=False, "
@@ -685,7 +721,8 @@ class ShellSrCmds(ShellCmds):
                                                     pipe=self.fastfileio.shapipe)
                         if not dev_files:
                             dev_files = self.fastfileio._shafiles
-                            print('')
+                            if dev_files:
+                                self.fastfileio.end_sha()
 
                         if dev_files:
                             local_files = shasum(*pattern_dir, debug=False, rtn=True,
@@ -702,10 +739,11 @@ class ShellSrCmds(ShellCmds):
                             if files_to_sync:
                                 print('\ndsync: syncing new or modified files:')
                                 for sz, name in files_to_sync:
-                                    print(f'- {name} [{sz/1000:.2f} kB]')
+                                    print_size(name, sz)
                                 print('')
                                 for sz, name in files_to_sync:
                                     print(f"{self.dev_name}:{name} -> {name}")
+                                    print_size(name, sz, nl=True)
                                     if not args.fg:
                                         try:
                                             self.fileio.get((sz, name), name,
@@ -723,9 +761,17 @@ class ShellSrCmds(ShellCmds):
                                     else:
                                         try:  # FAST GET
                                             self.fastfileio.init_get(name, sz)
-                                            cmdgf = _CMDDICT_['CAT'].format(f"'{name}'")
-                                            self.fastfileio.sr_get_file(cmdgf)
-                                            self.fastfileio.save_file()
+                                            cmdgf = (f"rcat('{name}', buff={args.b});"
+                                                     f"gc.collect()")
+                                            if sz > 0:
+                                                self.fastfileio.sr_get_file(cmdgf)
+                                                self.fastfileio.save_file()
+                                            else:
+                                                ff = self.fastfileio
+                                                ff.do_pg_bar(self.fastfileio.bar_size,
+                                                             self.fastfileio.wheel,
+                                                             f"{0:.2f}/{0:.2f} KB",
+                                                             "0", 0, 0, 1, 0)
                                             print('\n')
                                         except (KeyboardInterrupt, Exception) as e:
                                             print(e)
@@ -738,7 +784,8 @@ class ShellSrCmds(ShellCmds):
                                                 return
 
                             else:
-                                print('dsync: no new or modified files to sync')
+                                print(f'dsync: files: OK{CHECK}')
+                                # print('dsync: no new or modified files to sync')
 
                             if args.rf:
                                 _dev_files = [df[0] for df in dev_files]
@@ -748,7 +795,7 @@ class ShellSrCmds(ShellCmds):
                                     print('dsync: deleting old files:')
                                     for ndir in files_to_delete:
                                         print(f'- {ndir}')
-                                    os.remove(ndir)
+                                        os.remove(ndir)
                                 else:
                                     print('dsync: no old files to delete')
 

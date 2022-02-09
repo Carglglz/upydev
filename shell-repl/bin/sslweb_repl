@@ -235,6 +235,7 @@ while repl:
 
 # sys.exit()
 # EXIT MESSAGE
+espdev.disconnect()
 print('logout')
 if host_name != unique_id:
     print('Connection to {} closed.'.format(host_name))

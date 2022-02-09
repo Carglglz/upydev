@@ -93,7 +93,7 @@ class LS:
         return ""
 
     def __call__(self, *args, gts=(40, 0), hidden=False, show=True,
-                 bydir=True, rtn=False):
+                 bydir=True, rtn=False, fullpath=False):
         dir_names_or_pattrn = args
         files_in_dir = []
         for dir_name in dir_names_or_pattrn:
@@ -142,7 +142,9 @@ class LS:
                                  hidden=hidden, gts=gts)
                     files_in_dir = []  # reset
         if files_in_dir:
-            _print_files(files_in_dir, '', show=show, hidden=hidden)
+            if not fullpath:
+                files_in_dir = [file.rsplit('/', 1)[-1] for file in files_in_dir]
+            _print_files(files_in_dir, '', show=show, hidden=hidden, gts=gts)
         if rtn:
             return files_in_dir
 
@@ -177,7 +179,7 @@ mv = os.rename
 
 def rm(*args):
     if not args:
-        print(f'rm: No such file in directory')
+        print('rm: No such file in directory')
     for file in args:
         try:
             if os.stat(file)[0] & 0x4000:
@@ -190,7 +192,7 @@ def rm(*args):
 
 def rmdir(*args):
     if not args:
-        print(f'rmdir: No such directory')
+        print('rmdir: No such directory')
     for dir in args:
         try:
             if not os.stat(dir)[0] & 0x4000:
@@ -208,6 +210,25 @@ def head(f, n=10):
             if not l:
                 break
             sys.stdout.write(l)
+
+
+def rcat(f, n=1 << 30, buff=256, stream=None):
+    with open(f, 'rb') as f:
+        for i in range(n):
+            if not buff:
+                l = f.readline()
+            else:
+                l = f.read(buff)
+            if not l:
+                break
+            if not stream:
+                print(l)
+            else:
+                bs = 0
+                rest = l
+                while rest:
+                    bs = stream.write(rest)
+                    rest = rest[bs:]
 
 
 def _catfile(files, path, n, prog):

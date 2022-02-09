@@ -17,6 +17,7 @@ listen_s = None
 client_s = None
 websslrepl = False
 ssl_auth = False
+client_swr = None
 
 
 def setup_conn(port, accept_handler):
@@ -44,7 +45,7 @@ def setup_conn(port, accept_handler):
 
 
 def accept_conn(listen_sock):
-    global client_s, key, cert, websslrepl, ssl_auth
+    global client_s, key, cert, websslrepl, ssl_auth, client_swr
     cl, remote_addr = listen_sock.accept()
     prev = uos.dupterm(None)
     uos.dupterm(prev)
@@ -73,6 +74,7 @@ def accept_conn(listen_sock):
         if hasattr(uos, 'dupterm_notify'):
             cl.setsockopt(socket.SOL_SOCKET, 20, uos.dupterm_notify)
     uos.dupterm(ws)
+    client_swr = cl
 
 
 def stop():

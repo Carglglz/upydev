@@ -62,7 +62,7 @@ DSYNC = dict(help="recursively sync a folder in device filesystem",
                          'sync',
                          default=['.'],
                          metavar='dir/pattern',
-                         nargs='+'),
+                         nargs='*'),
              options={"-rf": dict(help='remove recursive force a dir or file deleted'
                                        ' in local directory',
                                   required=False,

@@ -171,10 +171,20 @@ ls = LS()
 clear = CLEAR()
 
 cd = os.chdir
-mkdir = os.mkdir
+# mkdir = os.mkdir
 mv = os.rename
 # rm = os.remove
 # rmdir = os.rmdir
+
+
+def mkdir(*dirs):
+    if not dirs:
+        print('mkdir: Indicate a directory to make')
+    for dir in dirs:
+        try:
+            os.mkdir(dir)
+        except OSError:
+            pass
 
 
 def rm(*args):
@@ -210,6 +220,25 @@ def head(f, n=10):
             if not l:
                 break
             sys.stdout.write(l)
+
+
+def rcat(f, n=1 << 30, buff=256, stream=None):
+    with open(f, 'rb') as f:
+        for i in range(n):
+            if not buff:
+                l = f.readline()
+            else:
+                l = f.read(buff)
+            if not l:
+                break
+            if not stream:
+                print(l)
+            else:
+                bs = 0
+                rest = l
+                while rest:
+                    bs = stream.write(rest)
+                    rest = rest[bs:]
 
 
 def _catfile(files, path, n, prog):

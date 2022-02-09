@@ -22,13 +22,13 @@ import os
 import ast
 from upydev.shell.constants import (ABLUE_bold, CGREEN, MAGENTA_bold, CEND)
 from prompt_toolkit.formatted_text import HTML
-from prompt_toolkit.application import run_in_terminal
 from upydevice import wsprotocol
 import re
 import socket
 import sys
 from datetime import timedelta
 import time
+import select
 
 
 class FileArgs:
@@ -499,7 +499,7 @@ du = DISK_USAGE()
 
 
 class CatFileIO:
-    def __init__(self):
+    def __init__(self, dev=None):
         self.buff = bytearray(1024*2)
         self.bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
         self.columns, self.rows = os.get_terminal_size(0)
@@ -513,10 +513,93 @@ class CatFileIO:
         self.cnt = 0
         self.t_start = 0
         self.percentage = 0
-        self.dev = None
+        self.dev = dev
         self._commandline = 0
         self._hf_index = 0
         self._shafiles = []
+
+    def enter_raw_repl(self):
+        self.dev.serial.write(b"\r\x01")
+        data = self.dev.serial.read_until(b"raw REPL; CTRL-B to exit\r\n")
+        assert data.endswith(b"raw REPL; CTRL-B to exit\r\n"), f"wrong data: {data}"
+
+    def exit_raw_repl(self):
+        self.dev.serial.write(b"\r\x02")  # ctrl-B: enter friendly REPL
+        self.dev.serial.read_until(b'\r\n>>> ')
+
+    def exec_raw_cmd(self, command):
+        # check we have a prompt
+        if not isinstance(command, bytes):
+            command = command.encode('utf-8')
+        command += b'\r'
+        data = self.dev.serial.read_until(b">")
+        assert data.endswith(b">"), f"wrong data: {data}"
+        for i in range(0, len(command), 256):
+            self.dev.serial.write(command[i:min(i + 256, len(command))])
+            time.sleep(0.01)
+        self.dev.serial.write(b"\x04")
+
+        # check if we could exec command
+        data = self.dev.serial.read_until(b"OK")
+        assert b"OK" in data, f"Command failed: {command}: data: {data}"
+        data = self.dev.serial.read_until(b"\x04\x04")
+        assert data == b"\x04\x04", f"Command failed: {command}: data: {data}"
+
+    def init_put(self, filename, filesize, cnt=0):
+        self.file_buff = b''
+        self.filesize = filesize
+        self.filename = filename
+        self.cnt = cnt
+        self.get_pb()
+        self.t_start = time.time()
+
+    def sraw_put_file(self, src, dest, chunk_size=256):
+        try:
+            self.enter_raw_repl()
+            # time.sleep(0.1)
+            # print(f"source: {src}")
+            # print(f"dest: {dest}")
+            self.exec_raw_cmd(f"f=open('{dest}','wb')\nw=f.write")
+            if self.filesize == 0:
+                self.exec_raw_cmd("f.close()")
+                self.exit_raw_repl()
+                print('\n')
+                return
+            # time.sleep(0.1)
+            with open(src, "rb") as f:
+                while True:
+                    data = f.read(chunk_size)
+                    if not data:
+                        break
+
+                    self.exec_raw_cmd("w(" + repr(data) + ")")
+                    self.cnt += len(data)
+                    self.file_buff += data
+                    loop_index_f = (self.cnt/self.filesize)*self.bar_size
+                    loop_index = int(loop_index_f)
+                    loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                    nb_of_total = f"{self.cnt/(1000):.2f}/{self.filesize/(1000):.2f} kB"
+                    percentage = self.cnt / self.filesize
+                    self.percentage = int((percentage)*100)
+                    t_elapsed = time.time() - self.t_start
+                    t_speed = f"{(self.cnt/(1000))/t_elapsed:^2.2f}"
+                    ett = self.filesize / (self.cnt / t_elapsed)
+                    if self.pb:
+                        self.do_pg_bar(loop_index, self.wheel,
+                                       nb_of_total, t_speed, t_elapsed,
+                                       loop_index_l, percentage, ett)
+
+            self.exec_raw_cmd("f.close()")
+            self.exit_raw_repl()
+            print('\n')
+        except (Exception, KeyboardInterrupt):
+            print('flushing serial')
+            self.exit_raw_repl()
+            self.dev.flush_conn()
+            time.sleep(0.5)
+            self.dev.serial.write(self.dev._banner)
+            self.dev.serial.read_until(b'\r\n>>> ')
+            raise Exception
 
     def sr_get_file(self, cmd, filter_cmd=True):
         self.dev._is_traceback = False
@@ -525,21 +608,34 @@ class CatFileIO:
         self.dev.flush_conn()
         self.dev.buff = b''
         self.bytes_sent = self.dev.serial.write(bytes(cmd + '\r', 'utf-8'))
+        end_prompt = b''
         if filter_cmd:
-            cmd_filt = bytes(cmd + '\r\n', 'utf-8')
+            # cmd_filt = bytes(cmd + '\r\n', 'utf-8')
             _cmd_filt_buff = b''
-            while len(_cmd_filt_buff) < len(cmd_filt):
-                _cmd_filt_buff += self.dev.serial.read(1)
+            while b'\r\n' not in _cmd_filt_buff:
+                _cmd_filt_buff += self.dev.serial.read_until(b'\r\n')
+            recv_cmd, rest = _cmd_filt_buff.split(b'\r\n')
+            try:
+                assert recv_cmd == bytes(cmd, 'utf-8'), "Command missmatch"
+            except Exception:
+                print(f'command: {cmd}')
+                print(f'recv command: {recv_cmd}')
+                print(f'rest: {rest}')
+                raise Exception
+            if rest:
+                self.file_buff += rest.replace(b'\r', b'')
+                self.cnt += len(rest.replace(b'\r', b''))
         try:
             while len(self.file_buff) < self.filesize:
-                data = self.dev.serial.read_all().replace(b'\r', b'')
+                data = self.dev.serial.read_until(b'\r\n').replace(b'\r\n', b'')
+                data = ast.literal_eval(data.decode())  # shielded bytes
                 if data:
                     if len(self.file_buff + data) <= self.filesize:
                         pass
                     else:
                         offset = len(self.file_buff + data) - self.filesize
-                        data = data[:-offset]
-                        assert len(self.file_buff + data) == self.filesize, "Mismatch"
+                        data, end_prompt = data[:-offset], data[-offset:]
+                        assert len(self.file_buff + data) == self.filesize, "Missmatch"
                     self.cnt += len(data)
                     self.file_buff += data
                     loop_index_f = (self.cnt/self.filesize)*self.bar_size
@@ -557,9 +653,16 @@ class CatFileIO:
                                        loop_index_l, percentage, ett)
 
                 if len(self.file_buff) == self.filesize:
+                    # assert end_prompt
+                    while self.dev.prompt not in end_prompt:
+                        end_prompt += self.dev.serial.read_all()
                     break
 
+            assert self.dev.prompt in end_prompt, "Prompt not buffered"
+
         except KeyboardInterrupt:
+            # print(len(self.file_buff), self.filesize)
+            # print(self.file_buff.decode)
             # time.sleep(0.2)
             self.dev.kbi(silent=True)
             time.sleep(0.2)
@@ -614,6 +717,7 @@ class CatFileIO:
                 print(f'recv command: {recv_cmd}')
                 print(f'rest: {rest}')
                 raise Exception
+            # assert not rest, f"This is rest: [{rest}] "
             if rest:
                 self.file_buff += rest.replace(b'\r', b'')
                 self.cnt += len(rest.replace(b'\r', b''))
@@ -624,7 +728,8 @@ class CatFileIO:
                     fin, opcode, data = self.dev.ws.read_frame()
                 except AttributeError:
                     pass
-                # data = self.ws_readline().replace(b'\r', b'')
+                # data = self.ws_readline().replace(b'\r\n', b'')
+                # data = ast.literal_eval(data.decode())  # shielded bytes
                 if data:
                     data = data.replace(b'\r', b'')
                     if len(self.file_buff + data) <= self.filesize:
@@ -658,6 +763,97 @@ class CatFileIO:
                         end_prompt += data
                     # self.flush()
                     break
+            assert self.dev.prompt in end_prompt, "Prompt not buffered"
+            self.flush()
+
+        except KeyboardInterrupt:
+            # time.sleep(0.2)
+            self.dev.kbi(silent=True)
+            time.sleep(0.2)
+            for i in range(1):
+                self.dev.write('\r')
+                self.dev.flush_conn()
+
+            raise KeyboardInterrupt
+
+    def rs_get_file(self, cmd, filter_cmd=True, chunk=256):
+        self.dev._is_traceback = False
+        self.dev.response = ''
+        self.dev.output = None
+        get_soc = [self.dev.ws.sock]
+        self.flush()
+        self.dev.buff = b''
+        self.bytes_sent = self.dev.write(cmd+'\r')
+        chunk = chunk * 2
+        end_prompt = b''
+        if filter_cmd:
+            # len_cmd_filt = len(bytes(cmd + '\r\n', 'utf-8'))
+            _cmd_filt_buff = b''
+            while b'\r\n' not in _cmd_filt_buff:
+                _cmd_filt_buff += self.ws_readline()
+            recv_cmd, rest = _cmd_filt_buff.split(b'\r\n')
+            try:
+                assert recv_cmd == bytes(cmd, 'utf-8'), "Command missmatch"
+            except Exception:
+                print(f'command: {cmd}')
+                print(f'recv command: {recv_cmd}')
+                print(f'rest: {rest}')
+                raise Exception
+            assert not rest, f"This is rest: [{rest}] "
+            # if rest:
+            #     self.file_buff += rest.replace(b'\r', b'')
+            #     self.cnt += len(rest.replace(b'\r', b''))
+
+        try:
+            self.dev.ws.sock.settimeout(0)
+            while len(self.file_buff) < self.filesize:
+                data = b''
+                try:
+                    readable, writable, exceptional = select.select(get_soc,
+                                                                    get_soc,
+                                                                    get_soc)
+                    if readable:
+                        # if self.filesize - len(self.file_buff) < chunk:
+                        #     chunk = self.filesize - len(self.file_buff)
+                        data = self.dev.ws.sock.recv(chunk)
+                except Exception:
+                    # print(e)
+                    time.sleep(0.01)
+                if data:
+                    # data = data.replace(b'\r', b'')
+                    if len(self.file_buff + data) <= self.filesize:
+                        pass
+                    else:
+                        offset = len(self.file_buff + data) - self.filesize
+                        data, end_prompt = data[:-offset], data[-offset:]
+                        assert len(self.file_buff + data) == self.filesize, "Missmatch"
+                    self.cnt += len(data)
+                    self.file_buff += data
+                    loop_index_f = (self.cnt/self.filesize)*self.bar_size
+                    loop_index = int(loop_index_f)
+                    loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                    nb_of_total = f"{self.cnt/(1000):.2f}/{self.filesize/(1000):.2f} kB"
+                    percentage = self.cnt / self.filesize
+                    self.percentage = int((percentage)*100)
+                    t_elapsed = time.time() - self.t_start
+                    t_speed = f"{(self.cnt/(1000))/t_elapsed:^2.2f}"
+                    ett = self.filesize / (self.cnt / t_elapsed)
+                    if self.pb:
+                        self.do_pg_bar(loop_index, self.wheel,
+                                       nb_of_total, t_speed, t_elapsed,
+                                       loop_index_l, percentage, ett)
+                if len(self.file_buff) == self.filesize:
+                    # assert end_prompt
+                    self.dev.ws.sock.settimeout(10)
+                    while self.dev.prompt not in end_prompt:
+                        try:
+                            fin, opcode, data = self.dev.ws.read_frame()
+                        except AttributeError:
+                            pass
+                        end_prompt += data
+                    # self.flush()
+                    break
+            assert self.dev.prompt in end_prompt, "Prompt not buffered"
             self.flush()
 
         except KeyboardInterrupt:
@@ -794,6 +990,12 @@ class CatFileIO:
     def init_sha(self):
         self._hf_index = 0
         self._shafiles = []
+        self.get_pb()
+
+    def end_sha(self):
+        print(' ' * self.columns, end='\r')
+        sys.stdout.write("\033[A")
+        print(' ' * self.columns, end='\r')
 
     def shapipe(self, data, std=True, exec_prompt=False):
         if std != 'stderr':
@@ -802,12 +1004,16 @@ class CatFileIO:
             sys.stdout.write("\033[A")
             print(f"dsync: checking files... {self.wheel[self._hf_index % 4]}")
             if data.endswith('\n'):
-                print(data[:-1], end='\r')
-            else:
-                print(data, end='\r')
+                data = data[:-1]
+            total_ln = len(data)
+            hf, name, sz = data.split()
+            if total_ln <= (self.columns - 2):
+                print(f"{hf} {name} {sz}", end='\r')
+            else:  # short hf
+                ixhf = int((len(hf) - ((total_ln - (self.columns - 2)) + 3)) / 2)
+                print(f"{hf[:ixhf]}...{hf[-ixhf:]} {name} {sz}", end='\r')
             sys.stdout.flush()
-            hf, nf, sf = data.split()
-            self._shafiles.append((nf, int(sf), hf))
+            self._shafiles.append((name, int(sz), hf))
             self._hf_index += 1
             # def save_file(self):
             #     data = self.dev.raw_buff.splitlines()

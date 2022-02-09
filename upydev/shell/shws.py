@@ -1,12 +1,11 @@
 from upydev.shell.commands import ShellCmds, _SHELL_CMDS, _UPYDEVPATH
-from upydev.shell.constants import CRED, CEND
+from upydev.shell.constants import CRED, CEND, CHECK
 from upydev.shell.parser import subshparser_cmd
 from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydev.wsio import websocket, get_file, put_file
 from upydevice import DeviceException, DeviceNotFound
-from upydev.shell.common import tree, CatFileIO, print_size, check_filetype
+from upydev.shell.common import tree, CatFileIO, print_size
 from upydev.shell.shasum import shasum
-from upydev.commandlib import _CMDDICT_
 import socket
 import subprocess
 import shlex
@@ -57,16 +56,19 @@ GET = dict(help="download files from device",
                                type=int),
                     "-fg": dict(help='use a faster get method', required=False,
                                 default=False,
-                                action='store_true')})
+                                action='store_true'),
+                    "-b": dict(help='read buffer for faster get method', required=False,
+                               default=512,
+                               type=int)})
 
-DSYNC = dict(help="recursively sync a folder in device filesystem",
+DSYNC = dict(help="recursively sync a folder from/to device filesystem",
              subcmd=dict(help='Indicate a dir/pattern to '
                          'sync',
                          default=['.'],
                          metavar='dir/pattern',
-                         nargs='+'),
+                         nargs='*'),
              options={"-rf": dict(help='remove recursive force a dir or file deleted'
-                                       ' in local directory',
+                                       ' in local/device directory',
                                   required=False,
                                   default=False,
                                   action='store_true'),
@@ -75,7 +77,16 @@ DSYNC = dict(help="recursively sync a folder in device filesystem",
                                  action='store_true'),
                       "-fg": dict(help='use a faster get method', required=False,
                                   default=False,
-                                  action='store_true')})
+                                  action='store_true'),
+                      "-b": dict(help='read buffer for faster get method', required=False,
+                                 default=512,
+                                 type=int),
+                      "-t": dict(help='show tree of directory to sync', required=False,
+                                 default=False,
+                                 action='store_true'),
+                      "-f": dict(help='force sync, no hash check', required=False,
+                                 default=False,
+                                 action='store_true')})
 
 SHELLWS_CMD_DICT_PARSER = {"wrepl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
@@ -339,7 +350,7 @@ class ShellWsCmds(ShellCmds):
                         abs_src_file = f'/{src_file}'
                     print(f"{self.dev_name}:{abs_src_file} -> {dst_file}")
                     print_size(src_file, size_file_to_get, nl=True)
-                    if (not args.fg) or check_filetype(src_file):
+                    if not args.fg:
                         try:
                             get_file(ws, dst_file, src_file, size_file_to_get)
                         except (KeyboardInterrupt, Exception):
@@ -369,9 +380,13 @@ class ShellWsCmds(ShellCmds):
                     else:
                         try:  # FAST GET
                             self.fileio.init_get(src_file, size_file_to_get)
-                            cmd_getfile = _CMDDICT_['CAT'].format(f"'{src_file}'")
+                            # cmd_getfile = _CMDDICT_['CAT'].format(f"'{src_file}'")
+                            cmd_getfile = (f"rcat('{src_file}', buff={args.b},"
+                                           f" stream=wss_repl.client_swr);"
+                                           f"gc.collect()")
                             if size_file_to_get > 0:
-                                self.fileio.ws_get_file(cmd_getfile)
+                                # time.sleep(0.1)
+                                self.fileio.rs_get_file(cmd_getfile, chunk=args.b)
                                 self.fileio.save_file()
                             else:
                                 self.fileio.do_pg_bar(self.fileio.bar_size,
@@ -397,7 +412,7 @@ class ShellWsCmds(ShellCmds):
             return
 
         if cmd == 'dsync':
-            dir_only = True
+            # dir_only = True
             # be aware of name length error
             # 1: copy dir structure
             #    get depth level path
@@ -417,27 +432,33 @@ class ShellWsCmds(ShellCmds):
                 # HOST TO DEVICE
                 if rest_args == ['.'] or rest_args == ['*']:  # CWD
                     rest_args = ['*']
-                    tree()
+                    if args.t:
+                        tree()
+                    else:
+                        print("dsync: syncing path ./:")
                     file_match = nglob(*rest_args, size=True)
                     if file_match:
                         local_files = shasum(*rest_args, debug=False, rtn=True)
                         local_files_dict = {
                             fname: fhash for fname, fhash in local_files}
                         if local_files:
-                            dev_cmd_files = (f"from shasum import shasum;"
-                                             f"shasum(*{rest_args}, debug=True, "
-                                             f"rtn=False, size=True);gc.collect()")
-                            print('dsync: checking files in ./ ...')
-                            self.fileio.init_sha()
-                            dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
-                                                        rtn_resp=True, long_string=True,
-                                                        pipe=self.fileio.shapipe)
-                            # print(local_files[0])
-                            if not dev_files:
-                                dev_files = [(hf[0], hf[2])
-                                             for hf in self.fileio._shafiles]
-                                print('')
-                                # print(dev_files[0])
+                            if not args.f:
+                                dev_cmd_files = (f"from shasum import shasum;"
+                                                 f"shasum(*{rest_args}, debug=True, "
+                                                 f"rtn=False, size=True);gc.collect()")
+                                print('dsync: checking files...')
+                                self.fileio.init_sha()
+                                dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                            rtn_resp=True, long_string=True,
+                                                            pipe=self.fileio.shapipe)
+                                # print(local_files[0])
+                                if not dev_files:
+                                    dev_files = [(hf[0], hf[2])
+                                                 for hf in self.fileio._shafiles]
+                                    if dev_files:
+                                        self.fileio.end_sha()
+                            else:
+                                dev_files = []
                             if dev_files:
                                 files_to_sync = [(os.stat(fts[0])[6], fts[0])
                                                  for fts in local_files if fts not in
@@ -474,7 +495,7 @@ class ShellWsCmds(ShellCmds):
                                         except Exception as e:
                                             print(f'ERROR {e}')
                             else:
-                                print('dsync: no new or modified files to sync')
+                                print(f'dsync: ./ : OK{CHECK}')
 
                             if args.rf:
                                 _local_files = [lf[0] for lf in local_files]
@@ -497,23 +518,29 @@ class ShellWsCmds(ShellCmds):
                 dir_match = nglob(*rest_args, dir_only=True)  # LOCAL DIRS
                 if dir_match:
                     for dir in dir_match:
-                        tree(dir)
+                        if args.t:
+                            tree(dir)
+                        else:
+                            print(f"dsync: syncing path {dir}:")
                         depth_level = _get_path_depth(dir) + 1
                         pattern_dir = [f"{dir}/*{'/*'* i}" for i in range(depth_level)]
                         pattern_dir = [dir] + pattern_dir
                         local_dirs = nglob(*pattern_dir, dir_only=True)
-                        dev_dirs = self.dev.wr_cmd(f"glob(*{pattern_dir}, "
-                                                   f"dir_only=True);gc.collect()",
-                                                   silent=True, rtn_resp=True)
+                        if not args.f:
+                            dev_dirs = self.dev.wr_cmd(f"glob(*{pattern_dir}, "
+                                                       f"dir_only=True);gc.collect()",
+                                                       silent=True, rtn_resp=True)
+                        else:
+                            dev_dirs = []
                         dirs_to_make = [
                             ldir for ldir in local_dirs if ldir not in dev_dirs]
                         if dirs_to_make:
                             print('dsync: making new dirs:')
                             for ndir in dirs_to_make:
                                 print(f'- {ndir}')
-                                self.dev.wr_cmd(f'mkdir("{ndir}")', follow=True)
+                            self.dev.wr_cmd(f'mkdir(*{dirs_to_make})', follow=True)
                         else:
-                            print('dsync: no new directories to make')
+                            print(f'dsync: dirs: OK{CHECK}')
                         if args.rf:
                             dirs_to_delete = [ddir for ddir in dev_dirs
                                               if ddir not in local_dirs]
@@ -531,18 +558,23 @@ class ShellWsCmds(ShellCmds):
                         local_files_dict = {
                             fname: fhash for fname, fhash in local_files}
                         if local_files:
-                            dev_cmd_files = (f"from shasum import shasum;"
-                                             f"shasum(*{pattern_dir}, debug=True, "
-                                             f"rtn=False, size=True);gc.collect()")
-                            print('dsync: checking files...')
-                            self.fileio.init_sha()
-                            dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
-                                                        rtn_resp=True, long_string=True,
-                                                        pipe=self.fileio.shapipe)
-                            if not dev_files:
-                                dev_files = [(hf[0], hf[2])
-                                             for hf in self.fileio._shafiles]
-                                print('')
+                            if not args.f:
+                                dev_cmd_files = (f"from shasum import shasum;"
+                                                 f"shasum(*{pattern_dir}, debug=True, "
+                                                 f"rtn=False, size=True);gc.collect()")
+                                print('dsync: checking files...')
+                                self.fileio.init_sha()
+                                dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                                            rtn_resp=True,
+                                                            long_string=True,
+                                                            pipe=self.fileio.shapipe)
+                                if not dev_files:
+                                    dev_files = [(hf[0], hf[2])
+                                                 for hf in self.fileio._shafiles]
+                                    if dev_files:
+                                        self.fileio.end_sha()
+                            else:
+                                dev_files = []
                             if dev_files:
                                 files_to_sync = [(os.stat(fts[0])[6], fts[0])
                                                  for fts in local_files if fts not in
@@ -579,7 +611,7 @@ class ShellWsCmds(ShellCmds):
                                         except Exception as e:
                                             print(f'ERROR {e}')
                             else:
-                                print('dsync: no new or modified files to sync')
+                                print(f'dsync: files: OK{CHECK}')
 
                             if args.rf:
                                 _local_files = [lf[0] for lf in local_files]
@@ -607,18 +639,22 @@ class ShellWsCmds(ShellCmds):
                 # DEVICE TO HOST
                 if rest_args == ['.'] or rest_args == ['*']:  # CWD
                     rest_args = ['*']
-                    self.dev.wr_cmd("from upysh2 import tree;tree", follow=True)
+                    if args.t:
+                        self.dev.wr_cmd("from upysh2 import tree;tree", follow=True)
+                    else:
+                        print("dsync: syncing path ./:")
                     dev_cmd_files = (f"from shasum import shasum;"
                                      f"shasum(*{rest_args}, debug=True, "
                                      f"rtn=False, size=True);gc.collect()")
-                    print('dsync: checking files in ./ ...')
+                    print('dsync: checking files...')
                     self.fileio.init_sha()
                     dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
                                                 rtn_resp=True, long_string=True,
                                                 pipe=self.fileio.shapipe)
                     if not dev_files:
                         dev_files = self.fileio._shafiles
-                        print('')
+                        if dev_files:
+                            self.fileio.end_sha()
 
                     if dev_files:
                         local_files = shasum(*rest_args, debug=False, rtn=True,
@@ -642,7 +678,7 @@ class ShellWsCmds(ShellCmds):
                             for sz, name in files_to_sync:
                                 print(f"{self.dev_name}:{name} -> {name}")
                                 print_size(name, sz, nl=True)
-                                if not args.fg or check_filetype(name):
+                                if not args.fg:
                                     self.dev.ws.sock.settimeout(10)
                                     ws = websocket(self.dev.ws.sock)
                                     try:
@@ -676,9 +712,13 @@ class ShellWsCmds(ShellCmds):
                                 else:  # FAST GET
                                     try:
                                         self.fileio.init_get(name, sz)
-                                        cmd_gf = _CMDDICT_['CAT'].format(f"'{name}'")
+                                        cmd_gf = (f"rcat('{name}', buff={args.b},"
+                                                  f" stream=wss_repl.client_swr);"
+                                                  f"gc.collect()")
                                         if sz > 0:
-                                            self.fileio.ws_get_file(cmd_gf)
+                                            # self.fileio.ws_get_file(cmd_gf)
+                                            self.fileio.rs_get_file(cmd_gf,
+                                                                    chunk=args.b)
                                             self.fileio.save_file()
                                         else:
                                             self.fileio.do_pg_bar(self.fileio.bar_size,
@@ -696,7 +736,7 @@ class ShellWsCmds(ShellCmds):
                                             print('Canceling file queue..')
                                             return
                         else:
-                            print('dsync: no new or modified files to sync')
+                            print(f'dsync: ./ : OK{CHECK}')
 
                         if args.rf:
                             _dev_files = [df[0] for df in dev_files]
@@ -706,7 +746,7 @@ class ShellWsCmds(ShellCmds):
                                 print('dsync: deleting old files:')
                                 for ndir in files_to_delete:
                                     print(f'- {ndir}')
-                                os.remove(ndir)
+                                    os.remove(ndir)
                             else:
                                 print('dsync: no old files to delete')
 
@@ -722,7 +762,10 @@ class ShellWsCmds(ShellCmds):
                                     "from upysh2 import tree",
                                     silent=True)
                     for dir in dir_match:
-                        self.dev.wr_cmd(f"tree('{dir}')", follow=True)
+                        if args.t:
+                            self.dev.wr_cmd(f"tree('{dir}')", follow=True)
+                        else:
+                            print(f"dsync: syncing path {dir}:")
                         depth_level = self.dev.wr_cmd(f"_get_path_depth('{dir}') + 1",
                                                       silent=True, rtn_resp=True)
                         pattern_dir = [f"{dir}/*{'/*'* i}" for i in range(depth_level)]
@@ -739,7 +782,7 @@ class ShellWsCmds(ShellCmds):
                                 print(f'- {ndir}')
                                 os.makedirs(ndir)
                         else:
-                            print('dsync: no new directories to make')
+                            print(f'dsync: dirs: OK{CHECK}')
                         if args.rf:
                             dirs_to_delete = [ldir for ldir in local_dirs
                                               if ldir not in dev_dirs]
@@ -747,7 +790,7 @@ class ShellWsCmds(ShellCmds):
                                 print('dsync: deleting old directories:')
                                 for ndir in dirs_to_delete:
                                     print(f'- {ndir}')
-                                shutil.rmtree(ndir)
+                                    shutil.rmtree(ndir)
                             else:
                                 print('dsync: no old directories to delete')
 
@@ -761,7 +804,8 @@ class ShellWsCmds(ShellCmds):
                                                     pipe=self.fileio.shapipe)
                         if not dev_files:
                             dev_files = self.fileio._shafiles
-                            print('')
+                            if dev_files:
+                                self.fileio.end_sha()
                         # print(dev_files)
 
                         # dev_files = [(hf.split()[1], int(hf.split()[2]), hf.split()[0])
@@ -789,7 +833,7 @@ class ShellWsCmds(ShellCmds):
                                 for sz, name in files_to_sync:
                                     print(f"{self.dev_name}:{name} -> {name}")
                                     print_size(name, sz, nl=True)
-                                    if not args.fg or check_filetype(name):
+                                    if not args.fg:
                                         self.dev.ws.sock.settimeout(10)
                                         ws = websocket(self.dev.ws.sock)
                                         try:
@@ -823,9 +867,12 @@ class ShellWsCmds(ShellCmds):
                                     else:  # FAST GET
                                         try:
                                             self.fileio.init_get(name, sz)
-                                            cmdgf = _CMDDICT_['CAT'].format(f"'{name}'")
+                                            cmdgf = (f"rcat('{name}', buff={args.b},"
+                                                     f" stream=wss_repl.client_swr);"
+                                                     f"gc.collect()")
                                             if sz > 0:
-                                                self.fileio.ws_get_file(cmdgf)
+                                                self.fileio.rs_get_file(cmdgf,
+                                                                        chunk=args.b)
                                                 self.fileio.save_file()
                                             else:
                                                 self.fileio.do_pg_bar(self.fileio.bar_size,
@@ -844,7 +891,7 @@ class ShellWsCmds(ShellCmds):
                                                 print('Canceling file queue..')
                                                 return
                             else:
-                                print('dsync: no new or modified files to sync')
+                                print(f'dsync: files: OK{CHECK}')
 
                             if args.rf:
                                 _dev_files = [df[0] for df in dev_files]
@@ -854,7 +901,7 @@ class ShellWsCmds(ShellCmds):
                                     print('dsync: deleting old files:')
                                     for ndir in files_to_delete:
                                         print(f'- {ndir}')
-                                    os.remove(ndir)
+                                        os.remove(ndir)
                                 else:
                                     print('dsync: no old files to delete')
 
