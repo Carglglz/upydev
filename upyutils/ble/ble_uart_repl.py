@@ -15,6 +15,8 @@ from sys import platform
 
 from ble_uart_peripheral import BLEUART
 
+uart = None
+
 _MP_STREAM_POLL = const(3)
 _MP_STREAM_POLL_RD = const(0x0001)
 
@@ -81,6 +83,7 @@ class BLEUARTStream(io.IOBase):
 
 
 def start():
+    global uart
     bname = '{}-{}'.format(platform, ''.join([hexlify(unique_id()
                                                       ).decode()[0], hexlify(unique_id()).decode()[-1]]))
     ble = bluetooth.BLE()

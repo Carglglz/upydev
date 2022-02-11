@@ -31,6 +31,8 @@ that is decrypted and stored in device.
 - Allow mdns name in ssl certificate.
 - Improved file io operations (`put`, `get`, `fget`, `dsync`, `rsync`, `backup`...), more flexibility indicating files / dirs / pattern matching etc. Improved overall performance, specially for WebSocketDevices.
 - fix `ping`, `probe` for zerotier devices (this needs updated config, see how-to section in docs.)
+- fix `update_upyutils` if dir `lib` does not exists.
+- refactored shells-repls, now `shl`, or `rpl` commands only
 ## [0.3.7] 2021-12-16
 ## Added
 - `rssi` command in shell repls to get RSSI value (Wifi or Ble)

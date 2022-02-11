@@ -436,6 +436,7 @@ class BLE_DFU_TARGET:
                     for k in range(10):
                         self.led.value(not self.led.value())
                         time.sleep(0.2)
+                self.stop_timeout()
                 reset()
 
     def start_adv_timeout(self, timeout=30000):

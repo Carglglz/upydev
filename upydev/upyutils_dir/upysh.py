@@ -171,10 +171,20 @@ ls = LS()
 clear = CLEAR()
 
 cd = os.chdir
-mkdir = os.mkdir
+# mkdir = os.mkdir
 mv = os.rename
 # rm = os.remove
 # rmdir = os.rmdir
+
+
+def mkdir(*dirs):
+    if not dirs:
+        print('mkdir: Indicate a directory to make')
+    for dir in dirs:
+        try:
+            os.mkdir(dir)
+        except OSError:
+            pass
 
 
 def rm(*args):

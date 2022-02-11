@@ -20,6 +20,20 @@ _UART_RX = (bluetooth.UUID('6E400002-B5A3-F393-E0A9-E50E24DCCA9E'),
             bluetooth.FLAG_WRITE,)
 _UART_SERVICE = (_UART_UUID, (_UART_TX, _UART_RX,),)
 
+_DEVICE_FILEIO_SERV_UUID = bluetooth.UUID(
+    "e0b9145a-d949-49e4-9dc1-54236e02206a")
+
+# https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v11.0.0%2Fbledfu_transport_bleservice.html&anchor=ota_spec_control_state
+_FILEIO_CONTROL_AND_PACKET_CHAR = (
+    bluetooth.UUID("55574ada-552e-48fa-afc0-d81ce0d6efb0"),
+    bluetooth.FLAG_WRITE | bluetooth.FLAG_NOTIFY
+)
+
+_DEVICE_FILEIO_SERVICE = (
+    _DEVICE_FILEIO_SERV_UUID,
+    (_FILEIO_CONTROL_AND_PACKET_CHAR),
+)
+
 # org.bluetooth.characteristic.gap.appearance.xml
 _ADV_APPEARANCE_GENERIC_COMPUTER = const(128)
 
@@ -35,11 +49,13 @@ class BLEUART:
             _gap_name = 'ESP32@{}'.format(uuid)
         self._ble.config(gap_name=_gap_name, mtu=515, rxbuf=512)
         self._ble.irq(self._irq)
-        ((self._tx_handle, self._rx_handle,),
-         ) = self._ble.gatts_register_services((_UART_SERVICE,))
+        ((self._tx_handle, self._rx_handle,), (self._fileio_handle,)
+         ) = self._ble.gatts_register_services((_UART_SERVICE, _DEVICE_FILEIO_SERVICE))
         # Increase the size of the rx buffer and enable append mode.
         self._ble.gatts_set_buffer(self._rx_handle, rxbuf, True)
         self._ble.gatts_set_buffer(self._tx_handle, rxbuf)
+        self._ble.gatts_set_buffer(self._fileio_handle, rxbuf)
+        self._filename = ''
         self._connections = set()
         self._rx_buffer = bytearray()
         self._tx_available = True
@@ -103,6 +119,9 @@ class BLEUART:
 
     def _advertise(self, interval_us=500000):
         self._ble.gap_advertise(interval_us, adv_data=self._payload)
+
+    def init_file(self, filename):
+        self._filename = filename
 
 
 def demo():

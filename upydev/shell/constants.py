@@ -1,6 +1,8 @@
 from prompt_toolkit.styles import Style
 from prompt_toolkit.key_binding import KeyBindings
 from pygments.styles import get_all_styles
+from upydev import __path__ as _UPYDEVPATH
+import os
 
 # Prompt Style
 style_p = Style.from_dict({
@@ -55,14 +57,15 @@ shell_prompt = {'s': shell_message}
 shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
                   'run']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
-                    'ap', 'mem', 'install', 'touch', 'edit',
+                    'ap', 'mem', 'install', 'touch',
                     'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
                     'set', 'tree', 'dsync', 'reload', 'docs',
-                    'bat', 'du', 'ldu', 'upip', 'uping',
-                    'timeit', 'i2c', 'git', 'batstyle',
+                    'du', 'ldu', 'upip', 'uping',
+                    'timeit', 'i2c', 'git',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
-                    'update_upyutils', 'mdocs', 'ctime']
+                    'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
+                    'diff']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -286,7 +289,7 @@ DF = dict(help="display free disk space",
           options={})
 
 MEM = dict(help="show ram usage info",
-           subcmd=dict(help='mem info (default) or dump memory',
+           subcmd=dict(help='{info , dump}; default: info',
                        default='info',
                        metavar='action', choices=['info', 'dump'], nargs='?'),
            options={})
@@ -301,18 +304,39 @@ EXIT = dict(help="exit upydev shell",
                                  action='store_true')})
 VIM = dict(help="use vim to edit device's files",
            subcmd=dict(help='Indicate a file to edit', default='',
-                       metavar='file', nargs=1),
-           options={"-r": dict(help='remove local copy after upload', required=False,
-                               default=False,
-                               action='store_true'),
+                       metavar='file', nargs='?'),
+           options={"-rm": dict(help='remove local copy after upload', required=False,
+                                default=False,
+                                action='store_true'),
                     "-e": dict(help='execute script after upload', required=False,
                                default=False,
-                               action='store_true')})
+                               action='store_true'),
+                    "-r": dict(help='reload script so it can run again',
+                               required=False,
+                               default=False,
+                               action='store_true'),
+                    "-o": dict(help='override local copy if present',
+                               required=False,
+                               default=False,
+                               action='store_true'),
+                    "-d": dict(help=('use vim diff between device and local files'
+                                     ', if same file name device file is ~file'),
+                               required=False,
+                               default=[],
+                               nargs='+')})
+
+DIFF = dict(help=("use git diff between device [~file/s] and local file/s"),
+            subcmd=dict(help='Indicate files to compare or pattern', default=['*', '*'],
+                        metavar='fileA fileB', nargs='+'),
+            options={"-s": dict(help='switch file comparison',
+                                required=False,
+                                default=False,
+                                action='store_true')})
 
 RUN = dict(help="run device's scripts",
            subcmd=dict(help='Indicate a file/script to run', default='',
                        metavar='file'),
-           options={"-r": dict(help='reload script so it can be run again',
+           options={"-r": dict(help='reload script so it can run again',
                                required=False,
                                default=False,
                                action='store_true'),
@@ -361,7 +385,8 @@ MODULES = dict(help="prints device frozen modules",
                options={})
 
 UPING = dict(help="device send ICMP ECHO_REQUEST packets to network hosts",
-             subcmd=dict(help='Indicate an IP address to ping', default='host',
+             subcmd=dict(help='Indicate an IP address to ping; default: host IP', 
+                         default='host',
                          metavar='IP', nargs='?'),
              options={})
 
@@ -370,7 +395,7 @@ RSSI = dict(help="prints device RSSI (WiFi or BLE)",
             options={})
 
 NET = dict(help="manage network station interface (STA._IF)",
-           subcmd=dict(help='{status, on, off, conn, scan}',
+           subcmd=dict(help='{status, on, off, conn, scan}; default: status',
                        default='status',
                        metavar='action',
                        choices=['status', 'on', 'off', 'conn', 'scan'],
@@ -386,7 +411,7 @@ IFCONFIG = dict(help="prints network interface configuration (STA._IF)",
                                     action='store_true')})
 
 AP = dict(help="manage network acces point interface (AP._IF)",
-          subcmd=dict(help='{status, on, off, scan, config}',
+          subcmd=dict(help='{status, on, off, scan, config}; default: status',
                       default='status',
                       metavar='action',
                       choices=['status', 'on', 'off', 'config', 'scan'],
@@ -400,7 +425,7 @@ AP = dict(help="manage network acces point interface (AP._IF)",
                               action='store_true')})
 
 I2C = dict(help="manage I2C interface",
-           subcmd=dict(help='{config, scan}',
+           subcmd=dict(help='{config, scan}; default: config',
                        default='config',
                        metavar='action',
                        choices=['config', 'scan'],
@@ -411,13 +436,13 @@ I2C = dict(help="manage I2C interface",
                                  nargs=2)})
 
 SET = dict(help="set device configuration {rtc, hostname, localname}",
-           subcmd=dict(help=('set parameter configuration {localtime, ntptime,'
-                             ' hostname, localname}'),
-                       default='localtime',
+           subcmd=dict(help=('set parameter configuration {rtc localtime, rtc ntptime,'
+                             ' hostname, localname}; default: rtc localtime'),
+                       default=['rtc'],
                        metavar='parameter', nargs='+'),
            options={"-utc": dict(help='[utc] for "set ntptime" '
                                  'command', required=False, nargs=1, type=int)},
-           alt_ops=['localtime', 'ntptime', 'hostname', 'localname'])
+           alt_ops=['rtc', 'localtime', 'ntptime', 'hostname', 'localname'])
 
 DATETIME = dict(help="prints device RTC time",
                 subcmd={},
@@ -454,8 +479,17 @@ TIMEIT = dict(help="measure execution time of a script/function",
               options={})
 
 UPDATE_UPYUTILS = dict(help="update upyutils scripts",
-                       subcmd={},
-                       options={})
+                       subcmd=dict(help=("filter to match one/multiple "
+                                         "upyutils; default: all"),
+                                   default=['*'],
+                                   nargs='*',
+                                   metavar='name/pattern'),
+                       options={},
+                       alt_ops=os.listdir(os.path.join(_UPYDEVPATH[0],
+                                                       'upyutils_dir')))
+ENABLE_SHELL = dict(help="upload required files so shell is fully operational",
+                    subcmd={},
+                    options={})
 
 DOCS = dict(help="see upydev docs at https://upydev.readthedocs.io/en/latest/",
             subcmd=dict(help='Indicate a keyword to search',
@@ -487,4 +521,5 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "update_upyutils": UPDATE_UPYUTILS,
                          "lcd": LCD,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
-                         "mdocs": MDOCS, "ctime": CTIME}
+                         "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
+                         "diff": DIFF}

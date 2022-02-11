@@ -84,8 +84,42 @@ def parse_bash_profile():
             ALIASES[alias_key] = alias_value
     return ALIASES
 
+def parse_bash_profile_functions():
+    ALIASES = {}
+    if '.bash_rc' in os.listdir(os.environ['HOME']):
+        bash_rc = os.path.join(os.environ['HOME'], '.bash_rc')
+        with open(bash_rc, 'r') as bf:
+            bf_content = bf.read()
+            bf_alias = [alias_line for alias_line in bf_content.splitlines()
+                        if alias_line.startswith('function')]
+
+        for alias in bf_alias:
+            alias_key = alias.split(' ')[1].replace('()', '').strip()
+            try:
+                alias_value = f"{alias} && {alias_key}"
+            except Exception:
+                pass
+            ALIASES[alias_key] = alias_value
+
+    if '.profile' in os.listdir(os.environ['HOME']):
+        profile = os.path.join(os.environ['HOME'], '.profile')
+        with open(profile, 'r') as pf:
+            pf_content = pf.read()
+            pf_alias = [alias_line for alias_line in pf_content.splitlines()
+                        if alias_line.startswith('function')]
+
+        for alias in pf_alias:
+            alias_key = alias.split(' ')[1].replace('()', '').strip()
+            try:
+                alias_value = f"{alias} && {alias_key}"
+            except Exception:
+                pass
+            ALIASES[alias_key] = alias_value
+    return ALIASES
+
 
 SHELL_ALIASES = parse_bash_profile()
+SHELL_FUNCTIONS = parse_bash_profile_functions()
 # TAB OPTIONS FORMATTER
 
 
@@ -866,6 +900,15 @@ class CatFileIO:
 
             raise KeyboardInterrupt
 
+    def rble_get_file_callback(self):
+        pass
+        # callback receives notification with chunks of file
+        # and save to file buff
+        # use rcat stream and uart.write
+
+    def rble_get_file(self, cmd, filter_cmd=True, chunk=256):
+        pass
+
     def get_pb(self):
         self.columns, self.rows = os.get_terminal_size(0)
         if self.columns > self.cnt_size:
@@ -987,9 +1030,10 @@ class CatFileIO:
         with open(self.filename, 'ab') as f:
             f.write(self.file_buff[:self.filesize])
 
-    def init_sha(self):
+    def init_sha(self, prog='dsync'):
         self._hf_index = 0
         self._shafiles = []
+        self._prog = prog
         self.get_pb()
 
     def end_sha(self):
@@ -1002,11 +1046,15 @@ class CatFileIO:
 
             sys.stdout.write("\033[K")
             sys.stdout.write("\033[A")
-            print(f"dsync: checking files... {self.wheel[self._hf_index % 4]}")
+            print(f"{self._prog}: checking files... {self.wheel[self._hf_index % 4]}")
             if data.endswith('\n'):
                 data = data[:-1]
             total_ln = len(data)
-            hf, name, sz = data.split()
+            try:
+                hf, name, sz = data.split()
+            except Exception:
+                print(f"shapipe: data: {data}")
+                raise Exception
             if total_ln <= (self.columns - 2):
                 print(f"{hf} {name} {sz}", end='\r')
             else:  # short hf
@@ -1015,20 +1063,6 @@ class CatFileIO:
             sys.stdout.flush()
             self._shafiles.append((name, int(sz), hf))
             self._hf_index += 1
-            # def save_file(self):
-            #     data = self.dev.raw_buff.splitlines()
-            #     data = b'\n'.join(data[1:])
-            #     data = data[:self.filesize]
-            #     with open(self.filename, 'ab') as f:
-            #         f.write(data)
-
-            # def save_file_alt(self):
-            #     data = self.dev.buff.split(b'\r\n')
-            #     data = b'\n'.join(data)
-            #     data = data[:self.filesize]
-            #     with open(self.filename, 'ab') as f:
-            #         f.write(data)
-            # get raw buffer from cat
 
 
 def get_dir_size_recursive(dir):

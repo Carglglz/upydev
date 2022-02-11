@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-from ubinascii import hexlify, unhexlify
+from ubinascii import hexlify
 from machine import unique_id
 import uos
 import urandom
 import hashlib
-import ucryptolib
 import json
-import gc
 import sys
-import io
+
 
 aZ09 = b'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
@@ -111,144 +109,3 @@ def upy_session_keygen(rsa_key, save_sessionkey=False, token=None):
         return (pv_key, iv, [random_token + bytes(index_pvkey) + bytes(index_ivkey)])
     else:
         return (pv_key, iv)
-
-
-class CRYPTOGRAPHER:
-    def __init__(self, mode=2, key_enc=None, iv_enc=None, key_dec=None,
-                 iv_dec=None, load_keys=False, buffer_size=2048):
-        self.sess_keyfile_dev = 'session.key'
-        self.sess_keyfile_host = 'session{}.key'.format(hexlify(unique_id()).decode())
-        self.mode = mode
-        self.block_len = 0
-        self.key_e = key_enc
-        self.iv_e = iv_enc
-        self.msg_hex = b''
-        self.buff = bytearray(buffer_size)
-        self.buff_size = buffer_size
-        self.err_buff = io.StringIO(100)
-        self.buff_out = io.StringIO(500)
-        self.gbls = globals()
-        self.wrepl = None
-        self.buff_crepl = None
-        self.message_out = ''
-        self.data_bytes = bytearray(20)
-        self.rec_msg = ''
-        self.resp_msg = ''
-        if key_dec is None:
-            self.key_d = key_enc
-            self.iv_d = iv_enc
-        else:
-            self.key_d = key_dec
-            self.iv_d = iv_dec
-        if load_keys:
-            try:
-                with open(self.sess_keyfile_dev, 'r') as sess_config:
-                    sess_keys_dev = json.load(sess_config)
-                    self.key_e = sess_keys_dev['SKEY']
-                    self.iv_e = sess_keys_dev['IV']
-
-                with open(self.sess_keyfile_host, 'r') as sess_config:
-                    sess_keys_host = json.load(sess_config)
-                    self.key_d = sess_keys_host['SKEY']
-                    self.iv_d = sess_keys_host['IV']
-            except Exception as e:
-                print('No session keys found in the device')
-                pass
-
-        self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
-        self.dec = ucryptolib.aes(self.key_d, self.mode, self.iv_d)
-
-    def decrypt(self, msg):
-        self.buff[:] = bytearray(self.buff_size)
-        self.dec = ucryptolib.aes(self.key_d, self.mode, self.iv_d)
-        self.dec.decrypt(msg, self.buff)
-        gc.collect()
-        return self.buff.decode().split('\x00')[0]
-
-    def encrypt(self, msg):
-        self.buff[:] = bytearray(self.buff_size)
-        self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
-        self.data_bytes = msg.encode()
-        self.block_len = len(self.data_bytes + b'\x00'
-                             * ((16 - (len(self.data_bytes) % 16)) % 16))
-        self.enc.encrypt(self.data_bytes + b'\x00'
-                         * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
-        gc.collect()
-        return bytes(self.buff[:self.block_len])
-
-    def decrypt_hex(self, msg):
-        self.msg_hex = unhexlify(msg)
-        self.buff[:] = bytearray(self.buff_size)
-        self.dec = ucryptolib.aes(self.key_d, self.mode, self.iv_d)
-        self.dec.decrypt(self.msg_hex, self.buff)
-        gc.collect()
-        return self.buff.decode().split('\x00')[0]
-
-    def encrypt_hex(self, msg):
-        self.buff[:] = bytearray(self.buff_size)
-        self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
-        self.data_bytes = msg.encode()
-        self.block_len = len(self.data_bytes + b'\x00'
-                             * ((16 - (len(self.data_bytes) % 16)) % 16))
-        self.enc.encrypt(self.data_bytes + b'\x00'
-                         * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
-        gc.collect()
-        return hexlify(bytes(self.buff[:self.block_len]))
-
-    def encrypt_hex_bytes(self, msg):
-        self.buff[:] = bytearray(self.buff_size)
-        self.enc = ucryptolib.aes(self.key_e, self.mode, self.iv_e)
-        self.data_bytes = msg
-        self.block_len = len(self.data_bytes + b'\x00'
-                             * ((16 - (len(self.data_bytes) % 16)) % 16))
-        self.enc.encrypt(self.data_bytes + b'\x00'
-                         * ((16 - (len(self.data_bytes) % 16)) % 16), self.buff)
-        gc.collect()
-        return hexlify(bytes(self.buff[:self.block_len]))
-
-    def recv_send(self, msg):
-        rec_msg = self.decrypt_hex(msg)
-        return self.encrypt_hex(rec_msg)
-
-    def crepl(self, msg):
-        self.rec_msg = self.decrypt_hex(msg)
-        self.buff_out = io.StringIO(500)
-        try:
-            self.wrepl = uos.dupterm(self.buff_out, 0)
-            self.resp_msg = eval(self.rec_msg)
-            # self.buff_crepl = uos.dupterm(self.wrepl, 0)
-            if self.resp_msg is None:
-                self.message_out = self.buff_out.getvalue()
-                self.buff_crepl = uos.dupterm(self.wrepl, 0)
-                if self.message_out == '':
-                    gc.collect()
-                    return None
-                else:
-                    return self.encrypt_hex(self.message_out)
-            else:
-                self.buff_crepl = uos.dupterm(self.wrepl, 0)
-                return self.encrypt_hex(str(self.resp_msg))
-        except Exception as e:
-            try:
-                # self.buff_crepl = uos.dupterm(self.wrepl, 0)
-                exec(self.rec_msg, self.gbls)
-                self.message_out = self.buff_out.getvalue()
-                self.buff_crepl = uos.dupterm(self.wrepl, 0)
-                if self.message_out == '':
-                    gc.collect()
-                    return None
-                else:
-                    return self.encrypt_hex(self.message_out)
-            except Exception as e:
-                self.buff_crepl = uos.dupterm(self.wrepl, 0)
-                sys.print_exception(e, self.err_buff)
-                self.resp_msg = self.err_buff.getvalue()
-                self.err_buff.seek(0)
-                return self.encrypt_hex(self.resp_msg)
-
-
-# TODO: ENCRYPT/DECRYPT FILE
-
-# TODO: DECRYPT/ENCRYPT MESSAGE
-
-# TODO: WCRYPL (WEB CRYTO REPL)

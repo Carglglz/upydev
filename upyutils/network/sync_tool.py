@@ -24,7 +24,13 @@ def print_sizefile(path, file_name, tabs=0, rtl=False):
     files = [filename for filename in os.listdir(
         path) if filename == file_name]
     for file in files:
-        stats = os.stat(path + "/" + file)
+        try:
+            stats = os.stat(path + "/" + file)
+        except Exception as e:
+            try:
+                stats = os.stat(file)
+            except Exception as e:
+                print('File not found.')
         filesize = stats[6]
         isdir = stats[0] & 0x4000
 
@@ -67,6 +73,8 @@ def read_sd_file_sync(file_in_sd, soc):  # for files wrote with new line separat
 # for files wrote with new line separator(\n)
 def read_sd_file_sync_raw(file_in_sd, soc, buff=buffer_chunk):
     # final_file = b''
+    if os.getcwd() == '/sd':
+        file_in_sd = file_in_sd.split('/')[-1]
     with open(file_in_sd, 'rb') as log:
         while True:
             try:

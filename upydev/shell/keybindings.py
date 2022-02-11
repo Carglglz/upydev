@@ -1,7 +1,7 @@
 
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.application import run_in_terminal
-from upydev.shell.constants import (kb_info, shell_commands_info, d_prompt,
+from upydev.shell.constants import (kb_info, d_prompt,
                                     shell_commands, custom_sh_cmd_kw,
                                     CGREEN, CEND, ABLUE_bold, MAGENTA_bold,
                                     SHELL_CMD_DICT_PARSER)
@@ -477,7 +477,7 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
     def flush_line(event):
         event.app.current_buffer.reset()
 
-    # @kb.add('c-o')
+    # @kb.add('c-o')  # upy-config
     # def cmd_ls(event):
     #     def ls_out():
     #         print('>>> ls')
@@ -542,6 +542,7 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
                     filebuffer = fbuff.read()
                 event.app.current_buffer.reset()
                 dev.paste_buff(filebuffer)
+                dev.flush_conn()
                 event.app.current_buffer.reset()
                 dev.wr_cmd('\x04', follow=True, long_string=True)
         run_in_terminal(run_tmpcode)
@@ -669,7 +670,6 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
     @kb.add('c-d')
     def paste_mode_exit(event):
         "PASTE MODE VIM EXEC, SOFT RESET IN REPL"
-        # event.app.current_buffer.insert_text('import')
 
         def cmd_paste_exit():
             print('Running Buffer...')
@@ -679,6 +679,12 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
 
         if flags.paste['p']:
             run_in_terminal(cmd_paste_exit)
+        else:
+            if not flags.shell_mode['S']:
+                dev.reset()
+                dev.wr_cmd('import gc;import os;from upysh import *;'
+                           'from nanoglob import glob'
+                           ';gc.collect()', silent=True)
 
 #
 #
@@ -686,7 +692,6 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
     @kb.add('tab')
     def tab_press(event):
         "Tab autocompletion info"
-        # event.app.current_buffer.insert_text('import') # only run in terminal the printing
         def do_complete(event=event):
             if flags.shell_mode['S']:
                 _autocomplete_shell(event)
@@ -810,20 +815,15 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
 # #         # run_in_terminal(warning_sec)
 #
 #
-# @kb.add('c-p')
-# def toggle_status_ram_msg(event):
-#     "Toggle Right RAM status"
-#     if status_encryp_msg['Toggle']:
-#         if status_encryp_msg['S']:
-#             status_encryp_msg['S'] = False
-#         else:
-#             status_encryp_msg['S'] = True
-#
-#     if not mem_show_rp['show']:
-#         mem_show_rp['show'] = True
-#         mem_show_rp['call'] = True
-#     else:
-#         mem_show_rp['show'] = False
+
+    @kb.add('c-p')
+    def toggle_status_ram_msg(event):
+        "Toggle Right RAM status"
+        if not flags.mem_show_rp['show']:
+            flags.mem_show_rp['show'] = True
+            flags.mem_show_rp['call'] = True
+        else:
+            flags.mem_show_rp['show'] = False
 #
 #
 # @kb.add('c-g')

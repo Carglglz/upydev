@@ -31,6 +31,14 @@ def _os_match_dir(patt, path):
             and os.stat(f"{path}/{dir}")[0] & 0x4000]
 
 
+def _shasum_data(data):
+    _hash = hashlib.sha256()
+    _hash.update(data)
+    _result = _hash.digest()
+    result = hexlify(_result).decode()
+    return result
+
+
 def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=False):
     _hash = hashlib.sha256()
     try:

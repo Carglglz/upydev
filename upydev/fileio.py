@@ -84,6 +84,12 @@ def update_upyutils(args, dt, dev_name):
     args.fre = [os.path.join(utils_dir, util) for util in os.listdir(utils_dir)
                 if util.endswith('.py')]
     args.dir = 'lib'
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    is_lib = dev.wr_cmd("import os; 'lib' in os.listdir()", rtn_resp=True, silent=True)
+    if not is_lib:
+        print('Making ./lib directory ...')
+        dev.wr_cmd("os.mkdir('./lib')")
+        dev.disconnect()
     if dt == 'WebSocketDevice':
         wstool(args, dev_name)
 

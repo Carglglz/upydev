@@ -49,7 +49,10 @@ def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=Fals
     _result = _hash.digest()
     result = hexlify(_result).decode()
     if debug:
-        print(f"{result}  {file}")
+        if not size:
+            print(f"{result}  {file}")
+        else:
+            print(f"{result}  {file}  {os.stat(file)[6]}")
     if save:
         if not filetosave:
             with open(f"{file}.sha256", 'w') as shafile:

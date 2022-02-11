@@ -49,7 +49,7 @@ uid = basedev.cmd("from machine import unique_id; unique_id()", silent=True,
                   rtn_resp=True)
 try:
     unique_id = hexlify(uid).decode()
-except Exception as e:
+except Exception:
     unique_id = uid
 # devp = basedev.cmd("import sys; sys.platform", silent=True,
 #                    rtn_resp=True)
@@ -119,11 +119,12 @@ while repl:
         if _SHELL_FLAGS.exit['exit']:
             break
         else:
+            do_autsugg = ConditionalAutoSuggest(AutoSuggestFromHistory(),
+                                                autosuggest_is_on)
             inp = session_p.prompt(check_prompt,
-                                   auto_suggest=ConditionalAutoSuggest(AutoSuggestFromHistory(),
-                                                                       autosuggest_is_on),
+                                   auto_suggest=do_autsugg,
                                    key_bindings=kb, style=style_p,
-                                   multiline=_SHELL_FLAGS.edit_mode['E'] or _SHELL_FLAGS.paste['p'],
+                                   rprompt=sh.get_rprompt,
                                    refresh_interval=0.2)
 
             if inp is not None and inp != '' and not _SHELL_FLAGS.paste['p']:

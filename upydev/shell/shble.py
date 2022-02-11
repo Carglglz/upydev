@@ -84,7 +84,8 @@ class ShellBleCmds(ShellCmds):
     def __init__(self, *args, **kargs):
         super().__init__(*args, **kargs)
         for command, subcmd in SHELLBLE_CMD_DICT_PARSER.items():
-            _subparser = subshparser_cmd.add_parser(command, help=subcmd['help'])
+            _subparser = subshparser_cmd.add_parser(command, help=subcmd['help'],
+                                                    description=subcmd['help'])
             if subcmd['subcmd']:
                 _subparser.add_argument('subcmd', **subcmd['subcmd'])
             for option, op_kargs in subcmd['options'].items():

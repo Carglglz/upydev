@@ -206,12 +206,14 @@ while repl:
         if _SHELL_FLAGS.exit['exit']:
             break
         else:
+            do_autsugg = ConditionalAutoSuggest(AutoSuggestFromHistory(),
+                                                autosuggest_is_on)
             inp = session_p.prompt(check_prompt,
-                                   auto_suggest=ConditionalAutoSuggest(AutoSuggestFromHistory(),
-                                                                       autosuggest_is_on),
-                                   key_bindings=kb, style=style_p,
-                                   multiline=_SHELL_FLAGS.edit_mode['E'] or _SHELL_FLAGS.paste['p'],
-                                   refresh_interval=0.2)
+                                   auto_suggest=do_autsugg,
+                                   key_bindings=kb,
+                                   style=style_p,
+                                   refresh_interval=0.2,
+                                   rprompt=sh.get_rprompt)
 
             if inp is not None and inp != '' and not _SHELL_FLAGS.paste['p']:
                 # HERE IN SHELL MODE PROCESS INPUT BEFORE SENDING # shlex.split

@@ -4,9 +4,9 @@ import shlex
 from upydev.shell.constants import (AUTHMODE_DICT,
                                     shell_commands, custom_sh_cmd_kw, shell_message)
 from upydev.shell.common import (du, _ft_datetime, SHELL_ALIASES, ls, FileArgs,
-                                 find_localip)
+                                 find_localip, SHELL_FUNCTIONS)
 from upydev.shell.parser import shparser
-from upydev.shell import redirectsh
+from prompt_toolkit.formatted_text import HTML
 from binascii import hexlify
 from upydev.commandlib import _CMDDICT_
 from upydev import upip_host
@@ -16,6 +16,9 @@ from braceexpand import braceexpand
 from datetime import datetime, date, timedelta
 from contextlib import redirect_stdout, closing
 from upydev.shell.redirectsh import Tee
+from upydev.shell.nanoglob import glob as nglob
+from upydev.shell.shasum import _shasum_data, shasum
+import traceback
 import ast
 import time
 import signal
@@ -29,9 +32,9 @@ _SHELL_CMDS = custom_sh_cmd_kw + shell_commands
 
 _LOCAL_SHELL_CMDS = ['ldu', 'lsl', 'lpwd', 'lcd']
 
-_SPECIAL_SHELL_CMDS = ['wrepl', 'jupyterc', 'get', 'put', 'fget'
+_SPECIAL_SHELL_CMDS = ['wrepl', 'jupyterc', 'get', 'put',
                        'fw', 'flash', 'dsync',
-                       'srepl', 'pytest', 'getcert', 'git', 'update_upyutils',
+                       'repl', 'pytest', 'getcert', 'git', 'update_upyutils',
                        'upy-config']
 
 
@@ -98,22 +101,41 @@ class ShellCmds:
 
     def escape_sh_cmd(self, cmd_inp):
         # SHELL ESCAPE:
+        my_env = os.environ.copy()
         if cmd_inp.startswith('%') or cmd_inp.split()[0] not in self._shkw + ['-h',
                                                                               '-v']:
             if cmd_inp.split()[0] != 'ping':
                 try:
                     if cmd_inp.startswith('%'):
                         cmd_inp = cmd_inp[1:]
+                    # expand user
+                    cmd_inp = cmd_inp.replace('~', os.path.expanduser('~'))
                     shell_cmd_str = shlex.split(cmd_inp)
+                    # brace_expand
+                    shell_cmd_str = self.brace_exp(shell_cmd_str)
+                    # globals expand
+                    _shell_cmd_str = [cmd if '*' not in cmd
+                                     else nglob(cmd) for cmd in shell_cmd_str]
+                    shell_cmd_str = []
+                    for cmd in _shell_cmd_str:
+                        if isinstance(cmd, list):
+                            shell_cmd_str += cmd
+                        else:
+                            shell_cmd_str.append(cmd)
                     if shell_cmd_str[0] in SHELL_ALIASES:
                         shell_cmd_str = SHELL_ALIASES[shell_cmd_str[0]
+                                                      ].split() + shell_cmd_str[1:]
+                    if shell_cmd_str[0] in SHELL_FUNCTIONS:
+                        shell_cmd_str = SHELL_FUNCTIONS[shell_cmd_str[0]
                                                       ].split() + shell_cmd_str[1:]
                     old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
                     def preexec_function(action=old_action):
                         signal.signal(signal.SIGINT, action)
                     try:
-                        subprocess.call(shell_cmd_str, preexec_fn=preexec_function)
+                        subprocess.call(' '.join(shell_cmd_str), preexec_fn=preexec_function,
+                                        env=my_env, shell=True,
+                                        executable=my_env['SHELL'])
                         signal.signal(signal.SIGINT, old_action)
                     except Exception as e:
                         print(e)
@@ -199,6 +221,8 @@ class ShellCmds:
             args, unknown_args = all_args
         if hasattr(args, 'subcmd'):
             command, rest_args = args.m, args.subcmd
+            if rest_args is None:
+                rest_args = []
         else:
             command, rest_args = args.m, []
 
@@ -307,8 +331,12 @@ class ShellCmds:
                 print(f"ctime: {cmd_profile}")
                 try:
                     self.sh_cmd(cmd_profile)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"{cmd_profile}: failed, reason: {e}")
+                    show_tb = input('Do you want to see full traceback?[y/n]')
+                    if show_tb == 'y':
+                        print(traceback.format_exc())
+
                 end_time = time.time()
                 print(f"command time: {timedelta(seconds=(end_time-start_time))}")
             return
@@ -676,25 +704,29 @@ class ShellCmds:
             #  * RTC *
 
             # SET LOCAL TIME
-            if rest_args[0] == 'localtime':
-                print('Setting local time: {}'.format(
-                    datetime.now().strftime("%Y-%m-%d T %H:%M:%S")))
-                wkoy = date.today().isocalendar()[1]
-                datetime_local = [val for val in datetime.now().timetuple()[:-3]]
-                datetime_tuple = datetime_local[:3]
-                datetime_tuple.append(wkoy)
-                datetime_final = datetime_tuple + datetime_local[3:] + [0]
-                self.send_cmd(_CMDDICT_['SET_RTC_LT'].format(*datetime_final),
-                              raise_devexcept=True)
+            if rest_args[0] == 'rtc':
+                # SET LOCAL TIME
+                if len(rest_args) == 1:
+                    rest_args += ['localtime']
+                if rest_args[1] == 'localtime':
+                    print('Setting local time: {}'.format(
+                        datetime.now().strftime("%Y-%m-%d T %H:%M:%S")))
+                    wkoy = date.today().isocalendar()[1]
+                    datetime_local = [val for val in datetime.now().timetuple()[:-3]]
+                    datetime_tuple = datetime_local[:3]
+                    datetime_tuple.append(wkoy)
+                    datetime_final = datetime_tuple + datetime_local[3:] + [0]
+                    self.send_cmd(_CMDDICT_['SET_RTC_LT'].format(*datetime_final),
+                                  raise_devexcept=True)
 
-                print('Done!')
-            # SET NTP TIME
-            elif rest_args[0] == 'ntptime':
-                utc = args.utc
-                print(f'Setting time UTC+{utc} from NTP Server')
-                for ntp_cmd in _CMDDICT_['SET_RTC_NT'].format(utc).split(';'):
-                    self.send_cmd(ntp_cmd, raise_devexcept=True)
-                print('Done!')
+                    print('Done!')
+                # SET NTP TIME
+                elif rest_args[1] == 'ntptime':
+                    utc = args.utc
+                    print(f'Setting time UTC+{utc} from NTP Server')
+                    for ntp_cmd in _CMDDICT_['SET_RTC_NT'].format(utc).split(';'):
+                        self.send_cmd(ntp_cmd, raise_devexcept=True)
+                    print('Done!')
 
             # SET HOSTNAME
             elif rest_args[0] == 'hostname':
@@ -995,29 +1027,149 @@ class ShellCmds:
             else:
                 webbrowser.open('https://docs.micropython.org/en/latest/')
 
-        # DVIM
-        if command == 'vim':
+        # DIFF
+        if command == 'diff':
             if not rest_args:
-                print('Indicate a file to edit')
+                print('diff: indicate fileA fileB to compare')
                 return
 
-            fileargs = FileArgs()
+            if '*' in rest_args[0]:
+                local_files = []
+                dev_cmd_files = (f"from shasum import shasum;"
+                                 f"shasum(*{[rest_args[0]]}, debug=True, "
+                                 f"rtn=False, size=True);gc.collect()")
+                print('diff: checking files...')
+                self.fastfileio.init_sha(prog='diff')
+                dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
+                                            rtn_resp=True, long_string=True,
+                                            pipe=self.fastfileio.shapipe)
+                if not dev_files:
+                    dev_files = self.fastfileio._shafiles
+                    if dev_files:
+                        self.fastfileio.end_sha()
+                if dev_files:
+                    local_files = shasum(*[rest_args[0]], debug=False, rtn=True,
+                                         size=True)
+                if local_files:
+                    files_to_diff = [(fts[0], fts[2])
+                                     for fts in dev_files if fts not in
+                                     local_files]
+                    for file, fhash in files_to_diff:
+                        self.sh_cmd(f'diff {file}')
+                return
 
             file_to_edit = rest_args[0]
+            _file_to_edit = file_to_edit.rsplit('/', 1)[-1]
+            # dir = file_to_edit.rsplit('/', 1)[0]
+            if len(rest_args) == 1 and not nglob(file_to_edit):
+                print(f'diff: {file_to_edit}: No such file in local directory')
+                return
             self.dev.wr_cmd('from upysh import cat', silent=True)
             files_to_see = f"*{[file_to_edit]}"
             filedata = self.dev.wr_cmd(_CMDDICT_['VIM'].format(files_to_see),
                                        silent=True, rtn_resp=True, multiline=True,
                                        long_string=True)
             # print(filedata)
+
+            local_file = False
+            if nglob(file_to_edit):
+                local_file = nglob(file_to_edit)[0]
+                _file_to_edit = file_to_edit.replace(_file_to_edit,
+                                                     f"~{_file_to_edit}")
+
             if filedata == f'vim: {file_to_edit}: No such file in directory\n':
-                filedata = ' '
-            if not filedata:
-                filedata = ' '
+                print(f'diff: {file_to_edit}: No such file in device directory')
+                return
+
+            if filedata:
+                with open(_file_to_edit, 'w') as fte:
+                    fte.write(filedata)
+
+            if len(rest_args) != 2:
+                if not local_file:
+                    return
+                else:
+                    rest_args += [local_file]
+            if not args.s:
+                diff_cmd = (f"git diff --color-words --no-index "
+                            f"{_file_to_edit} {rest_args[1]}")
+            else:
+                diff_cmd = (f"git diff --color-words --no-index "
+                            f"{rest_args[1]} {_file_to_edit}")
+            # print(diff_cmd)
+            shell_cmd_str = shlex.split(diff_cmd)
+
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+            try:
+                subprocess.call(shell_cmd_str, preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+            os.remove(_file_to_edit)
+            return
+
+        # VIM
+        if command == 'vim':
+            if not rest_args and not args.d:
+                print('vim: indicate a file to edit or -d fileA fileB to compare')
+                return
+
+            if not rest_args:
+                file_to_edit = args.d[0]
+            else:
+                file_to_edit = rest_args
+            self.dev.wr_cmd('from upysh import cat', silent=True)
+            files_to_see = f"*{[file_to_edit]}"
+            filedata = self.dev.wr_cmd(_CMDDICT_['VIM'].format(files_to_see),
+                                       silent=True, rtn_resp=True, multiline=True,
+                                       long_string=True)
+            # print(filedata)
             _file_to_edit = file_to_edit.rsplit('/')[-1]
-            with open(_file_to_edit, 'w') as fte:
-                fte.write(filedata)
-            shell_cmd_str = shlex.split(f"vim {_file_to_edit}")
+            if args.d:
+                args.rm = True
+                if _file_to_edit in os.listdir():
+                    _file_to_edit = f"~{_file_to_edit}"
+                    ov = True
+                    if len(args.d) == 1:
+                        args.d += [file_to_edit.rsplit('/')[-1]]
+            if filedata == f'vim: {file_to_edit}: No such file in directory\n':
+                filedata = ''
+                ov = False
+                if _file_to_edit in os.listdir():
+                    print(filedata)
+                    print('Using local copy...')
+
+            if filedata:
+                if _file_to_edit in os.listdir():
+                    if not args.o:
+                        dev_sha = _shasum_data(filedata.encode('utf-8'))
+                        local_sha = shasum(_file_to_edit, debug=False, rtn=True)
+                        if dev_sha != local_sha[0][1]:
+                            local_file_to_edit = _file_to_edit
+                            _file_to_edit = f"~{_file_to_edit}"
+                            args.d = [_file_to_edit, local_file_to_edit]
+                            args.rm = True
+                            ov = True
+                        else:
+                            ov = False
+                    else:
+                        ov = True
+                else:
+                    ov = True
+            if ov:
+                with open(_file_to_edit, 'w') as fte:
+                    fte.write(filedata)
+
+            if not args.d:
+                shell_cmd_str = shlex.split(f"vim {_file_to_edit}")
+            else:
+                if len(args.d) != 2:
+                    print('Indicate two files to compare')
+                    return
+                shell_cmd_str = shlex.split(f"vim -d {_file_to_edit} {args.d[1]}")
 
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -1030,41 +1182,63 @@ class ShellCmds:
                 print(e)
 
             # Check if file changes:
-            with open(_file_to_edit, 'r') as fte:
-                filedata2 = fte.read()
-            if filedata != filedata2:
-                dest_file = file_to_edit
-                if self.dev.dev_class == 'SerialDevice':
-                    from upydev.serialio import SerialFileIO
-                    fileio = SerialFileIO(self.dev,
-                                          devname=self.dev_name)
-                    fileio.put(_file_to_edit, dest_file, ppath=True)
-                elif self.dev.dev_class == 'WebSocketDevice':
-                    from upydev.wsio import WebSocketFileIO
-                    fileargs.wss = self.dev._uriprotocol == 'wss'
-                    fileio = WebSocketFileIO(self.dev, args=fileargs,
-                                             devname=self.dev_name)
-                    fileio.put(_file_to_edit, dest_file, ppath=True)
-                elif self.dev.dev_class == 'BleDevice':
-                    from upydev.bleio import BleFileIO
-                    fileio = BleFileIO(self.dev,
-                                       devname=self.dev_name)
-                    fileio.put(_file_to_edit, dest_file, ppath=True)
-            if args.r:
+            if _file_to_edit in os.listdir():
+                with open(_file_to_edit, 'r') as fte:
+                    filedata2 = fte.read()
+                if filedata != filedata2:
+                    dst_name = file_to_edit
+                    src_name = _file_to_edit
+                    self.dsyncio.file_put(src_name, os.stat(src_name)[6], dst_name)
+                # if self.dev.dev_class == 'SerialDevice':
+                #     from upydev.serialio import SerialFileIO
+                #     fileio = SerialFileIO(self.dev,
+                #                           devname=self.dev_name)
+                #     fileio.put(_file_to_edit, dest_file, ppath=True)
+                # elif self.dev.dev_class == 'WebSocketDevice':
+                #     from upydev.wsio import WebSocketFileIO
+                #     fileargs.wss = self.dev._uriprotocol == 'wss'
+                #     fileio = WebSocketFileIO(self.dev, args=fileargs,
+                #                              devname=self.dev_name)
+                #     fileio.put(_file_to_edit, dest_file, ppath=True)
+                # elif self.dev.dev_class == 'BleDevice':
+                #     from upydev.bleio import BleFileIO
+                #     fileio = BleFileIO(self.dev,
+                #                        devname=self.dev_name)
+                #     fileio.put(_file_to_edit, dest_file, ppath=True)
+            if args.rm:
                 os.remove(_file_to_edit)
             if args.e:
-                script_name = file_to_edit.replace('.py', '')
+                script_name = file_to_edit.replace('.py', '').rsplit('/')[-1]
                 run_cmd = f"import {script_name}"
                 print(f'Running {script_name}...')
-                self.dev.wr_cmd(run_cmd, follow=True)
+                try:
+                    self.dev.wr_cmd(run_cmd, follow=True)
+                except KeyboardInterrupt:
+                    self.dev.kbi()
+            if args.r:
+                module = script_name
+                reload_cmd = f"import sys;del(sys.modules['{module}']);gc.collect()"
+                print(f'Reloading {file_to_edit}...')
+                self.dev.wr_cmd(reload_cmd)
+                print('Done!')
             return
 
+        if command == 'enable_sh':
+            command = 'update_upyutils'
+            rest_args = ['nanoglob.py', 'upysh*.py', 'shasum.py']
         # UPDATE UPYUTILS:
         if command == 'update_upyutils':
             fileargs = FileArgs()
             SRCDIR = os.path.join(_UPYDEVPATH[0], 'upyutils_dir')
-            files = [os.path.join(SRCDIR, file)
-                     for file in os.listdir(SRCDIR) if file.endswith('.py')]
+            files = nglob(*[os.path.join(SRCDIR, file)
+                            for file in rest_args])
+            is_lib = self.dev.wr_cmd("import os; 'lib' in os.listdir()",
+                                     rtn_resp=True, silent=True)
+            if not is_lib:
+                print('Making ./lib directory ...')
+                self.dev.wr_cmd("os.mkdir('./lib')")
+                print('Done!')
+            print('Uploading files to ./lib ...')
             fileargs.fre = files
             if self.dev.dev_class == 'SerialDevice':
                 from upydev.serialio import SerialFileIO
@@ -1154,4 +1328,46 @@ class ShellCmds:
             dir_names_or_pattrn = rest_args
             ls(*dir_names_or_pattrn, hidden=args.a)
             return
-            return
+
+    def get_rprompt(self):
+
+        if self.flags.mem_show_rp['call']:
+            RAM = self.send_cmd(_CMDDICT_['MEM'], raise_devexcept=True,
+                                capture_output=True)
+
+            mem_info = RAM.splitlines()[1]
+            mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
+                              1]) for elem in mem_info[4:].split(',')}
+            # print(f"{'Memory':12}{'Size':^12}{'Used':^12}{'Avail':^12}{'Use%':^12}")
+            total_mem = mem['total']/1000
+            used_mem = mem['used']/1000
+            free_mem = mem['free']/1000
+            # total_mem_s = f"{total_mem:.3f} kB"
+            used_mem_s = f"{used_mem:.3f} kB"
+            free_mem_s = f"{free_mem:.3f} kB"
+            # percent_mem = f"{(used_mem/total_mem)*100:.1f} %"
+            # set used and free
+            self.flags.mem_show_rp['used'] = used_mem_s
+            self.flags.mem_show_rp['free'] = free_mem_s
+            use_percent = round((used_mem/total_mem)*100, 2)
+            self.flags.mem_show_rp['percent'] = use_percent
+            self.flags.mem_show_rp['call'] = False
+        else:
+            pass
+        if self.flags.mem_show_rp['show']:
+            if self.flags.mem_show_rp['percent'] < 85:
+                return HTML('<aaa fg="ansiblack" bg="ansiwhite"> RAM </aaa><b><style '
+                            'fg="ansigreen"> USED </style></b><aaa fg="ansiblack" '
+                            f'bg="ansiwhite"> {self.flags.mem_show_rp["used"]} '
+                            '</aaa><b><style '
+                            'fg="ansigreen"> FREE </style></b><aaa fg="ansiblack" '
+                            f'bg="ansiwhite"> {self.flags.mem_show_rp["free"]} </aaa>')
+            else:
+                return HTML('<aaa fg="ansiblack" bg="ansiwhite"> RAM </aaa><b><style '
+                            'fg="ansired"> USED </style></b><aaa fg="ansiblack" '
+                            'bg="ansiwhite">'
+                            f' {self.flags.mem_show_rp["used"]} </aaa><b><style '
+                            'fg="ansired"> '
+                            'FREE </style></b><aaa '
+                            'fg="ansiblack" bg="ansiwhite"> '
+                            f'{self.flags.mem_show_rp["free"]} </aaa>')
