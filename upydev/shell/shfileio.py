@@ -7,6 +7,7 @@ from upydev.wsio import websocket, get_file, put_file
 import shutil
 import os
 import socket
+import re
 
 
 class ShDsyncIO:
@@ -16,6 +17,28 @@ class ShDsyncIO:
         self.fileio = fileio
         self.fastfileio = fastfileio
         self.shell = shell
+
+    def _re_match_filt(self, patt, files_dirs, raw=False):
+        if patt.startswith('r!'):
+            raw = True
+            patt = patt.replace('r!', '')
+        elif patt.startswith('r:'):
+            raw = True
+            patt = patt.replace('r:', '')
+            patt = r"^[^\/]*\/\.*[^\/]*" + patt.replace('.', r'\.').replace('*', '.*')
+        if not raw:
+            pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
+        else:
+            pattrn = re.compile(r"^{}$".format(patt))
+        try:
+            return [file for file in files_dirs if not pattrn.match(file)]
+        except Exception:
+            return []
+    def re_filt(self, pattrn_list, files_dirs):
+        filtered = files_dirs
+        for patt in pattrn_list:
+            filtered = self._re_match_filt(patt, filtered)
+        return filtered
 
     def sr_put(self, src_name, sz, dst_name):
         try:
@@ -401,6 +424,12 @@ class ShDsyncIO:
                         else:
                             files_to_sync = [(os.stat(fts)[6], fts)
                                              for fts in local_files_dict.keys()]
+                        if args.i:
+                            _file_match = self.re_filt(args.i,
+                                                       [nm for sz, nm in files_to_sync])
+                            files_to_sync = [(sz ,nm)
+                                             for sz, nm in files_to_sync
+                                             if nm in _file_match]
 
                         if files_to_sync:
                             print('\ndsync: syncing new or modified files:')
@@ -422,6 +451,8 @@ class ShDsyncIO:
                             _local_files = [lf[0] for lf in local_files]
                             files_to_delete = [dfile[0] for dfile in dev_files
                                                if dfile[0] not in _local_files]
+                            if args.i:
+                                files_to_delete = self.re_filt(args.i, files_to_delete)
                             if files_to_delete:
                                 print('dsync: deleting old files:')
                                 for ndir in files_to_delete:
@@ -439,6 +470,8 @@ class ShDsyncIO:
             # LOCAL DIRS
             dir_match = nglob(*rest_args, dir_only=True)
             if dir_match:
+                if args.i:
+                    dir_match = self.re_filt(args.i, dir_match)
                 for dir in dir_match:
                     if args.t:
                         tree(dir)
@@ -457,6 +490,8 @@ class ShDsyncIO:
                         dev_dirs = []
                     dirs_to_make = [ldir for ldir in local_dirs
                                     if ldir not in dev_dirs]
+                    if args.i:
+                        dirs_to_make = self.re_filt(args.i, dirs_to_make)
                     if dirs_to_make:
                         print('dsync: making new dirs:')
                         for ndir in dirs_to_make:
@@ -470,6 +505,8 @@ class ShDsyncIO:
                     if args.rf:
                         dirs_to_delete = [ddir for ddir in dev_dirs
                                           if ddir not in local_dirs]
+                        if args.i:
+                            dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
                         if dirs_to_delete:
                             print('dsync: deleting old dirs:')
                             for ndir in dirs_to_delete:
@@ -514,6 +551,12 @@ class ShDsyncIO:
                         # print(local_files)
                         # print(dev_files)
                         # print(files_to_sync)
+                        if args.i:
+                            _file_match = self.re_filt(args.i,
+                                                       [nm for sz, nm in files_to_sync])
+                            files_to_sync = [(sz ,nm)
+                                             for sz, nm in files_to_sync
+                                             if nm in _file_match]
                         if files_to_sync:
                             print('\ndsync: syncing new or modified files:')
                             for sz, name in files_to_sync:
@@ -534,6 +577,8 @@ class ShDsyncIO:
                             _local_files = [lf[0] for lf in local_files]
                             files_to_delete = [dfile[0] for dfile in dev_files
                                                if dfile[0] not in _local_files]
+                            if args.i:
+                                files_to_delete = self.re_filt(args.i, files_to_delete)
                             if files_to_delete:
                                 print('dsync: deleting old files:')
                                 for ndir in files_to_delete:
@@ -574,6 +619,7 @@ class ShDsyncIO:
                     if dev_files:
                         self.fastfileio.end_sha()
 
+
                 if dev_files:
                     local_files = shasum(*rest_args, debug=False, rtn=True,
                                          size=True)
@@ -585,6 +631,13 @@ class ShDsyncIO:
                     else:
                         files_to_sync = [(fts[1], fts[0])
                                          for fts in dev_files]
+
+                    if args.i:
+                        _file_match = self.re_filt(args.i,
+                                                   [nm for sz, nm in files_to_sync])
+                        files_to_sync = [(sz ,nm)
+                                         for sz, nm in files_to_sync
+                                         if nm in _file_match]
 
                     if files_to_sync:
                         print('\ndsync: syncing new or modified files:')
@@ -606,6 +659,8 @@ class ShDsyncIO:
                         _dev_files = [df[0] for df in dev_files]
                         files_to_delete = [dfile[0] for dfile in local_files
                                            if dfile[0] not in _dev_files]
+                        if args.i:
+                            files_to_delete = self.re_filt(args.i, files_to_delete)
                         if files_to_delete:
                             print('dsync: deleting old files:')
                             for ndir in files_to_delete:
@@ -626,6 +681,8 @@ class ShDsyncIO:
                 self.dev.wr_cmd("from nanoglob import _get_path_depth"
                                 ";from upysh2 import tree",
                                 silent=True)
+                if args.i:
+                    dir_match = self.re_filt(args.i, dir_match)
                 for dir in dir_match:
                     if args.t:
                         self.dev.wr_cmd(f"tree('{dir}')", follow=True)
@@ -641,6 +698,8 @@ class ShDsyncIO:
                                                silent=True, rtn_resp=True)
                     dirs_to_make = [
                         ddir for ddir in dev_dirs if ddir not in local_dirs]
+                    if args.i:
+                        dirs_to_make = self.re_filt(args.i, dirs_to_make)
                     if dirs_to_make:
                         print('dsync: making new dirs:')
                         for ndir in dirs_to_make:
@@ -652,6 +711,8 @@ class ShDsyncIO:
                     if args.rf:
                         dirs_to_delete = [ldir for ldir in local_dirs
                                           if ldir not in dev_dirs]
+                        if args.i:
+                            dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
                         if dirs_to_delete:
                             print('dsync: deleting old dirs:')
                             for ndir in dirs_to_delete:
@@ -687,6 +748,12 @@ class ShDsyncIO:
                         else:
                             files_to_sync = [(fts[1], fts[0])
                                              for fts in dev_files]
+                        if args.i:
+                            _file_match = self.re_filt(args.i,
+                                                       [nm for sz, nm in files_to_sync])
+                            files_to_sync = [(sz ,nm)
+                                             for sz, nm in files_to_sync
+                                             if nm in _file_match]
 
                         if files_to_sync:
                             print('\ndsync: syncing new or modified files:')
@@ -708,6 +775,8 @@ class ShDsyncIO:
                             _dev_files = [df[0] for df in dev_files]
                             files_to_delete = [dfile[0] for dfile in local_files
                                                if dfile[0] not in _dev_files]
+                            if args.i:
+                                files_to_delete = self.re_filt(args.i, files_to_delete)
                             if files_to_delete:
                                 print('dsync: deleting old files:')
                                 for ndir in files_to_delete:

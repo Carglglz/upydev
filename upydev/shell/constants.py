@@ -385,7 +385,7 @@ MODULES = dict(help="prints device frozen modules",
                options={})
 
 UPING = dict(help="device send ICMP ECHO_REQUEST packets to network hosts",
-             subcmd=dict(help='Indicate an IP address to ping; default: host IP', 
+             subcmd=dict(help='Indicate an IP address to ping; default: host IP',
                          default='host',
                          metavar='IP', nargs='?'),
              options={})
@@ -507,6 +507,13 @@ CTIME = dict(help="measure execution time of a shell command",
                          choices=shell_commands+custom_sh_cmd_kw,
                          metavar='command'),
              options={})
+
+# DEBUGC = dict(help="debug execution of a shell command",
+#              subcmd=dict(help='Indicate a command to debug',
+#                          default='info',
+#                          choices=shell_commands+custom_sh_cmd_kw,
+#                          metavar='command'),
+#              options={})
 
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,

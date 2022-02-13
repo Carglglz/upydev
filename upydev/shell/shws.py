@@ -9,7 +9,7 @@ import signal
 import shutil
 import os
 
-shws_cmd_kw = ["wrepl", "getcert", "fw", "flash"]
+shws_cmd_kw = ["wrepl", "getcert", "fw", "flash", "debugws"]
 
 WREPL = dict(help="enter WebREPL",
              subcmd={},
@@ -88,11 +88,17 @@ DSYNC = dict(help="recursively sync a folder from/to device filesystem",
                                  action='store_true'),
                       "-n": dict(help='dry-run', required=False,
                                  default=False,
-                                 action='store_true')})
+                                 action='store_true'),
+                      "-i": dict(help='ignore file/dir or pattern', required=False,
+                                 default=[],
+                                 nargs='*')})
+DEBUG = dict(help="Toggle debug mode for websocket debugging",
+             subcmd={},
+             options={})
 
 SHELLWS_CMD_DICT_PARSER = {"wrepl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
-                           "dsync": DSYNC}
+                           "dsync": DSYNC, "debugws": DEBUG}
 
 
 class ShellWsCmds(ShellCmds):
@@ -118,7 +124,7 @@ class ShellWsCmds(ShellCmds):
         if cmd == 'wrepl':
             if not topargs.wss:
                 print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
-            print('<-- Device {} MicroPython -->'.format(self.dev.dev_platform))
+            print('<-- Device {} MicroPython -->'.format(self.dev_name))
             print('Use CTRL-x to exit, Use CTRL-k to see custom wrepl Keybindings')
             try:
                 self.dev.disconnect()
@@ -261,3 +267,7 @@ class ShellWsCmds(ShellCmds):
             #      device rm
             #
             self.dsyncio.dsync(args, rest_args)
+        if cmd == 'debugws':
+            state = self.dev.debug
+            self.dev.debug = not state
+            print(f"debugws: {self.dev.debug}")

@@ -35,7 +35,7 @@ _LOCAL_SHELL_CMDS = ['ldu', 'lsl', 'lpwd', 'lcd']
 _SPECIAL_SHELL_CMDS = ['wrepl', 'jupyterc', 'get', 'put',
                        'fw', 'flash', 'dsync',
                        'repl', 'pytest', 'getcert', 'git', 'update_upyutils',
-                       'upy-config']
+                       'upy-config', 'debugws']
 
 
 class ShellFlags:

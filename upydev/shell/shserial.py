@@ -89,7 +89,10 @@ DSYNC = dict(help="recursively sync a folder from/to device filesystem",
                                  action='store_true'),
                       "-n": dict(help='dry-run', required=False,
                                  default=False,
-                                 action='store_true')})
+                                 action='store_true'),
+                      "-i": dict(help='ignore file/dir or pattern', required=False,
+                                 default=[],
+                                 nargs='*')})
 
 SHELLSR_CMD_DICT_PARSER = {"repl": SREPL, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,

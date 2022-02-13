@@ -68,19 +68,21 @@ if base_ws:
     ws_upydevice.wr_cmd(ws_upydevice._kbi)
     # espdev.wr_cmd("from machine import unique_id; unique_id()",
     #               silent=True)
-    ws_upydevice.wr_cmd("from machine import unique_id; unique_id()", silent=True)
+    unique_id = ws_upydevice.wr_cmd("from machine import unique_id; "
+                                    "unique_id()", silent=True, rtn_resp=True)
     # unique_id = hexlify(espdev.output).decode()
     try:
-        unique_id = hexlify(ws_upydevice.output).decode()
+        unique_id = hexlify(unique_id).decode()
     except TypeError:
         time.sleep(0.5)
-        ws_upydevice.wr_cmd("from machine import unique_id; unique_id()", silent=True)
-        unique_id = hexlify(ws_upydevice.output).decode()
+        unique_id = ws_upydevice.wr_cmd("from machine import unique_id; "
+                                        "unique_id()", silent=True, rtn_resp=True)
+        unique_id = hexlify(unique_id).decode()
     # espdev.wr_cmd("import sys; sys.platform",
     #               silent=True)
-    ws_upydevice.wr_cmd("import sys; sys.platform", silent=True)
+    dev_platform = ws_upydevice.wr_cmd("import sys; sys.platform", silent=True,
+                                       rtn_resp=True)
     # dev_platform = espdev.output
-    dev_platform = ws_upydevice.output
     # espdev.platform = dev_platform
     ws_upydevice.platform = dev_platform
 else:
