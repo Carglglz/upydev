@@ -49,7 +49,7 @@ class BleFileIO:
         sys.stdout.flush()
 
     def get(self, src, dst_file, chunk_size=512, ppath=False, dev_name=None,
-            fullpath=False):  # from Pyboard.py
+            fullpath=False, psize=True):  # from Pyboard.py
         if not dev_name:
             dev_name = self.dev_name
         self.get_pb()
@@ -61,7 +61,8 @@ class BleFileIO:
             dst_file = src.split('/')[-1]
         if ppath:
             print(f'{dev_name}:{src} -> {dst_file}', end='\n\n')
-        print(f"{src}  [{sz / 1000:.2f} kB]")
+        if psize:
+            print(f"{src}  [{sz / 1000:.2f} kB]")
         self.dev.flush()
         self.dev.cmd("f=open('%s','rb');r=f.read" % src, silent=True)
         with open(dst_file, 'wb') as f:
@@ -107,7 +108,7 @@ class BleFileIO:
         return True
 
     def put(self, src, dst_file, chunk_size=250, abs_path=True, ppath=False,
-            dev_name=None):  # from Pyboard.py
+            dev_name=None, psize=True):  # from Pyboard.py
         if not dev_name:
             dev_name = self.dev_name
         self.get_pb()
@@ -122,7 +123,8 @@ class BleFileIO:
                 print(f"{src} -> {dev_name}:/{dst_file}\n")
             else:
                 print(f"{src} -> {dev_name}:{dst_file}\n")
-        print(f"{src}  [{sz / 1000:.2f} kB]")
+        if psize:
+            print(f"{src}  [{sz / 1000:.2f} kB]")
         self.dev.cmd("f=open('%s','wb');w=f.write" % dst_file, silent=True)
         if not abs_path:
             src = src_ori

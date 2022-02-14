@@ -74,7 +74,8 @@ DSYNC = dict(help="recursively sync a folder from/to device filesystem",
                       "-fg": dict(help='use a faster get method', required=False,
                                   default=False,
                                   action='store_true'),
-                      "-b": dict(help='read buffer for faster get method', required=False,
+                      "-b": dict(help='read buffer for faster get method',
+                                 required=False,
                                  default=512,
                                  type=int),
                       "-t": dict(help='show tree of directory to sync', required=False,
@@ -92,7 +93,7 @@ DSYNC = dict(help="recursively sync a folder from/to device filesystem",
                       "-i": dict(help='ignore file/dir or pattern', required=False,
                                  default=[],
                                  nargs='*')})
-DEBUG = dict(help="Toggle debug mode for websocket debugging",
+DEBUG = dict(help="toggle debug mode for websocket debugging",
              subcmd={},
              options={})
 

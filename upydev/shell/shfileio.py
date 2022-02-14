@@ -8,6 +8,7 @@ import shutil
 import os
 import socket
 import re
+import sys
 
 
 class ShDsyncIO:
@@ -206,11 +207,58 @@ class ShDsyncIO:
                     print('Canceling file queue..')
                     raise KeyboardInterrupt
 
-    def ble_put(self, name, sz):
-        pass
+    def ble_put(self, src_name, sz, dst_name):
+        try:
+            self.fileio.put(src_name, dst_name, psize=False)
+        except KeyboardInterrupt:
+            print('KeyboardInterrupt: put Operation Canceled')
+            self.dev.cmd("f.close()", silent=True)
+            if input('Continue put Operation with next file? [y/n]') == 'y':
+                pass
+            else:
+                raise KeyboardInterrupt
+        except Exception as e:
+            print(f'put: Operation failed, reason: {e}')
+            self.dev.cmd("f.close()", silent=True)
+            if input('Continue put Operation with next file? [y/n]') == 'y':
+                pass
+            else:
+                raise KeyboardInterrupt
 
-    def ble_get(self, args, name, sz):
-        pass
+    def ble_get(self, args, src_name, sz, dst_name):
+        if not args.fg:
+            try:
+                self.fileio.get((sz, src_name), dst_name,
+                                fullpath=True, psize=False)
+            except (KeyboardInterrupt, Exception):
+                print(
+                    'KeyboardInterrupt: get Operation Canceled')
+                # flush ws and reset
+                self.dev.cmd("f.close()", silent=True)
+                if input('Continue get Operation with next file? [y/n]') == 'y':
+                    pass
+                else:
+                    print('Canceling file queue..')
+                    raise KeyboardInterrupt
+        else:
+            try:  # FAST GET
+                self.fastfileio.init_get(name, sz)
+                self.dev.wr_cmd(_CMDDICT_['CAT'].format(f"'{name}'"),
+                                follow=True,
+                                long_string=True,
+                                multiline=True,
+                                pipe=self.fastfileio.show_pgb)
+                self.fastfileio.save_file()
+                print('\n')
+            except (KeyboardInterrupt, Exception) as e:
+                print(e)
+                print(
+                    'KeyboardInterrupt: get Operation Canceled')
+                if input('Continue get Operation with next file? [y/n]') == 'y':
+                    pass
+                else:
+                    print('Canceling file queue..')
+                    return
 
     def file_put(self, src_name, size, dst_name):
         if self.dev.dev_class == 'SerialDevice':
@@ -409,11 +457,11 @@ class ShDsyncIO:
                                                         long_string=True,
                                                         pipe=ff.shapipe)
                             # print(local_files[0])
-                            if not dev_files:
-                                dev_files = [(hf[0], hf[2])
-                                             for hf in ff._shafiles]
-                                if dev_files:
-                                    ff.end_sha()
+                            #if not dev_files:
+                            dev_files = [(hf[0], hf[2])
+                                         for hf in ff._shafiles]
+                            if dev_files:
+                                ff.end_sha()
                         else:
                             dev_files = []
 
@@ -445,7 +493,8 @@ class ShDsyncIO:
                                 if not args.n:
                                     self.file_put(name, sz, name)
                         else:
-                            print(f'dsync: ./ : OK{CHECK}')
+                            if not args.rf:
+                                print(f'dsync: files: OK{CHECK}')
 
                         if args.rf:
                             _local_files = [lf[0] for lf in local_files]
@@ -463,15 +512,42 @@ class ShDsyncIO:
                                     self.dev.wr_cmd(f'rmrf(*{files_to_delete})',
                                                     follow=True)
                             else:
-                                print('dsync: no old files to delete')
+                                print(f'dsync: files: OK{CHECK}')
+                            #     print('dsync: no old files to delete')
 
                     else:
-                        print('dsync: no files found directory tree')
+                        print('dsync: files: none')
             # LOCAL DIRS
             dir_match = nglob(*rest_args, dir_only=True)
+            # DEVICE DIRS
+            dev_dir_match = self.dev.wr_cmd(f"from nanoglob import glob;"
+                                            f"glob(*{rest_args}, dir_only=True)"
+                                            f";gc.collect()",
+                                            silent=True, rtn_resp=True)
             if dir_match:
                 if args.i:
                     dir_match = self.re_filt(args.i, dir_match)
+
+                if args.rf:
+                    dirs_to_delete = [ddir for ddir in dev_dir_match
+                                      if ddir not in dir_match]
+                    if args.i:
+                        dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
+                    if dirs_to_delete:
+                        print('dsync: deleting old dirs:')
+                        for ndir in dirs_to_delete:
+                            print(f'- {ndir}')
+                        if not args.n:
+                            self.dev.wr_cmd('from upysh2 import rmrf', silent=True)
+                            self.dev.wr_cmd(f'rmrf(*{dirs_to_delete})',
+                                            follow=True)
+
+                    else:
+                        print(f'dsync: dirs: OK{CHECK}')
+                    #     print('dsync: no old dirs to delete')
+                if not args.rf:
+                    print(f'dsync: dirs: OK{CHECK}')
+
                 for dir in dir_match:
                     if args.t:
                         tree(dir)
@@ -499,7 +575,11 @@ class ShDsyncIO:
                         if not args.n:
                             self.dev.wr_cmd(f'mkdir(*{dirs_to_make})', follow=True)
                     else:
-                        print(f'dsync: dirs: OK{CHECK}')
+                        if not args.rf:
+                            if len(local_dirs) > 1:
+                                print(f'dsync: dirs: OK{CHECK}')
+                            else:
+                                print(f'dsync: dirs: none')
                         # print('dsync: no new directories to make')
 
                     if args.rf:
@@ -516,7 +596,11 @@ class ShDsyncIO:
                                 self.dev.wr_cmd(f'rmrf(*{dirs_to_delete})',
                                                 follow=True)
                         else:
-                            print('dsync: no old directories to delete')
+                            if len(local_dirs) > 1:
+                                print(f'dsync: dirs: OK{CHECK}')
+                            else:
+                                print(f'dsync: dirs: none')
+                        #     print('dsync: no old dirs to delete')
 
                     local_files = shasum(*pattern_dir, debug=False, rtn=True)
                     local_files_dict = {
@@ -534,11 +618,11 @@ class ShDsyncIO:
                                                         long_string=True,
                                                         pipe=ff.shapipe)
                             # print(local_files[0])
-                            if not dev_files:
-                                dev_files = [(hf[0], hf[2])
-                                             for hf in ff._shafiles]
-                                if dev_files:
-                                    ff.end_sha()
+                            # if not dev_files:
+                            dev_files = [(hf[0], hf[2])
+                                         for hf in ff._shafiles]
+                            if dev_files:
+                                ff.end_sha()
                         else:
                             dev_files = []
                         if dev_files:
@@ -570,7 +654,8 @@ class ShDsyncIO:
                                 if not args.n:
                                     self.file_put(name, sz, name)
                         else:
-                            print(f'dsync: files: OK{CHECK}')
+                            if not args.rf:
+                                print(f'dsync: files: OK{CHECK}')
                             # print('dsync: no new or modified files to sync')
 
                         if args.rf:
@@ -589,10 +674,11 @@ class ShDsyncIO:
                                     self.dev.wr_cmd(f'rmrf(*{files_to_delete})',
                                                     follow=True)
                             else:
-                                print('dsync: no old files to delete')
+                                print(f'dsync: files: OK{CHECK}')
+                            #     print('dsync: no old files to delete')
 
                     else:
-                        print('dsync: no files found directory tree')
+                        print(f'dsync: files: none')
 
             else:
                 print(
@@ -614,13 +700,14 @@ class ShDsyncIO:
                 dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
                                             rtn_resp=True, long_string=True,
                                             pipe=self.fastfileio.shapipe)
-                if not dev_files:
-                    dev_files = self.fastfileio._shafiles
-                    if dev_files:
-                        self.fastfileio.end_sha()
+                # if not dev_files:
+                dev_files = self.fastfileio._shafiles
+                if dev_files:
+                    self.fastfileio.end_sha()
 
 
                 if dev_files:
+                    # print(dev_files)
                     local_files = shasum(*rest_args, debug=False, rtn=True,
                                          size=True)
 
@@ -652,7 +739,8 @@ class ShDsyncIO:
                             if not args.n:
                                 self.file_get(args, name, sz, name)
                     else:
-                        print(f'dsync: ./ : OK{CHECK}')
+                        if not args.rf:
+                            print(f'dsync: files: OK{CHECK}')
                         # print('dsync: no new or modified files to sync')
 
                     if args.rf:
@@ -668,21 +756,43 @@ class ShDsyncIO:
                                 if not args.n:
                                     os.remove(ndir)
                         else:
-                            print('dsync: no old files to delete')
+                            print(f'dsync: files: OK{CHECK}')
+                        #     print('dsync: no old files to delete')
 
                 else:
-                    print('dsync: no files found directory tree')
+                    sys.stdout.write("\033[K")
+                    sys.stdout.write("\033[A")
+                    print(f'dsync: files: none' + ' '*10)
             # DEVICE DIRS
             dir_match = self.dev.wr_cmd(f"from nanoglob import glob;"
                                         f"glob(*{rest_args}, dir_only=True)"
                                         f";gc.collect()",
                                         silent=True, rtn_resp=True)
+            # LOCAL DIRS
+            local_dir_match = nglob(*rest_args, dir_only=True)
             if dir_match:
                 self.dev.wr_cmd("from nanoglob import _get_path_depth"
                                 ";from upysh2 import tree",
                                 silent=True)
                 if args.i:
                     dir_match = self.re_filt(args.i, dir_match)
+                if args.rf:
+                    dirs_to_delete = [ldir for ldir in local_dir_match
+                                      if ldir not in dir_match]
+                    if args.i:
+                        dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
+                    if dirs_to_delete:
+                        print('dsync: deleting old dirs:')
+                        for ndir in dirs_to_delete:
+                            print(f'- {ndir}')
+                            if not args.n:
+                                shutil.rmtree(ndir)
+                    else:
+                        print(f'dsync: dirs: OK{CHECK}')
+                    #     print('dsync: no old dirs to delete')
+                if not args.rf:
+                    print(f'dsync: dirs: OK{CHECK}')
+
                 for dir in dir_match:
                     if args.t:
                         self.dev.wr_cmd(f"tree('{dir}')", follow=True)
@@ -707,8 +817,13 @@ class ShDsyncIO:
                             if not args.n:
                                 os.makedirs(ndir)
                     else:
-                        print(f'dsync: dirs: OK{CHECK}')
+                        if not args.rf:
+                            if len(dev_dirs) > 1:
+                                print(f'dsync: dirs: OK{CHECK}')
+                            else:
+                                print(f'dsync: dirs: none')
                     if args.rf:
+                        # print(local_dirs, dev_dirs)
                         dirs_to_delete = [ldir for ldir in local_dirs
                                           if ldir not in dev_dirs]
                         if args.i:
@@ -719,6 +834,12 @@ class ShDsyncIO:
                                 print(f'- {ndir}')
                                 if not args.n:
                                     shutil.rmtree(ndir)
+                        else:
+                            if len(dev_dirs) > 1:
+                                print(f'dsync: dirs: OK{CHECK}')
+                            else:
+                                print(f'dsync: dirs: none')
+                        #     print('dsync: no old dirs to delete')
 
                     dev_cmd_files = (f"from shasum import shasum;"
                                      f"shasum(*{pattern_dir}, debug=True, "
@@ -728,10 +849,10 @@ class ShDsyncIO:
                     dev_files = self.dev.wr_cmd(dev_cmd_files, follow=True,
                                                 rtn_resp=True, long_string=True,
                                                 pipe=self.fastfileio.shapipe)
-                    if not dev_files:
-                        dev_files = self.fastfileio._shafiles
-                        if dev_files:
-                            self.fastfileio.end_sha()
+                    # if not dev_files:
+                    dev_files = self.fastfileio._shafiles
+                    if dev_files:
+                        self.fastfileio.end_sha()
 
                     if dev_files:
                         try:
@@ -769,7 +890,8 @@ class ShDsyncIO:
                                     self.file_get(args, name, sz, name)
 
                         else:
-                            print(f'dsync: files: OK{CHECK}')
+                            if not args.rf:
+                                print(f'dsync: files: OK{CHECK}')
 
                         if args.rf:
                             _dev_files = [df[0] for df in dev_files]
@@ -784,10 +906,13 @@ class ShDsyncIO:
                                     if not args.n:
                                         os.remove(ndir)
                             else:
-                                print('dsync: no old files to delete')
+                                print(f'dsync: files: OK{CHECK}')
+                            #     print('dsync: no old files to delete')
 
                     else:
-                        print('dsync: no files found directory tree')
+                        sys.stdout.write("\033[K")
+                        sys.stdout.write("\033[A")
+                        print(f'dsync: files: none' + ' '*10)
 
             else:
                 print(

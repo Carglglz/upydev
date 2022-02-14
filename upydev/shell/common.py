@@ -1055,6 +1055,7 @@ class CatFileIO:
             except Exception:
                 print(f"shapipe: data: {data}")
                 raise Exception
+                # return
             if total_ln <= (self.columns - 2):
                 print(f"{hf} {name} {sz}", end='\r')
             else:  # short hf

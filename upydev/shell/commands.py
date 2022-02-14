@@ -1159,6 +1159,8 @@ class ShellCmds:
                         ov = True
                 else:
                     ov = True
+            if not filedata and _file_to_edit not in os.listdir():
+                ov = False
             if ov:
                 with open(_file_to_edit, 'w') as fte:
                     fte.write(filedata)
