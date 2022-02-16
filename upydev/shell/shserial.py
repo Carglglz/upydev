@@ -3,13 +3,14 @@ from upydev.shell.parser import subshparser_cmd
 from upydev.serialio import SerialFileIO
 from upydev.shell.common import CatFileIO
 from upydev.shell.shfileio import ShDsyncIO
+from upydev.shell.shfwio import ShfwIO
 import subprocess
 import shlex
 import signal
 import shutil
 import os
 
-shsr_cmd_kw = ["repl", "fw"]
+shsr_cmd_kw = ["repl", "fw", "flash", "mpyx"]
 
 SREPL = dict(help="enter REPL",
              subcmd={},
@@ -94,9 +95,37 @@ DSYNC = dict(help="recursively sync a folder from/to device filesystem",
                                  default=[],
                                  nargs='*')})
 
+FW = dict(help="list or get available firmware from micropython.org",
+           subcmd=dict(help=('{list, get, update}'
+                             '; default: list'),
+                       default=['list'],
+                       metavar='action', nargs='*'),
+           options={"-b": dict(help='to indicate device platform',
+                               required=False),
+                    "-n": dict(help='to indicate keyword for filter search',
+                                     required=False)},
+           alt_ops=['list', 'get', 'update', 'latest'])
+
+FLASH = dict(help="to flash a firmware file using available serial tools",
+             subcmd=dict(help=('Indicate a firmware file to flash'),
+                         metavar='firmware file'),
+             options={"-i": dict(help='to check wether device platform and '
+                                    'firmware file name match',
+                               required=False,
+                               action='store_true')})
+
+MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)",
+            subcmd=dict(help='Indicate a file/pattern to '
+                            'compile',
+                        default=[],
+                        metavar='file/pattern',
+                        nargs='+'),
+            options={})
+
 SHELLSR_CMD_DICT_PARSER = {"repl": SREPL, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
-                           "dsync": DSYNC}
+                           "dsync": DSYNC, "fw": FW, "flash": FLASH,
+                           "mpyx": MPYX}
 
 
 class ShellSrCmds(ShellCmds):
@@ -115,6 +144,7 @@ class ShellSrCmds(ShellCmds):
         self.fastfileio.dev = self.dev
         self.dsyncio = ShDsyncIO(self.dev, self.dev_name, self.fileio, self.fastfileio,
                                  shell=self)
+        self.fwio = ShfwIO(self.dev, self.dev_name)
 
     def custom_sh_cmd(self, cmd, rest_args=None, args=None, topargs=None,
                       ukw_args=None):
@@ -236,3 +266,11 @@ class ShellSrCmds(ShellCmds):
             #      device rm
             #
             self.dsyncio.dsync(args, rest_args)
+        if cmd == 'fw':
+            self.fwio.fwop(args, rest_args)
+
+        if cmd == 'flash':
+            self.fwio.flash(args, rest_args)
+
+        if cmd == 'mpyx':
+            self.fwio.mpycross(args, rest_args)

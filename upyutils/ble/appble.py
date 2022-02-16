@@ -11,7 +11,9 @@ def main(**kargs):
     # return ble_temp_batt
     ble_uart_repl.start()
 
+
 DFU = 'DFU'
+
 
 def set_ble_flag(flag):
     with open('ble_flag.py', 'wb') as bleconfig:

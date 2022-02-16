@@ -24,6 +24,11 @@ import sys
 from esp32 import Partition
 import hashlib
 from binascii import hexlify
+try:
+    from localname import NAME as LOCALNAME
+except Exception:
+    LOCALNAME = None
+
 
 BLOCKLEN = const(4096)  # data bytes in a flash block
 
@@ -150,10 +155,9 @@ def set_ble_flag(flag):
 
 
 class BLE_DFU_TARGET:
-    def __init__(self, name="esp32-DFU", led=None):
+    def __init__(self, name="esp32-DFU", led=None, gap_name="ESP32-DFU"):
         self.part = Partition(Partition.RUNNING).get_next_update()
         self.sha = hashlib.sha256()
-        # self.shab = hashlib.sha256()
         self.block = 0
         self.buf = bytearray(BLOCKLEN)
         self.buflen = 0
@@ -199,7 +203,10 @@ class BLE_DFU_TARGET:
         self._image_checksum = 0
         self._ble = bluetooth.BLE()
         self._ble.active(True)
-        self._ble.config(gap_name='ESP32-DFU', mtu=515, rxbuf=512)
+        if LOCALNAME:
+            name = f"{LOCALNAME}-DFU"
+            gap_name = f"{LOCALNAME.upper()}-DFU"
+        self._ble.config(gap_name=gap_name, mtu=515, rxbuf=512)
         self._ble.irq(self._irq)
         ((self._appear, self._manufact, self._model, self._firm),
             (self._dfu_control_point, self._dfu_packet)) = self._ble.gatts_register_services(

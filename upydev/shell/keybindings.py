@@ -19,10 +19,13 @@ _CE = CEND
 # KEYBINDINGS
 
 
-def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
+def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
     kb = KeyBindings()
     flags = _flags
     dev = _dev
+    if kwdict:
+        SHELL_CMD_DICT_PARSER.update(kwdict)
+        # SHELL_CMD_DICT_PARSER
 
     def _printpath():
         if flags.local_path['p'] == '':
@@ -708,6 +711,8 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[]):
         def autocomplete_sh_cmd():
             if flags.shell_mode['S']:
                 buff_text = event.app.current_buffer.document.text
+                if  ' && ' in buff_text:
+                    buff_text = buff_text.split(' && ')[-1]
                 result = [sh_cmd for sh_cmd in shell_commands
                           + custom_sh_cmd_kw + spc_cmds if sh_cmd.startswith(buff_text)]
                 if any([cmd in buff_text.split()

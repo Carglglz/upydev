@@ -35,7 +35,7 @@ _LOCAL_SHELL_CMDS = ['ldu', 'lsl', 'lpwd', 'lcd']
 _SPECIAL_SHELL_CMDS = ['wrepl', 'jupyterc', 'get', 'put',
                        'fw', 'flash', 'dsync',
                        'repl', 'pytest', 'getcert', 'git', 'update_upyutils',
-                       'upy-config', 'debugws']
+                       'upy-config', 'debugws', 'mpyx', 'ota']
 
 
 class ShellFlags:
@@ -195,7 +195,12 @@ class ShellCmds:
 
     def cmd(self, cmdline):
         try:
-            self.sh_cmd(cmdline)
+            # catch concatenated commands with &&
+            if ' && ' in cmdline:
+                for _cmdline in cmdline.split(' && '):
+                    self.sh_cmd(_cmdline)
+            else:
+                self.sh_cmd(cmdline)
         except KeyboardInterrupt as e:
             print(e)
 
@@ -698,6 +703,22 @@ class ShellCmds:
                 else:
                     print('No device found')
             return
+
+#     # SPI CONFIG
+#     elif cmd == 'spi_config':
+#         spi_conf = kargs.pop('spi')
+#         dev = Device(*args, **kargs)
+#         dev.cmd(_CMDDICT_['SPI_CONFIG'].format(*spi_conf), silent=True)
+#         if dev._traceback.decode() in dev.response:
+#             try:
+#                 raise DeviceException(dev.response)
+#             except Exception as e:
+#                 print(e)
+#         else:
+#             print('SPI configured:\nSCK = Pin({}), MISO = Pin({}), MOSI = Pin({}), CS = Pin({})'.format(
+#                     *spi_conf))
+#         dev.disconnect()
+#         return
 
         # SET
         if command == 'set':

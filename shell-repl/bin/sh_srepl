@@ -10,7 +10,7 @@ from prompt_toolkit.filters import Condition
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
 from prompt_toolkit import PromptSession
-from upydev.shell.shserial import ShellSrCmds, shsr_cmd_kw
+from upydev.shell.shserial import ShellSrCmds, shsr_cmd_kw, SHELLSR_CMD_DICT_PARSER
 from upydev.shell.keybindings import ShellKeyBindings
 
 
@@ -97,7 +97,7 @@ else:
 sh = ShellSrCmds(espdev, flags=_SHELL_FLAGS, topargs=args)
 
 # KEYBINDINGS
-kb = ShellKeyBindings(_SHELL_FLAGS, espdev, sh, shsr_cmd_kw)
+kb = ShellKeyBindings(_SHELL_FLAGS, espdev, sh, shsr_cmd_kw, SHELLSR_CMD_DICT_PARSER)
 
 
 @Condition

@@ -3,13 +3,14 @@ from upydev.shell.constants import CRED, CEND
 from upydev.shell.parser import subshparser_cmd
 from upydev.shell.common import CatFileIO
 from upydev.shell.shfileio import ShDsyncIO
+from upydev.shell.shfwio import ShfwIO
 import subprocess
 import shlex
 import signal
 import shutil
 import os
 
-shws_cmd_kw = ["wrepl", "getcert", "fw", "flash", "debugws"]
+shws_cmd_kw = ["repl", "getcert", "fw", "flash", "debugws", "ota"]
 
 WREPL = dict(help="enter WebREPL",
              subcmd={},
@@ -97,9 +98,40 @@ DEBUG = dict(help="toggle debug mode for websocket debugging",
              subcmd={},
              options={})
 
-SHELLWS_CMD_DICT_PARSER = {"wrepl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
+FW = dict(help="list or get available firmware from micropython.org",
+           subcmd=dict(help=('{list, get, update}'
+                             '; default: list'),
+                       default=['list'],
+                       metavar='action', nargs='*'),
+           options={"-b": dict(help='to indicate device platform',
+                               required=False),
+                    "-n": dict(help='to indicate keyword for filter search',
+                                     required=False)},
+           alt_ops=['list', 'get', 'update', 'latest'])
+
+OTA = dict(help="to flash a firmware file using OTA system",
+             subcmd=dict(help=('Indicate a firmware file to flash'),
+                         metavar='firmware file'),
+             options={"-i": dict(help='to check wether device platform and '
+                                    'firmware file name match',
+                                 required=False,
+                                 action='store_true'),
+                      "-sec": dict(help='to enable OTA TLS',
+                                   required=False,
+                                   action='store_true')})
+
+MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)",
+            subcmd=dict(help='Indicate a file/pattern to '
+                            'compile',
+                        default=[],
+                        metavar='file/pattern',
+                        nargs='+'),
+            options={})
+
+SHELLWS_CMD_DICT_PARSER = {"repl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
-                           "dsync": DSYNC, "debugws": DEBUG}
+                           "dsync": DSYNC, "debugws": DEBUG, "fw": FW, "mpyx": MPYX,
+                           "ota": OTA}
 
 
 class ShellWsCmds(ShellCmds):
@@ -118,11 +150,12 @@ class ShellWsCmds(ShellCmds):
         self.fastfileio = self.fileio
         self.dsyncio = ShDsyncIO(self.dev, self.dev_name, self.fileio, self.fileio,
                                  shell=self)
+        self.fwio = ShfwIO(self.dev, self.dev_name)
 
     def custom_sh_cmd(self, cmd, rest_args=None, args=None, topargs=None,
                       ukw_args=None):
         # To be implemented for each shell to manage special commands, e.g. fwr
-        if cmd == 'wrepl':
+        if cmd == 'repl':
             if not topargs.wss:
                 print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
             print('<-- Device {} MicroPython -->'.format(self.dev_name))
@@ -272,3 +305,12 @@ class ShellWsCmds(ShellCmds):
             state = self.dev.debug
             self.dev.debug = not state
             print(f"debugws: {self.dev.debug}")
+
+        if cmd == 'fw':
+            self.fwio.fwop(args, rest_args)
+
+        if cmd == 'mpyx':
+            self.fwio.mpycross(args, rest_args)
+
+        if cmd == 'ota':
+            self.fwio.ota(args, rest_args)

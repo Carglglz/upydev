@@ -97,15 +97,13 @@ Requirements: Needs REPL to be accessible.
         * USB: Connected through USB data cable. """
 
 # UPY MODE KEYWORDS AND COMMANDS
-keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
-                 'netscan', 'i2c_scan', 'id', 'reset', 'upysh', 'wrepl',
-                 'battery', 'meminfo', 'ping', 'du', 'df',
-                 'uhelp', 'umodules', 'netinfot', 'netstat_on', 'netstat_off',
-                 'netstat', 'ap_on', 'ap_off', 'apstat', 'apscan', 'run',
-                 'apconfig', 'netstat_conn', 'i2c_config', 'imu_init',
+keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'net',
+                 'i2c', 'id', 'reset', 'upysh',
+                 'battery', 'mem', 'ping', 'du', 'df',
+                 'uhelp', 'modules', 'ap', 'run', 'imu_init',
                  'imuacc', 'imugy', 'imumag', 'pinout', 'specs', 'install',
-                 'pin_status', 'adc_config', 'aread', 'set_ntptime',
-                 'get_datetime', 'set_localtime', 'imuacc_sd', 'ads_init',
+                 'pin_status', 'adc_config', 'aread',
+                 'datetime', 'imuacc_sd', 'ads_init',
                  'ads_read', 'sd_enable', 'spi_config', 'sd_init', 'sd_deinit',
                  'sd_auto', 'dac_config', 'dac_write', 'dac_sig',
                  'buzz_config', 'buzz_set_alarm', 'buzz_interrupt',
@@ -117,20 +115,21 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'netinfo',
                  'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
                  'sosrv_close', 'rget_json', 'rget_text', 'fwr', 'flash',
                  'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-                 'ina_batt', 'make_group', 'srepl', 'mg_group', 'find',
+                 'ina_batt', 'make_group', 'mg_group', 'find',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'dsync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
                  'debug', 'gen_rsakey', 'rf_wrkey',
-                 'sslgen_key', 'ssl_wrepl', 'ssl', 'sh_srepl', 'shr',
-                 'wssl', 'wssrepl', 'set_wss', 'jupyterc', 'pytest',
-                 'pytest-setup', 'check', 'ble', 'brepl', 'set', 'gg', 'probe',
+                 'sslgen_key', 'set_wss', 'jupyterc', 'pytest',
+                 'pytest-setup', 'check', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
-                 'backup', 'rsync', 'make_sgroup', 'mksg', 'set_localname',
-                 'set_hostname', 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify',
-                 'shasum', 'shasum_c', 'ota', 'register', 'lsdevs', 'ls', 'rsa_auth',
-                 'auth', 'cat', 'vim']
+                 'backup', 'rsync', 'make_sgroup', 'mksg',
+                 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify',
+                 'ota', 'register', 'lsdevs', 'ls', 'rsa_auth',
+                 'auth', 'cat', 'vim', 'ifconfig', 'touch', 'reload',
+                 'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'upip', 'uping',
+                 'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -150,7 +149,8 @@ help_dv = "To point the command to a specific device saved in the global group"
 parser = argparse.ArgumentParser(prog=upydev.name,
                                  description='Command line tool for MicroPython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
-                                 usage=usag, prefix_chars='-')
+                                 usage=usag, prefix_chars='-', add_help=False,
+                                 allow_abbrev=False)
 parser.version = '{}: {}'.format(upydev.name, upydev.version)
 parser.add_argument(
     "m", metavar='ACTION', help=helparg, nargs='*', default=['check']).completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
@@ -229,10 +229,10 @@ parser.add_argument(
     help='wildcard option to be used by several commands',
     required=False, nargs='+', type=int)
 
-parser.add_argument(
-    "-n",
-    help='tag a log shot from a sensor or adc',
-    required=False)
+# parser.add_argument(
+#     "-n",
+#     help='tag a log shot from a sensor or adc',
+#     required=False)
 parser.add_argument("-wss",
                     help='Use WebSocket Secure (not available for all commands), this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
                     default=False, action='store_true')
@@ -331,7 +331,8 @@ parser.add_argument("-zt", help='zerotier bridge; [HOST/FWD-HOST]',
 parser.add_argument(
     '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
 argcomplete.autocomplete(parser)
-args = parser.parse_args()
+args, unknown_args = parser.parse_known_args()
+
 
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
                      'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
@@ -421,7 +422,7 @@ elif len(args.m) > 2:
 
         # DEVICE MANAGEMENT ACTIONS
 
-DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'set', 'register', 'lsdevs',
+DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'register', 'lsdevs',
                              'make_group', 'mg_group', 'gg', 'see', 'make_sgroup']
 
 # FIRMWARE ACTIONS
@@ -436,32 +437,31 @@ KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key', 'rsa_sign', 'rsa_verif
 
 # REPL ACTIONS
 
-REPL_ACTIONS = ['repl', 'rpl', 'wrepl', 'wssrepl', 'srepl', 'brepl']
+REPL_ACTIONS = ['repl', 'rpl']
 
 # SHELL-REPL ACTIONS
 
-SHELL_REPL_ACTIONS = ['ssl_wrepl', 'ssl', 'sh_srepl', 'shr', 'wssl', 'set_wss',
-                      'ble', 'jupyterc', 'shell', 'shl']
+SHELL_REPL_ACTIONS = ['set_wss', 'jupyterc', 'shell', 'shl']
 
 # DEBUGGING ACTIONS
 
-DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'run', 'timeit', 'diagnose', 'errlog',
-                     'stream_test', 'sysctl', 'log', 'pytest-setup', 'pytest']
+DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'diagnose', 'errlog',
+                     'stream_test', 'sysctl', 'log', 'pytest', 'run', 'timeit',
+                     'reload', 'uping']
 
 # FILEIO ACTIONS
 
-FILEIO_ACTIONS = ['put', 'get', 'update_upyutils', 'install', 'fget', 'dsync', 'rsync',
-                  'backup']
+FILEIO_ACTIONS = ['put', 'get', 'fget', 'rsync',
+                  'backup', 'install', 'upip']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
-                    'uhelp', 'umodules', 'meminfo', 'du', 'df', 'tree',
-                    'netinfo', 'netinfot', 'netscan', 'netstat_on',
-                    'netstat_off', 'netstat_conn', 'netstat', 'ap_on',
-                    'ap_off', 'apstat', 'apconfig', 'apscan', 'i2c_config',
-                    'i2c_scan', 'spi_config', 'set_localtime', 'set_ntptime',
-                    'get_datetime', 'gc', 'set_hostname', 'set_localname',
-                    'shasum_c', 'shasum', 'ls', 'cat', 'vim']
+                    'uhelp', 'modules', 'mem', 'du', 'df', 'tree',
+                    'net', 'ap', 'i2c', 'spi_config', 'set',
+                    'datetime', 'gc',
+                    'shasum', 'ls', 'cat', 'vim', 'update_upyutils',
+                    'enable_sh', 'diff', 'mkdir', 'head', 'rm', 'rmdir',
+                    'pwd', 'rssi', 'ifconfig', 'upy-config', 'dsync', 'ctime']
 # WLAN COMMANDS
 
 WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
@@ -739,10 +739,11 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
-        gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
-                    ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
-                    init=True, ssl=args.wss, auth=args.wss, fre=args.fre,
+        gen_command(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                     device=dev_name)
+        # gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
+        #             ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
+        #             init=True, ssl=args.wss, auth=args.wss)
 
     #############################################
     # WLAN UTILS COMMANDS

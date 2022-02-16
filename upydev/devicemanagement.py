@@ -323,38 +323,61 @@ def devicemanagement_action(args, **kargs):
                 filename = 'upydevs_config.sh'
         if vars(args)['@']:
             space = ''
-            if args.f:
-                args.fre = [args.f]
-            if not args.fre:
-                for dev in vars(args)['@']:
-                    try:
-                        print(f'{space}Registering Device: {dev} ...')
-                        with open(filename, 'a') as filereg:
-                            filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
-                            sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
-                            filereg.write(f'function {dev}() {sc}\n')
-                            comp_func = "function _argcomp_upydev() { _python_argcomplete upydev; }\n"
-                            comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {dev}\n"
-                            filereg.write(comp_func)
-                            filereg.write(comp)
-                        print(f'Device: {dev} registered')
+            if not args.gg:
+                if args.f:
+                    args.fre = [args.f]
+                if not args.fre:
+                    for dev in vars(args)['@']:
+                        try:
+                            print(f'{space}Registering Device: {dev} ...')
+                            with open(filename, 'a') as filereg:
+                                filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
+                                sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
+                                filereg.write(f'function {dev}() {sc}\n')
+                                comp_func = "function _argcomp_upydev() { _python_argcomplete upydev; }\n"
+                                comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {dev}\n"
+                                filereg.write(comp_func)
+                                filereg.write(comp)
+                            print(f'Device: {dev} registered')
 
-                    except Exception as e:
-                        print(e)
-                    space = '\n'
+                        except Exception as e:
+                            print(e)
+                        space = '\n'
+                else:
+                    for psname, dev in dict(zip(args.fre, vars(args)['@'])).items():
+                        try:
+                            print(f'{space}Registering Device: {dev} ...')
+                            with open(filename, 'a') as filereg:
+                                filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
+                                sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
+                                filereg.write(f'function {psname}() {sc}\n')
+                                comp_func = "function _argcomp_upydev() { _python_argcomplete upydev; }\n"
+                                comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {psname}\n"
+                                filereg.write(comp_func)
+                                filereg.write(comp)
+                            print(f'Device: {dev} registered as {psname}')
+
+                        except Exception as e:
+                            print(e)
+                        space = '\n'
             else:
-                for psname, dev in dict(zip(args.fre, vars(args)['@'])).items():
+                # register group
+                group_name = args.f
+                if vars(args)['@']:
+                    devs_in_group = ' '.join(vars(args)['@'])
                     try:
-                        print(f'{space}Registering Device: {dev} ...')
+                        print(f'{space}Registering Group: {group_name} ...')
                         with open(filename, 'a') as filereg:
-                            filereg.write(f'\n#UPYDEV DEVICE {dev}\n')
-                            sc = '{ ' + f'upydev "$@" -@ {dev}; ' + '}'
-                            filereg.write(f'function {psname}() {sc}\n')
-                            comp_func = "function _argcomp_upydev() { _python_argcomplete upydev; }\n"
-                            comp = f"complete -o bashdefault -o default -o nospace -F _argcomp_upydev {psname}\n"
+                            filereg.write(f'\n#UPYDEV GROUP {group_name}\n')
+                            sc = '{ ' + f'upydev "$@" -@ {devs_in_group}; ' + '}'
+                            filereg.write(f'function {group_name}() {sc}\n')
+                            comp_func = ("function _argcomp_upydev() "
+                                         "{ _python_argcomplete upydev; }\n")
+                            comp = ("complete -o bashdefault -o default -o nospace "
+                                    f"-F _argcomp_upydev {group_name}\n")
                             filereg.write(comp_func)
                             filereg.write(comp)
-                        print(f'Device: {dev} registered as {psname}')
+                        print(f'Group: {group_name} registered')
 
                     except Exception as e:
                         print(e)
@@ -415,6 +438,26 @@ def devicemanagement_action(args, **kargs):
                     lsdevs_func = True
                 elif 'function lsdevs() { upydev lsdevs; }' in line:
                     lsdevs_func = True
+                elif '#UPYDEV GROUP' in line:
+                    group = line.split()[-1]
+                    group_alias = lines[ln+1].split()[1].replace('()', '')
+                    devs = lines[ln+1].split('-@')[-1].split(';')[0].split()
+                    print(f'Group: {group}')
+                    for dev in devs:
+                        addr, psswd = address_entry_point(dev, args=args)
+                        dt = check_device_type(addr)
+                        if dev != devs[-1]:
+                            tree = '┣━'
+                            cont = '┃'
+                        else:
+                            tree = '┗━'
+                            cont = ' '
+                        print(f'{" ":^2}{tree}Device: {dev}')
+                        print(f'{" ":^2}{cont} Address: {addr}, Device Type: {dt}',
+                              end='\n')
+                        print(f'{" ":^2}{cont}')
+
+
         if not lsdevs_func:
             with open(filename, 'a') as devsconfig:
                 devsconfig.write('\n#UPYDEV LSDEVS\n')

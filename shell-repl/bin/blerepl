@@ -10,7 +10,7 @@ from prompt_toolkit.filters import Condition
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
 from prompt_toolkit import PromptSession
-from upydev.shell.shble import ShellBleCmds, shbl_cmd_kw
+from upydev.shell.shble import ShellBleCmds, shbl_cmd_kw, SHELLBLE_CMD_DICT_PARSER
 from upydev.shell.keybindings import ShellKeyBindings
 from prompt_toolkit.application import in_terminal, run_in_terminal
 import asyncio
@@ -129,7 +129,7 @@ else:
 sh = ShellBleCmds(basedev, flags=_SHELL_FLAGS, topargs=args)
 
 # KEYBINDINGS
-kb = ShellKeyBindings(_SHELL_FLAGS, basedev, sh, shbl_cmd_kw)
+kb = ShellKeyBindings(_SHELL_FLAGS, basedev, sh, shbl_cmd_kw, SHELLBLE_CMD_DICT_PARSER)
 
 # data = bytes(basedev._kbi + '\r', 'utf-8')
 # await basedev.ble_client.write_gatt_char(basedev.writeables['Nordic UART RX'], data)
