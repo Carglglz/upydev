@@ -4,6 +4,7 @@ from upydev.shell.parser import subshparser_cmd
 from upydev.shell.common import CatFileIO
 from upydev.shell.shfileio import ShDsyncIO
 from upydev.shell.shfwio import ShfwIO
+from upydev.shell.upyconfig import show_upy_config_dialog
 import subprocess
 import shlex
 import signal
@@ -128,10 +129,14 @@ MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)
                         nargs='+'),
             options={})
 
+UPY_CONFIG = dict(help="enter upy-config dialog",
+             subcmd={},
+             options={})
+
 SHELLWS_CMD_DICT_PARSER = {"repl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
                            "dsync": DSYNC, "debugws": DEBUG, "fw": FW, "mpyx": MPYX,
-                           "ota": OTA}
+                           "ota": OTA, "upy-config": UPY_CONFIG}
 
 
 class ShellWsCmds(ShellCmds):
@@ -314,3 +319,10 @@ class ShellWsCmds(ShellCmds):
 
         if cmd == 'ota':
             self.fwio.ota(args, rest_args)
+
+        if cmd == 'upy-config':
+            if not self.dev.dev_platform:
+                self.dev.dev_platform = self.dev.wr_cmd('import sys; sys.platform',
+                                                        silent=True, rtn_resp=True)
+
+            show_upy_config_dialog(self.dev, self.dev.dev_platform)

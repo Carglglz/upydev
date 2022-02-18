@@ -4,6 +4,7 @@ from upydev.serialio import SerialFileIO
 from upydev.shell.common import CatFileIO
 from upydev.shell.shfileio import ShDsyncIO
 from upydev.shell.shfwio import ShfwIO
+from upydev.shell.upyconfig import show_upy_config_dialog
 import subprocess
 import shlex
 import signal
@@ -122,10 +123,14 @@ MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)
                         nargs='+'),
             options={})
 
+UPY_CONFIG = dict(help="enter upy-config dialog",
+             subcmd={},
+             options={})
+
 SHELLSR_CMD_DICT_PARSER = {"repl": SREPL, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
                            "dsync": DSYNC, "fw": FW, "flash": FLASH,
-                           "mpyx": MPYX}
+                           "mpyx": MPYX, "upy-config": UPY_CONFIG}
 
 
 class ShellSrCmds(ShellCmds):
@@ -274,3 +279,10 @@ class ShellSrCmds(ShellCmds):
 
         if cmd == 'mpyx':
             self.fwio.mpycross(args, rest_args)
+
+        if cmd == 'upy-config':
+            if not self.dev.dev_platform:
+                self.dev.dev_platform = self.dev.wr_cmd('import sys; sys.platform',
+                                                        silent=True, rtn_resp=True)
+
+            show_upy_config_dialog(self.dev, self.dev.dev_platform)

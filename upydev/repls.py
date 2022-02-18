@@ -11,19 +11,6 @@ REPLS_HELP = """
         - repl/rpl: to enter one of the following depending of upydevice type:
                 * WebSocketDevice --> wrepl/wssrepl (with -wss flag)
                 * SerialDeivce --> srepl
-
-        - wrepl : to enter the terminal WebREPL; CTRL-x to exit, CTRL-d to do soft reset
-                To see more keybindings info do CTRL-k
-                (Added custom keybindings and autocompletion on tab to the previous work
-                see: https://github.com/Hermann-SW/webrepl for the original work)
-
-        - wssrepl : to enter the terminal WebSecureREPL; CTRL-x to exit, CTRL-d to do soft reset
-                To see more keybindings info do CTRL-k. REPL over WebSecureSockets (This needs use of
-                'sslgen_key -tfkey', 'update_upyutils' and enable WebSecureREPL in the device
-                "import wss_repl;wss_repl.start(ssl=True)")
-
-        - srepl : to enter the terminal serial repl using picocom, indicate port by -port option
-                (to exit do CTRL-a, CTRL-x)
 """
 
 
@@ -94,33 +81,6 @@ def repl_action(args, **kargs):
             print('Do C-x to exit')
             ble_repl(args, dev_name)
 
-    elif args.m == 'wrepl':
-        if dt == 'WebSocketDevice':
-            print('Initiating WebREPL terminal for {} ...'.format(dev_name))
-            print('Do CTRL-k so see keybindings')
-            wrepl(args, dev_name)
-        else:
-            print('{} is NOT a WebSocketDevice'.format(dev_name))
-            if dt == 'SerialDevice':
-                print('Use srepl instead')
-            elif dt == 'BleDevice':
-                print('Use brepl instead')
-        sys.exit()
-
-    # WEB SECURE REPL :
-
-    elif args.m == 'wssrepl':
-        if dt == 'WebSocketDevice':
-            print('Initiating WebSecREPL terminal for {} ...'.format(dev_name))
-            print('Do CTRL-k so see keybindings')
-            wssrepl(args, dev_name)
-        else:
-            print('{} is NOT a WebSocketDevice'.format(dev_name))
-            if dt == 'SerialDevice':
-                print('Use srepl instead')
-            elif dt == 'BleDevice':
-                print('Use brepl instead')
-        sys.exit()
 
     # SERIAL REPL:
 
@@ -146,16 +106,4 @@ def repl_action(args, **kargs):
                 print('Use wrepl or wssrepl instead')
             elif dt == 'BleDevice':
                 print('Use brepl instead')
-        sys.exit()
-
-    elif args.m == 'brepl':
-        if dt == 'BleDevice':
-            print('BLE SHELL-REPL @ {}'.format(dev_name))
-            ble_repl(args, dev_name)
-        else:
-            print('{} is NOT a BleDevice'.format(dev_name))
-            if dt == 'WebSocketDevice':
-                print('Use ssl_wrepl or ssl instead')
-            elif dt == 'SerialDevice':
-                print('Use sh_srepl or shr instead')
         sys.exit()

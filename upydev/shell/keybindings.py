@@ -1,15 +1,17 @@
 
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.application import run_in_terminal
+from prompt_toolkit.application import run_in_terminal, in_terminal
 from upydev.shell.constants import (kb_info, d_prompt,
                                     shell_commands, custom_sh_cmd_kw,
                                     CGREEN, CEND, ABLUE_bold, MAGENTA_bold,
                                     SHELL_CMD_DICT_PARSER)
 from upydev.shell.common import print_table
+from upydev.shell.upyconfig import config_parser
 import os
 import signal
 import subprocess
 import shlex
+import asyncio
 
 _BB = ABLUE_bold
 _CG = CGREEN
@@ -43,6 +45,7 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                        f"{_CE}")
             print(color_p)
 
+
     def _printpath_cmd(last_cmd):
         if flags.local_path['p'] == '':
             g_p = [val[1] for val in
@@ -66,6 +69,51 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                        f"{''.join(b_p)}{_CE}"
                        f"{last_cmd}")
             print(color_p)
+
+
+    def _autocomplete_config(buff_text):
+        is_config = buff_text.split()[0] == 'config'
+        param_patt = ''
+        show_param_opts = False
+        if is_config:
+            if len(buff_text.split()) > 1:
+                param_patt = buff_text.split()[-1]
+                param_conf = buff_text.split()[1]
+                if param_conf.endswith(':'):
+                    show_param_opts = True
+                    param_patt = param_conf.replace(':', '')
+                    _sub_param_patt = ''
+                    if buff_text.split()[-1] != buff_text.split()[1]:
+                        _sub_param_patt = buff_text.split()[-1]
+            if not show_param_opts:
+                params_config_l = dev.wr_cmd("[conf for conf in os.listdir() "
+                                             "if conf.endswith('_config.py')]",
+                                             silent=True, rtn_resp=True)
+
+                _params_config = [param.split('_')[0]
+                                  for param in params_config_l]
+                _params_config += ['add']
+                if param_patt:
+                    _params_config = [param for param in _params_config
+                                      if param.startswith(param_patt)]
+            if show_param_opts:
+                conf = param_patt
+                _param_dir = dev.wr_cmd(f"from {conf}_config"
+                                        f" import {conf.upper()};"
+                                        f"dir({conf.upper()})",
+                                        silent=True, rtn_resp=True)
+                if isinstance(_param_dir, list):
+                    param_dir = [param for param in _param_dir if param != '__class__']
+                    _params_config = param_dir
+                else:
+                    _params_config = []
+                if _sub_param_patt:
+                    _params_config = [param for param in _params_config
+                                      if param.startswith(_sub_param_patt)]
+            return _params_config
+        else:
+            return []
+
 
     def _autocomplete_shell_local(event):
         glb = False
@@ -480,13 +528,10 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
     def flush_line(event):
         event.app.current_buffer.reset()
 
-    # @kb.add('c-o')  # upy-config
-    # def cmd_ls(event):
-    #     def ls_out():
-    #         print('>>> ls')
-    #         dev.wr_cmd('ls();gc.collect()', follow=True)
-    #
-    #     run_in_terminal(ls_out)
+    @kb.add('c-o')  # upy-config
+    def upy_config_dialog(event):
+        event.app.current_buffer.reset()
+        event.app.current_buffer.insert_text('upy-config', move_cursor=True)
 
     @kb.add('c-n')
     def cmd_mem_info(event):
@@ -551,23 +596,12 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
         run_in_terminal(run_tmpcode)
 #
 #
-# @kb.add('c-w')
-# def reloadpress(event):
-#     "Reload test_code command"
-#     def reload_code():
-#         espdev.output = None
-#         reload_cmd = "import sys;del(sys.modules['test_code']);gc.collect()"
-#         print('>>> {}'.format(reload_cmd))
-#
-#         shr_cp.sh_repl(reload_cmd)
-#         if espdev.output is not None:
-#             print(espdev.output)
-#     if not edit_mode['E']:
-#         run_in_terminal(reload_code)
-#     else:
-#         edit_mode['E'] = False
-#
-#
+    @kb.add('c-w')
+    def whoami(event):
+        "Show device info"
+        def dev_who():
+            print(dev)
+        run_in_terminal(dev_who)
 
     @kb.add('c-a')
     def reset_cursor(event):
@@ -715,6 +749,14 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                     buff_text = buff_text.split(' && ')[-1]
                 result = [sh_cmd for sh_cmd in shell_commands
                           + custom_sh_cmd_kw + spc_cmds if sh_cmd.startswith(buff_text)]
+                # parse and autocomplete config
+                is_config = False
+                if len(buff_text.split()) > 0:
+                    if "config" == buff_text.split()[0]:
+                        is_config = True
+                        result = _autocomplete_config(buff_text)
+                        _buff_text = str(buff_text)
+                        buff_text = ''
                 if any([cmd in buff_text.split()
                         for cmd in SHELL_CMD_DICT_PARSER.keys()]):
                     # print('Here: {}'.format(buff_text.split()))
@@ -748,21 +790,38 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                             result = []
                         buff_text = ''
                 if len(result) > 1:
+                    if is_config:
+                        buff_text = _buff_text.split()[-1]
+                        if buff_text == 'config':
+                            buff_text = ''
+                        if len(_buff_text.split()) > 1:
+                            if _buff_text.split()[1].endswith(':'):
+                                buff_text = _buff_text.split()[-1]
+                                if buff_text.endswith(':'):
+                                    buff_text = ''
                     comm_part = os.path.commonprefix(result)
                     if comm_part == buff_text:
-                        last_cmd = buff_text
-                        _printpath_cmd(last_cmd)
+                        def pprint_result():
+                            last_cmd = event.app.current_buffer.document.text
+                            _printpath_cmd(last_cmd)
 
-                        print_table(result)
+                            print_table(result)
+                        run_in_terminal(pprint_result)
                     else:
                         event.app.current_buffer.insert_text(
                             comm_part[len(buff_text):])
                 else:
+                    if is_config:
+                        buff_text = _buff_text.split()[-1]
+                        if buff_text == 'config':
+                            buff_text = ''
+                            if not event.app.current_buffer.document.text.endswith(' '):
+                                event.app.current_buffer.insert_text(' ')
                     if len(result) > 0:
                         event.app.current_buffer.insert_text(
                             result[0][len(buff_text):])
 
-        run_in_terminal(autocomplete_sh_cmd)
+        autocomplete_sh_cmd()
 #
 #
 

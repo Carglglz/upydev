@@ -30,42 +30,25 @@ parser.add_argument("-r", help='reset on exit',
 args = parser.parse_args()
 
 
-# HANDSHAKE
-# HANDSHAKE
-basedev = Device(args.p, args.t, autodetect=True, init=True)
-espdev = basedev
-if args.ping:
-    if basedev.is_reachable():
-        pass
-    else:
-        print('DEVICE NOT REACHABLE')
-        sys.exit()
-if args.v:
-    print('Welcome to SERIAL SHELL-REPL 0.0.1!')
+
+dev = Device(args.p, args.t, autodetect=True, init=True)
 
 time.sleep(0.2)
-# kbi = basedev.cmd('\x03\r', silent=True, rtn_resp=True)
-uid = basedev.cmd("from machine import unique_id; unique_id()", silent=True,
+
+uid = dev.cmd("from machine import unique_id; unique_id()", silent=True,
                   rtn_resp=True)
 try:
     unique_id = hexlify(uid).decode()
 except Exception:
     unique_id = uid
-# devp = basedev.cmd("import sys; sys.platform", silent=True,
-#                    rtn_resp=True)
-dev_platform = basedev.dev_platform
-# espdev.platform = dev_platform
-if args.v:
-    print('{}@{}'.format(dev_platform, unique_id))
-print('SERIAL SHELL-REPL connected')
-espdev.banner()
+
+dev_platform = dev.dev_platform
+
+print('SerialREPL connected')
+dev.banner()
 print('- CTRL-k to see keybindings or -h to see help\n'
       '- CTRL-s to toggle shell/repl mode\n'
       '- CTRL-x or "exit" to exit')
-# PROMT SESSION CONFIGURATION
-
-# Style
-
 
 # SET DEV NAME
 host_name = unique_id
@@ -75,7 +58,6 @@ if args.dev is not None:
 shell_message[1] = ('class:username', dev_platform)
 shell_message[3] = ('class:host', host_name)
 
-# kb = KeyBindings()
 # START IN SHELL MODE
 if _SHELL_FLAGS.shell_mode['S']:
     _SHELL_FLAGS.prompt['p'] = d_prompt
@@ -84,20 +66,19 @@ else:
     _SHELL_FLAGS.prompt['p'] = _SHELL_FLAGS.shell_prompt['s']
     _SHELL_FLAGS.shell_mode['S'] = True
 
-    espdev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
+    dev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
                   ';gc.collect()', silent=True)
-    # espdev.close_wconn()
-    espdev.wr_cmd("help('modules')", silent=True, long_string=True)
-    # espdev.open_wconn()
-    _SHELL_FLAGS.frozen_modules['FM'] = espdev.output.split()[:-6]
+    dev.wr_cmd("help('modules')", silent=True, long_string=True)
+    # dev.open_wconn()
+    _SHELL_FLAGS.frozen_modules['FM'] = dev.output.split()[:-6]
 
-    espdev.output = None
+    dev.output = None
 
 # SHELL-COMMANDS
-sh = ShellSrCmds(espdev, flags=_SHELL_FLAGS, topargs=args)
+sh = ShellSrCmds(dev, flags=_SHELL_FLAGS, topargs=args)
 
 # KEYBINDINGS
-kb = ShellKeyBindings(_SHELL_FLAGS, espdev, sh, shsr_cmd_kw, SHELLSR_CMD_DICT_PARSER)
+kb = ShellKeyBindings(_SHELL_FLAGS, dev, sh, shsr_cmd_kw, SHELLSR_CMD_DICT_PARSER)
 
 
 @Condition
@@ -115,7 +96,7 @@ session_p = PromptSession()
 repl = True
 while repl:
     try:
-        espdev.output = None
+        dev.output = None
         if _SHELL_FLAGS.exit['exit']:
             break
         else:
@@ -128,14 +109,13 @@ while repl:
                                    refresh_interval=0.2)
 
             if inp is not None and inp != '' and not _SHELL_FLAGS.paste['p']:
-                # HERE IN SHELL MODE PROCESS INPUT BEFORE SENDING # shlex.split
+                #  SHELL MODE
                 if _SHELL_FLAGS.shell_mode['S']:  # SHELL
                     sh.cmd(inp)
                 else:  # REPL
-                    espdev.wr_cmd(inp, follow=True)
-                if inp != '':  # PASTE BUFFER
+                    dev.wr_cmd(inp, follow=True)
+                if inp != '':
                     pass
-                    # paste_buffer['B'].append(inp)
     except Exception as e:
         print(e)
         continue
@@ -144,12 +124,9 @@ while repl:
     except EOFError:
         # print('This is EOF ERROR!')
         continue
-        # espdev.reset()
-        # sys.exit()
 
-# sys.exit()
 # EXIT MESSAGE
-espdev.disconnect()
+dev.disconnect()
 print('logout')
 if host_name != unique_id:
     print('Connection to {} closed.'.format(host_name))

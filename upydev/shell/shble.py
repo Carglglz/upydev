@@ -1,27 +1,25 @@
 from upydev.shell.commands import ShellCmds, _SHELL_CMDS, _UPYDEVPATH
 from upydev.shell.parser import subshparser_cmd
-from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydevice import DeviceException
 from upydev.bleio import BleFileIO
-from upydev.shell.common import tree, CatFileIO
+from upydev.shell.common import CatFileIO
 from upydev.shell.shfileio import ShDsyncIO
 from upydev.shell.shfwio import ShfwIO
-from upydev.shell.shasum import shasum
-from upydev.commandlib import _CMDDICT_
+from upydev.shell.upyconfig import show_upy_config_dialog
 import subprocess
 import shlex
 import signal
 import shutil
 import os
 
-shbl_cmd_kw = ["fw", "repl", "getservices", "mpyx", "ota"]
+shbl_cmd_kw = ["fw", "repl", "services", "mpyx", "ota"]
 
 # SREPL = dict(help="enter REPL",
 #              subcmd={},
 #              options={})
-# GETCERT = dict(help="get device certificate if available",
-#                subcmd={},
-#                options={})
+SERVS = dict(help="show GATT services and characteristics",
+               subcmd={},
+               options={})
 JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
                 subcmd={},
                 options={})
@@ -122,9 +120,14 @@ MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)
                         nargs='+'),
             options={})
 
+UPY_CONFIG = dict(help="enter upy-config dialog",
+             subcmd={},
+             options={})
+
 SHELLBLE_CMD_DICT_PARSER = {"jupyterc": JUPYTERC,
                             "pytest": PYTEST, "put": PUT, "get": GET,
-                            "dsync": DSYNC, "fw": FW, "mpyx": MPYX, "ota": OTA}
+                            "dsync": DSYNC, "fw": FW, "mpyx": MPYX, "ota": OTA,
+                            "services": SERVS, "upy-config": UPY_CONFIG}
 
 
 class ShellBleCmds(ShellCmds):
@@ -171,24 +174,8 @@ class ShellBleCmds(ShellCmds):
                 pass
                 print('')
 
-        # if cmd == 'getcert':
-        #     if self.dev._uriprotocol == 'wss':
-        #         devcert = self.dev.ws.sock.getpeercert()
-        #         for key in devcert.keys():
-        #             value = devcert[key]
-        #             try:
-        #                 if not isinstance(value, str):
-        #                     if len(value) > 1:
-        #                         print('{}:'.format(key.upper()))
-        #                         for val in value:
-        #                             if len(val) == 1:
-        #                                 print('- {} : {}'.format(*val[0]))
-        #                             else:
-        #                                 print('- {} : {}'.format(*val))
-        #                 else:
-        #                     print("{}: {}".format(key.upper(), devcert[key]))
-        #             except Exception:
-        #                 print("{}: {}".format(key.upper(), devcert[key]))
+        if cmd == 'services':
+            self.dev.get_services()
 
         if cmd == 'jupyterc':
             # print('<-- Device {} MicroPython -->'.format(dev_platform))
@@ -295,3 +282,10 @@ class ShellBleCmds(ShellCmds):
 
         if cmd == 'ota':
             self.fwio.ota(args, rest_args)
+
+        if cmd == 'upy-config':
+            if not self.dev.dev_platform:
+                self.dev.dev_platform = self.dev.wr_cmd('import sys; sys.platform',
+                                                        silent=True, rtn_resp=True)
+
+            show_upy_config_dialog(self.dev, self.dev.dev_platform)

@@ -4,7 +4,7 @@ import shlex
 from upydev.shell.constants import (AUTHMODE_DICT,
                                     shell_commands, custom_sh_cmd_kw, shell_message)
 from upydev.shell.common import (du, _ft_datetime, SHELL_ALIASES, ls, FileArgs,
-                                 find_localip, SHELL_FUNCTIONS)
+                                 find_localip, SHELL_FUNCTIONS, print_table)
 from upydev.shell.parser import shparser
 from prompt_toolkit.formatted_text import HTML
 from binascii import hexlify
@@ -18,6 +18,7 @@ from contextlib import redirect_stdout, closing
 from upydev.shell.redirectsh import Tee
 from upydev.shell.nanoglob import glob as nglob
 from upydev.shell.shasum import _shasum_data, shasum
+from upydev.shell.upyconfig import config_parser, param_parser, set_val
 import traceback
 import ast
 import time
@@ -35,7 +36,7 @@ _LOCAL_SHELL_CMDS = ['ldu', 'lsl', 'lpwd', 'lcd']
 _SPECIAL_SHELL_CMDS = ['wrepl', 'jupyterc', 'get', 'put',
                        'fw', 'flash', 'dsync',
                        'repl', 'pytest', 'getcert', 'git', 'update_upyutils',
-                       'upy-config', 'debugws', 'mpyx', 'ota']
+                       'upy-config', 'debugws', 'mpyx', 'ota', 'services']
 
 
 class ShellFlags:
@@ -779,6 +780,74 @@ class ShellCmds:
             resp = self.send_cmd("import time;tnow=time.localtime();tnow[:6]")
             print("{}-{}-{}T{}:{}:{}".format(*_ft_datetime(resp)))
 
+
+        # CONFIG
+        if command == 'config':
+            if not rest_args:
+                self.dev.wr_cmd('from nanoglob import glob', silent=True)
+                dev_config = self.dev.wr_cmd("glob('*_config.py')",
+                                               silent=True, rtn_resp=True)
+                _params_config = [param.split('_')[0].rsplit('/')[-1]
+                                  for param in dev_config]
+                print_table(_params_config, wide=16, format_SH=False)
+            else:
+                if rest_args[0] != 'add':
+                    if not rest_args[0].endswith(':'):  # check config
+                        self.dev.wr_cmd('from nanoglob import glob', silent=True)
+                        rest_args = [f"*{param}_config.py" for param in rest_args]
+                        dev_config = self.dev.wr_cmd(f"glob(*{rest_args})",
+                                                       silent=True, rtn_resp=True)
+                        _params_config = [(param.split('_')[0].rsplit('/')[-1],
+                                           param.replace('.py', '').rsplit('/')[-1])
+                                          for param in dev_config]
+                        params_config = {param: self.dev.wr_cmd(f"from {config} import "
+                                                                f"{param.upper()}"
+                                                                f"; {param.upper()}",
+                                                                silent=True,
+                                                                rtn_resp=True)
+                                        for param, config in _params_config}
+                        for conf in params_config.keys():
+                            def_conf = {}
+                            param_in_config = config_parser(self.dev, conf)
+                            for param in param_in_config:
+                                def_conf[param] = param_parser(params_config[conf],
+                                                               param)
+                            if args.y:
+                                conf_str = '\n    '.join([f'{k}: {v}'
+                                                         for k,v in def_conf.items()])
+                                print(f"{conf}: \n    {conf_str}")
+                            else:
+                                conf_str = ', '.join([f'{k}={v}'
+                                                         for k,v in def_conf.items()])
+                                print(f"{conf} -> {conf_str}")
+                    else:  # set config
+                        param_option = rest_args[0].replace(':', '')
+                        new_conf = rest_args[1:]
+                        new_params_str = ', '.join(new_conf)
+                        new_conf_str = (f"from config.params import set_{param_option}"
+                                        f";set_{param_option}({new_params_str})")
+                        self.dev.wr_cmd(new_conf_str, silent=True)
+                        reload_cmd = (f"import sys;"
+                                      f"del(sys.modules['{param_option}_config']);"
+                                      f"gc.collect(); from {param_option}_config import"
+                                      f" {param_option.upper()}")
+                        self.dev.wr_cmd(reload_cmd, silent=True)
+                        print(f"{param_option} -> {new_params_str}")
+
+                else:
+                    # new config
+                    if len(rest_args) > 1:
+                        new_confs = rest_args[1:]
+                        for nc in new_confs:
+                            self.dev.wr_cmd(f"from config import add_param; "
+                                            f"add_param('{nc}')")
+                        reload_cmd = (f"import sys;del(sys.modules['config.params']);"
+                                      "gc.collect()")
+                        self.dev.wr_cmd(reload_cmd, silent=True)
+                    else:
+                        print('config: add: name of config required')
+
+
         # SHASUM_CHECK
         if command == 'shasum':
             if args.c:
@@ -831,7 +900,6 @@ class ShellCmds:
                                     follow=True)
             return
 
-        # RMDIR --> TODO: pattrn match and -rf
         if command == 'rmdir':
             if not rest_args:
                 print('Indicate a dir to remove')
@@ -1000,11 +1068,6 @@ class ShellCmds:
                 script_name = rest_args.split('.')[0]
                 reload = f"del(sys.modules['{script_name}'])"
                 run_cmd = f"import {script_name}"
-                # print(run_cmd)
-                # if args.s is not None:
-                #     dir = args.s
-                #     sd_path = "import sys;sys.path.append('/{}')".format(dir)
-                #     run_cmd = "{};import {}".format(sd_path, script_name)
                 print(f'Running {rest_args}...')
                 try:
                     self.dev.wr_cmd(run_cmd, follow=True)
@@ -1212,22 +1275,6 @@ class ShellCmds:
                     dst_name = file_to_edit
                     src_name = _file_to_edit
                     self.dsyncio.file_put(src_name, os.stat(src_name)[6], dst_name)
-                # if self.dev.dev_class == 'SerialDevice':
-                #     from upydev.serialio import SerialFileIO
-                #     fileio = SerialFileIO(self.dev,
-                #                           devname=self.dev_name)
-                #     fileio.put(_file_to_edit, dest_file, ppath=True)
-                # elif self.dev.dev_class == 'WebSocketDevice':
-                #     from upydev.wsio import WebSocketFileIO
-                #     fileargs.wss = self.dev._uriprotocol == 'wss'
-                #     fileio = WebSocketFileIO(self.dev, args=fileargs,
-                #                              devname=self.dev_name)
-                #     fileio.put(_file_to_edit, dest_file, ppath=True)
-                # elif self.dev.dev_class == 'BleDevice':
-                #     from upydev.bleio import BleFileIO
-                #     fileio = BleFileIO(self.dev,
-                #                        devname=self.dev_name)
-                #     fileio.put(_file_to_edit, dest_file, ppath=True)
             if args.rm:
                 os.remove(_file_to_edit)
             if args.e:

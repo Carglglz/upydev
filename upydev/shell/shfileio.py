@@ -322,17 +322,6 @@ class ShDsyncIO:
                     print(f"{src_file} -> {self.dev_name}:{dst_file}\n")
                     print_size(src_file, sz, nl=True)
                     self.file_put(src_file, sz, dst_file)
-                    # try:
-                    #     # self.fileio.put(src_file, dst_file)
-                    #     self.fastfileio.init_put(src_file, sz)
-                    #     self.fastfileio.sraw_put_file(src_file, dst_file)
-                    # except (KeyboardInterrupt, Exception):
-                    #     print('KeyboardInterrupt: put Operation Canceled')
-                    #     self.dev.cmd("f.close()", silent=True)
-                    #     if input('Continue put Operation with next file? [y/n]') == 'y':
-                    #         pass
-                    #     else:
-                    #         raise KeyboardInterrupt
 
             else:
                 print(f'put: {", ".join(rest_args)}: No matching files found in ./')
@@ -387,40 +376,7 @@ class ShDsyncIO:
                     print(f"{self.dev_name}:{abs_src_file} -> {dst_file}\n")
                     print_size(src_file, size_file_to_get, nl=True)
                     self.file_get(args, src_file, size_file_to_get, dst_file)
-                    # if not args.fg:
-                    #     try:
-                    #         self.fileio.get((size_file_to_get, src_file), dst_file)
-                    #     except (KeyboardInterrupt, Exception):
-                    #         print('KeyboardInterrupt: get Operation Canceled')
-                    #         # flush ws and reset
-                    #         self.dev.cmd("f.close()", silent=True)
-                    #         if input('Continue get Operation with next file? [y/n]') == 'y':
-                    #             pass
-                    #         else:
-                    #             print('Canceling file queue..')
-                    #             raise KeyboardInterrupt
-                    # else:
-                    #     try:  # FAST GET
-                    #         self.fastfileio.init_get(src_file, size_file_to_get)
-                    #         cmd_get_file = (f"rcat('{src_file}', buff={args.b});"
-                    #                         f"gc.collect()")
-                    #         if size_file_to_get > 0:
-                    #             self.fastfileio.sr_get_file(cmd_get_file)
-                    #             self.fastfileio.save_file()
-                    #         else:
-                    #             self.fastfileio.do_pg_bar(self.fastfileio.bar_size,
-                    #                                       self.fastfileio.wheel,
-                    #                                       f"{0:.2f}/{0:.2f} KB",
-                    #                                       "0", 0, 0, 1, 0)
-                    #         print('\n')
-                    #     except (KeyboardInterrupt, Exception) as e:
-                    #         print(e)
-                    #         print('KeyboardInterrupt: get Operation Canceled')
-                    #         if input('Continue get Operation with next file? [y/n]') == 'y':
-                    #             pass
-                    #         else:
-                    #             print('Canceling file queue..')
-                    #             return
+
             else:
                 if args.dir:
                     print(f'get: {", ".join(rest_args)}: No matching files found in '
@@ -480,11 +436,22 @@ class ShDsyncIO:
                                              if nm in _file_match]
 
                         if files_to_sync:
-                            print('\ndsync: syncing new or modified files:')
-                            for sz, name in files_to_sync:
-                                print_size(name, sz)
-                                if args.p:
-                                    self.shell.sh_cmd(f"diff {name}")
+                            _new_files = [(sz, name) for sz,name
+                                          in files_to_sync if name not in
+                                          local_files_dict.keys()]
+                            _modified_files = [(sz, name) for sz,name
+                                               in files_to_sync if name in
+                                               local_files_dict.keys()]
+                            if _new_files:
+                                print('\ndsync: syncing new files:')
+                                for sz, name in _new_files:
+                                    print_size(name, sz)
+                            if _modified_files:
+                                print('\ndsync: syncing modified files:')
+                                for sz, name in _modified_files:
+                                    print_size(name, sz)
+                                    if args.p:
+                                        self.shell.sh_cmd(f"diff {name}")
                             print('')
                             for sz, name in files_to_sync:
                                 print(f"{name} -> {self.dev_name}:{name}")
@@ -642,11 +609,22 @@ class ShDsyncIO:
                                              for sz, nm in files_to_sync
                                              if nm in _file_match]
                         if files_to_sync:
-                            print('\ndsync: syncing new or modified files:')
-                            for sz, name in files_to_sync:
-                                print_size(name, sz)
-                                if args.p:
-                                    self.shell.sh_cmd(f"diff {name}")
+                            _new_files = [(sz, name) for sz,name
+                                          in files_to_sync if name not in
+                                          local_files_dict.keys()]
+                            _modified_files = [(sz, name) for sz,name
+                                               in files_to_sync if name in
+                                               local_files_dict.keys()]
+                            if _new_files:
+                                print('\ndsync: syncing new files:')
+                                for sz, name in _new_files:
+                                    print_size(name, sz)
+                            if _modified_files:
+                                print('\ndsync: syncing modified files:')
+                                for sz, name in _modified_files:
+                                    print_size(name, sz)
+                                    if args.p:
+                                        self.shell.sh_cmd(f"diff {name}")
                             print('')
                             for sz, name in files_to_sync:
                                 print(f"{name} -> {self.dev_name}:{name}")
@@ -727,11 +705,24 @@ class ShDsyncIO:
                                          if nm in _file_match]
 
                     if files_to_sync:
-                        print('\ndsync: syncing new or modified files:')
-                        for sz, name in files_to_sync:
-                            print_size(name, sz)
-                            if args.p:
-                                self.shell.sh_cmd(f"diff {name} -s")
+                        local_files_dict = {fts[0]: fts[1] for fts in local_files}
+                        _new_files = [(sz, name) for sz,name
+                                      in files_to_sync if name not in
+                                      local_files_dict.keys()]
+                        _modified_files = [(sz, name) for sz,name
+                                           in files_to_sync if name in
+                                           local_files_dict.keys()]
+
+                        if _new_files:
+                            print('\ndsync: syncing new files:')
+                            for sz, name in _new_files:
+                                print_size(name, sz)
+                        if _modified_files:
+                            print('\ndsync: syncing modified files:')
+                            for sz, name in _modified_files:
+                                print_size(name, sz)
+                                if args.p:
+                                    self.shell.sh_cmd(f"diff {name} -s")
                         print('')
                         for sz, name in files_to_sync:
                             print(f"{self.dev_name}:{name} -> {name}")
@@ -877,11 +868,23 @@ class ShDsyncIO:
                                              if nm in _file_match]
 
                         if files_to_sync:
-                            print('\ndsync: syncing new or modified files:')
-                            for sz, name in files_to_sync:
-                                print_size(name, sz)
-                                if args.p:
-                                    self.shell.sh_cmd(f"diff {name} -s")
+                            local_files_dict = {fts[0]: fts[1] for fts in local_files}
+                            _new_files = [(sz, name) for sz,name
+                                          in files_to_sync if name not in
+                                          local_files_dict.keys()]
+                            _modified_files = [(sz, name) for sz,name
+                                               in files_to_sync if name in
+                                               local_files_dict.keys()]
+                            if _new_files:
+                                print('\ndsync: syncing new files:')
+                                for sz, name in _new_files:
+                                    print_size(name, sz)
+                            if _modified_files:
+                                print('\ndsync: syncing modified files:')
+                                for sz, name in _modified_files:
+                                    print_size(name, sz)
+                                    if args.p:
+                                        self.shell.sh_cmd(f"diff {name} -s")
                             print('')
                             for sz, name in files_to_sync:
                                 print(f"{self.dev_name}:{name} -> {name}")

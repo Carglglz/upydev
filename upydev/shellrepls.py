@@ -15,49 +15,8 @@ SHELL_REPLS_HELP = """
                     * SerialDeivce --> sh_repl/shr
                     * BleDevice --> ble
 
-        - ssl_wrepl: To enter the terminal SSLWebREPL a E2EE wrepl/shell terminal over SSL sockets;
-                     CTRL-x to exit, CTRL-u to toggle encryption mode (enabled by default)
-                     To see more keybindings info do CTRL-k. By default resets after exit,
-                     use -rkey option to refresh the WebREPL password with a new random password,
-                     after exit.This passowrd will be stored in the working directory or in global directory with
-                     -g option. (This mode needs ssl_repl.py, upysecrets.py for -rfkey)
-                     *(Use -nem option to use without encryption (for esp8266))
-                     * Use -zt [HOST ZEROTIER IP/BRIDGE IP] option to for devices connected through zerotier network.
-                      (this can be avoided adding the -zt [HOST ZEROTIER IP/BRIDGE IP] option when configuring a device)
-
-        - ssl: to access ssl_wrepl in a 'ssh' style command to be used like e.g.:
-              "upydev ssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
-               needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
-               The device can be accessed as "upydev ssl@foo_device" or redirect any command as e.g.
-               "upydev ping -@foo_device". *(For esp8266 use the option -nem (no encryption mode))
-
-        - sh_srepl: To enter the serial terminal SHELL-REPL; CTRL-x to exit,
-                    To see more keybindings info do CTRL-k. By default resets after exit.
-                    To configure a serial device use -t for baudrate and -p for serial port
-                    To access without previous configuration: "sh_srepl -port [serial port] -b [baudrate]"
-                    (default baudrate is 115200)
-                    To access with previous configuration:
-                        - "sh_srepl" (if device configured in current working directory)
-                        - "sh_srepl -@ foo_device" (if foo_device is configured in global group 'UPY_G')
-
-        - shr: to access the serial terminal SHELL-REPL in a 'ssh' style command to be used like e.g.:
-              "upydev shr@/dev/tty.usbmodem3370377430372" or if a device is stored in a global group called "UPY_G" (this
-               needs to be created first doing e.g.
-               "upydev make_group -g -f UPY_G -devs foo_device 115200 /dev/tty.usbmodem3370377430372")
-               The device can be accessed as "upydev shr@foo_device"
-
-        - wssl: to access ssl_wrepl if WebSecureREPL is enabled in a 'ssh' style command to be used like e.g.:
-              "upydev wssl@192.168.1.42" or if a device is stored in a global group called "UPY_G" (this
-               needs to be created first doing e.g. "upydev make_group -g -f UPY_G -devs foo_device 192.168.1.42 myfoopass")
-               then the device can be accessed as "upydev wssl@foo_device"
-
         - set_wss: To toggle between WebSecureREPL and WebREPL, to enable WebSecureREPL do 'set_wss', to disable 'set_wss -wss'
 
-        - ble: to access the terminal BleSHELL-REPL (if BleREPL enabled) in a 'ssh' style command to be used like e.g.:
-              "upydev ble@[UUID]" or if a device is stored in a global group called "UPY_G" (this
-               needs to be created first doing e.g.
-               "upydev make_group -g -f UPY_G -devs foo_device UUID PASS")
-               The device can be accessed as "upydev ble@foo_device"
 
         - jupyterc: to run MicroPython upydevice kernel for jupyter console, CTRL-D to exit,
                     %%lsmagic to see magic commands and how to connect to a
@@ -212,57 +171,18 @@ def shell_repl_action(args, **kargs):
 
     if args.m == 'shell' or args.m == 'shl':
         if dt == 'WebSocketDevice':
-            print('SSL SHELL-REPL @ {} '.format(dev_name))
+            print('shell-repl @ {} '.format(dev_name))
             ssl_wrepl(args, dev_name)
         elif dt == 'SerialDevice' or args.port:
             if args.port:
                 dev_name = args.port
-            print('SERIAL SHELL-REPL @ {} '.format(dev_name))
+            print('shell-repl @ {} '.format(dev_name))
             sh_srepl(args, dev_name)
-
         if dt == 'BleDevice':
-            print('BLE SHELL-REPL @ {}'.format(dev_name))
+            print('shell-repl @ {}'.format(dev_name))
             ble_repl(args, dev_name)
         sys.exit()
 
-    elif args.m == 'ssl_wrepl' or args.m == 'ssl':
-        if dt == 'WebSocketDevice':
-            print('SSL SHELL-REPL @ {} '.format(dev_name))
-            ssl_wrepl(args, dev_name)
-        else:
-            print('{} is NOT a WebSocketDevice'.format(dev_name))
-            if dt == 'SerialDevice':
-                print('Use sh_srepl/shr instead')
-            elif dt == 'BleDevice':
-                print('Use ble instead')
-        sys.exit()
-
-    elif args.m == 'wssl':
-        args.wss = True
-        if dt == 'WebSocketDevice':
-            print('WSSL SHELL-REPL @ {} '.format(dev_name))
-            ssl_wrepl(args, dev_name)
-        else:
-            print('{} is NOT a WebSocketDevice'.format(dev_name))
-            if dt == 'SerialDevice':
-                print('Use sh_srepl/shr instead')
-            elif dt == 'BleDevice':
-                print('Use ble instead')
-        sys.exit()
-
-    elif args.m == 'sh_srepl' or args.m == 'shr':
-        if dt == 'SerialDevice' or args.port:
-            if args.port:
-                dev_name = args.port
-            print('SERIAL SHELL-REPL @ {} '.format(dev_name))
-            sh_srepl(args, dev_name)
-        else:
-            print('{} is NOT a SerialDevice'.format(dev_name))
-            if dt == 'WebSocketDevice':
-                print('Use ssl_wrepl or ssl instead')
-            elif dt == 'BleDevice':
-                print('Use ble instead')
-        sys.exit()
 
     elif args.m == 'set_wss':
         if not args.wss:
@@ -282,18 +202,6 @@ def shell_repl_action(args, **kargs):
             time.sleep(2)
             dev.disconnect()
             print('\rWebREPL enabled!, WebSecureREPL disabled!')
-        sys.exit()
-
-    elif args.m == 'ble':
-        if dt == 'BleDevice':
-            print('BLE SHELL-REPL @ {}'.format(dev_name))
-            ble_repl(args, dev_name)
-        else:
-            print('{} is NOT a BleDevice'.format(dev_name))
-            if dt == 'WebSocketDevice':
-                print('Use ssl_wrepl or ssl instead')
-            elif dt == 'SerialDevice':
-                print('Use sh_srepl or shr instead')
         sys.exit()
 
     elif args.m == 'jupyterc':

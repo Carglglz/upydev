@@ -19,8 +19,6 @@ import asyncio
 _WASPDEV = ["P8", "PineTime", "Pixl.js"]
 _IS_WASPDEV = False
 
-
-# ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", help='device uuid, can be "auto" or @name', required=True)
 parser.add_argument("-v", help='verbose mode',
@@ -34,9 +32,9 @@ parser.add_argument("-buff", help='Ble max writing length to use',
 args = parser.parse_args()
 
 
-# HANDSHAKE
+
 if args.t != "auto" and "@" not in args.t:
-    basedev = AsyncBleDevice(args.t, name=args.dev, lenbuff=args.buff)
+    dev = AsyncBleDevice(args.t, name=args.dev, lenbuff=args.buff)
 else:
     if args.t == "auto":
         devs = []
@@ -45,7 +43,7 @@ else:
                 devs = ble_scan()
             except KeyboardInterrupt:
                 sys.exit()
-        basedev = AsyncBleDevice(devs[0], lenbuff=args.buff)
+        dev = AsyncBleDevice(devs[0], lenbuff=args.buff)
     elif "@" in args.t:
         devs = []
         while len(devs) == 0:
@@ -56,24 +54,24 @@ else:
         bdev = args.t.split("@")[1]
         for dev in devs:
             if bdev in dev.name:
-                basedev = AsyncBleDevice(devs[0], lenbuff=args.buff)
+                dev = AsyncBleDevice(devs[0], lenbuff=args.buff)
                 break
 
-basedev.connect(show_servs=args.v, debug=args.v)
-if basedev.name in _WASPDEV:
-    basedev.len_buffer = 20  # FIXME: INCREASE MTU SIZE IN NRF52
+dev.connect(show_servs=args.v, debug=args.v)
+if dev.name in _WASPDEV:
+    dev.len_buffer = 20  # FIXME: INCREASE MTU SIZE IN NRF52
     _IS_WASPDEV = True
-if not basedev.connected:
+if not dev.connected:
     print('Device not reachable, try again.')
     sys.exit()
-# basedev.get_services()
+
 if args.dev is not None:
-    basedev.name = args.dev
+    dev.name = args.dev
 
 time.sleep(0.2)
-kbi = basedev.kbi()
+kbi = dev.kbi()
 time.sleep(0.2)
-uid = basedev.wr_cmd("from machine import unique_id; unique_id()",
+uid = dev.wr_cmd("from machine import unique_id; unique_id()",
                      silent=True, rtn_resp=True)
 try:
     unique_id = hexlify(uid).decode()
@@ -81,19 +79,16 @@ except Exception:
     unique_id = uid
 
 time.sleep(0.2)
-devp = basedev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
+devp = dev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
 dev_platform = devp
 if args.v:
     print('{}@{}'.format(dev_platform, unique_id))
-if basedev.name is None:
-    basedev.name = '{}-{}'.format(dev_platform, unique_id)
-# ble_cp = SERIAL_REPL_server(dev=espdev, dev_id=unique_id)
-# shr_htool = SERIAL_TOOL(sh_srepl=ble_cp)
-print('BLE SHELL-REPL connected')
+if dev.name is None:
+    dev.name = '{}-{}'.format(dev_platform, unique_id)
+
+print('BleREPL connected')
 time.sleep(0.2)
-basedev.banner()
-# ble_cp.sh_repl("\x02", banner=True)
-# ble_cp.flush()
+dev.banner()
 print('- CTRL-k to see keybindings or -h to see help\n'
       '- CTRL-s to toggle shell/repl mode\n'
       '- CTRL-x or "exit" to exit')
@@ -115,24 +110,22 @@ else:
     _SHELL_FLAGS.prompt['p'] = _SHELL_FLAGS.shell_prompt['s']
     _SHELL_FLAGS.shell_mode['S'] = True
 
-    basedev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
+    dev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
                    ';gc.collect()', silent=True)
-    # # espdev.close_wconn()
     if not _IS_WASPDEV:
-        basedev.wr_cmd("help('modules')", silent=True, long_string=True)
-    # # espdev.open_wconn()
-        _SHELL_FLAGS.frozen_modules['FM'] = basedev.output.split()[:-6]
-    #
-    basedev.output = None
+        dev.wr_cmd("help('modules')", silent=True, long_string=True)
+
+        _SHELL_FLAGS.frozen_modules['FM'] = dev.output.split()[:-6]
+
+    dev.output = None
 
 # SHELL-COMMANDS
-sh = ShellBleCmds(basedev, flags=_SHELL_FLAGS, topargs=args)
+sh = ShellBleCmds(dev, flags=_SHELL_FLAGS, topargs=args)
 
 # KEYBINDINGS
-kb = ShellKeyBindings(_SHELL_FLAGS, basedev, sh, shbl_cmd_kw, SHELLBLE_CMD_DICT_PARSER)
+kb = ShellKeyBindings(_SHELL_FLAGS, dev, sh, shbl_cmd_kw, SHELLBLE_CMD_DICT_PARSER)
 
-# data = bytes(basedev._kbi + '\r', 'utf-8')
-# await basedev.ble_client.write_gatt_char(basedev.writeables['Nordic UART RX'], data)
+
 flags = _SHELL_FLAGS
 kb.remove('c-c')
 kb.remove('c-t')
@@ -148,12 +141,12 @@ def runtempbuff(event):
         with open('_tmp_script.py', 'r') as fbuff:
             filebuffer = fbuff.read()
         event.app.current_buffer.reset()
-        basedev.paste_buff(filebuffer)
+        dev.paste_buff(filebuffer)
         event.app.current_buffer.reset()
         try:
-            basedev.wr_cmd('\x04', follow=True, long_string=True)
+            dev.wr_cmd('\x04', follow=True, long_string=True)
         except KeyboardInterrupt:
-            basedev.kbi()
+            dev.kbi()
     run_in_terminal(run_tmpcode)
 
 
@@ -166,9 +159,9 @@ def paste_mode_exit(event):
         print('Running Buffer...')
         event.app.current_buffer.reset()
         try:
-            basedev.wr_cmd('\x04', follow=True, long_string=True)
+            dev.wr_cmd('\x04', follow=True, long_string=True)
         except KeyboardInterrupt:
-            basedev.kbi()
+            dev.kbi()
         flags.paste['p'] = False
 
     if flags.paste['p']:
@@ -185,12 +178,14 @@ def send_KBI(event):
                 print('^C')
                 event.app.current_buffer.reset()
                 flags.paste['p'] = False
-                data = bytes(basedev._kbi + '\r', 'utf-8')
-                await basedev.ble_client.write_gatt_char(basedev.writeables['Nordic UART RX'], data)
+                data = bytes(dev._kbi + '\r', 'utf-8')
+                await dev.ble_client.write_gatt_char(dev.writeables['Nordic UART RX'],
+                                                     data)
             else:
 
-                data = bytes(basedev._kbi + '\r', 'utf-8')
-                await basedev.ble_client.write_gatt_char(basedev.writeables['Nordic UART RX'], data)
+                data = bytes(dev._kbi + '\r', 'utf-8')
+                await dev.ble_client.write_gatt_char(dev.writeables['Nordic UART RX'],
+                                                     data)
 
                 flags.paste['p'] = False
                 if not flags.shell_mode['S']:
@@ -220,11 +215,8 @@ def autosuggest_is_on():
     return _SHELL_FLAGS.autosuggest['A']
 
 
-# def check_prompt():
-#     return _SHELL_FLAGS.prompt['p']
-
 def check_prompt():
-    if basedev.cmd_finished:
+    if dev.cmd_finished:
         return _SHELL_FLAGS.prompt['p']
     else:
         return ''
@@ -235,7 +227,7 @@ session_p = PromptSession()
 repl = True
 while repl:
     try:
-        basedev.output = None
+        dev.output = None
         if _SHELL_FLAGS.exit['exit']:
             break
         else:
@@ -248,14 +240,13 @@ while repl:
                                    refresh_interval=0.2)
 
             if inp is not None and inp != '' and not _SHELL_FLAGS.paste['p']:
-                # HERE IN SHELL MODE PROCESS INPUT BEFORE SENDING # shlex.split
+                # SHELL MODE
                 if _SHELL_FLAGS.shell_mode['S']:  # SHELL
                     sh.cmd(inp)
                 else:  # REPL
-                    basedev.wr_cmd(inp, follow=True)
-                if inp != '':  # PASTE BUFFER
+                    dev.wr_cmd(inp, follow=True)
+                if inp != '':
                     pass
-                    # paste_buffer['B'].append(inp)
     except Exception as e:
         print(e)
         continue
@@ -264,11 +255,11 @@ while repl:
     except EOFError:
         # print('This is EOF ERROR!')
         continue
-if basedev.connected and basedev.is_connected():
+if dev.connected and dev.is_connected():
 
-    basedev.disconnect()
+    dev.disconnect()
 print('logout')
 if host_name != unique_id:
     print('Connection to {} closed.'.format(host_name))
 else:
-    print('Connection to {} closed.'.format(basedev.name))
+    print('Connection to {} closed.'.format(dev.name))

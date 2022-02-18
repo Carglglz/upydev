@@ -65,7 +65,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'flash', 'mpyx', 'ota']
+                    'diff', 'config']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -102,12 +102,12 @@ kb_info = """
     - CTRL-c : KeyboardInterrupt, in normal mode, cancel in paste mode
     - CTRL-b : prints MicroPython version and sys platform
     - CTRL-r : to flush line buffer
-    - CTRL-o :
     - CTRL-n : shows mem_info()
     - CTRL-y : gc.collect() shortcut command
     - CTRL-space : repeats last command
+    - CTRL-o, Enter : to enter upy-config dialog
     - CTRL-t : runs temp buffer ('_tmp_script.py' in cwd)
-    - CTRL-w :
+    - CTRL-w : prints device info
     - CTRL-a : set cursor position at the beggining
     - CTRL-j : set cursor position at the end of line
     - CTRL-f : toggle autosuggest mode (Fish shell like)(use right arrow to complete)
@@ -508,12 +508,15 @@ CTIME = dict(help="measure execution time of a shell command",
                          metavar='command'),
              options={})
 
-# DEBUGC = dict(help="debug execution of a shell command",
-#              subcmd=dict(help='Indicate a command to debug',
-#                          default='info',
-#                          choices=shell_commands+custom_sh_cmd_kw,
-#                          metavar='command'),
-#              options={})
+CONFIG = dict(help="set or check config (from *_config.py files)#",
+              subcmd=dict(help='indicate parameter to set or check ',
+                         default=[],
+                         metavar='parameter',
+                         nargs='*'),
+             options={"-y": dict(help='print config in YAML format',
+                                 required=False,
+                                 default=False,
+                                 action='store_true')})
 
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
@@ -529,4 +532,4 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "lcd": LCD,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
                          "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
-                         "diff": DIFF}
+                         "diff": DIFF, "config": CONFIG}

@@ -4,6 +4,44 @@ import time
 import sys
 
 
+def print_sizefile_all(fileslist, tabs=0, frep=None):
+    for filedata in fileslist:
+        namefile = filedata[0]
+        filesize = filedata[1]
+
+        _kB = 1024
+        if filesize < _kB:
+            sizestr = str(filesize) + " by"
+        elif filesize < _kB**2:
+            sizestr = "%0.1f KB" % (filesize / _kB)
+        elif filesize < _kB**3:
+            sizestr = "%0.1f MB" % (filesize / _kB**2)
+        else:
+            sizestr = "%0.1f GB" % (filesize / _kB**3)
+
+        prettyprintname = ""
+        for _ in range(tabs):
+            prettyprintname += "   "
+        prettyprintname += namefile
+        print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
+        if frep is not None:
+            frep.append('{0:<40} Size: {1:>10}'.format(
+                prettyprintname, sizestr))
+
+
+def print_filesys_info(filesize):
+    _kB = 1024
+    if filesize < _kB:
+        sizestr = str(filesize) + " by"
+    elif filesize < _kB**2:
+        sizestr = "%0.1f KB" % (filesize / _kB)
+    elif filesize < _kB**3:
+        sizestr = "%0.1f MB" % (filesize / _kB**2)
+    else:
+        sizestr = "%0.1f GB" % (filesize / _kB**3)
+    return sizestr
+
+
 def gen_command(args, unkwargs, **kargs):
 
     if '-h' not in unkwargs and args.m != 'gc':

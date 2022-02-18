@@ -183,7 +183,7 @@ class ShfwIO:
                         else:
                             print(f'No firmware available that match: {args.b}')
                     else:
-                        fw_v_link = get_fw_versions(rest_args[1])[0][rest_args[1]]
+                        fw_v_link = get_fw_versions(args.b)[0][rest_args[1]]
                         print(f'Downloading {rest_args[1]} ...')
                         curl_cmd_str = f"curl -O '{fw_v_link}'"
                         curl_cmd = shlex.split(curl_cmd_str)
@@ -196,7 +196,7 @@ class ShfwIO:
                     if not args.b:  # Autodetect
                         try:
                             args.b = self.dev.dev_platform
-                            if dev.dev_platform == 'pyboard':
+                            if self.dev.dev_platform == 'pyboard':
                                 machine = self.dev.wr_cmd('import os;os.uname().machine',
                                                   silent=True, rtn_resp=True)
                                 machine, version = machine.split()[0].split('v')
@@ -459,6 +459,7 @@ class ShfwIO:
                 print('ota: enabling DFU Mode...')
                 self.dev.wr_cmd(f"set_ble_flag('DFU')")
                 self.dev.reset(hr=True, reconnect=False)
+                local_name = self.dev.name
                 # self.dev.disconnect()
                 print('ota: checking if DFU Mode is available...')
                 time.sleep(2)
@@ -489,8 +490,19 @@ class ShfwIO:
                         print('ota: trying to reconnect now ...')
                 if dev.connected:
                     dev.disconnect()
-                time.sleep(2)
-                while not self.dev.connected:
-                    self.dev.connect()
-                    time.sleep(1)
+                time.sleep(5)
+                print(f'ota: waiting for {self.dev_name} to be available again...')
+                while True:
+                    try:
+                        if not self.dev.is_connected():
+                            self.dev.connect(show_servs=False)
+                            if self.dev.name.endswith('-DFU'):
+                                self.dev.name = local_name
+                            break
+                    except DeviceNotFound:
+                            time.sleep(1)
+                            print(f'ota: waiting for {self.dev_name} to '
+                                  'be available again...')
+                time.sleep(1)
+                self.dev.wr_cmd('import gc;from upysh import *', silent=True)
                 print('Done!')

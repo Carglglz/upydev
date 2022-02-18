@@ -14,7 +14,7 @@ from upydev.shell.shws import ShellWsCmds, shws_cmd_kw, SHELLWS_CMD_DICT_PARSER
 from upydev.shell.keybindings import ShellKeyBindings
 
 
-# ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", help='host password', required=True)
 parser.add_argument("-v", help='verbose mode',
@@ -38,119 +38,46 @@ parser.add_argument("-zt", help='zerotier bridge; [HOST/FWD-HOST]',
 args = parser.parse_args()
 
 # HANDSHAKE
-espdev = Device(args.t, args.p)
-ws_upydevice = espdev
-base_ws = True
-if args.ping:
-    if espdev.is_reachable():
-        pass
-    else:
-        print('DEVICE NOT REACHABLE')
-        sys.exit()
-if args.v:
-    print('Welcome to SSLWebREPL 0.0.1!')
-if not args.nem:
-    if args.v:
-        print('Initiating SECURE HANDSHAKE...')
-# espdev.kbi(output=False)
-if base_ws:
-    get_psphrase = None
-    # TODO: fix wrong passphrase loop
-    if ws_upydevice.passphrase:
-        ws_upydevice.connect()
-        args.wss = True
-        args.nem = True
-    else:
-        ws_upydevice.connect(ssl=args.wss, auth=args.wss)
-    if args.wss:
-        print(f'WebSecREPL with {ws_upydevice.ws.sock.version()} connected')
-        print('{1} @ {0} - {2} bits Encryption'.format(*ws_upydevice.ws.sock.cipher()))
-    ws_upydevice.wr_cmd(ws_upydevice._kbi)
-    # espdev.wr_cmd("from machine import unique_id; unique_id()",
-    #               silent=True)
-    unique_id = ws_upydevice.wr_cmd("from machine import unique_id; "
-                                    "unique_id()", silent=True, rtn_resp=True)
-    # unique_id = hexlify(espdev.output).decode()
-    try:
-        unique_id = hexlify(unique_id).decode()
-    except TypeError:
-        time.sleep(0.5)
-        unique_id = ws_upydevice.wr_cmd("from machine import unique_id; "
-                                        "unique_id()", silent=True, rtn_resp=True)
-        unique_id = hexlify(unique_id).decode()
-    # espdev.wr_cmd("import sys; sys.platform",
-    #               silent=True)
-    dev_platform = ws_upydevice.wr_cmd("import sys; sys.platform", silent=True,
-                                       rtn_resp=True)
-    # dev_platform = espdev.output
-    # espdev.platform = dev_platform
-    ws_upydevice.platform = dev_platform
-else:
-    pass
-    # espdev.open_wconn()
-    # espdev.wr_cmd('C')
-    # espdev.wr_cmd("from machine import unique_id; unique_id()",
-    #               silent=True)
-    # unique_id = hexlify(espdev.output).decode()
-    # espdev.wr_cmd("import sys; sys.platform",
-    #               silent=True)
-    # dev_platform = espdev.output
-    # espdev.platform = dev_platform
-if args.v:
-    print('{}@{}'.format(dev_platform, unique_id))
-# rk = load_rsa_key(dir=upydev.__path__[0]+'/', show_key=False,
-#                   id=unique_id)
-# if rk is None:
-#     sys.exit()
-if not args.nem:
-    pass
-    # if base_ws:
-    #     espdev = ws_upydevice
-    # # check if device in ZeroTier group.
-    # zt_file_conf = '_zt_upydev_.config'
-    # zt_file_path = os.path.join(UPYDEV_PATH, zt_file_conf)
-    # if zt_file_conf in os.listdir(UPYDEV_PATH):
-    #     with open(zt_file_path, 'r', encoding='utf-8') as zt_conf:
-    #         zt_devices = json.loads(zt_conf.read())
-    #         if args.dev in zt_devices:
-    #             args.zt = zt_devices[args.dev]
-    #             if isinstance(args.zt, dict):
-    #                 args.zt = args.zt["zt"]
-    # ssl_cp = SSL_REPL_server(dev=espdev, key=ssl_key, cert=ssl_cert,
-    #                          client_key=None, dev_id=unique_id, zt=args.zt)
-    # ssl_htool = SSL_TOOL(ssl_repl=ssl_cp, key=ssl_key, cert=ssl_cert, zt=args.zt)
-    # print('Done!')
-    # if args.v:
-    #     print('SSLWebREPL connected')
+dev = Device(args.t, args.p)
+# TODO: fix wrong passphrase loop
 if args.nem:
-    if base_ws:
-        pass
-        # ws_upydevice.close_wconn()
-        # espdev.connect(ssl=args.wss)
-    # fileargs = FileArgs()
-    # fileargs.t = args.t
-    # fileargs.p = args.p
-    # fileargs.wss = args.wss
-    # ssl_cp = WBREPL_IO(dev=espdev)
+    dev.passphrase = None
+if dev.passphrase:
+    dev.connect()
+    args.wss = True
+else:
+    dev.connect(ssl=args.wss, auth=args.wss)
+if args.wss:
+    print(f'WebSecREPL with {dev.ws.sock.version()} connected')
+    print('{1} @ {0} - {2} bits Encryption'.format(*dev.ws.sock.cipher()))
+dev.wr_cmd(dev._kbi)
+unique_id = dev.wr_cmd("from machine import unique_id; "
+                       "unique_id()", silent=True, rtn_resp=True)
+try:
+    unique_id = hexlify(unique_id).decode()
+except TypeError:
+    time.sleep(0.5)
+    unique_id = dev.wr_cmd("from machine import unique_id; "
+                           "unique_id()", silent=True, rtn_resp=True)
+    unique_id = hexlify(unique_id).decode()
+
+dev_platform = dev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
+
+dev.platform = dev_platform
+
+if args.nem:
     if not args.wss:
+        print(f'WebREPL connected')
         print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
-        print('')
-    print('')
-# espdev.wr_cmd('B')
-if not args.nem:
-    pass
-    # print('SSLWebREPL {} connected'.format(ssl_cp.version))
-    # print('{1} @ {0} - {2} bits Encryption'.format(*ssl_cp.cipher))
-    # # ssl_cp.ssl_repl("\x0d")
-    # # time.sleep(0.2)
-    # ssl_cp.ssl_repl("\x02", banner=True)
-    # ssl_cp.flush_conn()
-espdev.banner()
-espdev.output = None
+
+dev.banner()
+dev.output = None
 
 print('- CTRL-k to see keybindings or -h to see help\n'
       '- CTRL-s to toggle shell/repl mode\n'
       '- CTRL-x or "exit" to exit')
+
+
 # PROMT SESSION CONFIGURATION
 
 # Style
@@ -173,20 +100,20 @@ else:
     _SHELL_FLAGS.prompt['p'] = _SHELL_FLAGS.shell_prompt['s']
     _SHELL_FLAGS.shell_mode['S'] = True
 
-    espdev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
+    dev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
                   ';gc.collect()', silent=True)
-    # espdev.close_wconn()
-    espdev.wr_cmd("help('modules')", silent=True, long_string=True)
-    # espdev.open_wconn()
-    _SHELL_FLAGS.frozen_modules['FM'] = espdev.output.split()[:-6]
+    # dev.close_wconn()
+    dev.wr_cmd("help('modules')", silent=True, long_string=True)
+    # dev.open_wconn()
+    _SHELL_FLAGS.frozen_modules['FM'] = dev.output.split()[:-6]
 
-    espdev.output = None
+    dev.output = None
 
 # SHELL-COMMANDS
-sh = ShellWsCmds(espdev, flags=_SHELL_FLAGS, topargs=args)
+sh = ShellWsCmds(dev, flags=_SHELL_FLAGS, topargs=args)
 
 # KEYBINDINGS
-kb = ShellKeyBindings(_SHELL_FLAGS, espdev, sh, shws_cmd_kw, SHELLWS_CMD_DICT_PARSER)
+kb = ShellKeyBindings(_SHELL_FLAGS, dev, sh, shws_cmd_kw, SHELLWS_CMD_DICT_PARSER)
 
 
 @Condition
@@ -204,7 +131,7 @@ session_p = PromptSession()
 repl = True
 while repl:
     try:
-        espdev.output = None
+        dev.output = None
         if _SHELL_FLAGS.exit['exit']:
             break
         else:
@@ -222,7 +149,7 @@ while repl:
                 if _SHELL_FLAGS.shell_mode['S']:  # SHELL
                     sh.cmd(inp)
                 else:  # REPL
-                    espdev.wr_cmd(inp, follow=True)
+                    dev.wr_cmd(inp, follow=True)
                 if inp != '':  # PASTE BUFFER
                     pass
                     # paste_buffer['B'].append(inp)
@@ -234,12 +161,12 @@ while repl:
     except EOFError:
         # print('This is EOF ERROR!')
         continue
-        # espdev.reset()
+        # dev.reset()
         # sys.exit()
 
 # sys.exit()
 # EXIT MESSAGE
-espdev.disconnect()
+dev.disconnect()
 print('logout')
 if host_name != unique_id:
     print('Connection to {} closed.'.format(host_name))
