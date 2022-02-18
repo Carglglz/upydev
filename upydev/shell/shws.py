@@ -11,7 +11,7 @@ import signal
 import shutil
 import os
 
-shws_cmd_kw = ["repl", "getcert", "fw", "flash", "debugws", "ota"]
+shws_cmd_kw = ["repl", "getcert", "debugws", "ota"]
 
 WREPL = dict(help="enter WebREPL",
              subcmd={},
@@ -177,12 +177,12 @@ class ShellWsCmds(ShellCmds):
             try:
                 subprocess.call(web_repl_cmd)
                 try:
-                    self.dev.connect()
+                    self.dev.connect(ssl=topargs.wss, auth=topargs.wss)
                 except Exception:
                     pass
             except KeyboardInterrupt:
                 try:
-                    self.dev.connect()
+                    self.dev.connect(ssl=topargs.wss, auth=topargs.wss)
                 except Exception:
                     pass
                 pass
@@ -305,7 +305,8 @@ class ShellWsCmds(ShellCmds):
             #   if in device and not in local:
             #      device rm
             #
-            self.dsyncio.dsync(args, rest_args)
+            # self.dsyncio.dsync(args, rest_args)
+            self.dsyncio.fsync(args, rest_args)
         if cmd == 'debugws':
             state = self.dev.debug
             self.dev.debug = not state

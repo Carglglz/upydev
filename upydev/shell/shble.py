@@ -12,11 +12,9 @@ import signal
 import shutil
 import os
 
-shbl_cmd_kw = ["fw", "repl", "services", "mpyx", "ota"]
+shbl_cmd_kw = ["services", "ota"]
 
-# SREPL = dict(help="enter REPL",
-#              subcmd={},
-#              options={})
+
 SERVS = dict(help="show GATT services and characteristics",
                subcmd={},
                options={})

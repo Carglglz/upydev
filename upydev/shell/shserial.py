@@ -11,14 +11,12 @@ import signal
 import shutil
 import os
 
-shsr_cmd_kw = ["repl", "fw", "flash", "mpyx"]
+shsr_cmd_kw = ["repl", "flash"]
 
 SREPL = dict(help="enter REPL",
              subcmd={},
              options={})
-# GETCERT = dict(help="get device certificate if available",
-#                subcmd={},
-#                options={})
+
 JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
                 subcmd={},
                 options={})
@@ -270,7 +268,8 @@ class ShellSrCmds(ShellCmds):
             #   if in device and not in local:
             #      device rm
             #
-            self.dsyncio.dsync(args, rest_args)
+            # self.dsyncio.dsync(args, rest_args)
+            self.dsyncio.fsync(args, rest_args)
         if cmd == 'fw':
             self.fwio.fwop(args, rest_args)
 

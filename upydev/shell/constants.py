@@ -65,7 +65,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'config']
+                    'diff', 'config', 'fw', 'mpyx']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'

@@ -65,10 +65,9 @@ dev_platform = dev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True
 
 dev.platform = dev_platform
 
-if args.nem:
-    if not args.wss:
-        print(f'WebREPL connected')
-        print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
+if args.nem or not args.wss:
+    print(f'WebREPL connected')
+    print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
 
 dev.banner()
 dev.output = None

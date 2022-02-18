@@ -33,8 +33,7 @@ _SHELL_CMDS = custom_sh_cmd_kw + shell_commands
 
 _LOCAL_SHELL_CMDS = ['ldu', 'lsl', 'lpwd', 'lcd']
 
-_SPECIAL_SHELL_CMDS = ['wrepl', 'jupyterc', 'get', 'put',
-                       'fw', 'flash', 'dsync',
+_SPECIAL_SHELL_CMDS = ['jupyterc', 'get', 'put', 'fw', 'flash', 'dsync',
                        'repl', 'pytest', 'getcert', 'git', 'update_upyutils',
                        'upy-config', 'debugws', 'mpyx', 'ota', 'services']
 
