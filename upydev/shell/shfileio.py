@@ -9,6 +9,15 @@ import os
 import socket
 import re
 import sys
+import hashlib
+import binascii
+
+
+def fname(cnt, name):
+    if cnt == 1:
+        return f"{cnt} {name}"
+    else:
+        return f"{cnt} {name}s"
 
 
 class ShDsyncIO:
@@ -404,6 +413,9 @@ class ShDsyncIO:
 
             if args.n:
                 self.stash.update(path=top_dir)
+                self.stash.update(ignore=args.i)
+                self.stash.update(rf=args.rf)
+                self.stash.update(d=args.d)
 
             if args.t:
                 tree(top_dir)
@@ -478,7 +490,7 @@ class ShDsyncIO:
             if args.i:
                 dirs_to_make = self.re_filt(args.i, dirs_to_make)
             if dirs_to_make:
-                print('dsync: making new dirs:')
+                print(f'dsync: making new dirs ({len(dirs_to_make)}):')
                 for ndir in dirs_to_make:
                     print(f'- {ndir}')
                 if not args.n:
@@ -501,7 +513,7 @@ class ShDsyncIO:
                 if args.i:
                     dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
                 if dirs_to_delete:
-                    print('dsync: deleting old dirs:')
+                    print(f'dsync: deleting old dirs ({len(dirs_to_delete)}):')
                     for ndir in dirs_to_delete:
                         print(f'- {ndir}')
                     if not args.n:
@@ -518,6 +530,9 @@ class ShDsyncIO:
 
             dev_files = dev_file_match
             local_files = file_match
+            _new_files = []
+            _modified_files = []
+            files_to_delete = []
             if dev_files:
                 files_to_sync = [(fh[1], fh[0])
                                  for fh in local_files if fh not in
@@ -543,11 +558,11 @@ class ShDsyncIO:
                                    in files_to_sync if name in
                                    [dname for dname, sz, fh in dev_files]]
                 if _new_files:
-                    print('dsync: syncing new files:')
+                    print(f'dsync: syncing new files ({len(_new_files)}):')
                     for sz, name in _new_files:
                         print_size(name, sz)
                 if _modified_files:
-                    print('dsync: syncing modified files:')
+                    print(f'dsync: syncing modified files ({len(_modified_files)}):')
                     for sz, name in _modified_files:
                         print_size(name, sz)
                         if args.p:
@@ -574,7 +589,7 @@ class ShDsyncIO:
                 if args.i:
                     files_to_delete = self.re_filt(args.i, files_to_delete)
                 if files_to_delete:
-                    print('dsync: deleting old files:')
+                    print(f'dsync: deleting old files ({len(files_to_delete)}):')
                     for ndir in files_to_delete:
                         print(f'- {ndir}')
                     if not args.n:
@@ -585,6 +600,16 @@ class ShDsyncIO:
                 else:
                     print(f'dsync: files: OK{CHECK}')
                 #     print('dsync: no old files to delete')
+
+            # SUM UP
+            if dirs_to_make or dirs_to_delete:
+                print(f"{fname(len(dirs_to_make),'new dir')}, "
+                      f"{fname(len(dirs_to_delete), 'dir')}"
+                      f" deleted")
+            if _new_files or _modified_files or files_to_delete:
+                print(f"{fname(len(_new_files), 'new file')}, "
+                      f"{fname(len(_modified_files), 'file')} "
+                      f"changed, {fname(len(files_to_delete), 'file')} deleted")
 
         else:
             # DEVICE TO HOST
@@ -598,6 +623,9 @@ class ShDsyncIO:
 
             if args.n:
                 self.stash.update(path=top_dir)
+                self.stash.update(ignore=args.i)
+                self.stash.update(rf=args.rf)
+                self.stash.update(d=args.d)
 
             if args.t:
                 self.dev.wr_cmd(f"from upysh2 import tree;tree('{top_dir}')",
@@ -676,13 +704,14 @@ class ShDsyncIO:
                                   dev_dirs=dev_dir_match, dev_files=dev_file_match)
 
             dirs_to_delete = []
+            dirs_to_make = []
             if dev_dir_match:
                 dirs_to_make = [
                     ddir for ddir in dev_dir_match if ddir not in dir_match]
                 if args.i:
                     dirs_to_make = self.re_filt(args.i, dirs_to_make)
                 if dirs_to_make:
-                    print('dsync: making new dirs:')
+                    print(f'dsync: making new dirs ({len(dirs_to_make)}):')
                     for ndir in dirs_to_make:
                         print(f'- {ndir}')
                         if not args.n:
@@ -702,7 +731,7 @@ class ShDsyncIO:
                     if args.i:
                         dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
                     if dirs_to_delete:
-                        print('dsync: deleting old dirs:')
+                        print(f'dsync: deleting old dirs ({len(dirs_to_delete)}):')
                         for ndir in dirs_to_delete:
                             print(f'- {ndir}')
                             if not args.n:
@@ -717,6 +746,9 @@ class ShDsyncIO:
 
             dev_files = dev_file_match
             local_files = file_match
+            _new_files = []
+            _modified_files = []
+            files_to_delete = []
             if dev_files:
 
                 if local_files:
@@ -743,11 +775,12 @@ class ShDsyncIO:
                                        in files_to_sync if name in
                                        local_files_dict.keys()]
                     if _new_files:
-                        print('\ndsync: syncing new files:')
+                        print(f'\ndsync: syncing new files ({len(_new_files)}):')
                         for sz, name in _new_files:
                             print_size(name, sz)
                     if _modified_files:
-                        print('\ndsync: syncing modified files:')
+                        print(f'\ndsync: syncing modified files '
+                              f'({len(_modified_files)}):')
                         for sz, name in _modified_files:
                             print_size(name, sz)
                             if args.p:
@@ -774,7 +807,7 @@ class ShDsyncIO:
                     if args.i:
                         files_to_delete = self.re_filt(args.i, files_to_delete)
                     if files_to_delete:
-                        print('dsync: deleting old files:')
+                        print(f'dsync: deleting old files ({len(files_to_delete)}):')
                         for ndir in files_to_delete:
                             print(f'- {ndir}')
                             if not args.n:
@@ -783,7 +816,21 @@ class ShDsyncIO:
                         print(f'dsync: files: OK{CHECK}')
                     #     print('dsync: no old files to delete')
 
+            # SUM UP
+            if dirs_to_make or dirs_to_delete:
+                print(f"{fname(len(dirs_to_make),'new dir')}, "
+                      f"{fname(len(dirs_to_delete), 'dir')}"
+                      f" deleted")
+            if _new_files or _modified_files or files_to_delete:
+                print(f"{fname(len(_new_files), 'new file')}, "
+                      f"{fname(len(_modified_files), 'file')} "
+                      f"changed, {fname(len(files_to_delete), 'file')} deleted")
             return
+
+    def show_stash(self):
+        id_bytes = hashlib.sha1(repr(self.stash).encode()).digest()
+        id = binascii.hexlify(id_bytes).decode()
+        return id
 
     def apply_stash(self, args, rest_args):
         dir_match = self.stash.get('dirs')
@@ -791,6 +838,9 @@ class ShDsyncIO:
         dev_dir_match = self.stash.get('dev_dirs')
         dev_file_match = self.stash.get('dev_files')
         top_dir = self.stash.get('path')
+        args.i = self.stash.get('ignore')
+        args.rf = self.stash.get('rf')
+        args.d = self.stash.get('d')
         path_sync = top_dir
         if top_dir == '.':
             path_sync = ''
@@ -806,7 +856,7 @@ class ShDsyncIO:
             if args.i:
                 dirs_to_make = self.re_filt(args.i, dirs_to_make)
             if dirs_to_make:
-                print('dsync: making new dirs:')
+                print(f'dsync: making new dirs ({len(dirs_to_make)}):')
                 for ndir in dirs_to_make:
                     print(f'- {ndir}')
                 if not args.n:
@@ -819,6 +869,7 @@ class ShDsyncIO:
                         print(f'dsync: dirs: none')
                 # print('dsync: no new directories to make')
             dirs_to_delete = []
+            files_to_delete = []
             if args.rf:
                 dirs_to_delete = [ddir for ddir in dev_dir_match
                                   if ddir not in dir_match]
@@ -829,7 +880,7 @@ class ShDsyncIO:
                 if args.i:
                     dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
                 if dirs_to_delete:
-                    print('dsync: deleting old dirs:')
+                    print(f'dsync: deleting old dirs ({len(dirs_to_delete)}):')
                     for ndir in dirs_to_delete:
                         print(f'- {ndir}')
                     if not args.n:
@@ -846,6 +897,9 @@ class ShDsyncIO:
 
             dev_files = dev_file_match
             local_files = file_match
+            _new_files = []
+            _modified_files = []
+            files_to_delete = []
             if dev_files:
                 files_to_sync = [(fh[1], fh[0])
                                  for fh in local_files if fh not in
@@ -871,11 +925,11 @@ class ShDsyncIO:
                                    in files_to_sync if name in
                                    [dname for dname, sz, fh in dev_files]]
                 if _new_files:
-                    print('dsync: syncing new files:')
+                    print(f'dsync: syncing new files ({len(_new_files)}):')
                     for sz, name in _new_files:
                         print_size(name, sz)
                 if _modified_files:
-                    print('dsync: syncing modified files:')
+                    print(f'dsync: syncing modified files ({len(_modified_files)}):')
                     for sz, name in _modified_files:
                         print_size(name, sz)
                         if args.p:
@@ -902,7 +956,7 @@ class ShDsyncIO:
                 if args.i:
                     files_to_delete = self.re_filt(args.i, files_to_delete)
                 if files_to_delete:
-                    print('dsync: deleting old files:')
+                    print(f'dsync: deleting old files ({len(files_to_delete)}):')
                     for ndir in files_to_delete:
                         print(f'- {ndir}')
                     if not args.n:
@@ -912,16 +966,28 @@ class ShDsyncIO:
                                         follow=True)
                 else:
                     print(f'dsync: files: OK{CHECK}')
+
+            # SUM UP
+            if dirs_to_make or dirs_to_delete:
+                print(f"{fname(len(dirs_to_make),'new dir')}, "
+                      f"{fname(len(dirs_to_delete), 'dir')}"
+                      f" deleted")
+            if _new_files or _modified_files or files_to_delete:
+                print(f"{fname(len(_new_files), 'new file')}, "
+                      f"{fname(len(_modified_files), 'file')} "
+                      f"changed, {fname(len(files_to_delete), 'file')} deleted")
+
         else:
             # DEVICE TO HOST
             dirs_to_delete = []
+            dirs_to_make = []
             if dev_dir_match:
                 dirs_to_make = [
                     ddir for ddir in dev_dir_match if ddir not in dir_match]
                 if args.i:
                     dirs_to_make = self.re_filt(args.i, dirs_to_make)
                 if dirs_to_make:
-                    print('dsync: making new dirs:')
+                    print(f'dsync: making new dirs ({len(dirs_to_make)}):')
                     for ndir in dirs_to_make:
                         print(f'- {ndir}')
                         if not args.n:
@@ -941,7 +1007,7 @@ class ShDsyncIO:
                     if args.i:
                         dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
                     if dirs_to_delete:
-                        print('dsync: deleting old dirs:')
+                        print(f'dsync: deleting old dirs ({len(dirs_to_delete)}):')
                         for ndir in dirs_to_delete:
                             print(f'- {ndir}')
                             if not args.n:
@@ -956,6 +1022,9 @@ class ShDsyncIO:
 
             dev_files = dev_file_match
             local_files = file_match
+            _new_files = []
+            _modified_files = []
+            files_to_delete = []
             if dev_files:
 
                 if local_files:
@@ -982,11 +1051,12 @@ class ShDsyncIO:
                                        in files_to_sync if name in
                                        local_files_dict.keys()]
                     if _new_files:
-                        print('\ndsync: syncing new files:')
+                        print(f'\ndsync: syncing new files ({len(_new_files)}):')
                         for sz, name in _new_files:
                             print_size(name, sz)
                     if _modified_files:
-                        print('\ndsync: syncing modified files:')
+                        print(f'\ndsync: syncing modified files '
+                              f'({len(_modified_files)}):')
                         for sz, name in _modified_files:
                             print_size(name, sz)
                             if args.p:
@@ -1013,10 +1083,20 @@ class ShDsyncIO:
                     if args.i:
                         files_to_delete = self.re_filt(args.i, files_to_delete)
                     if files_to_delete:
-                        print('dsync: deleting old files:')
+                        print(f'dsync: deleting old files ({len(files_to_delete)}):')
                         for ndir in files_to_delete:
                             print(f'- {ndir}')
                             if not args.n:
                                 os.remove(ndir)
                     else:
                         print(f'dsync: files: OK{CHECK}')
+
+            # SUM UP
+            if dirs_to_make or dirs_to_delete:
+                print(f"{fname(len(dirs_to_make),'new dir')}, "
+                      f"{fname(len(dirs_to_delete), 'dir')}"
+                      f" deleted")
+            if _new_files or _modified_files or files_to_delete:
+                print(f"{fname(len(_new_files), 'new file')}, "
+                      f"{fname(len(_modified_files), 'file')} "
+                      f"changed, {fname(len(files_to_delete), 'file')} deleted")

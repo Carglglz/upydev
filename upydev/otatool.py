@@ -100,7 +100,12 @@ class OTAServer:
         return local_ip
 
     def start_ota(self):
-        self.serv_soc.bind((self.host, self.port))
+        while True:
+            try:
+                self.serv_soc.bind((self.host, self.port))
+                break
+            except Exception:
+                self.port += 2
         self.serv_soc.listen(1)
         print('OTA Server listening...')
         if self._use_tls:

@@ -117,6 +117,7 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
 
     def _autocomplete_shell_local(event):
         glb = False
+        cmd_ls_glb = []
         if flags.shell_mode['S']:
             try:
                 buff_text = event.app.current_buffer.document.text.split(' ')[-1]

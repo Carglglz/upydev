@@ -52,9 +52,10 @@ GET = dict(help="download files from device",
                     "-d": dict(help='depth level search for pattrn', required=False,
                                default=0,
                                type=int),
-                    "-fg": dict(help='use a faster get method', required=False,
-                                default=False,
-                                action='store_true'),
+                    "-fg": dict(help='switch off faster get method',
+                                required=False,
+                                default=True,
+                                action='store_false'),
                     "-b": dict(help='read buffer for faster get method', required=False,
                                default=512,
                                type=int)})
@@ -73,9 +74,10 @@ DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
                       "-d": dict(help='sync from device to host', required=False,
                                  default=False,
                                  action='store_true'),
-                      "-fg": dict(help='use a faster get method', required=False,
-                                  default=False,
-                                  action='store_true'),
+                      "-fg": dict(help='switch off faster get method',
+                                  required=False,
+                                  default=True,
+                                  action='store_false'),
                       "-b": dict(help='read buffer for faster get method',
                                  required=False,
                                  default=512,
@@ -94,7 +96,14 @@ DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
                                  action='store_true'),
                       "-i": dict(help='ignore file/dir or pattern', required=False,
                                  default=[],
-                                 nargs='*')})
+                                 nargs='*'),
+                      "-app": dict(help='apply stash', required=False,
+                                   default=False,
+                                   action='store_true'),
+                      "-s": dict(help='show stash', required=False,
+                                   default=False,
+                                   action='store_true')})
+
 DEBUG = dict(help="toggle debug mode for websocket debugging",
              subcmd={},
              options={})
@@ -289,24 +298,43 @@ class ShellWsCmds(ShellCmds):
             self.dsyncio.fileop(cmd, args, rest_args)
 
         if cmd == 'dsync':
-            # dir_only = True
             # be aware of name length error
-            # 1: copy dir structure
-            #    get depth level path
-            #    get local dirs glob (dir_only)
-            #    get device dirs glob()
-            #    if dir not in glob dir mkdir
-            #    match option -rf:
-            #    if dir
-            # 2: copy files if modified or new
-            #   get (files, hash) local
-            #   get (files,  hash) device
-            #   match: options -rf (remove if not present local)
-            #   if in device and not in local:
-            #      device rm
-            #
-            # self.dsyncio.dsync(args, rest_args)
-            self.dsyncio.fsync(args, rest_args)
+            if not args.app and not args.s:
+                self.dsyncio.fsync(args, rest_args)
+            else:
+                if self.dsyncio.stash:
+                    if args.app:
+                        if args.s:
+                            print(f'dsync: stash @ {self.dsyncio.show_stash()}')
+                            path = self.dsyncio.stash.get('path')
+                            if path == '.':
+                                path = ''
+                            mode = self.dsyncio.stash.get("d")
+                            if not mode:
+                                print(f'dsync: mode: host -> {self.dev_name}')
+                            else:
+                                print(f'dsync: mode: {self.dev_name} -> host')
+                            print(f'dsync: path: ./{path}')
+                            print(f'dsync: ignored: {self.dsyncio.stash.get("ignore")}')
+                            print(f'dsync: -rf: {self.dsyncio.stash.get("rf")}')
+                        self.dsyncio.apply_stash(args, rest_args)
+                        self.dsyncio.stash = {}
+                    elif args.s:
+                        args.n = True
+                        print(f'dsync: stash @ {self.dsyncio.show_stash()}')
+                        path = self.dsyncio.stash.get('path')
+                        if path == '.':
+                            path = ''
+                        mode = self.dsyncio.stash.get("d")
+                        if not mode:
+                            print(f'dsync: mode: host -> {self.dev_name}')
+                        else:
+                            print(f'dsync: mode: {self.dev_name} -> host')
+                        print(f'dsync: path: ./{path}')
+                        print(f'dsync: ignored: {self.dsyncio.stash.get("ignore")}')
+                        print(f'dsync: -rf: {self.dsyncio.stash.get("rf")}')
+                        self.dsyncio.apply_stash(args, rest_args)
+
         if cmd == 'debugws':
             state = self.dev.debug
             self.dev.debug = not state

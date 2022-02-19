@@ -97,6 +97,9 @@ DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
                                  nargs='*'),
                       "-app": dict(help='apply stash', required=False,
                                    default=False,
+                                   action='store_true'),
+                      "-s": dict(help='show stash', required=False,
+                                   default=False,
                                    action='store_true')})
 
 FW = dict(help="list or get available firmware from micropython.org",
@@ -259,25 +262,41 @@ class ShellSrCmds(ShellCmds):
             self.dsyncio.fileop(cmd, args, rest_args)
 
         if cmd == 'dsync':
-            # 1: copy dir structure
-            #    get depth level path
-            #    get local dirs glob (dir_only)
-            #    get device dirs glob()
-            #    if dir not in glob dir mkdir
-            #    match option -rf:
-            #    if dir
-            # 2: copy files if modified or new
-            #   get (files, hash) local
-            #   get (files,  hash) device
-            #   match: options -rf (remove if not present local)
-            #   if in device and not in local:
-            #      device rm
-            #
-            if not args.app:
+            if not args.app and not args.s:
                 self.dsyncio.fsync(args, rest_args)
             else:
                 if self.dsyncio.stash:
-                    self.dsyncio.apply_stash(args, rest_args)
+                    if args.app:
+                        if args.s:
+                            print(f'dsync: stash @ {self.dsyncio.show_stash()}')
+                            path = self.dsyncio.stash.get('path')
+                            if path == '.':
+                                path = ''
+                            mode = self.dsyncio.stash.get("d")
+                            if not mode:
+                                print(f'dsync: mode: host -> {self.dev_name}')
+                            else:
+                                print(f'dsync: mode: {self.dev_name} -> host')
+                            print(f'dsync: path: ./{path}')
+                            print(f'dsync: ignored: {self.dsyncio.stash.get("ignore")}')
+                            print(f'dsync: -rf: {self.dsyncio.stash.get("rf")}')
+                        self.dsyncio.apply_stash(args, rest_args)
+                        self.dsyncio.stash = {}
+                    elif args.s:
+                        args.n = True
+                        print(f'dsync: stash @ {self.dsyncio.show_stash()}')
+                        path = self.dsyncio.stash.get('path')
+                        if path == '.':
+                            path = ''
+                        mode = self.dsyncio.stash.get("d")
+                        if not mode:
+                            print(f'dsync: mode: host -> {self.dev_name}')
+                        else:
+                            print(f'dsync: mode: {self.dev_name} -> host')
+                        print(f'dsync: path: ./{path}')
+                        print(f'dsync: ignored: {self.dsyncio.stash.get("ignore")}')
+                        print(f'dsync: -rf: {self.dsyncio.stash.get("rf")}')
+                        self.dsyncio.apply_stash(args, rest_args)
         if cmd == 'fw':
             self.fwio.fwop(args, rest_args)
 
