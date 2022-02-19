@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from upydevice import Device
+from upydevice import Device, DeviceNotFound
 import argparse
 import sys
 from binascii import hexlify
@@ -30,8 +30,11 @@ parser.add_argument("-r", help='reset on exit',
 args = parser.parse_args()
 
 
-
-dev = Device(args.p, args.t, autodetect=True, init=True)
+try:
+    dev = Device(args.p, args.t, autodetect=True, init=True)
+except DeviceNotFound as e:
+    print(e)
+    sys.exit()
 
 time.sleep(0.2)
 

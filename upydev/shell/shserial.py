@@ -50,14 +50,15 @@ GET = dict(help="download files from device",
                     "-d": dict(help='depth level search for pattrn', required=False,
                                default=0,
                                type=int),
-                    "-fg": dict(help='use a faster get method', required=False,
-                                default=False,
-                                action='store_true'),
+                    "-fg": dict(help='switch off faster get method',
+                                required=False,
+                                default=True,
+                                action='store_false'),
                     "-b": dict(help='read buffer for faster get method', required=False,
                                default=512,
                                type=int)})
 
-DSYNC = dict(help="recursively sync a folder from/to device filesystem",
+DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
              subcmd=dict(help='Indicate a dir/pattern to '
                          'sync',
                          default=['.'],
@@ -71,9 +72,10 @@ DSYNC = dict(help="recursively sync a folder from/to device filesystem",
                       "-d": dict(help='sync from device to host', required=False,
                                  default=False,
                                  action='store_true'),
-                      "-fg": dict(help='use a faster get method', required=False,
-                                  default=False,
-                                  action='store_true'),
+                      "-fg": dict(help='switch off faster get method',
+                                  required=False,
+                                  default=True,
+                                  action='store_false'),
                       "-b": dict(help='read buffer for faster get method',
                                  required=False,
                                  default=512,
@@ -87,12 +89,15 @@ DSYNC = dict(help="recursively sync a folder from/to device filesystem",
                       "-p": dict(help='show diff', required=False,
                                  default=False,
                                  action='store_true'),
-                      "-n": dict(help='dry-run', required=False,
+                      "-n": dict(help='dry-run and save stash', required=False,
                                  default=False,
                                  action='store_true'),
                       "-i": dict(help='ignore file/dir or pattern', required=False,
                                  default=[],
-                                 nargs='*')})
+                                 nargs='*'),
+                      "-app": dict(help='apply stash', required=False,
+                                   default=False,
+                                   action='store_true')})
 
 FW = dict(help="list or get available firmware from micropython.org",
            subcmd=dict(help=('{list, get, update}'
@@ -268,8 +273,11 @@ class ShellSrCmds(ShellCmds):
             #   if in device and not in local:
             #      device rm
             #
-            # self.dsyncio.dsync(args, rest_args)
-            self.dsyncio.fsync(args, rest_args)
+            if not args.app:
+                self.dsyncio.fsync(args, rest_args)
+            else:
+                if self.dsyncio.stash:
+                    self.dsyncio.apply_stash(args, rest_args)
         if cmd == 'fw':
             self.fwio.fwop(args, rest_args)
 

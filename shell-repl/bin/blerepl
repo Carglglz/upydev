@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from upydevice.bledevice import ble_scan, AsyncBleDevice
+from upydevice import DeviceNotFound
 import argparse
 import time
 import sys
@@ -56,8 +57,11 @@ else:
             if bdev in dev.name:
                 dev = AsyncBleDevice(devs[0], lenbuff=args.buff)
                 break
-
-dev.connect(show_servs=args.v, debug=args.v)
+try:
+    dev.connect(show_servs=args.v, debug=args.v)
+except DeviceNotFound as e:
+    print(e)
+    sys.exit()
 if dev.name in _WASPDEV:
     dev.len_buffer = 20  # FIXME: INCREASE MTU SIZE IN NRF52
     _IS_WASPDEV = True

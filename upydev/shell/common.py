@@ -947,6 +947,8 @@ class CatFileIO:
 
     def get(self, data, std=True, exec_prompt=False):
         if std != 'stderr':
+            # data.replace(b'\r\n', b'')
+            # data = ast.literal_eval(data.decode())  # shielded bytes
             data = data.encode()
             with open(self.filename, 'ab') as f:
                 if data == b'':
@@ -1042,11 +1044,12 @@ class CatFileIO:
         print(' ' * self.columns, end='\r')
 
     def shapipe(self, data, std=True, exec_prompt=False):
-        if std != 'stderr':
+        if std != 'stderr' and data != '\n':
 
             sys.stdout.write("\033[K")
             sys.stdout.write("\033[A")
-            print(f"{self._prog}: checking files... {self.wheel[self._hf_index % 4]}")
+            print(f"{self._prog}: checking filesystem... "
+                  f"{self.wheel[self._hf_index % 4]}")
             if data.endswith('\n'):
                 data = data[:-1]
             total_ln = len(data)

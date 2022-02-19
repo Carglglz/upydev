@@ -31,7 +31,8 @@ def _os_match_dir(patt, path):
             and os.stat(f"{path}/{dir}")[0] & 0x4000]
 
 
-def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=False):
+def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=False,
+            all=False, recursive=False):
     _hash = hashlib.sha256()
     try:
         with open(file, 'rb') as bfile:
@@ -45,6 +46,19 @@ def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=Fals
                 except Exception:
                     return
     except Exception:
+        if all:
+            try:
+                if os.stat(file):
+                    if not size:
+                        print(f"dir{' ' * 61}  {file}")
+                    else:
+                        print(f"dir{' ' * 61}  {file}  {os.stat(file)[6]}")
+                    if recursive:
+                        for rfile in os.listdir(file):
+                            _shasum(f"{file}/{rfile}", all=all, recursive=recursive,
+                                    size=size)
+            except Exception:
+                pass
         return
     _result = _hash.digest()
     result = hexlify(_result).decode()

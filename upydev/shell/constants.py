@@ -215,7 +215,7 @@ shell_commands_info = """
     Commands that start with %% or not registered will be forwarded to local shell.
 """
 # dict {cmd:{'help':'command_help', 'subcommand':{'help':'subh', 'choices':[]}}...}
-LS = dict(help="list device files or directories",
+LS = dict(help="list files or directories",
           subcmd=dict(help='Indicate a file/dir or pattern to see', default=[],
                       metavar='file/dir/pattern', nargs='*'),
           options={"-a": dict(help='list hidden files', required=False,
@@ -302,7 +302,7 @@ EXIT = dict(help="exit upydev shell",
                      "-hr": dict(help='hard-reset after exit', required=False,
                                  default=False,
                                  action='store_true')})
-VIM = dict(help="use vim to edit device's files",
+VIM = dict(help="use vim to edit files",
            subcmd=dict(help='Indicate a file to edit', default='',
                        metavar='file', nargs='?'),
            options={"-rm": dict(help='remove local copy after upload', required=False,
@@ -325,7 +325,7 @@ VIM = dict(help="use vim to edit device's files",
                                default=[],
                                nargs='+')})
 
-DIFF = dict(help=("use git diff between device [~file/s] and local file/s"),
+DIFF = dict(help=("use git diff between device's [~file/s] and local file/s"),
             subcmd=dict(help='Indicate files to compare or pattern', default=['*', '*'],
                         metavar='fileA fileB', nargs='+'),
             options={"-s": dict(help='switch file comparison',
@@ -368,11 +368,11 @@ LDU = dict(help="display local disk usage statistics",
            options={"-d": dict(help='depth level', required=False,
                                default=0,
                                type=int)})
-INFO = dict(help="prints device info",
+INFO = dict(help="prints device's info",
             subcmd={},
             options={})
 
-ID = dict(help="prints device unique id",
+ID = dict(help="prints device's unique id",
           subcmd={},
           options={})
 
@@ -380,7 +380,7 @@ UHELP = dict(help="prints device's help info",
              subcmd={},
              options={})
 
-MODULES = dict(help="prints device frozen modules",
+MODULES = dict(help="prints device's frozen modules",
                subcmd={},
                options={})
 
@@ -390,7 +390,7 @@ UPING = dict(help="device send ICMP ECHO_REQUEST packets to network hosts",
                          metavar='IP', nargs='?'),
              options={})
 
-RSSI = dict(help="prints device RSSI (WiFi or BLE)",
+RSSI = dict(help="prints device's RSSI (WiFi or BLE)",
             subcmd={},
             options={})
 
@@ -435,7 +435,7 @@ I2C = dict(help="manage I2C interface",
                                  default=[22, 23],
                                  nargs=2)})
 
-SET = dict(help="set device configuration {rtc, hostname, localname}",
+SET = dict(help="set device's configuration {rtc, hostname, localname}",
            subcmd=dict(help=('set parameter configuration {rtc localtime, rtc ntptime,'
                              ' hostname, localname}; default: rtc localtime'),
                        default=['rtc'],
@@ -444,7 +444,7 @@ SET = dict(help="set device configuration {rtc, hostname, localname}",
                                  'command', required=False, nargs=1, type=int)},
            alt_ops=['rtc', 'localtime', 'ntptime', 'hostname', 'localname'])
 
-DATETIME = dict(help="prints device RTC time",
+DATETIME = dict(help="prints device's RTC time",
                 subcmd={},
                 options={})
 

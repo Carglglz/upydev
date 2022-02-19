@@ -39,8 +39,11 @@ def _shasum_data(data):
     return result
 
 
-def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=False):
+def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=False,
+            all=False, recursive=False):
     _hash = hashlib.sha256()
+    if recursive:
+        result_list = []
     try:
         with open(file, 'rb') as bfile:
             buff = bfile.read(1)
@@ -53,7 +56,33 @@ def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=Fals
                 except Exception:
                     return
     except Exception:
-        return
+        if all:
+            try:
+                if os.stat(file):
+                    if debug:
+                        if not size:
+                            print(f"dir{' ' * 61}  {file}")
+                        else:
+                            print(f"dir{' ' * 61}  {file}  {os.stat(file)[6]}")
+                    if recursive:
+                        for rfile in os.listdir(file):
+                            if not rtn:
+                                _shasum(f"{file}/{rfile}", all=all, recursive=recursive,
+                                        size=size)
+                            else:
+                                result_list += _shasum(f"{file}/{rfile}", all=all,
+                                                       recursive=recursive,
+                                                       size=size, rtn=rtn,
+                                                       debug=debug)
+            except Exception:
+                pass
+        if not rtn:
+            return
+        else:
+            if recursive:
+                return [(file, 'dir')] + result_list
+            else:
+                return 'dir'
     _result = _hash.digest()
     result = hexlify(_result).decode()
     if debug:
@@ -69,19 +98,26 @@ def _shasum(file, debug=True, save=False, rtn=False, filetosave=False, size=Fals
             with open(filetosave, 'a') as shafile:
                 shafile.write(f"{result}  {file}")
     if rtn:
-        return result
+        if not recursive:
+            return result
+        else:
+            return [(file, result)] + result_list
 
 
 def shasum(*args, **kargs):
     files_to_hash = args
     rtn = kargs.get('rtn')
     size = kargs.get('size')
+    recursive = kargs.get('recursive')
     files_in_dir = []
     hashlist = []
     for file_name in files_to_hash:
         if '*' not in file_name:
             if rtn:
-                hashlist.append((file_name, _shasum(file_name, **kargs)))
+                if recursive:
+                    hashlist += _shasum(file_name, **kargs)
+                else:
+                    hashlist.append((file_name, _shasum(file_name, **kargs)))
             else:
                 _shasum(file_name, **kargs)
         else:
@@ -103,14 +139,23 @@ def shasum(*args, **kargs):
                         for filehash in files_in_dir:
                             if exp_dir != '':
                                 if rtn:
-                                    hashlist.append((f"{exp_dir}/{filehash}",
-                                                     _shasum(f"{exp_dir}/{filehash}",
-                                                             **kargs)))
+                                    if recursive:
+                                        hashlist += _shasum(f"{exp_dir}"
+                                                            f"/{filehash}", **kargs)
+
+                                    else:
+                                        hashlist.append((f"{exp_dir}/{filehash}",
+                                                         _shasum(f"{exp_dir}/"
+                                                                 f"{filehash}",
+                                                                 **kargs)))
                                 else:
                                     _shasum(f"{exp_dir}/{filehash}", **kargs)
                             else:
                                 if rtn:
-                                    hashlist.append((filehash, _shasum(filehash,
+                                    if recursive:
+                                        hashlist += _shasum(filehash, **kargs)
+                                    else:
+                                        hashlist.append((filehash, _shasum(filehash,
                                                                        **kargs)))
                                 else:
                                     _shasum(filehash, **kargs)
@@ -122,15 +167,22 @@ def shasum(*args, **kargs):
                 for filehash in files_in_dir:
                     if dir_name != '':
                         if rtn:
-                            hashlist.append((f"{dir_name}/{filehash}",
-                                             _shasum(f"{dir_name}/{filehash}",
-                                                     **kargs)))
+                            if recursive:
+                                hashlist += _shasum(f"{dir_name}"
+                                                     f"/{filehash}", **kargs)
+                            else:
+                                hashlist.append((f"{dir_name}/{filehash}",
+                                                 _shasum(f"{dir_name}/{filehash}",
+                                                         **kargs)))
                         else:
                             _shasum(f"{dir_name}/{filehash}", **kargs)
                     else:
                         if rtn:
-                            hashlist.append((filehash, _shasum(filehash,
-                                                               **kargs)))
+                            if recursive:
+                                hashlist += _shasum(filehash, **kargs)
+                            else:
+                                hashlist.append((filehash, _shasum(filehash,
+                                                                   **kargs)))
                         else:
                             _shasum(filehash, **kargs)
     if rtn:

@@ -137,10 +137,6 @@ help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
 
 keywords_mode += help_actions
 
-keywords_mode += ['shr@{}'.format(dev) for dev in see_global_devs(serial=True)]
-keywords_mode += ['ssl@{}'.format(dev) for dev in see_global_devs()]
-keywords_mode += ['wssl@{}'.format(dev) for dev in see_global_devs()]
-keywords_mode += ['ble@{}'.format(dev) for dev in see_global_devs(ble=True)]
 keywords_mode += ['rpl@{}'.format(dev) for dev in see_global_devs(all=True)]
 keywords_mode += ['shl@{}'.format(dev) for dev in see_global_devs(all=True)]
 help_dv = "To point the command to a specific device saved in the global group"
@@ -661,7 +657,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
-        repl_action(args, device=dev_name)
+        repl_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
+                          device=dev_name)
 
     # FIRMWARE ACTIONS
 
@@ -729,7 +726,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
-        shell_repl_action(args, device=dev_name)
+        shell_repl_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
+                          device=dev_name)
 
     # * GENERAL COMMANDS *
 
@@ -822,12 +820,12 @@ if args.m in help_actions:
             print(KEYGEN_HELP)
             sys.exit()
         elif args.m == 'rp':
-            from upydev.repls import REPLS_HELP
-            print(REPLS_HELP)
+            from upydev.repls import sh_cmd
+            sh_cmd('-h')
             sys.exit()
         elif args.m == 'sh':
-            from upydev.shellrepls import SHELL_REPLS_HELP
-            print(SHELL_REPLS_HELP)
+            from upydev.shellrepls import sh_cmd
+            sh_cmd('-h')
             sys.exit()
         elif args.m == 'db':
             from upydev.debugging import DEBUGGING_HELP

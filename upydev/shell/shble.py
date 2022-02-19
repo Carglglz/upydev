@@ -11,13 +11,18 @@ import shlex
 import signal
 import shutil
 import os
+import textwrap
 
 shbl_cmd_kw = ["services", "ota"]
 
 
 SERVS = dict(help="show GATT services and characteristics",
                subcmd={},
-               options={})
+               options={"-t": dict(help='show services and characteristics in '
+                                        'tree format',
+                                   required=False,
+                                   default=False,
+                                   action='store_true')})
 JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
                 subcmd={},
                 options={})
@@ -55,7 +60,7 @@ GET = dict(help="download files from device",
                                 default=False,
                                 action='store_true')})
 
-DSYNC = dict(help="recursively sync a folder from/to device filesystem",
+DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
              subcmd=dict(help='Indicate a dir/pattern to '
                          'sync',
                          default=['.'],
@@ -127,6 +132,19 @@ SHELLBLE_CMD_DICT_PARSER = {"jupyterc": JUPYTERC,
                             "dsync": DSYNC, "fw": FW, "mpyx": MPYX, "ota": OTA,
                             "services": SERVS, "upy-config": UPY_CONFIG}
 
+wrapper = textwrap.TextWrapper(initial_indent=" "*4,)
+
+
+def print_wrp(text, mg=3, f_indent=4, indent=0, wrapper=wrapper, f_indent_char='',
+              r_indent_char=' ', s_indent=' '):
+    columns, rows = os.get_terminal_size(0)
+    if f_indent_char != '':
+        f_indent += -1
+    wrapper.initial_indent = f_indent_char + r_indent_char * f_indent
+    wrapper.subsequent_indent = s_indent + ' ' * indent
+    wrapper.width = columns-mg
+    print('\n'.join(wrapper.wrap(text)))
+
 
 class ShellBleCmds(ShellCmds):
     def __init__(self, *args, **kargs):
@@ -173,7 +191,65 @@ class ShellBleCmds(ShellCmds):
                 print('')
 
         if cmd == 'services':
-            self.dev.get_services()
+            if not args.t:
+                self.dev.get_services()
+                return
+            self.dev.get_services(log=False, read_descriptors=True)
+            is_last_serv = False
+            is_last_char = False
+            for service in self.dev.services_rsum:
+                if service == list(self.dev.services_rsum.keys())[-1]:
+                    is_last_serv = True
+                print_wrp('┃', f_indent=0)
+                if is_last_serv:
+                    print_wrp("\u001b[42;1m{}\u001b[0m".format(service),
+                              f_indent_char='┗', r_indent_char='━')
+                else:
+                    print_wrp("\u001b[42;1m{}\u001b[0m".format(service),
+                              f_indent_char='┣', r_indent_char='━')
+                for char in self.dev.services_rsum[service]:
+
+                    if char == self.dev.services_rsum[service][-1]:
+                        is_last_char = True
+                    else:
+                        is_last_char = False
+                    if not is_last_serv:
+                        print_wrp('┃', f_indent_char='┃')
+                    else:
+                        print_wrp('┃', f_indent_char='')
+
+                    if not is_last_serv:
+                        if is_last_char:
+                            print_wrp(f"┗━━━\u001b[44;1m{char:^30}\u001b[0m ",
+                                      f_indent=4, f_indent_char='┃',
+                                      indent=40, s_indent='┃')
+                        else:
+                            print_wrp(f"┣━━━\u001b[44;1m{char:^30}\u001b[0m ",
+                                      f_indent=4, f_indent_char='┃', indent=40,
+                                      s_indent='┃   ┃')
+                    else:
+                        if is_last_char:
+                            print_wrp(f"┗━━━\u001b[44;1m{char:^30}\u001b[0m ",
+                                      f_indent=4, f_indent_char='', indent=40)
+                        else:
+                            print_wrp(f"┣━━━\u001b[44;1m{char:^30}\u001b[0m ",
+                                      f_indent=4, f_indent_char='', indent=40,
+                                      s_indent='     ┃')
+                    if self.dev.chars_desc_rsum:
+                        for desc in self.dev.chars_desc_rsum[char]:
+                            if desc == 'Characteristic User Description':
+                                if not is_last_serv:
+                                    print_wrp('┃', f_indent_char='┃   ┃', f_indent=4)
+                                else:
+                                    print_wrp('┃', f_indent_char='', f_indent=8)
+                                if not is_last_serv:
+                                    print_wrp(f"┗━━━\u001b[45;1m{desc:^30}\u001b[0m",
+                                              f_indent=4, f_indent_char='┃   ┃')
+                                else:
+                                    print_wrp(f"┗━━━\u001b[45;1m{desc:^30}\u001b[0m",
+                                              f_indent=8, f_indent_char='')
+
+            print('')
 
         if cmd == 'jupyterc':
             # print('<-- Device {} MicroPython -->'.format(dev_platform))
@@ -270,8 +346,8 @@ class ShellBleCmds(ShellCmds):
             #   if in device and not in local:
             #      device rm
             #
-            self.dsyncio.dsync(args, rest_args)
-
+            # self.dsyncio.dsync(args, rest_args)
+            self.dsyncio.fsync(args, rest_args)
         if cmd == 'fw':
             self.fwio.fwop(args, rest_args)
 

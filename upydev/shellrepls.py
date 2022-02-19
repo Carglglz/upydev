@@ -6,6 +6,73 @@ from upydevice import check_device_type
 import signal
 from upydevice import Device
 import time
+import argparse
+rawfmt = argparse.RawTextHelpFormatter
+
+
+arg_options = ['t', 'p', 'wss', 'rkey', 'nem']
+
+SHELLREPLS = dict(help="enter shell-repl",
+                  subcmd={},
+                  options={"-t": dict(help="device target address",
+                                      required=True),
+                           "-p": dict(help='device password or baudrate',
+                                      required=True),
+                           "-wss": dict(help='use WebSocket Secure',
+                                        required=False,
+                                        default=False,
+                                        action='store_true'),
+                           "-rkey": dict(help='generate new password after exit '
+                                         '(WebSocketDevices)',
+                                         required=False,
+                                         action='store_true'),
+                           "-nem": dict(help='force no encryption mode'
+                                             ' (WebSocketDevices)',
+                                        required=False,
+                                        action='store_true')})
+
+SET_WSS = dict(help="toggle between WebSecREPL and WebREPL",
+                  subcmd={},
+                  options={"-t": dict(help="device target address",
+                                      required=True),
+                           "-p": dict(help='device password',
+                                      required=True),
+                           "-wss": dict(help='use WebSocket Secure',
+                                        required=False,
+                                        default=False,
+                                        action='store_true'),
+                           })
+
+JUPYTER = dict(help="MicroPython upydevice kernel for jupyter console, CTRL-D to exit",
+                  subcmd={},
+                  options={})
+
+SHELLREPL_CMD_DICT_PARSER = {"shl": SHELLREPLS, "set_wss": SET_WSS,
+                             "jupyterc": JUPYTER}
+
+
+usag = """%(prog)s command [options]\n
+"""
+
+_help_subcmds = "%(prog)s [command] -h to see further help of any command"
+
+parser = argparse.ArgumentParser(prog="upydev",
+                                   description=('shell-repl for MicroPython devices'
+                                                + '\n'
+                                                + _help_subcmds),
+                                   formatter_class=rawfmt,
+                                   usage=usag, prefix_chars='-')
+subparser_cmd = parser.add_subparsers(title='commands', prog='', dest='m',
+                                          )
+
+for command, subcmd in SHELLREPL_CMD_DICT_PARSER.items():
+    _subparser = subparser_cmd.add_parser(command, help=subcmd['help'],
+                                             description=subcmd['help'])
+    if subcmd['subcmd']:
+        _subparser.add_argument('subcmd', **subcmd['subcmd'])
+    for option, op_kargs in subcmd['options'].items():
+        _subparser.add_argument(option, **op_kargs)
+
 
 SHELL_REPLS_HELP = """
 > SHELL-REPLS: Usage '$ upydev ACTION [opts]'
@@ -25,23 +92,51 @@ SHELL_REPLS_HELP = """
                     (This needs jupyter and MicroPython upydevice kernel to be installed)"""
 
 
+def parseap(command_args):
+    try:
+        return parser.parse_known_args(command_args)
+    except SystemExit:  # argparse throws these because it assumes you only want
+        # to do the command line
+        return None  # should be a default one
+
+def sh_cmd(cmd_inp):
+    # parse args
+    command_line = shlex.split(cmd_inp)
+
+    all_args = parseap(command_line)
+
+    if not all_args:
+        return
+    else:
+        args, unknown_args = all_args
+
+    return args, unknown_args
+
+def filter_bool_opt(k,v):
+    if v and isinstance(v, bool):
+        return f"{k}"
+    else:
+        return ""
+
+
+
 def ssl_wrepl(args, device):
     if not args.rkey:
         if not args.nem:
             if device is not None:
                 if args.wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -wss -zt {}'.format(
-                        args.t, args.p, device, args.zt)
+                    sslweb_repl_cmd_str = (f'sslweb_repl -t {args.t} -p {args.p} -r '
+                                           f'-dev {device} -wss ')
                 else:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -dev {} -zt {}'.format(
-                        args.t, args.p, device, args.zt)
+                    sslweb_repl_cmd_str = (f'sslweb_repl -t {args.t} -p {args.p} '
+                                           f'-r -dev {device} ')
             else:
                 if args.wss:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -wss -zt {}'.format(
-                        args.t, args.p, args.zt)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -wss'.format(
+                        args.t, args.p)
                 else:
-                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r -zt {}'.format(
-                        args.t, args.p, args.zt)
+                    sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -r '.format(
+                        args.t, args.p)
             sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
 
             old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -80,11 +175,11 @@ def ssl_wrepl(args, device):
 
     if args.rkey:
         if device is not None:
-            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} -zt {}'.format(
-                args.t, args.p, device, args.zt)
+            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -dev {} '.format(
+                args.t, args.p, device)
         else:
-            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {} -zt {}'.format(
-                args.t, args.p, args.zt)
+            sslweb_repl_cmd_str = 'sslweb_repl -t {} -p {}'.format(
+                args.t, args.p)
         sslweb_repl_cmd = shlex.split(sslweb_repl_cmd_str)
         try:
             sslweb_repl = subprocess.call(sslweb_repl_cmd)
@@ -99,10 +194,6 @@ def ssl_wrepl(args, device):
 
 
 def sh_srepl(args, device):
-    if args.port:
-        args.t = args.port
-    if args.b:
-        args.p = args.b
     if device is not None:
         sh_srepl_cmd_str = 'sh_srepl -t {} -p {} -r -dev {}'.format(
             args.p, args.t, device)
@@ -165,17 +256,34 @@ def jupyterc():
 
 
 #############################################
-def shell_repl_action(args, **kargs):
+def shell_repl_action(args, unkwargs, **kargs):
     dev_name = kargs.get('device')
-    dt = check_device_type(args.t)
+    #get top args and make command line filtering
+    args_dict = {f"-{k}": v for k,v in vars(args).items() if k in arg_options}
+    args_list = [f"{k} {v}" if v and not isinstance(v, bool)
+                 else filter_bool_opt(k,v) for k,v in args_dict.items()]
+    if args.m == 'shell':
+        args.m = 'shl'
+    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    # print(cmd_inp)
+    # sys.exit()
+    # debug command:
+    if cmd_inp.startswith('!'):
+        args = parseap(shlex.split(cmd_inp[1:]))
+        print(args)
+        return
+    if '-h' in unkwargs:
+        sh_cmd(f"{args.m} -h")
+        sys.exit()
+
+    args, unknown_args = sh_cmd(cmd_inp)
 
     if args.m == 'shell' or args.m == 'shl':
+        dt = check_device_type(args.t)
         if dt == 'WebSocketDevice':
             print('shell-repl @ {} '.format(dev_name))
             ssl_wrepl(args, dev_name)
-        elif dt == 'SerialDevice' or args.port:
-            if args.port:
-                dev_name = args.port
+        elif dt == 'SerialDevice':
             print('shell-repl @ {} '.format(dev_name))
             sh_srepl(args, dev_name)
         if dt == 'BleDevice':
@@ -187,7 +295,8 @@ def shell_repl_action(args, **kargs):
     elif args.m == 'set_wss':
         if not args.wss:
             print('Enabling WebSecureREPL...')
-            wss_repl_cmd = 'import wss_repl;wss_repl.stop();wss_repl.start(ssl=True);wss_repl.set_ssl(True)\r'
+            wss_repl_cmd = ('import wss_repl;wss_repl.stop();wss_repl.start(ssl=True);'
+                            'wss_repl.set_ssl(True)\r')
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
             bytes_sent = dev.write(wss_repl_cmd)
             time.sleep(2)
@@ -196,7 +305,8 @@ def shell_repl_action(args, **kargs):
 
         else:
             print('Switching to WebREPL...')
-            wrepl_cmd = 'import wss_repl;wss_repl.stop();wss_repl.start(ssl=False);wss_repl.set_ssl(False)\r'
+            wrepl_cmd = ('import wss_repl;wss_repl.stop();wss_repl.start(ssl=False);'
+                         'wss_repl.set_ssl(False)\r')
             dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
             bytes_sent = dev.write(wrepl_cmd)
             time.sleep(2)

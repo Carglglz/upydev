@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from upydevice import Device
+from upydevice import Device, DeviceNotFound
 import argparse
 import sys
 from binascii import hexlify
@@ -42,11 +42,16 @@ dev = Device(args.t, args.p)
 # TODO: fix wrong passphrase loop
 if args.nem:
     dev.passphrase = None
+
 if dev.passphrase:
     dev.connect()
     args.wss = True
 else:
     dev.connect(ssl=args.wss, auth=args.wss)
+
+if not dev.connected:
+    sys.exit()
+
 if args.wss:
     print(f'WebSecREPL with {dev.ws.sock.version()} connected')
     print('{1} @ {0} - {2} bits Encryption'.format(*dev.ws.sock.cipher()))

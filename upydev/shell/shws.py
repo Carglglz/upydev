@@ -16,7 +16,7 @@ shws_cmd_kw = ["repl", "getcert", "debugws", "ota"]
 WREPL = dict(help="enter WebREPL",
              subcmd={},
              options={})
-GETCERT = dict(help="get device certificate if available",
+GETCERT = dict(help="get device's certificate if available",
                subcmd={},
                options={})
 JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
@@ -59,7 +59,7 @@ GET = dict(help="download files from device",
                                default=512,
                                type=int)})
 
-DSYNC = dict(help="recursively sync a folder from/to device filesystem",
+DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
              subcmd=dict(help='Indicate a dir/pattern to '
                          'sync',
                          default=['.'],
