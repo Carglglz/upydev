@@ -668,7 +668,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
-        firmwaretools_action(args, device=dev_name)
+        firmwaretools_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
+                          device=dev_name)
 
     # DEBUGGING ACTIONS
 
@@ -812,8 +813,8 @@ if args.m in help_actions:
             print(FILEIO_HELP)
             sys.exit()
         elif args.m == 'fw':
-            from upydev.firmwaretools import FIRMWARE_HELP
-            print(FIRMWARE_HELP)
+            from upydev.firmwaretools import sh_cmd
+            sh_cmd('-h')
             sys.exit()
         elif args.m == 'kg':
             from upydev.keygen import KEYGEN_HELP

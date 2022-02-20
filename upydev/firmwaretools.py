@@ -12,28 +12,135 @@ import subprocess
 import upydev
 import re
 import time
+import argparse
+rawfmt = argparse.RawTextHelpFormatter
+
+
+arg_options = ['t', 'p', 'wss', 'b', 'n', 'f', 'fre']
+dict_arg_options = {'mpyx': ['f', 'fre'],
+                    'fwr': ['t', 'p', 'wss', 'b', 'n', 'md'],
+                    'flash': ['t', 'p', 'f', 'i'],
+                    'ota': ['t', 'p', 'wss', 'f', 'sec', 'i']}
+
+MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)",
+            subcmd=dict(help='indicate a file/pattern to '
+                            'compile',
+                        default=[],
+                        metavar='file/pattern',
+                        nargs='+'),
+            options={})
+
+FW = dict(help="list or get available firmware from micropython.org",
+          subcmd=dict(help=('{list, get, update}'
+                             '; default: list'),
+                       default=['list'],
+                       metavar='action', nargs='*'),
+          options={"-b": dict(help='to indicate device platform',
+                               required=False),
+                   "-n": dict(help='to indicate keyword for filter search',
+                                     required=False),
+                   "-t": dict(help="device target address",
+                                        required=True),
+                   "-p": dict(help='device password or baudrate',
+                                        required=True),
+                   "-wss": dict(help='use WebSocket Secure',
+                                        required=False,
+                                        default=False,
+                                        action='store_true')},
+           alt_ops=['list', 'get', 'update', 'latest'])
+
+FLASH = dict(help="to flash a firmware file using available serial tools "
+                   "(esptool.py, pydfu.py)",
+             subcmd=dict(help=('indicate a firmware file to flash'),
+                         metavar='firmware file'),
+             options={"-i": dict(help='to check wether device platform and '
+                                    'firmware file name match',
+                               required=False,
+                               action='store_true'),
+                       "-t": dict(help="device target address",
+                                            required=True),
+                       "-p": dict(help='device baudrate',
+                                            required=True),
+                       })
+
+OTA = dict(help="to flash a firmware file using OTA system (ota.py, otable.py)",
+             subcmd=dict(help=('indicate a firmware file to flash'),
+                         metavar='firmware file'),
+             options={"-i": dict(help='to check wether device platform and '
+                                    'firmware file name match',
+                                 required=False,
+                                 action='store_true'),
+                      "-sec": dict(help='to enable OTA TLS',
+                                   required=False,
+                                   action='store_true'),
+                      "-t": dict(help="device target address",
+                                           required=True),
+                      "-p": dict(help='device password',
+                                           required=True),
+                      "-wss": dict(help='use WebSocket Secure',
+                                           required=False,
+                                           default=False,
+                                           action='store_true')})
+
+
+FW_CMD_DICT_PARSER = {"mpyx": MPYX, "fwr": FW, "flash": FLASH, "ota": OTA}
+
+
+usag = """%(prog)s command [options]\n
+"""
+
+_help_subcmds = "%(prog)s [command] -h to see further help of any command"
+
+parser = argparse.ArgumentParser(prog="upydev",
+                                   description=('firmware tools'
+                                                + '\n\n'
+                                                + _help_subcmds),
+                                   formatter_class=rawfmt,
+                                   usage=usag, prefix_chars='-')
+subparser_cmd = parser.add_subparsers(title='commands', prog='', dest='m',
+                                          )
+
+for command, subcmd in FW_CMD_DICT_PARSER.items():
+    _subparser = subparser_cmd.add_parser(command, help=subcmd['help'],
+                                             description=subcmd['help'])
+    if subcmd['subcmd']:
+        _subparser.add_argument('subcmd', **subcmd['subcmd'])
+    for option, op_kargs in subcmd['options'].items():
+        _subparser.add_argument(option, **op_kargs)
 
 UPYDEV_PATH = upydev.__path__[0]
 
-FIRMWARE_HELP = """
-> FIRMWARE: Usage '$ upydev ACTION [opts]'
-    ACTIONS:
-        - fwr: to list or get available firmware versions, use -md option to indicate operation:
-                to list do: "upydev fwr -md list -b [BOARD]" board can be e.g. 'esp32','esp8266' or 'PYBD'
-                            "upydev fwr -md list latest -b [BOARD]" to see the latest firmware available
-                to get do: "upydev fwr -md get [firmware file]" or "upydev fwr -md get latest -b[BOARD]"
-                * for list or get modes the -n option will filter the results further: e.g. -n ota
-                to see available serial ports do: "upydev fwr -md list serial_ports"
+def parseap(command_args):
+    try:
+        return parser.parse_known_args(command_args)
+    except SystemExit:  # argparse throws these because it assumes you only want
+        # to do the command line
+        return None  # should be a default one
 
-        - flash: to flash a firmware file to the upydevice, a serial port must be indicated
-                    to flash do: "upydev flash -port [serial port] -f [firmware file]"
+def sh_cmd(cmd_inp):
+    # parse args
+    command_line = shlex.split(cmd_inp)
 
-        - ota: to do an OTA firmware update. This needs ota.py or otable.py. Indicate file with -f
-                    option or as second arg. Use -sec option for OTA over TLS.
+    all_args = parseap(command_line)
 
-        - mpyx : To froze a module/script , and save some RAM, it uses mpy-cross tool
-                 (mpy-cross must be available in $PATH) e.g. $ upydev mpyx [FILE].py,
-                 $ upydev mpyx [FILE].py [FILE2].py, $ upydev mpyx *.py"""
+    if not all_args:
+        return
+    else:
+        args, unknown_args = all_args
+
+    return args, unknown_args
+
+def filter_bool_opt(k,v):
+    if v and isinstance(v, bool):
+        return f"{k}"
+    else:
+        return ""
+
+def expand_margs(v):
+    if isinstance(v, list):
+        return ' '.join(v)
+    else:
+        return v
 
 
 def get_fw_versions(keyword):
@@ -57,177 +164,134 @@ def get_fw_versions(keyword):
     return fw_dict, fw_list
 
 
-def firmwaretools_action(args, **kargs):
+def firmwaretools_action(args, unkwargs, **kargs):
+    dev_name = kargs.get('device')
+    #get top args and make command line filtering
+    args_dict = {f"-{k}": v for k,v in vars(args).items()
+                 if k in dict_arg_options[args.m]}
+    args_list = [f"{k} {expand_margs(v)}" if v and not isinstance(v, bool)
+                 else filter_bool_opt(k,v) for k,v in args_dict.items()]
+    if args.m == 'shell':
+        args.m = 'shl'
+    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    # print(cmd_inp)
+    # sys.exit()
+    # debug command:
+    if cmd_inp.startswith('!'):
+        args = parseap(shlex.split(cmd_inp[1:]))
+        print(args)
+        return
+    if '-h' in unkwargs:
+        sh_cmd(f"{args.m} -h")
+        sys.exit()
 
+    result = sh_cmd(cmd_inp)
+    if not result:
+        sys.exit()
+    else:
+        args, unknown_args = result
+    if hasattr(args, 'subcmd'):
+        command, rest_args = args.m, args.subcmd
+        if rest_args is None:
+            rest_args = []
+    else:
+        command, rest_args = args.m, []
     # MPYX
-
-    if args.m == 'mpyx':
-        if not args.f and not args.fre:
-            print('File name required indicate with -f option.')
-            see_help(args.m)
-        else:
-            if args.f and not args.fre:
-                args.fre = [args.f]
-            if args.fre:
-                for frfile in args.fre:
-                    args.f = frfile
-                    if args.f not in os.listdir():
-                        print('File not found, indicate a valid file')
-                    else:
-                        print('Frozing {} to bytecode with mpy-cross'.format(args.f))
-                        mpy_cmd_str = 'mpy-cross {}'.format(args.f)
-                        mpy_cmd = shlex.split(mpy_cmd_str)
-                        try:
-                            mpy_tool = subprocess.call(mpy_cmd)
-                            if mpy_tool == 0:
-                                print('Process successful, bytecode in : {}'.format(
-                                                        args.f.replace('py', 'mpy')))
-                            else:
-                                print('Process failed.')
-                        except KeyboardInterrupt:
-                            pass
+    # print(f"{command}: {args} {rest_args} {unknown_args}")
+    if command == 'mpyx':
+        if rest_args:
+            for frfile in rest_args:
+                if frfile not in os.listdir():
+                    print('File not found, indicate a valid file')
+                else:
+                    print(f'Frozing {frfile} to bytecode with mpy-cross')
+                    mpy_cmd_str = f'mpy-cross {frfile}'
+                    mpy_cmd = shlex.split(mpy_cmd_str)
+                    try:
+                        mpy_tool = subprocess.call(mpy_cmd)
+                        if mpy_tool == 0:
+                            print(f"Process successful, bytecode in : "
+                                  f"{frfile.replace('py', 'mpy')}")
+                        else:
+                            print('Process failed.')
+                    except KeyboardInterrupt:
+                        pass
 
         sys.exit()
 
     # FW
-    elif args.m == 'fwr':
-        if not args.md:
-            print('Argument mode required (list, or get), indicate with -md')
-            see_help(args.m)
-            sys.exit()
-        else:
-            if args.md[0] == 'list':
-                if not args.b:  # Autodetect
-                    try:
-                        dev = Device(args.t, args.p, init=True, autodetect=True,
-                                     ssl=args.wss, auth=args.wss)
-                        args.b = dev.dev_platform
-                        if dev.dev_platform == 'pyboard':
-                            machine = dev.cmd('import os;os.uname().machine',
-                                              silent=True, rtn_resp=True)
-                            machine, version = machine.split()[0].split('v')
-                            version_str = version.replace('.', '')
-                            machine = machine.lower()
-                            args.b = "{}v{}".format(machine, version_str)
-                        dev.disconnect()
-                    except Exception as e:
-                        print(e)
-                        print('Indicate a device platform with -b option')
-                        sys.exit()
-                if len(args.md) > 1:
-                    if args.md[1] == 'latest':
-                        today = datetime.strftime(datetime.now(), "%Y%m%d")
-                        fw_v = get_fw_versions(args.b)
-                        if fw_v[1]:
-                            print('Latest Firmware versions found for {}:'.format(args.b))
-                            fw_v_latest = [v for v in fw_v[1] if today in v]
-                            days_before = 0
-                            while len(fw_v_latest) == 0:
-                                if len(fw_v[1]) == 0:
-                                    break
-                                days_before += 1
-                                latest_fw = datetime.strftime(
-                                    datetime.now()-timedelta(days=days_before), "%Y%m%d")
-                                fw_v_latest = [v for v in fw_v[1] if latest_fw in v]
-                            if args.n is not None:
-                                if args.n != 'def':
-                                    fw_v_latest_opt = [
-                                        v for v in fw_v_latest if args.n in v]
-                                    for v in fw_v_latest_opt:
-                                        print('- {}'.format(v))
-                                else:
-                                    print('- {}'.format(fw_v_latest[0]))
-                            else:
-                                for v in fw_v_latest:
-                                    print('- {}'.format(v))
-                        else:
-                            print('No firmware available that match: {}'.format(args.b))
-                        # fw_v_latest_link = fw_v[0][fw_v_latest]
+    elif command == 'fwr':
 
-                else:
-                    fw_v = get_fw_versions(args.b)[1]
-                    if not fw_v:
-                        print('No firmware available that match: {}'.format(args.b))
-                    else:
+
+        if rest_args[0] == 'list':
+            if not args.b:  # Autodetect
+                try:
+                    dev = Device(args.t, args.p, init=True, autodetect=True,
+                                 ssl=args.wss, auth=args.wss)
+                    args.b = dev.dev_platform
+                    if dev.dev_platform == 'pyboard':
+                        machine = dev.cmd('import os;os.uname().machine',
+                                          silent=True, rtn_resp=True)
+                        machine, version = machine.split()[0].split('v')
+                        version_str = version.replace('.', '')
+                        machine = machine.lower()
+                        args.b = "{}v{}".format(machine, version_str)
+                    dev.disconnect()
+                except Exception as e:
+                    print(e)
+                    print('Indicate a device platform with -b option')
+                    sys.exit()
+            if len(rest_args) > 1:
+                if rest_args[1] == 'latest':
+                    today = datetime.strftime(datetime.now(), "%Y%m%d")
+                    fw_v = get_fw_versions(args.b)
+                    if fw_v[1]:
+                        print('Latest Firmware versions found for {}:'.format(args.b))
+                        fw_v_latest = [v for v in fw_v[1] if today in v]
+                        days_before = 0
+                        while len(fw_v_latest) == 0:
+                            if len(fw_v[1]) == 0:
+                                break
+                            days_before += 1
+                            latest_fw = datetime.strftime(
+                                datetime.now()-timedelta(days=days_before), "%Y%m%d")
+                            fw_v_latest = [v for v in fw_v[1] if latest_fw in v]
                         if args.n is not None:
-                            print('Firmware versions found for {}-{}:'.format(args.b, args.n))
                             if args.n != 'def':
-                                fw_v_opt = [v for v in fw_v if args.n in v]
-                                for v in fw_v_opt:
+                                fw_v_latest_opt = [
+                                    v for v in fw_v_latest if args.n in v]
+                                for v in fw_v_latest_opt:
                                     print('- {}'.format(v))
-                            else:
-                                print('- {}'.format(fw_v[0]))
-                        else:
-                            print('Firmware versions found for {}:'.format(args.b))
-                            for version in fw_v:
-                                print('- {}'.format(version))
-            elif args.md[0] == 'get':
-                if len(args.md) > 1:
-                    if args.md[1] == 'latest':
-                        if not args.b:  # Autodetect
-                            try:
-                                dev = Device(args.t, args.p, init=True, autodetect=True,
-                                             ssl=args.wss, auth=args.wss)
-                                args.b = dev.dev_platform
-                                if dev.dev_platform == 'pyboard':
-                                    machine = dev.cmd('import os;os.uname().machine',
-                                                      silent=True, rtn_resp=True)
-                                    machine, version = machine.split()[0].split('v')
-                                    version_str = version.replace('.', '')
-                                    machine = machine.lower()
-                                    args.b = "{}v{}".format(machine, version_str)
-                                dev.disconnect()
-                            except Exception as e:
-                                print(e)
-                                print('Indicate a device platform with -b option')
-                                sys.exit()
-                        today = datetime.strftime(datetime.now(), "%Y%m%d")
-                        fw_v = get_fw_versions(args.b)
-
-                        if fw_v[1]:
-                            print('Latest version found for {}:'.format(args.b))
-                            fw_v_latest = [v for v in fw_v[1] if today in v]
-                            days_before = 0
-                            while len(fw_v_latest) == 0:
-                                if len(fw_v[1]) == 0:
-                                    break
-                                days_before += 1
-                                latest_fw = datetime.strftime(
-                                    datetime.now()-timedelta(days=days_before), "%Y%m%d")
-                                fw_v_latest = [v for v in fw_v[1] if latest_fw in v]
-                            if args.n is not None:
-                                if args.n != 'def':
-                                    fw_v_latest = [
-                                        v for v in fw_v_latest if args.n in v]
-                                    for v in fw_v_latest:
-                                        print('- {}'.format(v))
                             else:
                                 print('- {}'.format(fw_v_latest[0]))
-                            if len(fw_v_latest) >= 1:
-                                fw_v_latest = fw_v_latest[0]
-                                print('Firmware selected: {}'.format(fw_v_latest))
-                                fw_v_latest_link = fw_v[0][fw_v_latest]
-                                print('Downloading {} ...'.format(fw_v_latest))
-                                curl_cmd_str = "curl -O '{}'".format(fw_v_latest_link)
-                                curl_cmd = shlex.split(curl_cmd_str)
-                                try:
-                                    proc = subprocess.call(curl_cmd)
-                                    print('Done!')
-                                except KeyboardInterrupt:
-                                    print('Operation Canceled')
                         else:
-                            print('No firmware available that match: {}'.format(args.b))
+                            for v in fw_v_latest:
+                                print('- {}'.format(v))
                     else:
-                        fw_v_link = get_fw_versions(args.md[1])[0][args.md[1]]
-                        print('Downloading {} ...'.format(args.md[1]))
-                        curl_cmd_str = "curl -O '{}'".format(fw_v_link)
-                        curl_cmd = shlex.split(curl_cmd_str)
-                        try:
-                            proc = subprocess.call(curl_cmd)
-                            print('Done!')
-                        except KeyboardInterrupt:
-                            print('Operation Canceled')
+                        print('No firmware available that match: {}'.format(args.b))
+                    # fw_v_latest_link = fw_v[0][fw_v_latest]
+
+            else:
+                fw_v = get_fw_versions(args.b)[1]
+                if not fw_v:
+                    print('No firmware available that match: {}'.format(args.b))
                 else:
+                    if args.n is not None:
+                        print('Firmware versions found for {}-{}:'.format(args.b,
+                                                                          args.n))
+                        if args.n != 'def':
+                            fw_v_opt = [v for v in fw_v if args.n in v]
+                            for v in fw_v_opt:
+                                print('- {}'.format(v))
+                        else:
+                            print('- {}'.format(fw_v[0]))
+                    else:
+                        print('Firmware versions found for {}:'.format(args.b))
+                        for version in fw_v:
+                            print('- {}'.format(version))
+        elif rest_args[0] == 'get':
+            if len(rest_args) > 1:
+                if rest_args[1] == 'latest':
                     if not args.b:  # Autodetect
                         try:
                             dev = Device(args.t, args.p, init=True, autodetect=True,
@@ -245,264 +309,317 @@ def firmwaretools_action(args, **kargs):
                             print(e)
                             print('Indicate a device platform with -b option')
                             sys.exit()
-                    fw_v_dict, fw_v = get_fw_versions(args.b)
-                    if not fw_v:
-                        print('No firmware available that match: {}'.format(args.b))
-                    else:
-                        fw_v_opt = []
+                    today = datetime.strftime(datetime.now(), "%Y%m%d")
+                    fw_v = get_fw_versions(args.b)
+
+                    if fw_v[1]:
+                        print('Latest version found for {}:'.format(args.b))
+                        fw_v_latest = [v for v in fw_v[1] if today in v]
+                        days_before = 0
+                        while len(fw_v_latest) == 0:
+                            if len(fw_v[1]) == 0:
+                                break
+                            days_before += 1
+                            latest_fw = datetime.strftime(
+                                datetime.now()-timedelta(days=days_before), "%Y%m%d")
+                            fw_v_latest = [v for v in fw_v[1] if latest_fw in v]
                         if args.n is not None:
-                            print('Firmware versions found for {}-{}:'.format(args.b, args.n))
                             if args.n != 'def':
-                                fw_v_opt = [v for v in fw_v if args.n in v]
-                                for v in fw_v_opt:
+                                fw_v_latest = [
+                                    v for v in fw_v_latest if args.n in v]
+                                for v in fw_v_latest:
                                     print('- {}'.format(v))
-                            else:
-                                print('- {}'.format(fw_v[0]))
                         else:
-                            print('Firmware versions found for {}:'.format(args.b))
-                            for version in fw_v:
-                                print('- {}'.format(version))
-                        if fw_v_opt:
-                            fw_v = fw_v_opt[0]
-                        else:
-                            fw_v = fw_v[0]
-                        print('Firmware selected: {}'.format(fw_v))
-                        fw_v_link = fw_v_dict[fw_v]
-                        print('Downloading {} ...'.format(fw_v))
-                        curl_cmd_str = "curl -O '{}'".format(fw_v_link)
-                        curl_cmd = shlex.split(curl_cmd_str)
-                        try:
-                            proc = subprocess.call(curl_cmd)
-                            print('Done!')
-                        except KeyboardInterrupt:
-                            print('Operation Canceled')
-
-    elif args.m == 'flash':
-        devname = kargs.get('device')
-        if not args.f:
-            print('Firmware file name required, indicate with -f option')
-            see_help(args.m)
-            sys.exit()
-        else:
-            dt = check_device_type(args.t)
-            if not args.port and dt != 'SerialDevice':
-                print(
-                    'Indicate a serial port with -port option, {} is NOT a SerialDevice'.format(devname))
-                sys.exit()
+                            print('- {}'.format(fw_v_latest[0]))
+                        if len(fw_v_latest) >= 1:
+                            fw_v_latest = fw_v_latest[0]
+                            print('Firmware selected: {}'.format(fw_v_latest))
+                            fw_v_latest_link = fw_v[0][fw_v_latest]
+                            print('Downloading {} ...'.format(fw_v_latest))
+                            curl_cmd_str = "curl -O '{}'".format(fw_v_latest_link)
+                            curl_cmd = shlex.split(curl_cmd_str)
+                            try:
+                                proc = subprocess.call(curl_cmd)
+                                print('Done!')
+                            except KeyboardInterrupt:
+                                print('Operation Canceled')
+                    else:
+                        print('No firmware available that match: {}'.format(args.b))
+                else:
+                    fw_v_link = get_fw_versions(rest_args[1])[0][rest_args[1]]
+                    print('Downloading {} ...'.format(rest_args[1]))
+                    curl_cmd_str = "curl -O '{}'".format(fw_v_link)
+                    curl_cmd = shlex.split(curl_cmd_str)
+                    try:
+                        proc = subprocess.call(curl_cmd)
+                        print('Done!')
+                    except KeyboardInterrupt:
+                        print('Operation Canceled')
             else:
-                if not args.port:
-                    args.port = args.t
-                if 'esp32' in args.f:
-                    if args.i:
-                        print('Checking firmware and device platform match')
-                        try:
-                            dev = Device(args.t, args.p, init=True, autodetect=True,
-                                         ssl=args.wss, auth=args.wss)
-                            platform = dev.dev_platform
-                            dev.disconnect()
-                        except Exception as e:
-                            print(e)
-                            print('Device not reachable, connect the device and try again.')
-                            sys.exit()
-                        if platform in args.f:
-                            print(
-                                'Firmware {} and {} device platform [{}] match, flashing firmware now...'.format(args.f, devname, platform))
-                        else:
-                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
-                                args.f, devname, platform))
-                            sys.exit()
-                    print('Flashing firmware {} with esptool.py to {} @ {}...'.format(
-                        args.f, devname, args.port))
-                    esptool_cmd_str = "esptool.py --chip esp32 --port {} write_flash -z 0x1000 {}".format(
-                        args.port, args.f)
-                    print(esptool_cmd_str)
-                    esptool_cmd = shlex.split(esptool_cmd_str)
+                if not args.b:  # Autodetect
                     try:
-                        proc = subprocess.call(esptool_cmd)
-                        print('Done!')
-                    except KeyboardInterrupt:
-                        print('Operation Canceled')
-                elif 'esp8266' in args.f:
-                    if args.i:
-                        print('Checking firmware and device platform match')
-                        try:
-                            dev = Device(args.t, args.p, init=True, autodetect=True,
-                                         ssl=args.wss, auth=args.wss)
-                            platform = dev.dev_platform
-                            dev.disconnect()
-                        except Exception as e:
-                            print(e)
-                            print('Device not reachable, connect the device and try again.')
-                            sys.exit()
-                        if platform in args.f:
-                            print(
-                                'Firmware {} and {} device platform [{}] match, flashing firmware now...'.format(args.f, devname, platform))
-                        else:
-                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
-                                args.f, devname, platform))
-                            sys.exit()
-                    print('Flashing firmware {} with esptool.py to {} @ {}...'.format(
-                        args.f, devname, args.port))
-                    esptool_cmd_str = "esptool.py --port {} --baud 460800 write_flash --flash_size=detect 0 {}".format(
-                        args.port, args.f)
-                    print(esptool_cmd_str)
-                    esptool_cmd = shlex.split(esptool_cmd_str)
-                    try:
-                        proc = subprocess.call(esptool_cmd)
-                        print('Done!')
-                    except KeyboardInterrupt:
-                        print('Operation Canceled')
-
-                elif 'pyb' in args.f:
-                    dev = Device(args.t, args.p, init=True, autodetect=True,
-                                 ssl=args.wss, auth=args.wss)
-                    if args.i:
-                        print('Checking firmware and device platform match')
-                        try:
-                            machine = dev.cmd('import os;os.uname().machine', silent=True,
-                                              rtn_resp=True)
-                            dev.disconnect()
-                        except Exception as e:
-                            print(e)
-                            print('Device not reachable, connect the device and try again.')
-                            sys.exit()
-                        platform = dev.dev_platform
-                        if platform in args.f or platform[:3] in args.f:
+                        dev = Device(args.t, args.p, init=True, autodetect=True,
+                                     ssl=args.wss, auth=args.wss)
+                        args.b = dev.dev_platform
+                        if dev.dev_platform == 'pyboard':
+                            machine = dev.cmd('import os;os.uname().machine',
+                                              silent=True, rtn_resp=True)
                             machine, version = machine.split()[0].split('v')
                             version_str = version.replace('.', '')
                             machine = machine.lower()
-                            fw_string = "{}v{}".format(machine, version_str)
-
-                            if fw_string == args.f.split('-')[0]:
-                                print(
-                                    'Firmware {} and {} device platform [{}] machine [{}], verison [{}] match, flashing firmware now...'.format(args.f, devname, platform, machine, version))
-                            else:
-                                print('Firmware {} and {} device platform [{}] machine [{}], verison [{}] do NOT match, operation aborted.'.format(
-                                    args.f, devname, platform, machine, version))
-                                sys.exit()
+                            args.b = "{}v{}".format(machine, version_str)
+                        dev.disconnect()
+                    except Exception as e:
+                        print(e)
+                        print('Indicate a device platform with -b option')
+                        sys.exit()
+                fw_v_dict, fw_v = get_fw_versions(args.b)
+                if not fw_v:
+                    print('No firmware available that match: {}'.format(args.b))
+                else:
+                    fw_v_opt = []
+                    if args.n is not None:
+                        print('Firmware versions found for {}-{}:'.format(args.b,
+                                                                          args.n))
+                        if args.n != 'def':
+                            fw_v_opt = [v for v in fw_v if args.n in v]
+                            for v in fw_v_opt:
+                                print('- {}'.format(v))
                         else:
-                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
-                                args.f, devname, platform))
-                            sys.exit()
-
-                    print('Enabling DFU mode in pyboard, DO NOT DISCONNECT...')
-                    dev.connect()
-                    bs = dev.serial.write(
-                        bytes('import pyb;pyb.bootloader()\r', 'utf-8'))
-                    time.sleep(0.2)
-                    bin_file = args.f
-                    flash_tool = input(
-                        'Select a tool to flash pydfu.py/dfu-util: (0/1) ')
-                    if flash_tool == '0':
-                        print('Using pydfu.py...')
-                        pydfu_fw_cmd = 'pydfu -u {}'.format(bin_file)
-                        # print(upy_fw_cmd)
-                        flash_fw_cmd = shlex.split(pydfu_fw_cmd)
-
-                        try:
-                            fw_flash = subprocess.call(flash_fw_cmd)
-                        except Exception as e:
-                            # shr_cp.enable_wrepl_io()
-                            print(e)
-                        print('Flashing firmware finished successfully!')
-                        time.sleep(1)
-                        print('Done!')
+                            print('- {}'.format(fw_v[0]))
                     else:
-                        print('Using dfu-util...')
-                        dfu_fw_cmd = 'sudo dfu-util --alt 0 -D {}'.format(bin_file)
-                        # print(upy_fw_cmd)
-                        flash_fw_cmd = shlex.split(dfu_fw_cmd)
+                        print('Firmware versions found for {}:'.format(args.b))
+                        for version in fw_v:
+                            print('- {}'.format(version))
+                    if fw_v_opt:
+                        fw_v = fw_v_opt[0]
+                    else:
+                        fw_v = fw_v[0]
+                    print('Firmware selected: {}'.format(fw_v))
+                    fw_v_link = fw_v_dict[fw_v]
+                    print('Downloading {} ...'.format(fw_v))
+                    curl_cmd_str = "curl -O '{}'".format(fw_v_link)
+                    curl_cmd = shlex.split(curl_cmd_str)
+                    try:
+                        proc = subprocess.call(curl_cmd)
+                        print('Done!')
+                    except KeyboardInterrupt:
+                        print('Operation Canceled')
 
-                        try:
-                            fw_flash = subprocess.call(flash_fw_cmd)
-                        except Exception as e:
-                            # shr_cp.enable_wrepl_io()
-                            print(e)
-                        print('Flashing firmware finished successfully, RESET the pyboard now.')
-                        time.sleep(1)
+    elif command == 'flash':
+        devname = kargs.get('device')
+        fwfile = rest_args
+        dt = check_device_type(args.t)
+        if dt != 'SerialDevice':
+            print(f'Indicate a serial port with -t option, {devname} is NOT a '
+                  'SerialDevice')
+            sys.exit()
+        else:
+            if 'esp32' in fwfile:
+                if args.i:
+                    print('Checking firmware and device platform match')
+                    try:
+                        dev = Device(args.t, args.p, init=True, autodetect=True)
+                        platform = dev.dev_platform
+                        dev.disconnect()
+                    except Exception as e:
+                        print(e)
+                        print('Device not reachable, connect the device and try again.')
+                        sys.exit()
+                    if platform in fwfile:
+                        print(
+                            'Firmware {} and {} device platform [{}] match, flashing firmware now...'.format(fwfile, devname, platform))
+                    else:
+                        print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
+                            fwfile, devname, platform))
+                        sys.exit()
+                print('Flashing firmware {} with esptool.py to {} @ {}...'.format(
+                    fwfile, devname, args.t))
+                esptool_cmd_str = "esptool.py --chip esp32 --port {} write_flash -z 0x1000 {}".format(
+                    args.t, fwfile)
+                print(esptool_cmd_str)
+                esptool_cmd = shlex.split(esptool_cmd_str)
+                try:
+                    proc = subprocess.call(esptool_cmd)
+                    print('Done!')
+                except KeyboardInterrupt:
+                    print('Operation Canceled')
+            elif 'esp8266' in fwfile:
+                if args.i:
+                    print('Checking firmware and device platform match')
+                    try:
+                        dev = Device(args.t, args.p, init=True, autodetect=True)
+                        platform = dev.dev_platform
+                        dev.disconnect()
+                    except Exception as e:
+                        print(e)
+                        print('Device not reachable, connect the device and try again.')
+                        sys.exit()
+                    if platform in fwfile:
+                        print(
+                            'Firmware {} and {} device platform [{}] match, flashing firmware now...'.format(fwfile, devname, platform))
+                    else:
+                        print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
+                            fwfile, devname, platform))
+                        sys.exit()
+                print('Flashing firmware {} with esptool.py to {} @ {}...'.format(
+                    fwfile, devname, args.t))
+                esptool_cmd_str = "esptool.py --port {} --baud 460800 write_flash --flash_size=detect 0 {}".format(
+                    args.t, fwfile)
+                print(esptool_cmd_str)
+                esptool_cmd = shlex.split(esptool_cmd_str)
+                try:
+                    proc = subprocess.call(esptool_cmd)
+                    print('Done!')
+                except KeyboardInterrupt:
+                    print('Operation Canceled')
+
+            elif 'pyb' in fwfile:
+                dev = Device(args.t, args.p, init=True, autodetect=True)
+                if args.i:
+                    print('Checking firmware and device platform match')
+                    try:
+                        machine = dev.cmd('import os;os.uname().machine', silent=True,
+                                          rtn_resp=True)
+                        dev.disconnect()
+                    except Exception as e:
+                        print(e)
+                        print('Device not reachable, connect the device and try again.')
+                        sys.exit()
+                    platform = dev.dev_platform
+                    if platform in fwfile or platform[:3] in fwfile:
+                        machine, version = machine.split()[0].split('v')
+                        version_str = version.replace('.', '')
+                        machine = machine.lower()
+                        fw_string = "{}v{}".format(machine, version_str)
+
+                        if fw_string == fwfile.split('-')[0]:
+                            print(
+                                'Firmware {} and {} device platform [{}] machine [{}], verison [{}] match, flashing firmware now...'.format(fwfile, devname, platform, machine, version))
+                        else:
+                            print('Firmware {} and {} device platform [{}] machine [{}], verison [{}] do NOT match, operation aborted.'.format(
+                                fwfile, devname, platform, machine, version))
+                            sys.exit()
+                    else:
+                        print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
+                            fwfile, devname, platform))
+                        sys.exit()
+
+                print('Enabling DFU mode in pyboard, DO NOT DISCONNECT...')
+                dev.connect()
+                bs = dev.serial.write(
+                    bytes('import pyb;pyb.bootloader()\r', 'utf-8'))
+                time.sleep(0.2)
+                bin_file = fwfile
+                flash_tool = input(
+                    'Select a tool to flash pydfu.py/dfu-util: (0/1) ')
+                if flash_tool == '0':
+                    print('Using pydfu.py...')
+                    pydfu_fw_cmd = 'pydfu -u {}'.format(bin_file)
+                    # print(upy_fw_cmd)
+                    flash_fw_cmd = shlex.split(pydfu_fw_cmd)
+
+                    try:
+                        fw_flash = subprocess.call(flash_fw_cmd)
+                    except Exception as e:
+                        # shr_cp.enable_wrepl_io()
+                        print(e)
+                    print('Flashing firmware finished successfully!')
+                    time.sleep(1)
+                    print('Done!')
+                else:
+                    print('Using dfu-util...')
+                    dfu_fw_cmd = 'sudo dfu-util --alt 0 -D {}'.format(bin_file)
+                    # print(upy_fw_cmd)
+                    flash_fw_cmd = shlex.split(dfu_fw_cmd)
+
+                    try:
+                        fw_flash = subprocess.call(flash_fw_cmd)
+                    except Exception as e:
+                        # shr_cp.enable_wrepl_io()
+                        print(e)
+                    print('Flashing firmware finished successfully, RESET the pyboard now.')
+                    time.sleep(1)
 
         sys.exit()
 
-    elif args.m == 'ota':
+    elif command == 'ota':
         OFFSET_BOOTLOADER_DEFAULT = 0x1000
         OFFSET_APPLICATION_DEFAULT = 0x10000
         MICROPYTHON_BIN_OFFSET = OFFSET_APPLICATION_DEFAULT - OFFSET_BOOTLOADER_DEFAULT
         devname = kargs.get('device')
-        if not args.f:
-            print('Firmware file name required, indicate with -f option')
-            see_help(args.m)
+        fwfile = rest_args
+
+        dt = check_device_type(args.t)
+        if dt not in ['WebSocketDevice', 'BleDevice']:
+            print(
+                'OTA not available, {} is NOT a OTA capable device'.format(devname))
             sys.exit()
-        else:
-            dt = check_device_type(args.t)
-            if dt not in ['WebSocketDevice', 'BleDevice']:
-                print(
-                    'OTA not available, {} is NOT a OTA capable device'.format(devname))
-                sys.exit()
 
-            if 'esp32' in args.f:
-                dev = None
-                # Extract micropython.bin from firmware.bin
-                with open(args.f, 'rb') as fw:
-                    offset = fw.read(MICROPYTHON_BIN_OFFSET)
-                    app = fw.read()
-                with open(f"ota-{args.f}", 'wb') as fw_app:
-                    fw_app.write(app)
+        if 'esp32' in fwfile:
+            dev = None
+            # Extract micropython.bin from firmware.bin
+            with open(fwfile, 'rb') as fw:
+                offset = fw.read(MICROPYTHON_BIN_OFFSET)
+                app = fw.read()
+            with open(f"ota-{fwfile}", 'wb') as fw_app:
+                fw_app.write(app)
 
-                args.f = f"ota-{args.f}"
+            fwfile = f"ota-{fwfile}"
 
-                if dt == 'WebSocketDevice':
-                    if args.i:
-                        print('Checking firmware and device platform match')
-                        try:
-                            dev = Device(args.t, args.p, init=True, autodetect=True,
-                                         ssl=args.wss, auth=args.wss)
-                            platform = dev.dev_platform
-                            # dev.disconnect()
-                        except Exception as e:
-                            print(e)
-                            print('Device not reachable, connect the device and try again.')
-                            sys.exit()
-                        if platform in args.f:
-                            print(
-                                'Firmware {} and {} device platform [{}] match, starting OTA now...'.format(args.f, devname, platform))
-                        else:
-                            print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
-                                args.f, devname, platform))
-                            sys.exit()
-                    if not dev:
-                        try:
-                            dev = Device(args.t, args.p, init=True, autodetect=True,
-                                         ssl=args.wss, auth=args.wss)
-                            platform = dev.dev_platform
-                            # dev.disconnect()
-                        except Exception as e:
-                            print(e)
-                            print('Device not reachable, connect the device and try again.')
-                            sys.exit()
-                    OTA_server = OTAServer(
-                        dev, port=8014, firmware=args.f, tls=args.sec)
-                    OTA_server.start_ota()
-                    # print('Rebooting device...')
-                    time.sleep(1)
-                    dev.cmd_nb('import machine;machine.reset()', block_dev=False)
-                    time.sleep(2)
-                    dev.disconnect()
-                    # print('Done!')
-                elif dt == 'BleDevice':
+            if dt == 'WebSocketDevice':
+                if args.i:
+                    print('Checking firmware and device platform match')
+                    try:
+                        dev = Device(args.t, args.p, init=True, autodetect=True,
+                                     ssl=args.wss, auth=args.wss)
+                        platform = dev.dev_platform
+                        # dev.disconnect()
+                    except Exception as e:
+                        print(e)
+                        print('Device not reachable, connect the device and try again.')
+                        sys.exit()
+                    if platform in fwfile:
+                        print(
+                            'Firmware {} and {} device platform [{}] match, starting OTA now...'.format(fwfile, devname, platform))
+                    else:
+                        print('Firmware {} and {} device platform [{}] do NOT match, operation aborted.'.format(
+                            fwfile, devname, platform))
+                        sys.exit()
+                if not dev:
+                    try:
+                        dev = Device(args.t, args.p, init=True, autodetect=True,
+                                     ssl=args.wss, auth=args.wss)
+                        platform = dev.dev_platform
+                        # dev.disconnect()
+                    except Exception as e:
+                        print(e)
+                        print('Device not reachable, connect the device and try again.')
+                        sys.exit()
+                OTA_server = OTAServer(
+                    dev, port=8014, firmware=fwfile, tls=args.sec)
+                OTA_server.start_ota()
+                # print('Rebooting device...')
+                time.sleep(1)
+                dev.cmd_nb('import machine;machine.reset()', block_dev=False)
+                time.sleep(2)
+                dev.disconnect()
+                # print('Done!')
+            elif dt == 'BleDevice':
 
-                    dev = OTABleController(args.t, init=True, packet_size=512,
-                                           debug=False)
-                    if dev.connected:
-                        # ASSERT DFU MODE
-                        assert 'Device Firmware Update Service' in dev.services_rsum, 'DFU Mode not available'
-                        assert 'DFU Control Point' in dev.services_rsum[
-                            'Device Firmware Update Service'], 'Missing DFU Control Point'
-                        assert 'DFU Packet' in dev.services_rsum['Device Firmware Update Service'], 'Missing DFU Packet'
-                        if args.f:
-                            assert args.f.endswith(
-                                '.bin'), 'Incorrect file format, create the proper file'
-                            ota_file = dfufy_file(args.f)
-                            dev.do_dfu(ota_file)
-                            os.remove(ota_file)
+                dev = OTABleController(args.t, init=True, packet_size=512,
+                                       debug=False)
+                if dev.connected:
+                    # ASSERT DFU MODE
+                    assert 'Device Firmware Update Service' in dev.services_rsum, 'DFU Mode not available'
+                    assert 'DFU Control Point' in dev.services_rsum[
+                        'Device Firmware Update Service'], 'Missing DFU Control Point'
+                    assert 'DFU Packet' in dev.services_rsum['Device Firmware Update Service'], 'Missing DFU Packet'
+                    if fwfile:
+                        assert fwfile.endswith(
+                            '.bin'), 'Incorrect file format, create the proper file'
+                        ota_file = dfufy_file(fwfile)
+                        dev.do_dfu(ota_file)
+                        os.remove(ota_file)
 
         sys.exit()

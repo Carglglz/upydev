@@ -33,9 +33,13 @@ usag = """%(prog)s command [options]\n
 
 _help_subcmds = "%(prog)s [command] -h to see further help of any command"
 
+ld = """\n\nREPL type will be selected by device (address) class:\n\n\
+    SerialDevice -> SerialREPL (needs picocom)\n\n    WebSocketDevice -> WebREPL/\
+WebSecREPL\n\n    BleDevice -> BleREPL"""
+
 rplparser = argparse.ArgumentParser(prog="upydev",
-                                   description=('REPL for MicroPython devices'
-                                                + '\n'
+                                   description=(f'REPL for MicroPython devices {ld}'
+                                                + '\n\n'
                                                 + _help_subcmds),
                                    formatter_class=rawfmt,
                                    usage=usag, prefix_chars='-')
