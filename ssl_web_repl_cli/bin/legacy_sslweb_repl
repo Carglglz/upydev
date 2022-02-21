@@ -2358,7 +2358,7 @@ def custom_sh_cmd(cmd_inp):
                     espdev.get_output()
                     files_to_put_dir = espdev.output
                     if len(files_to_put_dir) == 0:
-                        print('File not Found\nIndicate a file to get')
+                        print('File not Found\nindicate a file to get')
                     else:
                         print('- {}'.format(file))
                         ssl_htool.start_SOC()
@@ -2368,7 +2368,7 @@ def custom_sh_cmd(cmd_inp):
                         ssl_htool.stop_SOC()
             except Exception as e:
                 # print(e)
-                print('File not Found\nIndicate a file to get')
+                print('File not Found\nindicate a file to get')
 
     if cmd_inp.split(' ')[0] == 'fget':
         print(CRED + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + CEND)
@@ -2411,7 +2411,7 @@ def custom_sh_cmd(cmd_inp):
                 pass
                 print('Operation aborted')
         except Exception as e:
-            print('File not Found\nIndicate a file to get')
+            print('File not Found\nindicate a file to get')
 
     if cmd_inp.split(' ')[0] == 'put':  # FIXME: * wildcard with glob, webrepl put with wsio.py
         if not encrypted_flag['sec']:
@@ -2460,7 +2460,7 @@ def custom_sh_cmd(cmd_inp):
                 print('KeyboardInterrupt: Operation Canceled')
             except Exception as e:
                 print(e)
-                # print('File not Found\nIndicate a valid file to put')
+                # print('File not Found\nindicate a valid file to put')
         else:
             try:
                 print('File/s to put:')
@@ -2509,7 +2509,7 @@ def custom_sh_cmd(cmd_inp):
                     files_to_put_dir = [fl for fl in os.listdir(
                     ) if os.path.isfile(fl) and fl in [file]]
                     if len(files_to_put_dir) == 0:
-                        print('File not Found\nIndicate a valid file to put')
+                        print('File not Found\nindicate a valid file to put')
                     else:
                         print('- {}'.format(file))
                         ssl_htool.start_SOC()
@@ -2519,7 +2519,7 @@ def custom_sh_cmd(cmd_inp):
                         ssl_htool.stop_SOC()
             except Exception as e:
                 # print(e)
-                print('File not Found\nIndicate a valid file to put')
+                print('File not Found\nindicate a valid file to put')
     if cmd_inp.split(' ')[0] == 'catl':
         try:
             file = cmd_inp.split(' ')[1]
@@ -2532,7 +2532,7 @@ def custom_sh_cmd(cmd_inp):
                 pass
 
         except Exception as e:
-            print('Indicate a file to show')
+            print('indicate a file to show')
 
     if cmd_inp.split(' ')[0] == 'dsync':
 
@@ -2621,7 +2621,7 @@ def custom_sh_cmd(cmd_inp):
                         pass
                         print('Operation aborted')
                 except Exception as e:
-                    print('Indicate a dir to sync')
+                    print('indicate a dir to sync')
         else:
             if len(cmd_inp.split()) == 1:  # root_dir
                 dir_to_sync = os.getcwd().split('/')[-1]
@@ -2770,7 +2770,7 @@ def custom_sh_cmd(cmd_inp):
                 print(e)
                 print('Vim editor not found')
         except Exception as e:
-            print('Indicate a file to edit')
+            print('indicate a file to edit')
             pass
 
     if 'emacs' in cmd_inp.split(' ')[0]:
@@ -2904,7 +2904,7 @@ def custom_sh_cmd(cmd_inp):
         try:
             module = cmd_inp.split(' ')[1].split('.py')[0]
         except Exception as e:
-            print('Indicate a module to reload')
+            print('indicate a module to reload')
         espdev.output = None
         reload_cmd = "import sys;del(sys.modules['{}']);gc.collect()".format(module)
         if not encrypted_flag['sec']:
@@ -2977,9 +2977,9 @@ def custom_sh_cmd(cmd_inp):
                 print("{} dimensions: {}x{}".format(img_file, *dimensions))
                 print(img_1)
             else:
-                print('Indicate a ".pbm" file to view')
+                print('indicate a ".pbm" file to view')
         except Exception as e:
-            print('Indicate a ".pbm" file to view')
+            print('indicate a ".pbm" file to view')
 
     if cmd_inp.split(' ')[0] == 'batstyle':
         if len(cmd_inp.split()) == 1:
@@ -3034,10 +3034,10 @@ def custom_sh_cmd(cmd_inp):
                         print(my_code_numb)
 
             else:
-                print('Indicate a ".py" file to view')
+                print('indicate a ".py" file to view')
         except Exception as e:
             print(e)
-            print('Indicate a ".py" file to view')
+            print('indicate a ".py" file to view')
 
     if cmd_inp.split(' ')[0] == 'batl':
         try:
@@ -3073,7 +3073,7 @@ def custom_sh_cmd(cmd_inp):
                     pass
 
         except Exception as e:
-            print('Indicate a ".py" file to view')
+            print('indicate a ".py" file to view')
 
     if cmd_inp.split(' ')[0] == 'rcat':
         try:
@@ -3106,7 +3106,7 @@ def custom_sh_cmd(cmd_inp):
                         ssl_cp.ssl_repl('\x0d', silent=True)
                         ssl_cp.flush_conn()
         except Exception as e:
-            print("Indicate a host to ping, e.g google.com")
+            print("indicate a host to ping, e.g google.com")
 
     if cmd_inp.split(' ')[0] == 'lping':
         try:
@@ -3125,7 +3125,7 @@ def custom_sh_cmd(cmd_inp):
             except Exception as e:
                 print(e)
         except Exception as e:
-            print("Indicate a host to ping, e.g google.com")
+            print("indicate a host to ping, e.g google.com")
 
     if cmd_inp.split(' ')[0] == 'timeit':
         try:
@@ -3156,7 +3156,7 @@ def custom_sh_cmd(cmd_inp):
                         ssl_cp.flush_conn()
         except Exception as e:
             # print(e)
-            print("Indicate a script/command to measure execution time")
+            print("indicate a script/command to measure execution time")
 
     if cmd_inp.split()[0] == 'i2c':
         try:
@@ -3189,7 +3189,7 @@ def custom_sh_cmd(cmd_inp):
                 else:
                     print('No device found')
         except Exception as e:
-            print('Indicate i2c mode (config/scan)')
+            print('indicate i2c mode (config/scan)')
 
     if cmd_inp.split()[0] == 'git':
         cmd_git = shlex.split(cmd_inp)

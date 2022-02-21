@@ -80,7 +80,7 @@ PROTOTYPE_COMMANDS_HELP = """
                         * use '-f now' for automatic 'log_mode_datetime.txt' name.
                         * for stream mode profiling use -tm [ms] -ina test
                 - ina_batt: Use the sensor to profile battery usage and estimate battery life left.
-                            It will made 100 measurements during 5 seconds. Indicate battery capacity
+                            It will made 100 measurements during 5 seconds. indicate battery capacity
                             with -batt option; (in mAh)
 
         >OUTPUT:

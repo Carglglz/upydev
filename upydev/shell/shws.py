@@ -4,6 +4,7 @@ from upydev.shell.parser import subshparser_cmd
 from upydev.shell.common import CatFileIO
 from upydev.shell.shfileio import ShDsyncIO
 from upydev.shell.shfwio import ShfwIO
+from upydev.shell.nanoglob import glob as nglob
 from upydev.shell.upyconfig import show_upy_config_dialog
 import subprocess
 import shlex
@@ -24,14 +25,16 @@ JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
                 options={})
 
 PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
-              subcmd=dict(help='Indicate a test script to run, any optional '
-                               'args are passed to pytest',
-                          default='',
-                          metavar='test'),
-              options={})
+              subcmd=dict(help='indicate a test script to run, any optional '
+                               'arg is passed to pytest',
+                          default=[''],
+                          metavar='test',
+                          nargs='*'),
+              options={},
+              alt_ops=['setup'])
 
 PUT = dict(help="upload files to device",
-           subcmd=dict(help='Indicate a file/pattern/dir to '
+           subcmd=dict(help='indicate a file/pattern/dir to '
                             'upload',
                        default=[],
                        metavar='file/pattern/dir',
@@ -41,7 +44,7 @@ PUT = dict(help="upload files to device",
                                  default='')})
 
 GET = dict(help="download files from device",
-           subcmd=dict(help='Indicate a file/pattern/dir to '
+           subcmd=dict(help='indicate a file/pattern/dir to '
                             'download',
                        default=[],
                        metavar='file/pattern/dir',
@@ -61,7 +64,7 @@ GET = dict(help="download files from device",
                                type=int)})
 
 DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
-             subcmd=dict(help='Indicate a dir/pattern to '
+             subcmd=dict(help='indicate a dir/pattern to '
                          'sync',
                          default=['.'],
                          metavar='dir/pattern',
@@ -91,7 +94,7 @@ DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
                       "-p": dict(help='show diff', required=False,
                                  default=False,
                                  action='store_true'),
-                      "-n": dict(help='dry-run', required=False,
+                      "-n": dict(help='dry-run and save stash', required=False,
                                  default=False,
                                  action='store_true'),
                       "-i": dict(help='ignore file/dir or pattern', required=False,
@@ -101,46 +104,46 @@ DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
                                    default=False,
                                    action='store_true'),
                       "-s": dict(help='show stash', required=False,
-                                   default=False,
-                                   action='store_true')})
+                                 default=False,
+                                 action='store_true')})
 
 DEBUG = dict(help="toggle debug mode for websocket debugging",
              subcmd={},
              options={})
 
 FW = dict(help="list or get available firmware from micropython.org",
-           subcmd=dict(help=('{list, get, update}'
-                             '; default: list'),
-                       default=['list'],
-                       metavar='action', nargs='*'),
-           options={"-b": dict(help='to indicate device platform',
-                               required=False),
-                    "-n": dict(help='to indicate keyword for filter search',
-                                     required=False)},
-           alt_ops=['list', 'get', 'update', 'latest'])
+          subcmd=dict(help=('{list, get, update}'
+                            '; default: list'),
+                      default=['list'],
+                      metavar='action', nargs='*'),
+          options={"-b": dict(help='to indicate device platform',
+                              required=False),
+                   "-n": dict(help='to indicate keyword for filter search',
+                              required=False)},
+          alt_ops=['list', 'get', 'update', 'latest'])
 
 OTA = dict(help="to flash a firmware file using OTA system",
-             subcmd=dict(help=('Indicate a firmware file to flash'),
-                         metavar='firmware file'),
-             options={"-i": dict(help='to check wether device platform and '
-                                    'firmware file name match',
+           subcmd=dict(help=('indicate a firmware file to flash'),
+                       metavar='firmware file'),
+           options={"-i": dict(help='to check wether device platform and '
+                               'firmware file name match',
+                               required=False,
+                               action='store_true'),
+                    "-sec": dict(help='to enable OTA TLS',
                                  required=False,
-                                 action='store_true'),
-                      "-sec": dict(help='to enable OTA TLS',
-                                   required=False,
-                                   action='store_true')})
+                                 action='store_true')})
 
 MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)",
-            subcmd=dict(help='Indicate a file/pattern to '
-                            'compile',
+            subcmd=dict(help='indicate a file/pattern to '
+                        'compile',
                         default=[],
                         metavar='file/pattern',
                         nargs='+'),
             options={})
 
 UPY_CONFIG = dict(help="enter upy-config dialog",
-             subcmd={},
-             options={})
+                  subcmd={},
+                  options={})
 
 SHELLWS_CMD_DICT_PARSER = {"repl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
@@ -252,17 +255,18 @@ class ShellWsCmds(ShellCmds):
 
         if cmd == 'pytest':
             # setup conftest.py
-            if rest_args == 'setup':
+            if rest_args[0] == 'setup':
                 shutil.copy(os.path.join(_UPYDEVPATH[0], 'conftest.py'), '.')
                 shutil.copy(os.path.join(_UPYDEVPATH[0], 'pytest.ini'), '.')
                 print('pytest setup done!')
             else:
+                rest_args = nglob(*rest_args)
                 try:
                     self.dev.disconnect()
                 except Exception:
                     pass
                 try:
-                    pytest_cmd = shlex.split(' '.join([cmd, rest_args]))
+                    pytest_cmd = shlex.split(' '.join([cmd, *rest_args]))
                     if '--dev' not in pytest_cmd and '-h' not in pytest_cmd:
                         pytest_cmd += ['--dev', self.dev_name]
                     if ukw_args:
@@ -334,7 +338,6 @@ class ShellWsCmds(ShellCmds):
                         print(f'dsync: ignored: {self.dsyncio.stash.get("ignore")}')
                         print(f'dsync: -rf: {self.dsyncio.stash.get("rf")}')
                         self.dsyncio.apply_stash(args, rest_args)
-
         if cmd == 'debugws':
             state = self.dev.debug
             self.dev.debug = not state

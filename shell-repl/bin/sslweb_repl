@@ -14,7 +14,6 @@ from upydev.shell.shws import ShellWsCmds, shws_cmd_kw, SHELLWS_CMD_DICT_PARSER
 from upydev.shell.keybindings import ShellKeyBindings
 
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", help='host password', required=True)
 parser.add_argument("-v", help='verbose mode',
@@ -105,7 +104,7 @@ else:
     _SHELL_FLAGS.shell_mode['S'] = True
 
     dev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
-                  ';gc.collect()', silent=True)
+               ';gc.collect()', silent=True)
     # dev.close_wconn()
     dev.wr_cmd("help('modules')", silent=True, long_string=True)
     # dev.open_wconn()
@@ -129,7 +128,7 @@ def check_prompt():
     return _SHELL_FLAGS.prompt['p']
 
 
-session_p = PromptSession()
+session_p = PromptSession(enable_suspend=True)
 
 # REPL/SHELL LOOP
 repl = True

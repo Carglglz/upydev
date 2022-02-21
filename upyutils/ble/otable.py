@@ -301,7 +301,7 @@ class BLE_DFU_TARGET:
                     print(f'Firmware SHA-256: {hashdata.decode()}')
                     # print(f'Firmware SHA-256 B: {hashdatab.decode()}')
                     print(f'CRC CHECKSUM: {checksum}')
-                    print('Indicated Checksum: {} | Received Checksum: {}'.format(
+                    print('indicated Checksum: {} | Received Checksum: {}'.format(
                         self._image_checksum, checksum))
                     if self._image_checksum == checksum:
                         resp_val = self._response_values['Success']

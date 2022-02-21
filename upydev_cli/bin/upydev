@@ -261,7 +261,7 @@ parser.add_argument('-show_key', help='show RSA key',
                     required=False, default=False, action='store_true')
 parser.add_argument('-tfkey', help='transfer RSA/ECDSA key,ideally this should be done only if connected to the AP of the device',
                     required=False, default=False, action='store_true')
-parser.add_argument('-key_size', help='Indicate RSA key length in bits (default is 2048)',
+parser.add_argument('-key_size', help='indicate RSA key length in bits (default is 2048)',
                     required=False, default=2048, type=int)
 parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection, or delete private key after gen_rsakey',
                     required=False, default=False, action='store_true')
@@ -334,7 +334,7 @@ multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
                      'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
                      'rsync', 'docs', 'udocs', 'mdocs', 'set_hostname', 'set_localname',
                      'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls', 'cat',
-                     'vim']
+                     'vim', 'sysctl', 'log', 'pytest']
 multiple_args_fw = ['fwr', 'flash']
 
 if len(args.m) == 1:
@@ -658,7 +658,7 @@ def handle_action(args, exit=True, device_name=None):
         else:
             dev_name = _dev_name
         repl_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
-                          device=dev_name)
+                    device=dev_name)
 
     # FIRMWARE ACTIONS
 
@@ -669,7 +669,7 @@ def handle_action(args, exit=True, device_name=None):
         else:
             dev_name = _dev_name
         firmwaretools_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
-                          device=dev_name)
+                             device=dev_name)
 
     # DEBUGGING ACTIONS
 
@@ -679,7 +679,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
-        debugging_action(args, device=dev_name)
+        debugging_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
+                         device=dev_name)
 
     # KEYGEN ACTIONS
     elif args.m in KEYGEN_ACTIONS:
@@ -829,8 +830,8 @@ if args.m in help_actions:
             sh_cmd('-h')
             sys.exit()
         elif args.m == 'db':
-            from upydev.debugging import DEBUGGING_HELP
-            print(DEBUGGING_HELP)
+            from upydev.debugging import sh_cmd
+            sh_cmd('-h')
             sys.exit()
         elif args.m == 'gp':
             from upydev.groupmode import GROUP_MODE_HELP

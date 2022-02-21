@@ -1,12 +1,13 @@
 
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding.key_processor import KeyProcessor
+from prompt_toolkit.application import get_app
 from prompt_toolkit.application import run_in_terminal, in_terminal
 from upydev.shell.constants import (kb_info, d_prompt,
                                     shell_commands, custom_sh_cmd_kw,
                                     CGREEN, CEND, ABLUE_bold, MAGENTA_bold,
                                     SHELL_CMD_DICT_PARSER)
 from upydev.shell.common import print_table
-from upydev.shell.upyconfig import config_parser
 import os
 import signal
 import subprocess
@@ -45,7 +46,6 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                        f"{_CE}")
             print(color_p)
 
-
     def _printpath_cmd(last_cmd):
         if flags.local_path['p'] == '':
             g_p = [val[1] for val in
@@ -69,7 +69,6 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                        f"{''.join(b_p)}{_CE}"
                        f"{last_cmd}")
             print(color_p)
-
 
     def _autocomplete_config(buff_text):
         is_config = buff_text.split()[0] == 'config'
@@ -113,7 +112,6 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
             return _params_config
         else:
             return []
-
 
     def _autocomplete_shell_local(event):
         glb = False
@@ -584,7 +582,17 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
     @kb.add('c-t')
     def runtempbuff(event):
         "Run contents of _tmp_script.py"
-        def run_tmpcode():
+
+        app = get_app()
+        p = app.key_processor
+        inp = app.input
+
+        def i_pipe(data, kp=p, ap=app, input=inp, **kargs):
+            print(data, end='')
+            kp.feed_multiple(input.read_keys())
+            kp.process_keys()
+
+        async def run_tmpcode():
             if '_tmp_script.py' in os.listdir():
                 print('Running Buffer...')
                 with open('_tmp_script.py', 'r') as fbuff:
@@ -593,10 +601,17 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                 dev.paste_buff(filebuffer)
                 dev.flush_conn()
                 event.app.current_buffer.reset()
-                dev.wr_cmd('\x04', follow=True, long_string=True)
-        run_in_terminal(run_tmpcode)
-#
-#
+                flags.script_is_running['R'] = True
+                try:
+                    dev.wr_cmd('\x04', follow=True, long_string=True, pipe=i_pipe)
+                except KeyboardInterrupt:
+                    dev.kbi()
+
+        async def runtmp():
+            await run_tmpcode()
+
+        asyncio.create_task(runtmp())
+
     @kb.add('c-w')
     def whoami(event):
         "Show device info"
@@ -650,8 +665,11 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                 print('^C')
                 event.app.current_buffer.reset()
                 flags.paste['p'] = False
+                if flags.script_is_running['R']:
+                    dev.kbi(silent=False, long_string=True)
+                    flags.script_is_running['R'] = False
             else:
-
+                print('^C')
                 dev.kbi(silent=False, long_string=True)  # KBI
 
                 flags.paste['p'] = False
@@ -708,15 +726,26 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
     @kb.add('c-d')
     def paste_mode_exit(event):
         "PASTE MODE VIM EXEC, SOFT RESET IN REPL"
-
-        def cmd_paste_exit():
-            print('Running Buffer...')
-            event.app.current_buffer.reset()
-            dev.wr_cmd('\x04', follow=True, long_string=True)
-            flags.paste['p'] = False
-
         if flags.paste['p']:
-            run_in_terminal(cmd_paste_exit)
+            app = get_app()
+            p = app.key_processor
+            inp = app.input
+
+            def i_pipe(data, kp=p, ap=app, input=inp, **kargs):
+                print(data, end='')
+                kp.feed_multiple(input.read_keys())
+                kp.process_keys()
+
+            async def cmd_paste_exit():
+                print('Running Buffer...')
+                event.app.current_buffer.reset()
+                dev.wr_cmd('\x04', follow=True, long_string=True, pipe=i_pipe)
+                flags.paste['p'] = False
+
+            async def pastmp():
+                await cmd_paste_exit()
+
+            asyncio.create_task(pastmp())
         else:
             if not flags.shell_mode['S']:
                 dev.reset()
@@ -746,7 +775,7 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
         def autocomplete_sh_cmd():
             if flags.shell_mode['S']:
                 buff_text = event.app.current_buffer.document.text
-                if  ' && ' in buff_text:
+                if ' && ' in buff_text:
                     buff_text = buff_text.split(' && ')[-1]
                 result = [sh_cmd for sh_cmd in shell_commands
                           + custom_sh_cmd_kw + spc_cmds if sh_cmd.startswith(buff_text)]
@@ -770,19 +799,19 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                                 ch = SHELL_CMD_DICT_PARSER[cmd]['alt_ops']
                             if ch:
                                 result += [sh_cmd
-                                          for sh_cmd in
-                                          ch
-                                          if sh_cmd.startswith(buff_text.split()[-1])]
+                                           for sh_cmd in
+                                           ch
+                                           if sh_cmd.startswith(buff_text.split()[-1])]
                             else:
                                 result = []
                         if SHELL_CMD_DICT_PARSER[cmd]['options']:
                             ch = SHELL_CMD_DICT_PARSER[cmd]['options'].keys()
                             if ch:
                                 result += [sh_cmd
-                                          for sh_cmd in
-                                          ch
-                                          if sh_cmd.startswith(buff_text.split()[-1])
-                                          and sh_cmd not in buff_text.split()]
+                                           for sh_cmd in
+                                           ch
+                                           if sh_cmd.startswith(buff_text.split()[-1])
+                                           and sh_cmd not in buff_text.split()]
                             else:
                                 result = []
 

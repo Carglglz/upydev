@@ -1,9 +1,5 @@
 from upydevice import Device, check_device_type, serial_scan, net_scan
 import sys
-from upydev.helpinfo import see_help
-from upydev.firmwaretools import get_fw_versions
-from upydev.gencommands import print_filesys_info, print_sizefile_all
-from upydev.commandlib import _CMDDICT_
 from upydev.devicemanagement import check_zt_group
 import os
 import json
@@ -13,13 +9,269 @@ import subprocess
 import shlex
 import time
 import socket
-from datetime import timedelta, datetime
+from datetime import timedelta
 import netifaces
 import logging
 import shutil
 import signal
-from binascii import hexlify
-import nmap
+import argparse
+rawfmt = argparse.RawTextHelpFormatter
+
+
+dict_arg_options = {'ping': ['t', 'zt', 'p'],
+                    'probe': ['t', 'p', 'G', 'gg', 'devs', 'zt'],
+                    'scan': ['nt', 'sr', 'bl'],
+                    'run': ['t', 'p', 'wss', 'f', 's'],
+                    'timeit': ['t', 'p', 'wss', 'f', 's'],
+                    'stream_test': ['t', 'p', 'wss', 'chunk_tx',
+                                    'chunk_rx', 'total_size'],
+                    'sysctl': ['t', 'p', 'wss', 'fre', 's'],
+                    'log': ['t', 'p', 'wss', 'f', 's',
+                            'daemon', 'follow', 'dslev', 'dflev',
+                            'stopd'],
+                    'pytest': ['t', 'p', 'wss', 'f', 'fre']}
+
+PING = dict(help="ping the device to test if device is"
+                 " reachable, CTRL-C to stop.",
+            desc="this sends ICMP ECHO_REQUEST packets to device",
+            subcmd={},
+            options={"-t": dict(help="device target address",
+                                required=True),
+                     "-p": dict(help='device password or baudrate',
+                                required=True),
+                     "-zt": dict(help='internal flag for zerotierone device',
+                                 required=False,
+                                 default=False,
+                                 action='store_true')})
+
+PROBE = dict(help="to test if a device is reachable",
+             desc="ping, scan serial ports or ble scan depending on device type",
+             subcmd={},
+             options={"-t": dict(help="device target address",
+                                 required=True),
+                      "-p": dict(help='device password or baudrate',
+                                 required=True),
+                      "-zt": dict(help='internal flag for zerotierone device',
+                                  required=False,
+                                  default=False,
+                                  action='store_true'),
+                      "-G": dict(help='internal flag for group mode',
+                                 required=False,
+                                 default=None),
+                      "-gg": dict(help='flag for global group',
+                                  required=False,
+                                  default=False,
+                                  action='store_true'),
+                      "-devs": dict(help='flag for filtering devs in global group',
+                                    required=False,
+                                    nargs='*')})
+
+SCAN = dict(help="to scan for available devices, use a flag to filter for device type",
+            desc="\ndefault: if no flag provided will do all three scans.",
+            subcmd={},
+            options={"-sr": dict(help="scan for SerialDevice",
+                                 required=False,
+                                 default=False,
+                                 action='store_true'),
+                     "-nt": dict(help='scan for WebSocketDevice',
+                                 required=False,
+                                 default=False,
+                                 action='store_true'),
+                     "-bl": dict(help='scan for BleDevice',
+                                 required=False,
+                                 default=False,
+                                 action='store_true')})
+
+RUN = dict(help="run a script in device, CTRL-C to stop",
+           desc="this calls 'import [script]' in device and reloads it at the end",
+           subcmd=dict(help=('indicate a script to run'),
+                       metavar='script'),
+           options={"-t": dict(help="device target address",
+                               required=True),
+                    "-p": dict(help='device password or baudrate',
+                               required=True),
+                    "-wss": dict(help='use WebSocket Secure',
+                                 required=False,
+                                 default=False,
+                                 action='store_true'),
+                    "-s": dict(help='indicate the path of the script if in external fs'
+                                    ' e.g. an sd card.',
+                               required=False)})
+
+TIMEIT = dict(help="to measure execution time of a module/script",
+              desc="source: https://github.com/peterhinch/micropython-samples"
+                   "/tree/master/timed_function",
+              subcmd=dict(help=('indicate a script to run'),
+                          metavar='script'),
+              options={"-t": dict(help="device target address",
+                                  required=True),
+                       "-p": dict(help='device password or baudrate',
+                                  required=True),
+                       "-wss": dict(help='use WebSocket Secure',
+                                    required=False,
+                                    default=False,
+                                    action='store_true'),
+                       "-s": dict(help='indicate the path of the script if in external'
+                                  ' fs e.g. an sd card.',
+                                  required=False)})
+STREAM_TEST = dict(help="to test download speed (from device to host)",
+                   desc="default: 10 MB of random bytes are sent in chunks of 20 kB "
+                        "and received in chunks of 32 kB.\n\n*(sync_tool.py required)",
+                   subcmd={},
+                   options={"-t": dict(help="device target address",
+                                       required=True),
+                            "-p": dict(help='device password or baudrate',
+                                       required=True),
+                            "-wss": dict(help='use WebSocket Secure',
+                                         required=False,
+                                         default=False,
+                                         action='store_true'),
+                            "-chunk_tx": dict(help='chunk size of data packets in kB to'
+                                                   ' send',
+                                              required=False, default=20, type=int),
+                            "-chunk_rx": dict(help='chunk size of data packets in kB to'
+                                                   ' receive',
+                                              required=False, default=32, type=int),
+                            "-total_size": dict(help='total size of data packets in MB',
+                                                required=False, default=10, type=int)})
+
+SYSCTL = dict(help="to start/stop a script without following the output",
+              desc="to follow initiate repl",
+              mode=dict(help='indicate a mode {start,stop}',
+                        metavar='mode',
+                        choices=['start', 'stop']),
+              subcmd=dict(help='indicate a script to start/stop',
+                          metavar='script'),
+              options={"-t": dict(help="device target address",
+                                  required=True),
+                       "-p": dict(help='device password or baudrate',
+                                  required=True),
+                       "-wss": dict(help='use WebSocket Secure',
+                                    required=False,
+                                    default=False,
+                                    action='store_true')})
+
+LOG = dict(help="to log the output of a script running in device",
+           desc="log levels (sys.stdout and file), run modes (normal, daemon) are"
+                "available through following options",
+           subcmd=dict(help=('indicate a script to run and log'),
+                       metavar='script'),
+           options={"-t": dict(help="device target address",
+                               required=True),
+                    "-p": dict(help='device password or baudrate',
+                               required=True),
+                    "-wss": dict(help='use WebSocket Secure',
+                                 required=False,
+                                 default=False,
+                                 action='store_true'),
+                    "-s": dict(help='indicate the path of the script if in external fs'
+                                    ' e.g. an sd card.',
+                               required=False),
+                    "-dflev": dict(help='debug file mode level; default: error',
+                                   default='error',
+                                   choices=['debug', 'info', 'warning', 'error',
+                                            'critical']),
+                    "-dslev": dict(help='debug sys.stdout mode level; default: debug',
+                                   default='debug',
+                                   choices=['debug', 'info', 'warning', 'error',
+                                            'critical']),
+                    "-daemon": dict(help='enable "daemon mode", uses nohup so this '
+                                         'means running in background, output if any is'
+                                         ' redirected to [SCRIPT_NAME]_daemon.log',
+                                    default=False, action='store_true'),
+                    "-stopd": dict(help='To stop a log daemon script',
+                                   default=False, action='store_true'),
+                    "-F": dict(help='To follow a daemon log script file',
+                               action='store_true',
+                               default=False)})
+
+PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
+              subcmd=dict(help='indicate a test script to run, any optional '
+                               'arg is passed to pytest',
+                          default=[''],
+                          metavar='test',
+                          nargs='*'),
+              options={"-t": dict(help="device target address",
+                                  required=True),
+                       "-p": dict(help='device password or baudrate',
+                                  required=True),
+                       "-wss": dict(help='use WebSocket Secure',
+                                    required=False,
+                                    default=False,
+                                    action='store_true')})
+
+
+DB_CMD_DICT_PARSER = {"ping": PING, "probe": PROBE, "scan": SCAN, "run": RUN,
+                      "timeit": TIMEIT, "stream_test": STREAM_TEST, "sysctl": SYSCTL,
+                      "log": LOG, "pytest": PYTEST}
+
+
+usag = """%(prog)s command [options]\n
+"""
+
+_help_subcmds = "%(prog)s [command] -h to see further help of any command"
+
+parser = argparse.ArgumentParser(prog="upydev",
+                                 description=('debugging tools'
+                                              + '\n\n'
+                                                + _help_subcmds),
+                                 formatter_class=rawfmt,
+                                 usage=usag, prefix_chars='-')
+subparser_cmd = parser.add_subparsers(title='commands', prog='', dest='m',
+                                      )
+
+for command, subcmd in DB_CMD_DICT_PARSER.items():
+    if 'desc' in subcmd.keys():
+        _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
+    else:
+        _desc = subcmd['help']
+    _subparser = subparser_cmd.add_parser(command, help=subcmd['help'],
+                                          description=_desc,
+                                          formatter_class=rawfmt)
+    for pos_arg in subcmd.keys():
+        if pos_arg not in ['subcmd', 'help', 'desc', 'options']:
+            _subparser.add_argument(pos_arg, **subcmd[pos_arg])
+    if subcmd['subcmd']:
+        _subparser.add_argument('subcmd', **subcmd['subcmd'])
+    for option, op_kargs in subcmd['options'].items():
+        _subparser.add_argument(option, **op_kargs)
+
+
+def parseap(command_args):
+    try:
+        return parser.parse_known_args(command_args)
+    except SystemExit:  # argparse throws these because it assumes you only want
+        # to do the command line
+        return None  # should be a default one
+
+
+def sh_cmd(cmd_inp):
+    # parse args
+    command_line = shlex.split(cmd_inp)
+
+    all_args = parseap(command_line)
+
+    if not all_args:
+        return
+    else:
+        args, unknown_args = all_args
+
+    return args, unknown_args
+
+
+def filter_bool_opt(k, v):
+    if v and isinstance(v, bool):
+        return f"{k}"
+    else:
+        return ""
+
+
+def expand_margs(v):
+    if isinstance(v, list):
+        return ' '.join(v)
+    else:
+        return v
+
 
 UPYDEV_PATH = upydev.__path__[0]
 
@@ -61,14 +313,6 @@ DEBUGGING_HELP = """
                   This is an implementation of
                   https://github.com/peterhinch/micropython-samples/tree/master/timed_function
 
-        - diagnose: to make a diagnostic test of the device (sends useful to commands
-                    to get device state info), to save report to file see -rep, use -n to save
-                    the report with a custom name (automatic name is "upyd_ID_DATETIME.txt")
-                    Use "-md local" option if connected to esp AP.
-
-        - errlog: if 'error.log' is present in the upydevice, this shows the content
-                    (cat('error.log')), if 'error.log' in sd use -s sd
-
         - stream_test: to test download speed (from device to host). Default test is 10 MB of
                        random bytes are sent in chunks of 20 kB and received in chunks of 32 kB.
                        To change test parameters use -chunk_tx , -chunk_rx, and -total_size.
@@ -85,10 +329,6 @@ DEBUGGING_HELP = """
                 'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME
                 directory, named after the name of the script. To follow an on going 'daemon'
                 mode log, use -follow option and indicate the script with -f option.
-
-        - debug: to execute a local script line by line in the target upydevice, use -f option
-                to indicate the file. To enter next line press ENTER, to finish PRESS C
-                then ENTER. To break a while loop do CTRL+C.
 
         - pytest: to run upydevice test with pytest, do "pytest-setup" first to enable selection
                  of specific device with -@ entry point.
@@ -170,57 +410,56 @@ def ping(ip, zt=False):
             print(message[:-1].decode())
 
 
-def run_script(args):
+def run_script(args, script):
     dir = ''
-    script_filepy = args.f
+    script_filepy = script
     script_name = script_filepy.split('.')[0]
-    reload = "del(sys.modules['{}'])".format(script_name)
-    run_cmd = "import {};".format(script_name)
+    reload = f"del(sys.modules['{script_name}'])"
+    run_cmd = f"import {script_name};"
     # print(run_cmd)
     if args.s is not None:
         dir = args.s
-        sd_path = "import sys;sys.path.append('/{}')".format(dir)
-        run_cmd = "{};import {}".format(sd_path, script_name)
+        sd_path = f"import sys;sys.path.append('/{dir}')"
+        run_cmd = f"{sd_path};import {script_name}"
 
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-    print('Running {}...'.format(args.f))
+    print(f'Running {script}...')
     dev.wr_cmd(run_cmd, follow=True)
 
     time.sleep(0.2)
-    reload_cmd = "import sys,gc;{};gc.collect()".format(reload)
+    reload_cmd = f"import sys,gc;{reload};gc.collect()"
     if args.s is not None:
-        reload_syspath = "sys.path.remove('/{}')".format(dir)
-        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
+        reload_syspath = f"sys.path.remove('/{dir}')"
+        reload_cmd = f"{reload};{reload_syspath};gc.collect()"
 
     dev.cmd(reload_cmd, silent=True)
     dev.disconnect()
     print('Done!')
 
 
-def timeit_script(args):
+def timeit_script(args, script):
     timeit_import = "from time_it import tzero, tdiff, result;"
     dir = ''
-    script_filepy = args.f
+    script_filepy = script
     script_name = script_filepy.split('.')[0]
-    reload = "del(sys.modules['{}'])".format(script_name)
-    timeit_cmd = "t_0 = tzero();import {};diff=tdiff(t_0);result('{}',diff);".format(
-        script_name, script_name)
+    reload = f"del(sys.modules['{script_name}'])"
+    timeit_cmd = (f"t_0 = tzero();import {script_name};"
+                  f"diff=tdiff(t_0);result('{script_name}',diff);")
     timeit_final_cmd = timeit_import + timeit_cmd
     if args.s is not None:
         dir = args.s
-        sd_path = "import sys;sys.path.append('/{}')".format(dir)
-        timeit_final_cmd = "{};{}".format(
-            sd_path, timeit_final_cmd)
+        sd_path = f"import sys;sys.path.append('/{dir}')"
+        timeit_final_cmd = f"{sd_path};{timeit_final_cmd}"
 
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-    print('Running {}...'.format(args.f))
+    print(f'Running {script}...')
     dev.wr_cmd(timeit_final_cmd, follow=True)
 
     time.sleep(0.2)
-    reload_cmd = "import sys;{};gc.collect()".format(reload)
+    reload_cmd = f"import sys;{reload};gc.collect()"
     if args.s is not None:
-        reload_syspath = "sys.path.remove('/{}')".format(dir)
-        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
+        reload_syspath = f"sys.path.remove('/{dir}')"
+        reload_cmd = f"{reload};{reload_syspath};gc.collect()"
 
     dev.cmd(reload_cmd, silent=True)
     dev.disconnect()
@@ -263,644 +502,6 @@ def ping_diagnose(ip, rep_file=None):
         return False
     else:
         return True
-
-
-def diagnose(args):
-    t0 = time.time()
-    save_rep = args.rep
-    if args.rst is None:
-        args.rst = True
-    else:
-        args.rst = False
-    local = False
-    if args.apmd:
-        local = True
-    vers = upydev.version
-    name_rep = args.n
-
-    FILE_REPORT = []
-    # FULL REPORT TEST
-    print('{:<10} {} {:>10}'.format('*'*20, 'uPydev Diagnostics Test', '*'*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format(
-        '*'*20, 'uPydev Diagnostics Test', '*'*20))
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('upydev version : {}'.format(vers))
-    FILE_REPORT.append('upydev version : {}'.format(vers))
-    # CHECK IF DEVICE IS REACHABLE
-    print('\n')
-    FILE_REPORT.append('\n')
-    print('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'PING TEST', '='*20))
-    device_is_on = ping_diagnose(args.t, rep_file=FILE_REPORT)
-    print('\n')
-    FILE_REPORT.append('\n')
-    # CHECK IF PORT 8266 IS OPEN(WEBREPL)
-    host_range = args.t
-    nmScan = nmap.PortScanner()
-    print('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
-    FILE_REPORT.append('{:<10} {} {:>10}'.format('='*20, 'NMAP TEST', '='*20))
-    print('\n')
-    FILE_REPORT.append('\n')
-    n_tries = 0
-    while n_tries < 3:
-        my_scan = nmScan.scan(hosts=host_range, arguments='-p 8266 -Pn')
-        hosts_list = [{'host': x, 'state': nmScan[x]['status']['state'], 'port': list(
-            nmScan[x]['tcp'].keys())[0], 'status':nmScan[x]['tcp'][8266]['state']} for x in nmScan.all_hosts()]
-        devs = [host for host in hosts_list if host['status'] == 'open']
-        if len(devs) > 0:
-            n_tries = 3
-            print('DEVICE FOUND')
-            FILE_REPORT.append('DEVICE FOUND')
-            N = 1
-            for dev in devs:
-                try:
-                    print('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
-                        N, dev['host'], dev['state'], dev['port'], dev['status']))
-                    FILE_REPORT.append('DEVICE {}: , IP: {} , STATE: {}, PORT: {}, STATUS: {}'.format(
-                        N, dev['host'], dev['state'], dev['port'], dev['status']))
-                    N += 1
-                except Exception as e:
-                    pass
-        else:
-            if n_tries >= 2:
-                print('DEVICE NOT FOUND')
-                FILE_REPORT.append('DEVICE NOT FOUND')
-                n_tries += 1
-            else:
-                n_tries += 1
-    # ISSUE A KBI
-    if device_is_on:
-        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss,
-                     autodetect=True)
-        # dev.kbi()
-        glo_vars = dev.cmd('dir()', silent=True, rtn_resp=True)
-        # ID
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'MACHINE ID', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'MACHINE ID', '='*10))
-        uid = dev.cmd(_CMDDICT_['UID'], silent=True, rtn_resp=True)
-        print('\n')
-        FILE_REPORT.append('\n')
-        print("ID: {}".format(uid.decode()))
-        upy_id = uid.decode()
-        FILE_REPORT.append("ID: {}".format(uid.decode()))
-        print('\n')
-        FILE_REPORT.append('\n')
-        # UNAME
-        print('{:<10} {} {:>10}'.format('='*10, 'DEVICE INFO', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'DEVICE INFO', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        info_dev = str(dev)
-        print(info_dev)
-        FILE_REPORT.append(info_dev)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # CHECK AVAILABLE FIRMWARE
-        if not local:
-            print('{:<10} {} {:>10}'.format(
-                '='*10, 'AVAILABLE FIRMWARE', '='*10))
-            FILE_REPORT.append('{:<10} {} {:>10}'.format(
-                '='*10, 'AVAILABLE FIRMWARE', '='*10))
-            print('\n')
-            FILE_REPORT.append('\n')
-            print('Available firmware found for {}'.format(dev.dev_platform))
-            FILE_REPORT.append(
-                'Available firmware found for {}'.format(dev.dev_platform))
-            for vers in get_fw_versions(dev.dev_platform)[1]:
-                print('  - {}'.format(vers))
-                FILE_REPORT.append('  - {}'.format(vers))
-            print('\n')
-            FILE_REPORT.append('\n')
-        # RAM MEM
-        print('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format('='*10, 'RAM', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        RAM = dev.cmd(_CMDDICT_['MEM'], silent=True, rtn_resp=True,
-                      long_string=True)
-        mem_info = RAM.splitlines()[1]
-        mem = {elem.strip().split(':')[0]: int(elem.strip().split(':')[
-                          1]) for elem in mem_info[4:].split(',')}
-        print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memory',
-                                                            'Size', 'Used',
-                                                            'Avail',
-                                                            'Use%']))
-        FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}".format(*['Memory',
-                                                                         'Size', 'Used',
-                                                                         'Avail',
-                                                                         'Use%']))
-        total_mem = mem['total']/1000
-        used_mem = mem['used']/1000
-        free_mem = mem['free']/1000
-        total_mem_s = "{:.3f} kB".format(total_mem)
-        used_mem_s = "{:.3f} kB".format(used_mem)
-        free_mem_s = "{:.3f} kB".format(free_mem)
-
-        print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
-                                                         used_mem_s, free_mem_s,
-                                                         "{:.1f} %".format((used_mem/total_mem)*100)))
-        FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}'.format('RAM', total_mem_s,
-                                                                      used_mem_s, free_mem_s,
-                                                                      "{:.1f} %".format((used_mem/total_mem)*100)))
-
-        print('\n')
-        FILE_REPORT.append('\n')
-        # DIR()
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'GLOBAL SPACE VARIABLES', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'GLOBAL SPACE VARIABLES', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        print(glo_vars)
-        FILE_REPORT.append(glo_vars)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # FLASH MEM
-        print('{:<10} {} {:>10}'.format('='*10, 'FLASH MEMORY', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'FLASH MEMORY', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        cmd_str = _CMDDICT_['STAT_FS'].format('')
-        resp = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-        size_info = resp
-        total_b = size_info[0] * size_info[2]
-        used_b = (size_info[0] * size_info[2]) - (size_info[0] * size_info[3])
-        total_mem = print_filesys_info(total_b)
-        free_mem = print_filesys_info(size_info[0] * size_info[3])
-        used_mem = print_filesys_info(used_b)
-        filesys = 'Flash'
-        if filesys == 'Flash':
-            mounted_on = '/'
-        else:
-            mounted_on = filesys
-        print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
-                                                                   'Size', 'Used',
-                                                                   'Avail',
-                                                                   'Use%', 'Mounted on']))
-        FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
-                                                                                'Size', 'Used',
-                                                                                'Avail',
-                                                                                'Use%', 'Mounted on']))
-        print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                     used_mem, free_mem,
-                                                                     "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
-        FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                                  used_mem, free_mem,
-                                                                                  "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        ld = dev.cmd("import uos;uos.listdir('/')", silent=True, rtn_resp=True)
-        if 'sd' in ld:
-            sd_ismounted = True
-            cmd_str = _CMDDICT_['STAT_FS'].format('sd')
-            resp = dev.cmd(cmd_str, silent=True, rtn_resp=True)
-            size_info = resp
-            total_b = size_info[0] * size_info[2]
-            used_b = (size_info[0] * size_info[2]) - (size_info[0] * size_info[3])
-            total_mem = print_filesys_info(total_b)
-            free_mem = print_filesys_info(size_info[0] * size_info[3])
-            used_mem = print_filesys_info(used_b)
-            filesys = 'sd'
-            mounted_on = '/sd'
-            print("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
-                                                                       'Size', 'Used',
-                                                                       'Avail',
-                                                                       'Use%', 'Mounted on']))
-            FILE_REPORT.append("{0:12}{1:^12}{2:^12}{3:^12}{4:^12}{5:^12}".format(*['Filesystem',
-                                                                                    'Size', 'Used',
-                                                                                    'Avail',
-                                                                                    'Use%', 'Mounted on']))
-            print('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                         used_mem, free_mem,
-                                                                         "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
-            FILE_REPORT.append('{0:12}{1:^12}{2:^12}{3:^12}{4:>8}{5:>5}{6:12}'.format(filesys, total_mem,
-                                                                                      used_mem, free_mem,
-                                                                                      "{:.1f} %".format((used_b/total_b)*100), ' ', mounted_on))
-            print('\n')
-            FILE_REPORT.append('\n')
-        else:
-            sd_ismounted = False
-            print('SD NOT FOUND')
-            FILE_REPORT.append('SD NOT FOUND')
-        # FILES IN FLASH + SIZE
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'Files in FLASH MEMORY', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'Files in FLASH MEMORY', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        du = dev.cmd("[(filename,uos.stat(''+str(filename))[6]) for filename in uos.listdir('')]",
-                     silent=True, rtn_resp=True)
-        filesize = du
-        filesize.sort(key=sortSecond, reverse=True)
-        print('Files in FLASH MEMORY:')
-        FILE_REPORT.append('Files in FLASH MEMORY:')
-        print_sizefile_all(filesize, frep=FILE_REPORT)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # MODULES
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'Frozen Modules in Firmware', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'Frozen Modules in Firmware', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        umodules = dev.cmd("help('modules')", silent=True, long_string=True,
-                           rtn_resp=True)
-        print(umodules)
-        FILE_REPORT.append(umodules)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # /LIB
-        print('{:<10} {} {:>10}'.format('='*10, 'Modules in /lib', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'Modules in /lib', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        lib = dev.cmd("import uos; uos.listdir('/lib')", silent=True, rtn_resp=True)
-        for flib in lib:
-            print(flib)
-            FILE_REPORT.append(flib)
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'Modules/scripts in /', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'Modules/scripts in /', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        pyfs = dev.cmd("import uos; uos.listdir('/')", silent=True, rtn_resp=True)
-        pyfiles = [pyf for pyf in pyfs if '.py' in pyf]
-        for pyf in pyfiles:
-            print(pyf)
-            FILE_REPORT.append(pyf)
-
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        # I2C SCAN (config option)
-        print('{:<10} {} {:>10}'.format('='*10, 'I2C SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'I2C SCAN', '='*10))
-        i2c_scl = "22"
-        i2c_sda = "23"
-        if dev.dev_platform == 'esp8266':
-            i2c_scl = "5"
-            i2c_sda = "4"
-        i2c_cmd = "from machine import I2C,Pin;i2c = I2C(scl=Pin({}),sda=Pin({}));i2c.scan();gc.collect()".format(
-            i2c_scl, i2c_sda)
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        i2c_scan = dev.cmd(i2c_cmd, silent=True, rtn_resp=True)
-        print('Found {} i2c devices'.format(len(i2c_scan)))
-        FILE_REPORT.append('Found {} i2c devices'.format(len(i2c_scan)))
-        print('DEC: ')
-        FILE_REPORT.append('DEC: ')
-        print(i2c_scan)
-        FILE_REPORT.append(i2c_scan)
-        print('HEX:')
-        FILE_REPORT.append('HEX:')
-        print([hex(val) for val in i2c_scan])
-        FILE_REPORT.append([hex(val) for val in i2c_scan])
-
-        print('\n')
-        FILE_REPORT.append('\n')
-        # RTC CHECK LOCAL TIME - HOST TIME DIFF
-        print('{:<10} {} {:>10}'.format('='*10, 'RTC DATETIME CHECK', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'RTC DATETIME CHECK', '='*10))
-        get_time_cmd = "import time;tnow = time.localtime();"
-        get_time2_cmd = "[tnow[0],tnow[1],tnow[2],tnow[3],tnow[4],tnow[5]];gc.collect()"
-        get_datetime_cmd = get_time_cmd + get_time2_cmd
-        devtime = dev.cmd(get_datetime_cmd, silent=True, rtn_resp=True)
-        localtime = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-        print('\n')
-        FILE_REPORT.append('\n')
-        devicetime = "{}-{}-{}T{}:{}:{}".format(*_ft_datetime(devtime))
-        print('{:<15} :  {:^15}'.format('Device DateTime', devicetime))
-        FILE_REPORT.append('{:<15} :  {:^15}'.format(
-            'Device DateTime', devicetime))
-        print('{:<15} :  {:^15}'.format('Local DateTime', localtime))
-        FILE_REPORT.append('{:<15} :  {:^15}'.format(
-            'Local DateTime', localtime))
-        print('\n')
-        FILE_REPORT.append('\n')
-        # IF NETWORK:
-        is_conn_cmd = 'import network; network.WLAN(network.STA_IF).isconnected()'
-
-        devconn = dev.cmd(is_conn_cmd, silent=True, rtn_resp=True)
-        is_connected = devconn
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK STA IF CONFIG', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK STA IF CONFIG', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        if is_connected:
-            net_info_list = dev.cmd(_CMDDICT_['NET_INFO'], silent=True,
-                                    rtn_resp=True)
-            if len(net_info_list) > 0:
-                vals = hexlify(net_info_list[2]).decode()
-                bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
-                print('IF CONFIG:')
-                print('┏{0}━┳━{1}━┳━{2}━┳━{3}━┳━{4}━┳━{5}━┳━{6}━┓'.format(
-                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
-                                '━'*10))
-                print('┃{0:^15} ┃ {1:^15} ┃ {2:^15} ┃ {3:^15} ┃ {4:^15} ┃ {5:^20} ┃ {6:^10} ┃'.format(
-                                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'SSID', 'BSSID',
-                                'RSSI'))
-                print('┣{0}━╋━{1}━╋━{2}━╋━{3}━╋━{4}━╋━{5}━╋━{6}━┫'.format(
-                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
-                                '━'*10))
-                try:
-                    print('┃{0:^15} ┃ {1:^15} ┃ {2:^15} ┃ {3:^15} ┃ {4:^15} ┃ {5:^20} ┃ {6:^10} ┃'.format(
-                        *net_info_list[0], net_info_list[1],
-                        bssid, net_info_list[3]))
-                    print('┗{0}━┻━{1}━┻━{2}━┻━{3}━┻━{4}━┻━{5}━┻━{6}━┛'.format(
-                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
-                                '━'*10))
-                except Exception as e:
-                    print(e)
-
-                FILE_REPORT.append('IF CONFIG:')
-                FILE_REPORT.append('┏{0}━┳━{1}━┳━{2}━┳━{3}━┳━{4}━┳━{5}━┳━{6}━┓'.format(
-                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
-                                '━'*10))
-                FILE_REPORT.append('┃{0:^15} ┃ {1:^15} ┃ {2:^15} ┃ {3:^15} ┃ {4:^15} ┃ {5:^20} ┃ {6:^10} ┃'.format(
-                                'IP', 'SUBNET', 'GATEAWAY', 'DNS', 'SSID', 'BSSID',
-                                'RSSI'))
-                FILE_REPORT.append('┣{0}━╋━{1}━╋━{2}━╋━{3}━╋━{4}━╋━{5}━╋━{6}━┫'.format(
-                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
-                                '━'*10))
-                try:
-                    FILE_REPORT.append('┃{0:^15} ┃ {1:^15} ┃ {2:^15} ┃ {3:^15} ┃ {4:^15} ┃ {5:^20} ┃ {6:^10} ┃'.format(
-                        *net_info_list[0], net_info_list[1],
-                        bssid, net_info_list[3]))
-                    FILE_REPORT.append('┗{0}━┻━{1}━┻━{2}━┻━{3}━┻━{4}━┻━{5}━┻━{6}━┛'.format(
-                                '━'*15, '━'*15, '━'*15, '━'*15, '━'*15, '━'*20,
-                                '━'*10))
-                except Exception as e:
-                    FILE_REPORT.append(e)
-        else:
-            print('STA NOT CONNECTED')
-            FILE_REPORT.append('STA NOT CONNECTED')
-        # STA (NETSCAN)
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK STA SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK STA SCAN', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        net_scan_list = dev.cmd(_CMDDICT_['NET_SCAN'], silent=True, rtn_resp=True)
-        print('=' * 110)
-        FILE_REPORT.append('=' * 110)
-        print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-            'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
-        FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-            'ESSID', 'BSSID', 'CHANNEL', 'RSSI (dB)', 'AUTHMODE', 'HIDDEN'))
-        print('=' * 110)
-        FILE_REPORT.append('=' * 110)
-        for netscan in net_scan_list:
-            auth = AUTHMODE_DICT[netscan[4]]
-            ap_name = netscan[0].decode()
-            if len(ap_name) > 20:
-                ap_name = ap_name[:17] + '...'
-            vals = hexlify(netscan[1]).decode()
-            bssid = ':'.join([vals[i:i+2] for i in range(0, len(vals), 2)])
-            print('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                ap_name, bssid, netscan[2], netscan[3],
-                auth, str(netscan[5])))
-            FILE_REPORT.append('{0:^20} | {1:^25} | {2:^10} | {3:^15} | {4:^15} | {5:^10} '.format(
-                ap_name, bssid, netscan[2], netscan[3],
-                auth, str(netscan[5])))
-        print('\n')
-        FILE_REPORT.append('\n')
-        # AP (APSTAT)
-        print('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK AP IF CONFIG', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK AP IF CONFIG', '='*10))
-        apstat = dev.cmd(_CMDDICT_['APSTAT'], silent=True, rtn_resp=True)
-        print('\n')
-        FILE_REPORT.append('\n')
-        if len(apstat) > 0:
-            auth = AUTHMODE_DICT[int(apstat[-2])]
-            print('AP INFO:')
-            print('┏{0}━┳━{1}━┳━{2}━┳━{3}━┓'.format(
-                            '━'*20, '━'*20, '━'*20, '━'*20))
-            print('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
-                'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
-            print('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
-                *apstat[:-2], auth))
-            print('┣{0}━╋━{1}━╋━{2}━╋━{3}━┫'.format(
-                            '━'*20, '━'*20, '━'*20, '━'*20))
-            print('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
-                'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
-            try:
-                print('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
-                    *apstat[-1]))
-                print('┗{0}━┻━{1}━┻━{2}━┻━{3}━┛'.format(
-                            '━'*20, '━'*20, '━'*20, '━'*20))
-            except Exception as e:
-                print(e)
-                pass
-            FILE_REPORT.append('AP INFO:')
-            FILE_REPORT.append('┏{0}━┳━{1}━┳━{2}━┳━{3}━┓'.format(
-                            '━'*20, '━'*20, '━'*20, '━'*20))
-            FILE_REPORT.append('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
-                'AP ENABLED', 'ESSID', 'CHANNEL', 'AUTHMODE'))
-            FILE_REPORT.append('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
-                *apstat[:-2], auth))
-            FILE_REPORT.append('┣{0}━╋━{1}━╋━{2}━╋━{3}━┫'.format(
-                            '━'*20, '━'*20, '━'*20, '━'*20))
-            FILE_REPORT.append('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
-                'IP', 'SUBNET', 'GATEAWAY', 'DNS'))
-            try:
-                FILE_REPORT.append('┃{0:^20} ┃ {1:^20} ┃ {2:^20} ┃ {3:^20} ┃'.format(
-                    *apstat[-1]))
-                FILE_REPORT.append('┗{0}━┻━{1}━┻━{2}━┻━{3}━┛'.format(
-                            '━'*20, '━'*20, '━'*20, '━'*20))
-            except Exception as e:
-                FILE_REPORT.append(e)
-                pass
-
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        # AP (APSCAN)
-        print('{:<10} {} {:>10}'.format('='*10, 'NETWORK AP SCAN', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'NETWORK AP SCAN', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        apscan_cmd = _CMDDICT_['AP_SCAN']
-        if apstat[:-2][0] != 0:
-            if dev.dev_platform != 'esp8266':
-
-                ap_scan_list = dev.cmd(apscan_cmd, silent=True, rtn_resp=True)
-                if isinstance(ap_scan_list, list):
-                    if len(ap_scan_list) > 0:
-                        ap_devices = ap_scan_list
-                        print('Found {} devices:'.format(len(ap_devices)))
-                        FILE_REPORT.append('Found {} devices:'.format(len(ap_devices)))
-                        for cdev in ap_devices:
-                            bytdev = hexlify(cdev[0]).decode()
-                            mac_ad = ':'.join([bytdev[i:i+2] for i in range(0, len(bytdev),
-                                                                            2)])
-                            print('MAC: {}'.format(mac_ad))
-                            FILE_REPORT.append('MAC: {}'.format(mac_ad))
-                    else:
-                        print('No device found')
-                        FILE_REPORT.append('No device found')
-                else:
-                    print('No device found')
-                    FILE_REPORT.append('No device found')
-            else:
-                print('ESP8266 NOT SUPPORTED')
-                FILE_REPORT.append('ESP8266 NOT SUPPORTED')
-        else:
-            print('AP DISABLED')
-            FILE_REPORT.append('AP DISABLED')
-        # CAT 'BOOT.PY'
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'boot.py CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'boot.py CONTENT', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        dev.cmd('from upysh import *', silent=True)
-        boot = dev.cmd("cat('boot.py')", silent=True, long_string=True, rtn_resp=True)
-        print(boot)
-        FILE_REPORT.append(boot)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # CAT 'MAIN.PY'
-
-        print('{:<10} {} {:>10}'.format('='*10, 'main.py CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'main.py CONTENT', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        mainpy = dev.cmd("cat('main.py');gc.collect()", silent=True, long_string=True,
-                         rtn_resp=True)
-        print(mainpy)
-        FILE_REPORT.append(mainpy)
-        print('\n')
-        FILE_REPORT.append('\n')
-        # CAT 'ERROR.LOG'
-
-        print('{:<10} {} {:>10}'.format('='*10, 'error.log CONTENT', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'error.log CONTENT', '='*10))
-        print('\n')
-        FILE_REPORT.append('\n')
-        is_err_log = dev.cmd("import uos;uos.listdir('/')", silent=True, rtn_resp=True)
-        if 'error.log' in is_err_log:
-            try:
-
-                errlog = dev.cmd("cat('error.log');gc.collect()",
-                                 silent=True, long_string=True, rtn_resp=True)
-
-                print(errlog)
-                FILE_REPORT.append(errlog)
-            except Exception as e:
-                pass
-        else:
-            print('error.log NOT FOUND')
-            FILE_REPORT.append('error.log NOT FOUND')
-        print('\n')
-        FILE_REPORT.append('\n')
-        if sd_ismounted:
-            print('Looking for error.log in SD:')
-            print('\n')
-            FILE_REPORT.append('\n')
-
-            is_err_log = dev.cmd("import uos;uos.listdir('/sd')", silent=True,
-                                 rtn_resp=True)
-            if 'error.log' in is_err_log:
-                try:
-
-                    errlog = dev.cmd("cat('/sd/error.log');gc.collect()",
-                                     silent=True, long_string=True, rtn_resp=True)
-                    print(errlog)
-                    FILE_REPORT.append(errlog)
-                    print('\n')
-                    FILE_REPORT.append('\n')
-                except Exception as e:
-                    pass
-            else:
-                print('error.log NOT FOUND')
-                FILE_REPORT.append('error.log NOT FOUND')
-
-        # HW
-        # PINS STATE
-        print('\n')
-        FILE_REPORT.append('\n')
-        print('{:<10} {} {:>10}'.format('='*10, 'PINS STATE', '='*10))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '='*10, 'PINS STATE', '='*10))
-        pinlist = "[16, 17, 26, 25, 34, 39, 36, 4, 21, 13, 12, 27, 33, 15, 32, 14, 22, 23, 5, 18, 19]"
-        if dev.dev_platform == 'esp8266':
-            pinlist = "[0,2,4,5,12,13,14,15]"
-        machine_pin = "pins=[machine.Pin(i, machine.Pin.IN) for i in pin_list]"
-        status = "dict(zip([str(p) for p in pins],[p.value() for p in pins]))"
-        pin_status_cmd = "import machine;pin_list={};{};{};gc.collect()".format(
-            pinlist, machine_pin, status)
-
-        pin_dict = dev.cmd(pin_status_cmd, silent=True, rtn_resp=True)
-        pin_list = list(pin_dict.keys())
-        pin_list.sort()
-        for key in pin_list:
-            if pin_dict[key] == 1:
-                print('{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-                FILE_REPORT.append(
-                    '{0:^10} | {1:^5} | HIGH'.format(key, pin_dict[key]))
-            else:
-                print('{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-                FILE_REPORT.append(
-                    '{0:^10} | {1:^5} |'.format(key, pin_dict[key]))
-        print('\n')
-        FILE_REPORT.append('\n')
-
-        tdiff = time.time()-t0
-        print('{:<10} {} {:>10}'.format(
-            '*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
-        FILE_REPORT.append('{:<10} {} {:>10}'.format(
-            '*'*20, 'uPydev Diagnostics Test Finished!', '*'*20))
-        print('TOTAL TIME: {} s'.format(round(tdiff, 2)))
-        FILE_REPORT.append('TOTAL TIME: {} s'.format(round(tdiff, 2)))
-
-        if save_rep:
-            name_file = 'upyd_{}_{}_report.txt'.format(
-                upy_id, datetime.now().strftime("%m-%d-%Y_at_%H-%M-%S"))
-            if name_rep is not None:
-                name_file = "{}.txt".format(name_rep)
-            with open(name_file, 'w') as rfile:
-                for line in FILE_REPORT:
-                    if isinstance(line, str):
-                        rfile.write(line)
-                        rfile.write('\n')
-                    else:
-                        rfile.write("{}".format(line))
-                        rfile.write('\n')
-        if args.rst:
-            dev.reset(reconnect=False)
 
 
 def get_error_log(args):
@@ -1049,27 +650,31 @@ def get_stream_test(args, device, mode='download'):
     dev.disconnect()
 
 
-def sysctl(args):
+def sysctl(args, script):
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    mode = args.mode
+    _script = script.replace('.py', '')
     sys_cmd = "import {}"
-    if args.start is not None:
-        print('Loading {} script...'.format(args.start))
-        sys_cmd = sys_cmd.format(args.start)
+    if mode == 'start':
+        print(f'Loading {script} script...')
+        sys_cmd = sys_cmd.format(_script)
         dev.cmd_nb(sys_cmd, block_dev=False)
+        time.sleep(2)
         print('Done!')
-    elif args.stop is not None:
-        reload = "del(sys.modules['{}'])".format(args.stop)
-        print('Stopping {} script...'.format(args.stop))
+    elif mode == 'stop':
+        reload = f"del(sys.modules['{_script}'])"
+        print(f'Stopping {script} script...')
         dev.kbi()
-        print('Unloading {} script...'.format(args.stop))
-        reload_cmd = "import sys,gc;{};gc.collect();print('Script unloaded!')".format(reload)
+        print(f'Unloading {script} script...')
+        reload_cmd = (f"import sys,gc;{reload};gc.collect();"
+                      "print('systctl: script unloaded')")
         time.sleep(1)
         dev.cmd(reload_cmd)
         print('Done!')
     dev.disconnect()
 
 
-def log_script(args, dev='', log=None):
+def log_script(args, script, dev='', log=None):
 
     def pipe_log(msg, log=log, std='stdout'):
         if std == 'stderr':
@@ -1077,33 +682,33 @@ def log_script(args, dev='', log=None):
         else:
             log.info(msg)
     dir = ''
-    script_filepy = args.f
+    script_filepy = script
     script_name = script_filepy.split('.')[0]
-    reload = "del(sys.modules['{}'])".format(script_name)
-    run_cmd = "import {};".format(script_name)
+    reload = f"del(sys.modules['{script_name}'])"
+    run_cmd = f"import {script_name};"
     # print(run_cmd)
     if args.s is not None:
         dir = args.s
-        sd_path = "import sys;sys.path.append('/{}')".format(dir)
-        run_cmd = "{};import {}".format(sd_path, script_name)
+        sd_path = f"import sys;sys.path.append('/{dir}')"
+        run_cmd = f"{sd_path};import {script_name}"
 
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-    log.info('Running {}...'.format(args.f))
+    log.info(f'Running {script}...')
     dev.wr_cmd(run_cmd, follow=True, pipe=pipe_log)
 
     time.sleep(0.2)
-    reload_cmd = "import sys,gc;{};gc.collect()".format(reload)
+    reload_cmd = f"import sys,gc;{reload};gc.collect()"
     if args.s is not None:
-        reload_syspath = "sys.path.remove('/{}')".format(dir)
-        reload_cmd = "{};{};gc.collect()".format(reload, reload_syspath)
+        reload_syspath = f"sys.path.remove('/{dir}')"
+        reload_cmd = f"{reload};{reload_syspath};gc.collect()"
 
     dev.cmd(reload_cmd, silent=True)
     dev.disconnect()
     log.info('Done!')
 
 
-def get_log_script(args, dev_name):
-    script_filepy = args.f
+def get_log_script(args, script, dev_name):
+    script_filepy = script
     script_name = script_filepy.split('.')[0]
     filelog_path = os.path.join(os.environ['HOME'], '.upydev_logs')
     filelog_daemon = os.path.join(filelog_path, '{}_daemon.log'.format(script_name))
@@ -1137,7 +742,7 @@ def get_log_script(args, dev_name):
             fh_err.setFormatter(fmt_err)
             log.addHandler(fh_err)
 
-            log_script(args, log=log)
+            log_script(args, script, log=log)
         else:
             print('Stopping daemon log...')
             print(stop_by_pid(proc_name='upydev log'))
@@ -1158,16 +763,18 @@ def get_log_script(args, dev_name):
                 single_command.append(sys.argv[2:][i])
         gcommand = ' '.join(single_command)
         daemon_cmd = "nohup upydev log {} > {} &".format(gcommand, filelog_daemon)
-        subprocess.call(daemon_cmd, shell=True)  # is this still safe?
-        print('Running upydev log daemon-like mode')
-        print('Logging to {} with level: {}'.format(
-            '{}_daemon.log'.format(script_name), args.dslev))
-        print("Do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
+        print(daemon_cmd)  # does not work in subprocess --> shell
+        # subprocess.Popen(daemon_cmd, shell=True)  # is this still safe?
+        # time.sleep(3)
+        # print('Running upydev log daemon-like mode')
+        # print('Logging to {} with level: {}'.format(
+        #     '{}_daemon.log'.format(script_name), args.dslev))
+        # print("Do '$ upydev log {} -stopd ' to stop the daemon".format(script_name))
 
 
 # from https://stackoverflow.com/questions/12523044/how-can-i-tail-a-log-file-in-python
-def follow_daemon_log(args):
-    script_filepy = args.f
+def follow_daemon_log(args, script):
+    script_filepy = script
     script_name = script_filepy.split('.')[0]
     filelog_path = os.path.join(os.environ['HOME'], ".upydev_logs")
     filelog_daemon = os.path.join(filelog_path, '{}_daemon.log'.format(script_name))
@@ -1179,42 +786,26 @@ def follow_daemon_log(args):
             line = follow_tail.stdout.readline()
             print(line[:-1].decode())
         except KeyboardInterrupt:
-            print(
-                "Unfollowing, do '$ upydev log -stopd -f {}' to stop the daemon".format(script_name))
+            print(f"Unfollowing, do '$ upydev log {script_name} "
+                  "-stopd ' to stop the daemon")
             break
 
 
-def debug_upyscript(args):
-    print('Loading {} ...'.format(args.f))
-    print('ENTER: EXECUTE NEXT LINE, C: BREAK')
-    dbug_wrepl_tool_cmd = 'dbg_wrepl -f{} -t {} -p {}'.format(args.f, args.t, args.p)
-    dbg_cmd = shlex.split(dbug_wrepl_tool_cmd)
-    try:
-        subprocess.call(dbg_cmd)
-    except KeyboardInterrupt:
-        time.sleep(1)
-        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-        dev.kbi()
-        dev.disconnect()
+def pytest(args, scripts, unkwargs, devname):
 
-
-def pytest(args, devname):
-    if args.f is not None:
-        test = args.f
-    elif args.fre is not None:
-        test = ' '.join(args.fre)
-    else:
-        test = ''
+    test = ' '.join(scripts)
     pytest_cmd_str = 'pytest {} -s --dev {}'.format(test, devname)
-    if args.md:
-        pytest_cmd_str = ' '.join([pytest_cmd_str, args.md[0]])
+    # if args.mode:
+    #     pytest_cmd_str = ' '.join([pytest_cmd_str, args.mode])
     pytest_cmd = shlex.split(pytest_cmd_str)
+    if unkwargs:
+        pytest_cmd += unkwargs
     old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     def preexec_function(action=old_action):
         signal.signal(signal.SIGINT, action)
     try:
-        pytest_session = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
+        subprocess.call(pytest_cmd, preexec_fn=preexec_function)
         signal.signal(signal.SIGINT, old_action)
     except KeyboardInterrupt:
         pass
@@ -1260,10 +851,38 @@ def probe_device(addr, passwd, args):
 
 
 #############################################
-def debugging_action(args, **kargs):
+def debugging_action(args, unkwargs, **kargs):
     dev_name = kargs.get('device')
+    args_dict = {f"-{k}": v for k, v in vars(args).items()
+                 if k in dict_arg_options[args.m]}
+    args_list = [f"{k} {expand_margs(v)}" if v and not isinstance(v, bool)
+                 else filter_bool_opt(k, v) for k, v in args_dict.items()]
+    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    # print(cmd_inp)
+    # sys.exit()
+    # debug command:
+    if cmd_inp.startswith('!'):
+        args = parseap(shlex.split(cmd_inp[1:]))
+        print(args)
+        return
+    if '-h' in unkwargs:
+        sh_cmd(f"{args.m} -h")
+        sys.exit()
 
-    if args.m == 'probe':
+    result = sh_cmd(cmd_inp)
+    if not result:
+        sys.exit()
+    else:
+        args, unknown_args = result
+    if hasattr(args, 'subcmd'):
+        command, rest_args = args.m, args.subcmd
+        if rest_args is None:
+            rest_args = []
+    else:
+        command, rest_args = args.m, []
+    # print(f"{command}: {args} {rest_args} {unknown_args}")
+
+    if command == 'probe':
         if args.gg or args.G:
             if not args.devs:
                 print('Reaching {} group...'.format(args.G))
@@ -1324,7 +943,7 @@ def debugging_action(args, **kargs):
                 print('{:10} -> {:} @ {:} -> {} {}'.format(dev_name, dt, args.t,
                                                            FAIL, XF))
 
-    elif args.m == 'scan':
+    elif command == 'scan':
         if args.sr:
             print('Serial Scan:')
             devs_dict = serial_scan(debug_info=True)
@@ -1411,7 +1030,7 @@ def debugging_action(args, **kargs):
                                 try:
                                     services = [uuidstr_to_str(serv)
                                                 for serv in dev.metadata['uuids']]
-                                except Exception as e:
+                                except Exception:
                                     services = ['']
 
                     print('┃{0:^20} ┃ {1:^40} ┃ {2:^10} ┃ {3:^40} ┃'.format(dev.name, dev.address,
@@ -1436,7 +1055,7 @@ def debugging_action(args, **kargs):
                 except Exception as e:
                     print(e)
 
-    elif args.m == 'ping':
+    elif command == 'ping':
         dt = check_device_type(args.t)
         if dt == 'WebSocketDevice':
             # check if device in ZeroTier group.
@@ -1459,44 +1078,38 @@ def debugging_action(args, **kargs):
                 print('{:10} -> {:} @ {:} -> {} {}'.format(dev_name, dt, args.t,
                                                            FAIL, XF))
 
-    elif args.m == 'run':
-        run_script(args)
+    elif command == 'run':
+        run_script(args, rest_args)
 
-    elif args.m == 'timeit':
-        timeit_script(args)
+    elif command == 'timeit':
+        timeit_script(args, rest_args)
 
-    elif args.m == 'diagnose':
-        diagnose(args)
-
-    elif args.m == 'errlog':
-        get_error_log(args)
-
-    elif args.m == 'stream_test':
+    elif command == 'stream_test':
         dt = check_device_type(args.t)
         if dt == 'WebSocketDevice':
             get_stream_test(args, dev_name)
         else:
             print('{} is a {}, stream_test not available'.format(dev_name, dt))
 
-    elif args.m == 'sysctl':
-        sysctl(args)
+    elif command == 'sysctl':
+        sysctl(args, rest_args)
 
-    elif args.m == 'log':
-        if not args.follow:
-            get_log_script(args, dev_name)
+    elif command == 'log':
+        if not args.F:
+            get_log_script(args, rest_args, dev_name)
         else:
-            follow_daemon_log(args)
+            follow_daemon_log(args, rest_args)
 
-    elif args.m == 'debug':
-        debug_upyscript(args)
-
-    elif args.m == 'pytest-setup':
-        shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
-        shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
-        print('pytest.ini and conftest.py saved in current working directory.')
-
-    elif args.m == 'pytest':
-        print('Running pytest with Device: {}'.format(dev_name))
-        pytest(args, dev_name)
+    elif command == 'pytest':
+        if rest_args[0] == 'setup':
+            shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
+            shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
+            print('pytest.ini and conftest.py saved in current working directory.')
+        else:
+            for uk in ['-f', '-fre']:
+                if uk in unknown_args:
+                    unknown_args.remove(uk)
+            print('Running pytest with Device: {}'.format(dev_name))
+            pytest(args, rest_args, unknown_args, dev_name)
 
     return

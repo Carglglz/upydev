@@ -18,7 +18,7 @@ from contextlib import redirect_stdout, closing
 from upydev.shell.redirectsh import Tee
 from upydev.shell.nanoglob import glob as nglob
 from upydev.shell.shasum import _shasum_data, shasum
-from upydev.shell.upyconfig import config_parser, param_parser, set_val
+from upydev.shell.upyconfig import config_parser, param_parser
 import traceback
 import ast
 import time
@@ -115,7 +115,7 @@ class ShellCmds:
                     shell_cmd_str = self.brace_exp(shell_cmd_str)
                     # globals expand
                     _shell_cmd_str = [cmd if '*' not in cmd
-                                     else nglob(cmd) for cmd in shell_cmd_str]
+                                      else nglob(cmd) for cmd in shell_cmd_str]
                     shell_cmd_str = []
                     for cmd in _shell_cmd_str:
                         if isinstance(cmd, list):
@@ -127,7 +127,7 @@ class ShellCmds:
                                                       ].split() + shell_cmd_str[1:]
                     if shell_cmd_str[0] in SHELL_FUNCTIONS:
                         shell_cmd_str = SHELL_FUNCTIONS[shell_cmd_str[0]
-                                                      ].split() + shell_cmd_str[1:]
+                                                        ].split() + shell_cmd_str[1:]
                     old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
                     def preexec_function(action=old_action):
@@ -167,7 +167,7 @@ class ShellCmds:
                     except Exception as e:
                         print(e)
                 except Exception:
-                    print("Indicate a host to ping, e.g google.com")
+                    print("indicate a host to ping, e.g google.com")
 
             return True
 
@@ -752,7 +752,7 @@ class ShellCmds:
             # SET HOSTNAME
             elif rest_args[0] == 'hostname':
                 if len(rest_args) < 2:
-                    print('Indicate a name to set')
+                    print('indicate a name to set')
                 else:
                     hostname = rest_args[1]
                     print(f"Setting hostname: {hostname}")
@@ -764,7 +764,7 @@ class ShellCmds:
             # SET LOCALNAME
             elif rest_args[0] == 'localname':
                 if len(rest_args) < 2:
-                    print('Indicate a name to set')
+                    print('indicate a name to set')
                 else:
                     localname = rest_args[1]
                     print(f"Setting localname: {localname}")
@@ -779,13 +779,12 @@ class ShellCmds:
             resp = self.send_cmd("import time;tnow=time.localtime();tnow[:6]")
             print("{}-{}-{}T{}:{}:{}".format(*_ft_datetime(resp)))
 
-
         # CONFIG
         if command == 'config':
             if not rest_args:
                 self.dev.wr_cmd('from nanoglob import glob', silent=True)
                 dev_config = self.dev.wr_cmd("glob('*_config.py')",
-                                               silent=True, rtn_resp=True)
+                                             silent=True, rtn_resp=True)
                 _params_config = [param.split('_')[0].rsplit('/')[-1]
                                   for param in dev_config]
                 print_table(_params_config, wide=16, format_SH=False)
@@ -795,7 +794,7 @@ class ShellCmds:
                         self.dev.wr_cmd('from nanoglob import glob', silent=True)
                         rest_args = [f"*{param}_config.py" for param in rest_args]
                         dev_config = self.dev.wr_cmd(f"glob(*{rest_args})",
-                                                       silent=True, rtn_resp=True)
+                                                     silent=True, rtn_resp=True)
                         _params_config = [(param.split('_')[0].rsplit('/')[-1],
                                            param.replace('.py', '').rsplit('/')[-1])
                                           for param in dev_config]
@@ -804,7 +803,7 @@ class ShellCmds:
                                                                 f"; {param.upper()}",
                                                                 silent=True,
                                                                 rtn_resp=True)
-                                        for param, config in _params_config}
+                                         for param, config in _params_config}
                         for conf in params_config.keys():
                             def_conf = {}
                             param_in_config = config_parser(self.dev, conf)
@@ -813,11 +812,11 @@ class ShellCmds:
                                                                param)
                             if args.y:
                                 conf_str = '\n    '.join([f'{k}: {v}'
-                                                         for k,v in def_conf.items()])
+                                                          for k, v in def_conf.items()])
                                 print(f"{conf}: \n    {conf_str}")
                             else:
                                 conf_str = ', '.join([f'{k}={v}'
-                                                         for k,v in def_conf.items()])
+                                                      for k, v in def_conf.items()])
                                 print(f"{conf} -> {conf_str}")
                     else:  # set config
                         param_option = rest_args[0].replace(':', '')
@@ -846,7 +845,6 @@ class ShellCmds:
                     else:
                         print('config: add: name of config required')
 
-
         # SHASUM_CHECK
         if command == 'shasum':
             if args.c:
@@ -869,7 +867,7 @@ class ShellCmds:
         # MKDIR
         if command == 'mkdir':
             if not rest_args:
-                print('Indicate a directory to make')
+                print('indicate a directory to make')
                 return
             else:
                 rest_args = self.brace_exp(rest_args)
@@ -879,7 +877,7 @@ class ShellCmds:
         # RM  --> TODO: pattrn match and -rf
         if command == 'rm':
             if not rest_args:
-                print('Indicate a file to remove')
+                print('indicate a file to remove')
                 return
             else:
                 rest_args = self.brace_exp(rest_args)
@@ -901,7 +899,7 @@ class ShellCmds:
 
         if command == 'rmdir':
             if not rest_args:
-                print('Indicate a dir to remove')
+                print('indicate a dir to remove')
                 return
             else:
                 rest_args = self.brace_exp(rest_args)
@@ -964,7 +962,7 @@ class ShellCmds:
         # CAT
         if command == 'cat':
             if not rest_args:
-                print('Indicate a file/s or a matching pattrn to see')
+                print('indicate a file/s or a matching pattrn to see')
             else:
                 rest_args = self.brace_exp(rest_args)
                 if args.d:
@@ -983,7 +981,7 @@ class ShellCmds:
         # head
         if command == 'head':
             if not rest_args:
-                print('Indicate a file/s or a matching pattrn to see')
+                print('indicate a file/s or a matching pattrn to see')
             else:
                 rest_args = self.brace_exp(rest_args)
                 files_to_see = f"*{rest_args}"
@@ -996,7 +994,7 @@ class ShellCmds:
         if command == 'touch':
             # brace expansion
             if not rest_args:
-                print('Indicate a file/s to create')
+                print('indicate a file/s to create')
             else:
                 rest_args = self.brace_exp(rest_args)
                 files_to_create = f"*{rest_args}"
@@ -1011,14 +1009,14 @@ class ShellCmds:
                 sbcmd, _rest_args = rest_args[0], rest_args[1:]
                 if sbcmd == 'install':
                     if not _rest_args:
-                        print('Indicate a library to install with upip')
+                        print('indicate a library to install with upip')
                     else:
                         for lib in _rest_args:
                             self.send_cmd(f"import upip;upip.install('{lib}')",
                                           sh_silent=False)
                 elif sbcmd == 'info':
                     if not _rest_args:
-                        print('Indicate a library to see info about')
+                        print('indicate a library to see info about')
                     else:
                         for lib in _rest_args:
                             upip_host.install_pkg(lib, ".", read_pkg_info=True)
@@ -1036,7 +1034,7 @@ class ShellCmds:
         # TIMEIT
         if command == 'timeit':
             if not rest_args:
-                print("Indicate a script/command to measure execution time")
+                print("indicate a script/command to measure execution time")
             else:
                 try:
                     for script in rest_args:
@@ -1061,7 +1059,7 @@ class ShellCmds:
         # RUN
         if command == 'run':
             if not rest_args:
-                print('Indicate a script to run')
+                print('indicate a script to run')
                 return
             else:
                 script_name = rest_args.split('.')[0]
@@ -1083,7 +1081,7 @@ class ShellCmds:
         # RELOAD
         if command == 'reload':
             if not rest_args:
-                print('Indicate a module/s to reload')
+                print('indicate a module/s to reload')
             else:
                 for module in rest_args:
                     module = module.replace('.py', '')
@@ -1252,7 +1250,7 @@ class ShellCmds:
                 shell_cmd_str = shlex.split(f"vim {_file_to_edit}")
             else:
                 if len(args.d) != 2:
-                    print('Indicate two files to compare')
+                    print('indicate two files to compare')
                     return
                 shell_cmd_str = shlex.split(f"vim -d {_file_to_edit} {args.d[1]}")
 

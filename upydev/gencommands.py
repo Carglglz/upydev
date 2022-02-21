@@ -3,6 +3,8 @@ from upydev.commandlib import _CMDDICT_
 import time
 import sys
 
+fs_commands = ['ls', 'cat', 'head']
+
 
 def print_sizefile_all(fileslist, tabs=0, frep=None):
     for filedata in fileslist:
@@ -73,6 +75,8 @@ def gen_command(args, unkwargs, **kargs):
     inp = inp.split('-@')[0]
     # print(inp)
     if args.m not in ['reset', 'kbi', 'upysh']:
+        if args.m in fs_commands:
+            dev.wr_cmd(_CMDDICT_['UPYSH'], silent=True)
         sh.cmd(inp)
 
     elif args.m == 'reset':
@@ -87,4 +91,5 @@ def gen_command(args, unkwargs, **kargs):
     elif args.m == 'upysh':
         dev.cmd(_CMDDICT_['UPYSH'], long_string=True)
         dev.disconnect()
+        return
         return

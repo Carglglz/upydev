@@ -163,7 +163,7 @@ Firmware
         Use ``-i``, flag to check device platform and firmware match (If using official firmware releases.)
 
     - ota:
-        To do an OTA firmware update. This needs ``ota.py`` or ``otable.py``. Indicate file with ``-f``
+        To do an OTA firmware update. This needs ``ota.py`` or ``otable.py``. indicate file with ``-f``
         option or as second arg. Use ``-sec`` option for OTA over TLS.
 
     - mpyx:

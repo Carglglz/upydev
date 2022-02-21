@@ -93,7 +93,7 @@ def check_prompt():
     return _SHELL_FLAGS.prompt['p']
 
 
-session_p = PromptSession()
+session_p = PromptSession(enable_suspend=True)
 
 # REPL/SHELL LOOP
 repl = True

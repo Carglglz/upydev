@@ -216,7 +216,7 @@ shell_commands_info = """
 """
 # dict {cmd:{'help':'command_help', 'subcommand':{'help':'subh', 'choices':[]}}...}
 LS = dict(help="list files or directories",
-          subcmd=dict(help='Indicate a file/dir or pattern to see', default=[],
+          subcmd=dict(help='indicate a file/dir or pattern to see', default=[],
                       metavar='file/dir/pattern', nargs='*'),
           options={"-a": dict(help='list hidden files', required=False,
                               default=False,
@@ -225,32 +225,32 @@ LS = dict(help="list files or directories",
                               default=0,
                               type=int)})
 HEAD = dict(help="display first lines of a file",
-            subcmd=dict(help='Indicate a file or pattern to see', default=[],
+            subcmd=dict(help='indicate a file or pattern to see', default=[],
                         metavar='file/pattern', nargs='*'),
             options={"-n": dict(help='number of lines to print', required=False,
                                 default=10,
                                 type=int)})
 CAT = dict(help="concatenate and print files",
-           subcmd=dict(help='Indicate a file or pattern to see', default=[],
+           subcmd=dict(help='indicate a file or pattern to see', default=[],
                        metavar='file/pattern', nargs='*'),
            options={"-d": dict(help='depth level', required=False,
                                default=0,
                                type=int)})
 
 MKDIR = dict(help="make directories",
-             subcmd=dict(help='Indicate a dir/pattern to create', default=[],
+             subcmd=dict(help='indicate a dir/pattern to create', default=[],
                          metavar='dir', nargs='*'),
              options={})
 
 CD = dict(help="change current working directory",
-          subcmd=dict(help='Indicate a dir to change to', default='/',
+          subcmd=dict(help='indicate a dir to change to', default='/',
                       metavar='dir', nargs='?'),
           options={})
 PWD = dict(help="print current working directory",
            subcmd={},
            options={})
 RM = dict(help="remove file or pattern of files",
-          subcmd=dict(help='Indicate a file/pattern to remove', default=[],
+          subcmd=dict(help='indicate a file/pattern to remove', default=[],
                       metavar='file/dir/pattern', nargs='+'),
           options={"-rf": dict(help='remove recursive force a dir or file',
                                required=False,
@@ -263,14 +263,14 @@ RM = dict(help="remove file or pattern of files",
                                default=False,
                                action='store_true')})
 RMDIR = dict(help="remove directories or pattern of directories",
-             subcmd=dict(help='Indicate a dir/pattern to remove', default=[],
+             subcmd=dict(help='indicate a dir/pattern to remove', default=[],
                          metavar='dir', nargs='+'),
              options={"-d": dict(help='depth level search', required=False,
                                  default=0,
                                  type=int)})
 
 DU = dict(help="display disk usage statistics",
-          subcmd=dict(help='Indicate a dir to see usage', default='',
+          subcmd=dict(help='indicate a dir to see usage', default='',
                       metavar='dir', nargs='?'),
           options={"-d": dict(help='depth level', required=False,
                               default=0,
@@ -279,7 +279,7 @@ DU = dict(help="display disk usage statistics",
                               default=[],
                               nargs='*')})
 TREE = dict(help="list contents of directories in a tree-like format",
-            subcmd=dict(help='Indicate a dir to see', default='',
+            subcmd=dict(help='indicate a dir to see', default='',
                         metavar='dir', nargs='?'),
             options={"-a": dict(help='list hidden files', required=False,
                                 default=False,
@@ -303,7 +303,7 @@ EXIT = dict(help="exit upydev shell",
                                  default=False,
                                  action='store_true')})
 VIM = dict(help="use vim to edit files",
-           subcmd=dict(help='Indicate a file to edit', default='',
+           subcmd=dict(help='indicate a file to edit', default='',
                        metavar='file', nargs='?'),
            options={"-rm": dict(help='remove local copy after upload', required=False,
                                 default=False,
@@ -326,7 +326,7 @@ VIM = dict(help="use vim to edit files",
                                nargs='+')})
 
 DIFF = dict(help=("use git diff between device's [~file/s] and local file/s"),
-            subcmd=dict(help='Indicate files to compare or pattern', default=['*', '*'],
+            subcmd=dict(help='indicate files to compare or pattern', default=['*', '*'],
                         metavar='fileA fileB', nargs='+'),
             options={"-s": dict(help='switch file comparison',
                                 required=False,
@@ -334,7 +334,7 @@ DIFF = dict(help=("use git diff between device's [~file/s] and local file/s"),
                                 action='store_true')})
 
 RUN = dict(help="run device's scripts",
-           subcmd=dict(help='Indicate a file/script to run', default='',
+           subcmd=dict(help='indicate a file/script to run', default='',
                        metavar='file'),
            options={"-r": dict(help='reload script so it can run again',
                                required=False,
@@ -343,17 +343,17 @@ RUN = dict(help="run device's scripts",
                     })
 
 RELOAD = dict(help="reload device's scripts",
-              subcmd=dict(help='Indicate a file/script to reload', default='',
+              subcmd=dict(help='indicate a file/script to reload', default='',
                           metavar='file', nargs=1),
               options={})
 
 LCD = dict(help="change local current working directory",
-           subcmd=dict(help='Indicate a dir to change to', default='',
+           subcmd=dict(help='indicate a dir to change to', default='',
                        metavar='dir', nargs='?'),
            options={})
 
 LSL = dict(help="list local files or directories",
-           subcmd=dict(help='Indicate a file/dir or pattern to see', default=[],
+           subcmd=dict(help='indicate a file/dir or pattern to see', default=[],
                        metavar='file/dir/pattern', nargs='*'),
            options={"-a": dict(help='list hidden files', required=False,
                                default=False,
@@ -363,7 +363,7 @@ LPWD = dict(help="print local current working directory",
             options={})
 
 LDU = dict(help="display local disk usage statistics",
-           subcmd=dict(help='Indicate a dir to see usage', default='',
+           subcmd=dict(help='indicate a dir to see usage', default='',
                        metavar='dir', nargs='?'),
            options={"-d": dict(help='depth level', required=False,
                                default=0,
@@ -385,7 +385,7 @@ MODULES = dict(help="prints device's frozen modules",
                options={})
 
 UPING = dict(help="device send ICMP ECHO_REQUEST packets to network hosts",
-             subcmd=dict(help='Indicate an IP address to ping; default: host IP',
+             subcmd=dict(help='indicate an IP address to ping; default: host IP',
                          default='host',
                          metavar='IP', nargs='?'),
              options={})
@@ -457,14 +457,14 @@ SHASUM = dict(help="shasum SHA-256 tool",
                                   required=False,
                                   default='')})
 TOUCH = dict(help="create a new file",
-             subcmd=dict(help='Indicate a new file/pattern to create',
+             subcmd=dict(help='indicate a new file/pattern to create',
                          default=[],
                          metavar='file/pattern',
                          nargs='*'),
              options={})
 
 UPIP = dict(help="install or manage MicroPython libs",
-            subcmd=dict(help='Indicate a lib/module to {install, info, find}',
+            subcmd=dict(help='indicate a lib/module to {install, info, find}',
                         default=[],
                         metavar='file/pattern',
                         nargs='*'),
@@ -472,7 +472,7 @@ UPIP = dict(help="install or manage MicroPython libs",
             alt_ops=['install', 'info', 'find'])
 
 TIMEIT = dict(help="measure execution time of a script/function",
-              subcmd=dict(help='Indicate a script/function to measure',
+              subcmd=dict(help='indicate a script/function to measure',
                           default=[],
                           metavar='script/function',
                           nargs='*'),
@@ -492,17 +492,17 @@ ENABLE_SHELL = dict(help="upload required files so shell is fully operational",
                     options={})
 
 DOCS = dict(help="see upydev docs at https://upydev.readthedocs.io/en/latest/",
-            subcmd=dict(help='Indicate a keyword to search',
+            subcmd=dict(help='indicate a keyword to search',
                         metavar='keyword', nargs='?'),
             options={})
 
 MDOCS = dict(help="see MicroPython docs at docs.micropython.org",
-             subcmd=dict(help='Indicate a keyword to search',
+             subcmd=dict(help='indicate a keyword to search',
                          metavar='keyword', nargs='?'),
              options={})
 
 CTIME = dict(help="measure execution time of a shell command",
-             subcmd=dict(help='Indicate a command to measure',
+             subcmd=dict(help='indicate a command to measure',
                          default='info',
                          choices=shell_commands+custom_sh_cmd_kw,
                          metavar='command'),
@@ -510,13 +510,13 @@ CTIME = dict(help="measure execution time of a shell command",
 
 CONFIG = dict(help="set or check config (from *_config.py files)#",
               subcmd=dict(help='indicate parameter to set or check ',
-                         default=[],
-                         metavar='parameter',
-                         nargs='*'),
-             options={"-y": dict(help='print config in YAML format',
-                                 required=False,
-                                 default=False,
-                                 action='store_true')})
+                          default=[],
+                          metavar='parameter',
+                          nargs='*'),
+              options={"-y": dict(help='print config in YAML format',
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
 
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,

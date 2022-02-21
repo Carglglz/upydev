@@ -1,19 +1,13 @@
-from upydev.shell.nanoglob import glob as nglob, _get_path_depth
-from upydevice import DeviceException, DeviceNotFound
-from upydev.shell.common import tree, print_size
-from upydev.shell.constants import CHECK
-from upydev.shell.shasum import shasum
+from upydev.shell.nanoglob import glob as nglob
+from upydevice import DeviceNotFound
 from upydev.otatool import OTAServer
 from upydev.otabletool import OTABleController, dfufy_file
 from datetime import datetime, timedelta
 import requests
 import shlex
 import subprocess
-import shutil
 import os
-import socket
 import re
-import sys
 import time
 import traceback
 
@@ -46,7 +40,6 @@ def get_fw_versions(keyword):
     return fw_dict, fw_list
 
 
-
 class ShfwIO:
     def __init__(self, dev, dev_name, shell=None):
         self.dev = dev
@@ -66,7 +59,7 @@ class ShfwIO:
                         args.b = dev_p
                         if self.dev.dev_platform == 'pyboard':
                             machine = self.dev.wr_cmd('import os;os.uname().machine',
-                                                       silent=True, rtn_resp=True)
+                                                      silent=True, rtn_resp=True)
                             machine, version = machine.split()[0].split('v')
                             version_str = version.replace('.', '')
                             machine = machine.lower()
@@ -74,7 +67,7 @@ class ShfwIO:
 
                     except Exception as e:
                         print(e)
-                        print('Indicate a device platform with -b option')
+                        print('indicate a device platform with -b option')
 
                 if len(rest_args) > 1:
                     if rest_args[1] == 'latest':
@@ -90,7 +83,7 @@ class ShfwIO:
                                 days_before += 1
                                 latest_fw = datetime.strftime(
                                     datetime.now()-timedelta(days=days_before),
-                                                             "%Y%m%d")
+                                    "%Y%m%d")
                                 fw_v_latest = [v for v in fw_v[1] if latest_fw in v]
                             if args.n is not None:
                                 if args.n != 'def':
@@ -143,7 +136,7 @@ class ShfwIO:
 
                             except Exception as e:
                                 print(e)
-                                print('Indicate a device platform with -b option')
+                                print('indicate a device platform with -b option')
 
                         today = datetime.strftime(datetime.now(), "%Y%m%d")
                         fw_v = get_fw_versions(args.b)
@@ -158,7 +151,7 @@ class ShfwIO:
                                 days_before += 1
                                 latest_fw = datetime.strftime(
                                     datetime.now()-timedelta(days=days_before),
-                                                             "%Y%m%d")
+                                    "%Y%m%d")
                                 fw_v_latest = [v for v in fw_v[1] if latest_fw in v]
                             if args.n is not None:
                                 if args.n != 'def':
@@ -176,7 +169,7 @@ class ShfwIO:
                                 curl_cmd_str = f"curl -O '{fw_v_latest_link}'"
                                 curl_cmd = shlex.split(curl_cmd_str)
                                 try:
-                                    proc = subprocess.call(curl_cmd)
+                                    subprocess.call(curl_cmd)
                                     print('Done!')
                                 except KeyboardInterrupt:
                                     print('Operation Canceled')
@@ -188,7 +181,7 @@ class ShfwIO:
                         curl_cmd_str = f"curl -O '{fw_v_link}'"
                         curl_cmd = shlex.split(curl_cmd_str)
                         try:
-                            proc = subprocess.call(curl_cmd)
+                            subprocess.call(curl_cmd)
                             print('Done!')
                         except KeyboardInterrupt:
                             print('Operation Canceled')
@@ -198,7 +191,7 @@ class ShfwIO:
                             args.b = self.dev.dev_platform
                             if self.dev.dev_platform == 'pyboard':
                                 machine = self.dev.wr_cmd('import os;os.uname().machine',
-                                                  silent=True, rtn_resp=True)
+                                                          silent=True, rtn_resp=True)
                                 machine, version = machine.split()[0].split('v')
                                 version_str = version.replace('.', '')
                                 machine = machine.lower()
@@ -206,7 +199,7 @@ class ShfwIO:
 
                         except Exception as e:
                             print(e)
-                            print('Indicate a device platform with -b option')
+                            print('indicate a device platform with -b option')
 
                     fw_v_dict, fw_v = get_fw_versions(args.b)
                     if not fw_v:
@@ -235,7 +228,7 @@ class ShfwIO:
                         curl_cmd_str = f"curl -O '{fw_v_link}'"
                         curl_cmd = shlex.split(curl_cmd_str)
                         try:
-                            proc = subprocess.call(curl_cmd)
+                            subprocess.call(curl_cmd)
                             print('Done!')
                         except KeyboardInterrupt:
                             print('Operation Canceled')
@@ -253,7 +246,7 @@ class ShfwIO:
                     print('Checking firmware and device platform match')
                     if not self.dev.dev_platform:
                         dev_p = self.dev.wr_cmd('import sys; sys.platform',
-                                                 silent=True, rtn_resp=True)
+                                                silent=True, rtn_resp=True)
                     self.dev.dev_platform = dev_p
                     if self.dev.dev_platform in rest_args:
                         print(f'Firmware {rest_args} and {self.dev_name} '
@@ -272,7 +265,7 @@ class ShfwIO:
                 print(esptool_cmd_str)
                 esptool_cmd = shlex.split(esptool_cmd_str)
                 try:
-                    proc = subprocess.call(esptool_cmd)
+                    subprocess.call(esptool_cmd)
                     print('Done!')
                 except KeyboardInterrupt:
                     print('Operation Canceled')
@@ -281,7 +274,7 @@ class ShfwIO:
                     print('Checking firmware and device platform match')
                     if not self.dev.dev_platform:
                         dev_p = self.dev.wr_cmd('import sys; sys.platform',
-                                                 silent=True, rtn_resp=True)
+                                                silent=True, rtn_resp=True)
                     self.dev.dev_platform = dev_p
 
                     if self.dev.dev_platform in rest_args:
@@ -301,7 +294,7 @@ class ShfwIO:
                 print(esptool_cmd_str)
                 esptool_cmd = shlex.split(esptool_cmd_str)
                 try:
-                    proc = subprocess.call(esptool_cmd)
+                    subprocess.call(esptool_cmd)
                     print('Done!')
                 except KeyboardInterrupt:
                     print('Operation Canceled')
@@ -311,14 +304,14 @@ class ShfwIO:
                     print('Checking firmware and device platform match')
                     try:
                         machine = self.dev.wr_cmd('import os;os.uname().machine',
-                                               silent=True,
-                                               rtn_resp=True)
+                                                  silent=True,
+                                                  rtn_resp=True)
                     except Exception as e:
                         print(e)
                         return
                     if not self.dev.dev_platform:
                         dev_p = self.dev.wr_cmd('import sys; sys.platform',
-                                                 silent=True, rtn_resp=True)
+                                                silent=True, rtn_resp=True)
                     self.dev.dev_platform = dev_p
                     platform = dev_p
                     if platform in rest_args or platform[:3] in rest_args:
@@ -346,8 +339,7 @@ class ShfwIO:
 
                 print('Enabling DFU mode in pyboard, DO NOT DISCONNECT...')
                 # dev.connect()
-                bs = self.dev.serial.write(
-                    bytes('import pyb;pyb.bootloader()\r', 'utf-8'))
+                self.dev.serial.write(bytes('import pyb;pyb.bootloader()\r', 'utf-8'))
                 time.sleep(0.2)
                 bin_file = rest_args
                 flash_tool = input('Select a tool to flash pydfu.py/dfu-util: (0/1) ')
@@ -358,7 +350,7 @@ class ShfwIO:
                     flash_fw_cmd = shlex.split(pydfu_fw_cmd)
 
                     try:
-                        fw_flash = subprocess.call(flash_fw_cmd)
+                        subprocess.call(flash_fw_cmd)
                     except Exception as e:
                         # shr_cp.enable_wrepl_io()
                         print(e)
@@ -374,7 +366,7 @@ class ShfwIO:
                     flash_fw_cmd = shlex.split(dfu_fw_cmd)
 
                     try:
-                        fw_flash = subprocess.call(flash_fw_cmd)
+                        subprocess.call(flash_fw_cmd)
                     except Exception as e:
                         # shr_cp.enable_wrepl_io()
                         print(e)
@@ -414,7 +406,7 @@ class ShfwIO:
         if 'esp32' in fwfile:
             # Extract micropython.bin from firmware.bin
             with open(fwfile, 'rb') as fw:
-                offset = fw.read(MICROPYTHON_BIN_OFFSET)
+                fw.read(MICROPYTHON_BIN_OFFSET)
                 app = fw.read()
             with open(f"ota-{fwfile}", 'wb') as fw_app:
                 fw_app.write(app)
@@ -423,7 +415,7 @@ class ShfwIO:
             if args.i:
                 if not self.dev.dev_platform:
                     dev_p = self.dev.wr_cmd('import sys; sys.platform',
-                                             silent=True, rtn_resp=True)
+                                            silent=True, rtn_resp=True)
                     self.dev.dev_platform = dev_p
                 if self.dev.dev_platform in fwfile:
                     print(f'Firmware {fwfile} and {self.dev_name} device platform '
@@ -457,7 +449,7 @@ class ShfwIO:
             elif self.dev.dev_class == 'BleDevice':
                 # Enable dfu mode
                 print('ota: enabling DFU Mode...')
-                self.dev.wr_cmd(f"set_ble_flag('DFU')")
+                self.dev.wr_cmd("set_ble_flag('DFU')")
                 self.dev.reset(hr=True, reconnect=False)
                 local_name = self.dev.name
                 # self.dev.disconnect()
@@ -473,7 +465,7 @@ class ShfwIO:
                         fwu_services = dev.services_rsum['Device Firmware '
                                                          'Update Service']
                         assert 'DFU Control Point' in fwu_services, ('Missing DFU '
-                               'Control Point')
+                                                                     'Control Point')
                         assert 'DFU Packet' in fwu_services, 'Missing DFU Packet'
                         print('ota: DFU Mode available, starting ota firmware flashing')
                         if fwfile:
@@ -500,9 +492,9 @@ class ShfwIO:
                                 self.dev.name = local_name
                             break
                     except DeviceNotFound:
-                            time.sleep(1)
-                            print(f'ota: waiting for {self.dev_name} to '
-                                  'be available again...')
+                        time.sleep(1)
+                        print(f'ota: waiting for {self.dev_name} to '
+                              'be available again...')
                 time.sleep(1)
                 self.dev.wr_cmd('import gc;from upysh import *', silent=True)
                 print('Done!')

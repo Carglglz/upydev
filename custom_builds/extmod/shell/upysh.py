@@ -179,7 +179,7 @@ mv = os.rename
 
 def mkdir(*dirs):
     if not dirs:
-        print('mkdir: Indicate a directory to make')
+        print('mkdir: indicate a directory to make')
     for dir in dirs:
         try:
             os.mkdir(dir)

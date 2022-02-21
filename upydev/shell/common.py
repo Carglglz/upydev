@@ -84,6 +84,7 @@ def parse_bash_profile():
             ALIASES[alias_key] = alias_value
     return ALIASES
 
+
 def parse_bash_profile_functions():
     ALIASES = {}
     if '.bash_rc' in os.listdir(os.environ['HOME']):
@@ -1043,7 +1044,7 @@ class CatFileIO:
         sys.stdout.write("\033[A")
         print(' ' * self.columns, end='\r')
 
-    def shapipe(self, data, std=True, exec_prompt=False):
+    def shapipe(self, data, std=True, **kargs):
         if std != 'stderr' and data != '\n':
 
             sys.stdout.write("\033[K")

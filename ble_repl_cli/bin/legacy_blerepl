@@ -1710,7 +1710,7 @@ def custom_sh_cmd(cmd_inp):
                 ble_cp.dev.get_output()
                 files_to_put_dir = ble_cp.dev.output
                 if len(files_to_put_dir) == 0:
-                    print('File not Found\nIndicate a file to get')
+                    print('File not Found\nindicate a file to get')
                 else:
                     print('- {}'.format(file))
                     # ble_htool.start_SOC()
@@ -1720,7 +1720,7 @@ def custom_sh_cmd(cmd_inp):
                     ble_htool.stop_SOC()
         except Exception as e:
             print(e)
-            print('File not Found\nIndicate a file to get')
+            print('File not Found\nindicate a file to get')
 
     if cmd_inp.split(' ')[0] == 'put':
         try:
@@ -1770,7 +1770,7 @@ def custom_sh_cmd(cmd_inp):
                 files_to_put_dir = [fl for fl in os.listdir(
                 ) if os.path.isfile(fl) and fl in [file]]
                 if len(files_to_put_dir) == 0:
-                    print('File not Found\nIndicate a valid file to put')
+                    print('File not Found\nindicate a valid file to put')
                 else:
                     print('- {}'.format(file))
                     # ble_htool.start_SOC()
@@ -1780,7 +1780,7 @@ def custom_sh_cmd(cmd_inp):
                     ble_htool.stop_SOC()
         except Exception as e:
             # print(e)
-            print('File not Found\nIndicate a valid file to put')
+            print('File not Found\nindicate a valid file to put')
 #
     if cmd_inp.split(' ')[0] == 'catl':
         try:
@@ -1794,7 +1794,7 @@ def custom_sh_cmd(cmd_inp):
                 pass
 
         except Exception as e:
-            print('Indicate a file to show')
+            print('indicate a file to show')
 
     if cmd_inp.split(' ')[0] == 'dsync':
         if len(cmd_inp.split()) == 1:  # root_dir
@@ -1896,7 +1896,7 @@ def custom_sh_cmd(cmd_inp):
                 print(e)
                 print('Vim editor not found')
         except Exception as e:
-            print('Indicate a file to edit')
+            print('indicate a file to edit')
             pass
 
     if 'emacs' in cmd_inp.split(' ')[0]:
@@ -2004,7 +2004,7 @@ def custom_sh_cmd(cmd_inp):
         try:
             module = cmd_inp.split(' ')[1].split('.py')[0]
         except Exception as e:
-            print('Indicate a module to reload')
+            print('indicate a module to reload')
         ble_cp.dev.output = None
         reload_cmd = "import sys;del(sys.modules['{}']);gc.collect()".format(module)
         ble_cp.sh_repl(reload_cmd)
@@ -2088,10 +2088,10 @@ def custom_sh_cmd(cmd_inp):
 #                 print("{} dimensions: {}x{}".format(img_file, *dimensions))
 #                 print(img_1)
 #             else:
-#                 print('Indicate a ".pbm" file to view')
+#                 print('indicate a ".pbm" file to view')
 #         except Exception as e:
 #             print(e)
-#             print('Indicate a ".pbm" file to view')
+#             print('indicate a ".pbm" file to view')
 #
     if cmd_inp.split(' ')[0] == 'batstyle':
         if len(cmd_inp.split()) == 1:
@@ -2115,10 +2115,10 @@ def custom_sh_cmd(cmd_inp):
                 ble_cp.sh_repl("cat('{}')".format(color_file), silent=True)
                 ble_cp.do_color()
             else:
-                print('Indicate a ".py" file to view')
+                print('indicate a ".py" file to view')
         except Exception as e:
             print(e)
-            print('Indicate a ".py" file to view')
+            print('indicate a ".py" file to view')
 
     if cmd_inp.split(' ')[0] == 'batl':
         try:
@@ -2150,7 +2150,7 @@ def custom_sh_cmd(cmd_inp):
                     pass
 
         except Exception as e:
-            print('Indicate a ".py" file to view')
+            print('indicate a ".py" file to view')
 
     if cmd_inp.split()[0] == 'pytest':
         try:
@@ -2194,10 +2194,10 @@ def custom_sh_cmd(cmd_inp):
 #             dev_p = 'pyb'
 #         kw_cmd = cmd_inp.split()
 #         if len(kw_cmd) < 2:
-#             print('Indicate an operation: list/get/update')
+#             print('indicate an operation: list/get/update')
 #         else:
 #             if 'get' in kw_cmd and len(kw_cmd) < 3:
-#                 print("Indicate a firmware file to get or 'latest'")
+#                 print("indicate a firmware file to get or 'latest'")
 #             else:
 #                 if 'update' in cmd_inp:
 #                     cmd_inp = cmd_inp.replace('latest', '')
@@ -2395,7 +2395,7 @@ def custom_sh_cmd(cmd_inp):
 #                     ble_cp.sh_repl('\x0d', silent=True)
 #                     ble_cp.flush_conn()
 #         except Exception as e:
-#             print("Indicate a host to ping, e.g google.com")
+#             print("indicate a host to ping, e.g google.com")
 #
 #     if cmd_inp.split(' ')[0] == 'lping':
 #         try:
@@ -2419,7 +2419,7 @@ def custom_sh_cmd(cmd_inp):
 #             except Exception as e:
 #                 print(e)
 #         except Exception as e:
-#             print("Indicate a host to ping, e.g google.com")
+#             print("indicate a host to ping, e.g google.com")
 #
 #     if cmd_inp.split(' ')[0] == 'timeit':
 #         try:
@@ -2446,7 +2446,7 @@ def custom_sh_cmd(cmd_inp):
 #                     ble_cp.flush_conn()
 #         except Exception as e:
 #             # print(e)
-#             print("Indicate a script/command to measure execution time")
+#             print("indicate a script/command to measure execution time")
 #
 #     if cmd_inp.split()[0] == 'i2c':
 #         try:
@@ -2469,7 +2469,7 @@ def custom_sh_cmd(cmd_inp):
 #                 else:
 #                     print('No device found')
 #         except Exception as e:
-#             print('Indicate i2c mode (config/scan)')
+#             print('indicate i2c mode (config/scan)')
 #
     if cmd_inp.split()[0] == 'git':
         cmd_git = shlex.split(cmd_inp)

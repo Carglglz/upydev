@@ -33,7 +33,6 @@ parser.add_argument("-buff", help='Ble max writing length to use',
 args = parser.parse_args()
 
 
-
 if args.t != "auto" and "@" not in args.t:
     dev = AsyncBleDevice(args.t, name=args.dev, lenbuff=args.buff)
 else:
@@ -76,7 +75,7 @@ time.sleep(0.2)
 kbi = dev.kbi()
 time.sleep(0.2)
 uid = dev.wr_cmd("from machine import unique_id; unique_id()",
-                     silent=True, rtn_resp=True)
+                 silent=True, rtn_resp=True)
 try:
     unique_id = hexlify(uid).decode()
 except Exception:
@@ -115,7 +114,7 @@ else:
     _SHELL_FLAGS.shell_mode['S'] = True
 
     dev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
-                   ';gc.collect()', silent=True)
+               ';gc.collect()', silent=True)
     if not _IS_WASPDEV:
         dev.wr_cmd("help('modules')", silent=True, long_string=True)
 
@@ -132,44 +131,44 @@ kb = ShellKeyBindings(_SHELL_FLAGS, dev, sh, shbl_cmd_kw, SHELLBLE_CMD_DICT_PARS
 
 flags = _SHELL_FLAGS
 kb.remove('c-c')
-kb.remove('c-t')
-kb.remove('c-d')
+# kb.remove('c-t')
+# kb.remove('c-d')
 _dev_cmd_finished = True
 
 
-@kb.add('c-t')
-def runtempbuff(event):
-    "Run contents of _tmp_script.py"
-    def run_tmpcode():
-        print('Running Buffer')
-        with open('_tmp_script.py', 'r') as fbuff:
-            filebuffer = fbuff.read()
-        event.app.current_buffer.reset()
-        dev.paste_buff(filebuffer)
-        event.app.current_buffer.reset()
-        try:
-            dev.wr_cmd('\x04', follow=True, long_string=True)
-        except KeyboardInterrupt:
-            dev.kbi()
-    run_in_terminal(run_tmpcode)
+# @kb.add('c-t')
+# def runtempbuff(event):
+#     "Run contents of _tmp_script.py"
+#     def run_tmpcode():
+#         print('Running Buffer')
+#         with open('_tmp_script.py', 'r') as fbuff:
+#             filebuffer = fbuff.read()
+#         event.app.current_buffer.reset()
+#         dev.paste_buff(filebuffer)
+#         event.app.current_buffer.reset()
+#         try:
+#             dev.wr_cmd('\x04', follow=True, long_string=True)
+#         except KeyboardInterrupt:
+#             dev.kbi()
+#     run_in_terminal(run_tmpcode)
 
 
-@kb.add('c-d')
-def paste_mode_exit(event):
-    "PASTE MODE VIM EXEC, SOFT RESET IN REPL"
-    # event.app.current_buffer.insert_text('import')
-
-    def cmd_paste_exit():
-        print('Running Buffer...')
-        event.app.current_buffer.reset()
-        try:
-            dev.wr_cmd('\x04', follow=True, long_string=True)
-        except KeyboardInterrupt:
-            dev.kbi()
-        flags.paste['p'] = False
-
-    if flags.paste['p']:
-        run_in_terminal(cmd_paste_exit)
+# @kb.add('c-d')
+# def paste_mode_exit(event):
+#     "PASTE MODE VIM EXEC, SOFT RESET IN REPL"
+#     # event.app.current_buffer.insert_text('import')
+#
+#     def cmd_paste_exit():
+#         print('Running Buffer...')
+#         event.app.current_buffer.reset()
+#         try:
+#             dev.wr_cmd('\x04', follow=True, long_string=True)
+#         except KeyboardInterrupt:
+#             dev.kbi()
+#         flags.paste['p'] = False
+#
+#     if flags.paste['p']:
+#         run_in_terminal(cmd_paste_exit)
 
 
 @kb.add('c-c')
@@ -188,6 +187,7 @@ def send_KBI(event):
             else:
 
                 data = bytes(dev._kbi + '\r', 'utf-8')
+                print('^C')
                 await dev.ble_client.write_gatt_char(dev.writeables['Nordic UART RX'],
                                                      data)
 
@@ -226,7 +226,7 @@ def check_prompt():
         return ''
 
 
-session_p = PromptSession()
+session_p = PromptSession(enable_suspend=True)
 # REPL/SHELL LOOP
 repl = True
 while repl:
