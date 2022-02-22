@@ -446,6 +446,7 @@ class ShfwIO:
                     except KeyboardInterrupt:
                         return
                 print('Done!')
+                os.remove(fwfile)
             elif self.dev.dev_class == 'BleDevice':
                 # Enable dfu mode
                 print('ota: enabling DFU Mode...')

@@ -119,17 +119,16 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'net',
                  'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
                  'wap_conn', 'kbi', 'diagnose', 'errlog', 'dsync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
-                 'debug', 'gen_rsakey', 'rf_wrkey',
-                 'sslgen_key', 'set_wss', 'jupyterc', 'pytest',
+                 'debug', 'set_wss', 'jupyterc', 'pytest',
                  'pytest-setup', 'check', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
                  'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
                  'backup', 'rsync', 'make_sgroup', 'mksg',
-                 'rsa_sign', 'rsa_verify', 'ssl', 'sign', 'verify',
-                 'ota', 'register', 'lsdevs', 'ls', 'rsa_auth',
-                 'auth', 'cat', 'vim', 'ifconfig', 'touch', 'reload',
+                 'ota', 'register', 'lsdevs', 'ls', 'cat', 'vim', 'ifconfig', 'touch',
+                 'reload', 'ssl', 'sign', 'verify', 'auth',
                  'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'upip', 'uping',
-                 'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum']
+                 'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
+                 'kg', 'rsa']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -287,8 +286,8 @@ parser.add_argument('-sig', help='to indicate a value or type of signal to write
                     nargs='+')
 parser.add_argument('-at', help='[HOUR] [MINUTE] [SECONDS]',
                     nargs='+', type=int, default=[0, 0, 0])
-parser.add_argument('-to', help='[DIRECTION] [VELOCITY] [STEPS]',
-                    nargs='+', default=['R', 2000, 100])
+parser.add_argument('-to', help='indicate serial device to upload key/cert',
+                    required=False)
 
 parser.add_argument('-client', help='[ID] [BROKER ADDRESS] [USER] [PASSWORD]',
                     nargs='+', default=[None, 'test.mosquitto.org'])
@@ -334,7 +333,7 @@ multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
                      'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
                      'rsync', 'docs', 'udocs', 'mdocs', 'set_hostname', 'set_localname',
                      'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls', 'cat',
-                     'vim', 'sysctl', 'log', 'pytest']
+                     'vim', 'sysctl', 'log', 'pytest', 'kg', 'rsa']
 multiple_args_fw = ['fwr', 'flash']
 
 if len(args.m) == 1:
@@ -354,13 +353,6 @@ elif len(args.m) == 2:
             args.md = [second_arg]
         elif args.m == 'flash' or args.m == 'mpyx':
             args.f = second_arg
-    elif args.m == 'kg' or args.m == 'keygen':
-        if second_arg == 'rsa':
-            args.m = 'gen_rsakey'
-        elif second_arg == 'wr':
-            args.m = 'rf_wrkey'
-        elif second_arg == 'ssl':
-            args.m = 'sslgen_key'
     elif args.m == 'sd':
         if second_arg == 'enable':
             args.m = 'sd_enable'
@@ -402,17 +394,17 @@ elif len(args.m) > 2:
         elif args.m == 'flash':
             args.f = rest_args[0]
             args.port = rest_args[1]
-    elif args.m == 'rsa':
-        rsa_mode, args.f, = rest_args[:2]
-        if args.f == 'host':
-            args.lh = True
-            args.f = rest_args[-1]
-        args.m = f"{args.m}_{rsa_mode}"
-    elif args.m == 'kg' or args.m == 'keygen':
-        rsa_mode, rsa_host, = rest_args[:2]
-        if rsa_mode == 'rsa' and rsa_host == 'host':
-            args.m = 'gen_rsakey'
-            args.lh = True
+    # elif args.m == 'rsa':
+    #     rsa_mode, args.f, = rest_args[:2]
+    #     if args.f == 'host':
+    #         args.lh = True
+    #         args.f = rest_args[-1]
+    #     args.m = f"{args.m}_{rsa_mode}"
+    # elif args.m == 'kg' or args.m == 'keygen':
+    #     rsa_mode, rsa_host, = rest_args[:2]
+    #     if rsa_mode == 'rsa' and rsa_host == 'host':
+    #         args.m = 'gen_rsakey'
+    #         args.lh = True
         # print(args.m, args.f, args.fre, args.md)
         # sys.exit()
 
@@ -428,8 +420,7 @@ FIRMWARE_ACTIONS = ['mpyx', 'fwr', 'flash', 'ota']
 
 # KEYGEN ACTIONS
 
-KEYGEN_ACTIONS = ['gen_rsakey', 'rf_wrkey', 'sslgen_key', 'rsa_sign', 'rsa_verify',
-                  'rsa_auth']
+KEYGEN_ACTIONS = ['kg', 'rsa']
 
 # REPL ACTIONS
 
@@ -689,12 +680,13 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
-        key_dict = keygen_action(args, device=dev_name)
+        key_dict = keygen_action(args, unknown_args,
+                                 command_line=' '.join(sys.argv[1:]), device=dev_name)
         if key_dict:
             from upydev.fileio import fileio_action
             args.m = 'put'
-            if len(args.to) == 1 and isinstance(args.to[0], str):
-                addr, baudr = address_entry_point(args.to[0])
+            if args.to:
+                addr, baudr = address_entry_point(args.to)
                 if check_device_type(addr):
                     args.t = addr
                     args.p = baudr
@@ -800,7 +792,7 @@ if args.m == 'h' or args.m == 'help':
     print("\n (Do '$ upydev -h' to see help info about optional arguments too)")
     sys.exit()
 
-if args.m in help_actions:
+if args.m in help_actions and '-h' not in unknown_args and not args.f and not args.fre:
     if not any([args.m in GENERAL_COMMANDS,
                 args.m in WLAN_UTILS_COMMANDS,
                 args.m in SD_UTILS_COMMANDS,
@@ -818,8 +810,8 @@ if args.m in help_actions:
             sh_cmd('-h')
             sys.exit()
         elif args.m == 'kg':
-            from upydev.keygen import KEYGEN_HELP
-            print(KEYGEN_HELP)
+            from upydev.keygen import sh_cmd
+            sh_cmd('-h')
             sys.exit()
         elif args.m == 'rp':
             from upydev.repls import sh_cmd

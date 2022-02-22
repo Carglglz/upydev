@@ -793,27 +793,34 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                     if len(buff_text.split()) > 1:
                         result = []
                         cmd = buff_text.split()[0]
-                        if SHELL_CMD_DICT_PARSER[cmd]['subcmd']:
-                            ch = SHELL_CMD_DICT_PARSER[cmd]['subcmd'].get('choices')
-                            if 'alt_ops' in SHELL_CMD_DICT_PARSER[cmd].keys():
-                                ch = SHELL_CMD_DICT_PARSER[cmd]['alt_ops']
-                            if ch:
-                                result += [sh_cmd
-                                           for sh_cmd in
-                                           ch
-                                           if sh_cmd.startswith(buff_text.split()[-1])]
-                            else:
-                                result = []
-                        if SHELL_CMD_DICT_PARSER[cmd]['options']:
-                            ch = SHELL_CMD_DICT_PARSER[cmd]['options'].keys()
-                            if ch:
-                                result += [sh_cmd
-                                           for sh_cmd in
-                                           ch
-                                           if sh_cmd.startswith(buff_text.split()[-1])
-                                           and sh_cmd not in buff_text.split()]
-                            else:
-                                result = []
+                        if cmd not in SHELL_CMD_DICT_PARSER.keys():
+                            result = [sh_cmd for sh_cmd in shell_commands
+                                      + custom_sh_cmd_kw + spc_cmds
+                                      if sh_cmd.startswith(cmd)]
+                        else:
+                            if SHELL_CMD_DICT_PARSER[cmd]['subcmd']:
+                                ch = SHELL_CMD_DICT_PARSER[cmd]['subcmd'].get('choices')
+                                if 'alt_ops' in SHELL_CMD_DICT_PARSER[cmd].keys():
+                                    ch = SHELL_CMD_DICT_PARSER[cmd]['alt_ops']
+                                if ch:
+                                    last_cmd_line = buff_text.split()[-1]
+                                    result += [sh_cmd
+                                               for sh_cmd in
+                                               ch
+                                               if sh_cmd.startswith(last_cmd_line)]
+                                else:
+                                    result = []
+                            if SHELL_CMD_DICT_PARSER[cmd]['options']:
+                                ch = SHELL_CMD_DICT_PARSER[cmd]['options'].keys()
+                                if ch:
+                                    last_cmd_line = buff_text.split()[-1]
+                                    result += [sh_cmd
+                                               for sh_cmd in
+                                               ch
+                                               if sh_cmd.startswith(last_cmd_line)
+                                               and sh_cmd not in buff_text.split()]
+                                else:
+                                    result = []
 
                         # print(result)
                         buff_text = buff_text.split()[-1]

@@ -606,6 +606,7 @@ def firmwaretools_action(args, unkwargs, **kargs):
                 dev.cmd_nb('import machine;machine.reset()', block_dev=False)
                 time.sleep(2)
                 dev.disconnect()
+                os.remove(fwfile)
                 # print('Done!')
             elif dt == 'BleDevice':
 

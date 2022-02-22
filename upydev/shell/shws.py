@@ -318,7 +318,10 @@ class ShellWsCmds(ShellCmds):
                                 print(f'dsync: mode: host -> {self.dev_name}')
                             else:
                                 print(f'dsync: mode: {self.dev_name} -> host')
-                            print(f'dsync: path: ./{path}')
+                            if isinstance(path, list):
+                                print(f"dsync: path {', '.join(path)}:")
+                            else:
+                                print(f"dsync: path ./{path}:")
                             print(f'dsync: ignored: {self.dsyncio.stash.get("ignore")}')
                             print(f'dsync: -rf: {self.dsyncio.stash.get("rf")}')
                         self.dsyncio.apply_stash(args, rest_args)
@@ -334,7 +337,10 @@ class ShellWsCmds(ShellCmds):
                             print(f'dsync: mode: host -> {self.dev_name}')
                         else:
                             print(f'dsync: mode: {self.dev_name} -> host')
-                        print(f'dsync: path: ./{path}')
+                        if isinstance(path, list):
+                            print(f"dsync: path {', '.join(path)}:")
+                        else:
+                            print(f"dsync: path ./{path}:")
                         print(f'dsync: ignored: {self.dsyncio.stash.get("ignore")}')
                         print(f'dsync: -rf: {self.dsyncio.stash.get("rf")}')
                         self.dsyncio.apply_stash(args, rest_args)

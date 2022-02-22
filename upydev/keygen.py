@@ -23,7 +23,158 @@ import socket
 import locale
 from datetime import datetime, timedelta
 import ipaddress
-import uuid
+import argparse
+import shlex
+rawfmt = argparse.RawTextHelpFormatter
+
+dict_arg_options = {'kg': ['t', 'zt', 'p', 'wss', 'f', 'rkey', 'tfkey', 'key_size',
+                           'show_key', 'g', 'to', 'fre'],
+                    'rsa': ['t', 'zt', 'p', 'wss', 'fre', 'f']}
+
+
+KG = dict(help="to generate a key pair (RSA) or key & certificate (ECDSA) for ssl",
+          desc="generate key pair and exchange with device, or refresh WebREPL "
+               "password",
+          mode=dict(help='indicate a key {rsa, ssl, wr}',
+                    metavar='mode',
+                    choices=['rsa', 'ssl', 'wr'],
+                    nargs='?'),
+          subcmd=dict(help='indicate if RSA key pair is for host',
+                      metavar='host',
+                      nargs='?'),
+          options={"-t": dict(help="device target address",
+                              required=True),
+                   "-p": dict(help='device password or baudrate',
+                              required=True),
+                   "-wss": dict(help='use WebSocket Secure',
+                                required=False,
+                                default=False,
+                                action='store_true'),
+                   "-zt": dict(help='internal flag for zerotierone device',
+                               required=False,
+                               default=False,
+                               action='store_true'),
+                   "-rst": dict(help='internal flag for reset',
+                                required=False,
+                                default=False,
+                                action='store_true'),
+                   "-key_size": dict(help="RSA key size, default:2048",
+                                     default=2048,
+                                     required=False,
+                                     type=int),
+                   "-show_key": dict(help='show generated RSA key',
+                                     required=False,
+                                     default=False,
+                                     action='store_true'),
+                   "-tfkey": dict(help='transfer keys to device',
+                                  required=False,
+                                  default=False,
+                                  action='store_true'),
+                   "-rkey": dict(help='option to remove private device key from host',
+                                 required=False,
+                                 default=False,
+                                 action='store_true'),
+                   "-g": dict(help='option to store new WebREPL password globally',
+                              required=False,
+                              default=False,
+                              action='store_true'),
+                   "-to": dict(help='serial device name to upload to',
+                               required=False)})
+
+RSA = dict(help="to perform operations with RSA key pair as sign, verify or "
+                "authenticate",
+           desc="sign files, verify signatures or authenticate devices with "
+                "RSA challenge\nusing device keys or host keys",
+           mode=dict(help='indicate an action {sign, verify, auth}',
+                     metavar='mode',
+                     choices=['sign', 'verify', 'auth']),
+           subcmd=dict(help='indicate a file to sign/verify',
+                       metavar='file/signature',
+                       nargs='?'),
+           options={"-t": dict(help="device target address",
+                               required=True),
+                    "-p": dict(help='device password or baudrate',
+                               required=True),
+                    "-wss": dict(help='use WebSocket Secure',
+                                 required=False,
+                                 default=False,
+                                 action='store_true'),
+                    "-host": dict(help='to use host keys',
+                                  required=False,
+                                  default=False,
+                                  action='store_true'),
+                    "-rst": dict(help='internal flag for reset',
+                                 required=False,
+                                 default=False,
+                                 action='store_true')})
+
+KG_CMD_DICT_PARSER = {"kg": KG, "rsa": RSA}
+
+usag = """%(prog)s command [options]\n
+"""
+
+_help_subcmds = "%(prog)s [command] -h to see further help of any command"
+
+parser = argparse.ArgumentParser(prog="upydev",
+                                 description=('keygen/cryptography tools'
+                                              + '\n\n'
+                                                + _help_subcmds),
+                                 formatter_class=rawfmt,
+                                 usage=usag, prefix_chars='-')
+subparser_cmd = parser.add_subparsers(title='commands', prog='', dest='m',
+                                      )
+
+for command, subcmd in KG_CMD_DICT_PARSER.items():
+    if 'desc' in subcmd.keys():
+        _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
+    else:
+        _desc = subcmd['help']
+    _subparser = subparser_cmd.add_parser(command, help=subcmd['help'],
+                                          description=_desc,
+                                          formatter_class=rawfmt)
+    for pos_arg in subcmd.keys():
+        if pos_arg not in ['subcmd', 'help', 'desc', 'options']:
+            _subparser.add_argument(pos_arg, **subcmd[pos_arg])
+    if subcmd['subcmd']:
+        _subparser.add_argument('subcmd', **subcmd['subcmd'])
+    for option, op_kargs in subcmd['options'].items():
+        _subparser.add_argument(option, **op_kargs)
+
+
+def parseap(command_args):
+    try:
+        return parser.parse_known_args(command_args)
+    except SystemExit:  # argparse throws these because it assumes you only want
+        # to do the command line
+        return None  # should be a default one
+
+
+def sh_cmd(cmd_inp):
+    # parse args
+    command_line = shlex.split(cmd_inp)
+
+    all_args = parseap(command_line)
+
+    if not all_args:
+        return
+    else:
+        args, unknown_args = all_args
+
+    return args, unknown_args
+
+
+def filter_bool_opt(k, v):
+    if v and isinstance(v, bool):
+        return f"{k}"
+    else:
+        return ""
+
+
+def expand_margs(v):
+    if isinstance(v, list):
+        return ' '.join([str(val) for val in v])
+    else:
+        return v
 
 
 UPYDEV_PATH = upydev.__path__[0]
@@ -359,47 +510,38 @@ def get_rsa_key_host(args):
 
 def refresh_wrkey(args, device):
     print('Generating new random WebREPL password for {}...'.format(device))
-    if args.localkey_id is None:
-        print('Getting unique id...')
-        dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-        id_bytes = dev.cmd("from machine import unique_id; unique_id()",
-                           silent=True, rtn_resp=True)
-        unique_id = hexlify(id_bytes).decode()
-        print('ID: {}'.format(unique_id))
-        pvkey = load_rsa_key(dir=UPYDEV_PATH, show_key=args.show_key,
-                             id=unique_id)
-        print('Generating random password from RSA key...')
-        new_p, new_token = upy_keygen(pvkey)
-        # Encrypt password and decrypt on device
-        is_rsa = dev.cmd("import os; 'rsa' in os.listdir('/lib')", silent=True,
-                         rtn_resp=True)
-        if is_rsa:
-            dev_pubkey = serialization.load_pem_public_key(pvkey)
-            dev_pvkey = f'upy_pv_rsa{unique_id}.key'
-            dev.cmd(
-                f"from rsa.rsautil import RSAPrivateKey; pv = RSAPrivateKey('{dev_pvkey}')")
-            enc_new_p = dev_pubkey.encrypt(new_p.encode(), padding.PKCS1v15())
-            dev.cmd("new_pass = b''")
-            # Send password
-            for i in range(0, len(enc_new_p), 32):
-                dev.cmd(f"new_pass += {enc_new_p[i:i+32]}")
-            # Save password
-            dev.cmd("pv._decrypt_passwd(new_pass)")
-        else:
-            dev.cmd("from upysecrets import load_key, upy_keygen")
-            dev.cmd("rk = load_key()")
-            dev.cmd("newp = upy_keygen(rk, {})".format(new_token))
-
-        print('New random password generated!')
-        dev.reset(reconnect=False)
+    print('Getting unique id...')
+    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+    id_bytes = dev.cmd("from machine import unique_id; unique_id()",
+                       silent=True, rtn_resp=True)
+    unique_id = hexlify(id_bytes).decode()
+    print('ID: {}'.format(unique_id))
+    pvkey = load_rsa_key(dir=UPYDEV_PATH, show_key=args.show_key,
+                         id=unique_id)
+    print('Generating random password from RSA key...')
+    new_p, new_token = upy_keygen(pvkey)
+    # Encrypt password and decrypt on device
+    is_rsa = dev.cmd("import os; 'rsa' in os.listdir('/lib')", silent=True,
+                     rtn_resp=True)
+    if is_rsa:
+        dev_pubkey = serialization.load_pem_public_key(pvkey)
+        dev_pvkey = f'upy_pv_rsa{unique_id}.key'
+        dev.cmd(
+            f"from rsa.rsautil import RSAPrivateKey; pv = RSAPrivateKey('{dev_pvkey}')")
+        enc_new_p = dev_pubkey.encrypt(new_p.encode(), padding.PKCS1v15())
+        dev.cmd("new_pass = b''")
+        # Send password
+        for i in range(0, len(enc_new_p), 32):
+            dev.cmd(f"new_pass += {enc_new_p[i:i+32]}")
+        # Save password
+        dev.cmd("pv._decrypt_passwd(new_pass)")
     else:
-        unique_id = args.localkey_id
-        print('ID: {}'.format(unique_id))
-        pvkey = load_rsa_key(dir=UPYDEV_PATH, show_key=args.show_key,
-                             id=unique_id)
-        print('Generating random password from RSA key...')
-        new_p, new_token = upy_keygen(pvkey)
-        print('Use this token to generate new password in the device:\n', new_token)
+        dev.cmd("from upysecrets import load_key, upy_keygen")
+        dev.cmd("rk = load_key()")
+        dev.cmd("newp = upy_keygen(rk, {})".format(new_token))
+
+    print('New random password generated!')
+    dev.reset(reconnect=False)
     upydev_ip = args.t
     upydev_pass = new_p
     upy_conf = {'addr': upydev_ip, 'passwd': upydev_pass, 'name': device}
@@ -435,11 +577,11 @@ def get_ssl_keycert(args):
         return ssl_dict
 
 
-def rsa_sign(args, **kargs):
+def rsa_sign(args, file, **kargs):
     device = kargs.get('device')
     args.m = 'put'
     args.rst = False
-    _sigfile = args.f.split('/')[-1]
+    _sigfile = file.split('/')[-1]
     # fileio_action(args, **kargs)
     dt = check_device_type(args.t)
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
@@ -449,7 +591,7 @@ def rsa_sign(args, **kargs):
         devIO = SerialFileIO(dev, devname=device)
     elif dt == 'BleDevice':
         devIO = BleFileIO(dev, devname=device)
-    devIO.put(args.f, _sigfile, ppath=True)
+    devIO.put(file, _sigfile, ppath=True)
     print(f'Signing file {_sigfile} with {device} RSA key')
     id_bytes = dev.wr_cmd("from machine import unique_id; unique_id()",
                           silent=True, rtn_resp=True)
@@ -461,7 +603,7 @@ def rsa_sign(args, **kargs):
     print(f"Key ID: {dev.wr_cmd('pk', silent=True, rtn_resp=True)}")
     dev.wr_cmd(f"sg = pk.signfile('{_sigfile}')", silent=False, follow=True)
     sg = dev.wr_cmd("sg", silent=True, rtn_resp=True)
-    with open(f"{args.f.split('/')[-1]}.sign", 'wb') as signfile:
+    with open(f"{file.split('/')[-1]}.sign", 'wb') as signfile:
         signfile.write(sg)
     dev.wr_cmd(f"import os;os.remove('{_sigfile}')")
     dev.wr_cmd('import gc;del(sg);gc.collect()')
@@ -469,14 +611,14 @@ def rsa_sign(args, **kargs):
     print('Signature done!')
 
 
-def rsa_verify(args, device):
-    print(f'Verifying {args.f} signature from {device} RSA key')
+def rsa_verify(args, file, device):
+    print(f'Verifying {file} signature from {device} RSA key')
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
     id_bytes = dev.cmd("from machine import unique_id; unique_id()",
                        silent=True, rtn_resp=True)
     dev.disconnect()
     unique_id = hexlify(id_bytes).decode()
-    print(f"Assuming signed data in {args.f.replace('.sign', '')}")
+    print(f"Assuming signed data in {file.replace('.sign', '')}")
     print(f'{device} ID: {unique_id}')
     key_abs = os.path.join(UPYDEV_PATH, f'upy_pub_rsa{unique_id}.key')
     # load key.pem
@@ -489,10 +631,10 @@ def rsa_verify(args, device):
         hashed_key = hexlify(key_hash.digest()).decode('ascii').upper()
         print(f"Using {kz} bits RSA Public key {hashed_key[:40]}")
     # load message
-    with open(args.f.replace('.sign', ''), 'rb') as message:
+    with open(file.replace('.sign', ''), 'rb') as message:
         message_bytes = message.read()
 
-    with open(args.f, 'rb') as signature:
+    with open(file, 'rb') as signature:
         signature_bytes = signature.read()
 
     try:
@@ -504,8 +646,8 @@ def rsa_verify(args, device):
         print('Verification failed: Invalid Signature')
 
 
-def rsa_sign_host(args, **kargs):
-    _sigfile = args.f.split('/')[-1]
+def rsa_sign_host(args, file, **kargs):
+    _sigfile = file.split('/')[-1]
     # fileio_action(args, **kargs)
     # bb = 6
     # while True:
@@ -532,7 +674,7 @@ def rsa_sign_host(args, **kargs):
                 # print(e)
                 key_file.seek(0)
                 print('Passphrase incorrect, try again...')
-    with open(args.f, 'rb') as file_to_sign:
+    with open(file, 'rb') as file_to_sign:
         key_hash = hashlib.sha256()
         kz = private_key.key_size
         key_hash.update(private_key.private_bytes(serialization.Encoding.DER,
@@ -542,15 +684,15 @@ def rsa_sign_host(args, **kargs):
         print(f"Using {kz} bits RSA Private key {hashed_key[:40]}")
         signature = private_key.sign(file_to_sign.read(), padding.PKCS1v15(),
                                      hashes.SHA256())
-    with open(f"{args.f}.sign", 'wb') as signedfile:
+    with open(f"{file}.sign", 'wb') as signedfile:
         signedfile.write(signature)
     print('Signature done!')
 
 
-def rsa_verify_host(args, device):
-    print(f'{device} verifying {args.f} signature from Host RSA key')
+def rsa_verify_host(args, file, device):
+    print(f'{device} verifying {file} signature from Host RSA key')
     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-    print(f"Assuming signed data in {args.f.replace('.sign', '')}")
+    print(f"Assuming signed data in {file.replace('.sign', '')}")
     # bb = 6
     # while True:
     #     try:
@@ -572,9 +714,9 @@ def rsa_verify_host(args, device):
         print(f"Host: {kz} bits RSA Public key {hashed_key[:40]}")
     pubkey = f"upy_host_pub_rsa{unique_id}.key"
     dev.wr_cmd(f"from rsa.rsautil import RSAPublicKey;pbk=RSAPublicKey('{pubkey}')")
-    ftv = args.f.replace('.sign', '')
+    ftv = file.replace('.sign', '')
     print(f"{device}: Verifying with {dev.wr_cmd('pbk', silent=True, rtn_resp=True)} ")
-    dev.wr_cmd(f"vf = pbk.verifyfile('{ftv}', '{args.f}')", silent=False, follow=True)
+    dev.wr_cmd(f"vf = pbk.verifyfile('{ftv}', '{file}')", silent=False, follow=True)
     vf = dev.wr_cmd("vf", silent=True, rtn_resp=True)
     if vf is True:
         print('Verification: OK')
@@ -677,96 +819,124 @@ def rsa_auth(args, device):
     # interface --> same as probe
 
 
-def keygen_action(args, **kargs):
+def keygen_action(args, unkwargs, **kargs):
     dev_name = kargs.get('device')
+    args_dict = {f"-{k}": v for k, v in vars(args).items()
+                 if k in dict_arg_options[args.m]}
+    args_list = [f"{k} {expand_margs(v)}" if v and not isinstance(v, bool)
+                 else filter_bool_opt(k, v) for k, v in args_dict.items()]
+    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    # print(cmd_inp)
+    # sys.exit()
+    # debug command:
+    if cmd_inp.startswith('!'):
+        args = parseap(shlex.split(cmd_inp[1:]))
+        print(args)
+        return
+    if '-h' in unkwargs:
+        sh_cmd(f"{args.m} -h")
+        sys.exit()
+
+    result = sh_cmd(cmd_inp)
+    if not result:
+        sys.exit()
+    else:
+        args, unknown_args = result
+    if hasattr(args, 'subcmd'):
+        command, rest_args = args.m, args.subcmd
+        if rest_args is None:
+            rest_args = []
+    else:
+        command, rest_args = args.m, []
+    # print(f"{command}: {args} {rest_args} {unknown_args}")
+    # sys.exit()
     # GEN_RSAKEY
 
-    if args.m == 'gen_rsakey':
+    if command == 'kg':
         # TODO: gen rsa key in device
-        if not args.lh:
-            print('Generating RSA key for {}...'.format(dev_name))
-            rsa_key = get_rsa_key(args)
-            if rsa_key:
-                return rsa_key
+        if args.mode == 'rsa':
+            if not rest_args:
+                print('Generating RSA key for {}...'.format(dev_name))
+                rsa_key = get_rsa_key(args)
+                if rsa_key:
+                    return rsa_key
+                else:
+                    sys.exit()
             else:
-                sys.exit()
-        else:
-            # Check if exists:
-            print('Getting Host unique id...')
-            # bb = 6
-            # while True:
-            #     try:
-            #         unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
-            #         break
-            #     except OverflowError:
-            #         bb += 1
-            unique_id = hexlify(os.environ['USER'].encode()).decode()[:12]
+                # Check if exists:
+                print('Getting Host unique id...')
+                # bb = 6
+                # while True:
+                #     try:
+                #         unique_id = hexlify(uuid.getnode().to_bytes(bb, 'big')).decode()
+                #         break
+                #     except OverflowError:
+                #         bb += 1
+                unique_id = hexlify(os.environ['USER'].encode()).decode()[:12]
 
-            print('Host ID: {}'.format(unique_id))
-            pbkey = f"upy_host_pub_rsa{unique_id}.key"
-            if pbkey in os.listdir(UPYDEV_PATH):
-                nk = input('Host RSA key detected, generate new one? [y/n]: ')
-                if nk == 'y':
+                print('Host ID: {}'.format(unique_id))
+                pbkey = f"upy_host_pub_rsa{unique_id}.key"
+                if pbkey in os.listdir(UPYDEV_PATH):
+                    nk = input('Host RSA key detected, generate new one? [y/n]: ')
+                    if nk == 'y':
+                        print('Generating Host RSA key...')
+                        rsa_key = get_rsa_key_host(args)
+                        if rsa_key:
+                            return rsa_key
+                        else:
+                            sys.exit()
+                    else:
+                        tfk = input(
+                            'Transfer existent Host Public RSA key to device? [y/n]: ')
+                        if tfk == 'y':
+                            key_abs_pub = os.path.join(UPYDEV_PATH, pbkey)
+                            print('Transfering Host Public RSA key to the device...')
+                            return {'ACTION': 'put', 'mode': 'RSA', 'Files': [key_abs_pub]}
+                        else:
+                            sys.exit()
+
+                else:
                     print('Generating Host RSA key...')
                     rsa_key = get_rsa_key_host(args)
                     if rsa_key:
                         return rsa_key
                     else:
                         sys.exit()
-                else:
-                    tfk = input(
-                        'Transfer existent Host Public RSA key to device? [y/n]: ')
-                    if tfk == 'y':
-                        key_abs_pub = os.path.join(UPYDEV_PATH, pbkey)
-                        print('Transfering Host Public RSA key to the device...')
-                        return {'ACTION': 'put', 'mode': 'RSA', 'Files': [key_abs_pub]}
-                    else:
-                        sys.exit()
-
+        # SSLGEN_KEY
+        elif args.mode == 'ssl':
+            print('Generating SSL ECDSA key, cert for : {}'.format(dev_name))
+            # check if device in ZeroTier group.
+            args.zt = check_zt_group(dev_name, args)
+            ssl_key_cert = get_ssl_keycert(args)
+            if ssl_key_cert:
+                return ssl_key_cert
             else:
-                print('Generating Host RSA key...')
-                rsa_key = get_rsa_key_host(args)
-                if rsa_key:
-                    return rsa_key
-                else:
-                    sys.exit()
-
-    # RF_WRKEY
-    elif args.m == 'rf_wrkey':
-        refresh_wrkey(args, dev_name)
-        sys.exit()
-
-    # SSLGEN_KEY
-
-    elif args.m == 'sslgen_key':
-        print('Generating SSL ECDSA key, cert for : {}'.format(dev_name))
-        # check if device in ZeroTier group.
-        args.zt = check_zt_group(dev_name, args)
-        ssl_key_cert = get_ssl_keycert(args)
-        if ssl_key_cert:
-            return ssl_key_cert
-        else:
+                sys.exit()
+        # RF_WRKEY
+        elif args.mode == 'wr':
+            refresh_wrkey(args, dev_name)
             sys.exit()
 
     # RSA Sign & Verify
+    elif command == 'rsa':
+        if args.mode == 'sign':
+            if not args.host:
+                rsa_sign(args, rest_args, **kargs)
+            else:
+                rsa_sign_host(args, rest_args, **kargs)
+            sys.exit()
 
-    elif args.m == 'rsa_sign':
-        if not args.lh:
-            rsa_sign(args, **kargs)
-        else:
-            rsa_sign_host(args, **kargs)
-        sys.exit()
+        elif args.mode == 'verify':
+            if not args.host:
+                rsa_verify(args, rest_args, dev_name)
+            else:
+                rsa_verify_host(args, rest_args, dev_name)
+            sys.exit()
 
-    elif args.m == 'rsa_verify':
-        if not args.lh:
-            rsa_verify(args, dev_name)
-        else:
-            rsa_verify_host(args, dev_name)
-        sys.exit()
+        elif args.mode == 'auth':
+            rsa_auth(args, dev_name)
+            sys.exit()
 
-    elif args.m == 'rsa_auth':
-        rsa_auth(args, dev_name)
-        sys.exit()
     # TODO: RSA key exchange
     #    -->: Host keypair (unique)
     #    -->: Device keypair (unique)
