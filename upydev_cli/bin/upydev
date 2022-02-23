@@ -128,7 +128,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'net',
                  'reload', 'ssl', 'sign', 'verify', 'auth',
                  'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'upip', 'uping',
                  'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
-                 'kg', 'rsa']
+                 'kg', 'rsa', 'uconfig']
 
 keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
@@ -330,16 +330,15 @@ args, unknown_args = parser.parse_known_args()
 
 
 multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
-                     'pytest', 'make_group', 'mg_group', 'make_sgroup', 'du', 'tree',
-                     'rsync', 'docs', 'udocs', 'mdocs', 'set_hostname', 'set_localname',
+                     'pytest', 'mkg', 'mgg', 'mksg', 'du', 'tree',
+                     'rsync', 'docs', 'udocs', 'mdocs',
                      'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls', 'cat',
-                     'vim', 'sysctl', 'log', 'pytest', 'kg', 'rsa']
+                     'vim', 'sysctl', 'log', 'pytest', 'kg', 'rsa', 'set', 'mkg',
+                     'see', 'mgg', 'mksg', 'uconfig']
 multiple_args_fw = ['fwr', 'flash']
 
 if len(args.m) == 1:
     args.m = args.m[0]
-    if args.m == 'mgg' or args.m == 'mggroup':
-        args.m = 'mg_group'
 
 elif len(args.m) == 2:
     second_arg = args.m[1]
@@ -362,15 +361,6 @@ elif len(args.m) == 2:
             args.m = 'sd_deinit'
         elif second_arg == 'auto':
             args.m = 'sd_auto'
-    elif args.m == 'mkgroup' or args.m == 'mkg':
-        args.m = 'make_group'
-        args.f = second_arg
-    elif args.m == 'mggroup' or args.m == 'mgg':
-        args.m = 'mg_group'
-        args.G = second_arg
-    elif args.m == 'mksg':
-        args.m = 'make_sgroup'
-        args.f = second_arg
     elif args.m == 'see' or args.m == 'probe':
         args.G = second_arg
     elif args.m == 'set_hostname' or args.m == 'set_localname':
@@ -411,7 +401,8 @@ elif len(args.m) > 2:
         # DEVICE MANAGEMENT ACTIONS
 
 DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'register', 'lsdevs',
-                             'make_group', 'mg_group', 'gg', 'see', 'make_sgroup']
+                             'gg', 'see',
+                             'set', 'mkg', 'mgg', 'mksg']
 
 # FIRMWARE ACTIONS
 
@@ -448,7 +439,8 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'datetime', 'gc',
                     'shasum', 'ls', 'cat', 'vim', 'update_upyutils',
                     'enable_sh', 'diff', 'mkdir', 'head', 'rm', 'rmdir',
-                    'pwd', 'rssi', 'ifconfig', 'upy-config', 'dsync', 'ctime']
+                    'pwd', 'rssi', 'ifconfig', 'upy-config', 'dsync', 'ctime',
+                    'uconfig']
 # WLAN COMMANDS
 
 WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
@@ -798,8 +790,8 @@ if args.m in help_actions and '-h' not in unknown_args and not args.f and not ar
                 args.m in SD_UTILS_COMMANDS,
                 args.m in PROTOTYPE_COMMANDS]):
         if args.m == 'dm':
-            from upydev.devicemanagement import DEVICE_MANAGEMENT_HELP
-            print(DEVICE_MANAGEMENT_HELP)
+            from upydev.devicemanagement import sh_cmd
+            sh_cmd('-h')
             sys.exit()
         elif args.m == 'fio':
             from upydev.fileio import FILEIO_HELP
@@ -983,8 +975,16 @@ if args.gf:
 
 # DEVICE MANAGEMENT
 if args.m in DEVICE_MANAGEMENT_ACTIONS:
-    from upydev.devicemanagement import devicemanagement_action
-    devicemanagement_action(args, device=_dev_name)
+    if args.m != 'set':
+        from upydev.devicemanagement import devicemanagement_action
+        devicemanagement_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
+                                device=_dev_name)
+    else:
+        if not args.f and not args.fre:
+            from upydev.devicemanagement import devicemanagement_action
+            devicemanagement_action(args, unknown_args,
+                                    command_line=' '.join(sys.argv[1:]),
+                                    device=_dev_name)
 
 # UPYDEV LOOKS FOR UPYDEV_.CONFIG FILE
 if args.t is None:

@@ -1,6 +1,5 @@
 from upydevice import Device
 import sys
-from upydev.helpinfo import see_help
 from upydev.otatool import OTAServer
 from upydev.otabletool import OTABleController, dfufy_file
 from upydevice import check_device_type

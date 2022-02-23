@@ -73,10 +73,12 @@ def gen_command(args, unkwargs, **kargs):
     sh.dev_name = kargs.get('device')
     inp = kargs.get('command_line')
     inp = inp.split('-@')[0]
-    # print(inp)
+
     if args.m not in ['reset', 'kbi', 'upysh']:
         if args.m in fs_commands:
             dev.wr_cmd(_CMDDICT_['UPYSH'], silent=True)
+        if args.m == 'uconfig':
+            inp = inp.replace('uconfig', 'config')
         sh.cmd(inp)
 
     elif args.m == 'reset':
@@ -91,5 +93,4 @@ def gen_command(args, unkwargs, **kargs):
     elif args.m == 'upysh':
         dev.cmd(_CMDDICT_['UPYSH'], long_string=True)
         dev.disconnect()
-        return
         return

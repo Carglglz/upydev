@@ -732,7 +732,7 @@ class ShellCmds:
                 if rest_args[1] == 'localtime':
                     print('Setting local time: {}'.format(
                         datetime.now().strftime("%Y-%m-%d T %H:%M:%S")))
-                    wkoy = date.today().isocalendar()[1]
+                    wkoy = date.today().isoweekday()
                     datetime_local = [val for val in datetime.now().timetuple()[:-3]]
                     datetime_tuple = datetime_local[:3]
                     datetime_tuple.append(wkoy)
@@ -839,7 +839,7 @@ class ShellCmds:
                         for nc in new_confs:
                             self.dev.wr_cmd(f"from config import add_param; "
                                             f"add_param('{nc}')")
-                        reload_cmd = (f"import sys;del(sys.modules['config.params']);"
+                        reload_cmd = ("import sys;del(sys.modules['config.params']);"
                                       "gc.collect()")
                         self.dev.wr_cmd(reload_cmd, silent=True)
                     else:
