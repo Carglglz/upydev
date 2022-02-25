@@ -920,6 +920,9 @@ def keygen_action(args, unkwargs, **kargs):
     # RSA Sign & Verify
     elif command == 'rsa':
         if args.mode == 'sign':
+            if not rest_args:
+                print("rsa: sign error: the following arguments are required: file")
+                sys.exit()
             if not args.host:
                 rsa_sign(args, rest_args, **kargs)
             else:
@@ -927,6 +930,9 @@ def keygen_action(args, unkwargs, **kargs):
             sys.exit()
 
         elif args.mode == 'verify':
+            if not rest_args:
+                print("rsa: verify error: the following arguments are required: file")
+                sys.exit()
             if not args.host:
                 rsa_verify(args, rest_args, dev_name)
             else:

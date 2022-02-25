@@ -4,10 +4,35 @@ from upydev.shell.constants import SHELL_CMD_DICT_PARSER
 import argparse
 import time
 import sys
+import shlex
 
 rawfmt = argparse.RawTextHelpFormatter
 
-fs_commands = ['ls', 'cat', 'head']
+fs_commands = ['ls', 'cat', 'head', 'rm', 'rmdir', 'mkdir', 'cd', 'pwd']
+
+RESET = dict(help="reset device",
+             subcmd={},
+             options={"-hr": dict(help='to do hard reset',
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
+
+CONFIG = dict(help="set or check config (from *_config.py files)#",
+              subcmd=dict(help='indicate parameter to set or check ',
+                          default=[],
+                          metavar='parameter',
+                          nargs='*'),
+              options={"-y": dict(help='print config in YAML format',
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
+
+KBI = dict(help="to send KeyboardInterrupt to device",
+           subcmd={},
+           options={})
+GC_CMD_DICT = {"reset": RESET, "uconfig": CONFIG, "kbi": KBI}
+
+GC_CMD_DICT_PARSER = {}
 
 usag = """%(prog)s command [options]\n
 """
@@ -22,8 +47,11 @@ parser = argparse.ArgumentParser(prog="upydev",
                                  usage=usag, prefix_chars='-')
 subparser_cmd = parser.add_subparsers(title='commands', prog='', dest='m',
                                       )
+GC_CMD_DICT_PARSER.update(SHELL_CMD_DICT_PARSER)
+GC_CMD_DICT_PARSER.update(GC_CMD_DICT)
+GC_CMD_DICT_PARSER.pop("config")
 
-for command, subcmd in SHELL_CMD_DICT_PARSER.items():
+for command, subcmd in GC_CMD_DICT_PARSER.items():
     if 'desc' in subcmd.keys():
         _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
     else:
@@ -78,6 +106,28 @@ def print_filesys_info(filesize):
     return sizestr
 
 
+def parseap(command_args):
+    try:
+        return parser.parse_known_args(command_args)
+    except SystemExit:  # argparse throws these because it assumes you only want
+        # to do the command line
+        return None  # should be a default one
+
+
+def sh_cmd(cmd_inp):
+    # parse args
+    command_line = shlex.split(cmd_inp)
+
+    all_args = parseap(command_line)
+
+    if not all_args:
+        return
+    else:
+        args, unknown_args = all_args
+
+    return args, unknown_args
+
+
 def gen_command(args, unkwargs, **kargs):
 
     if '-h' not in unkwargs and args.m != 'gc':
@@ -89,8 +139,8 @@ def gen_command(args, unkwargs, **kargs):
         from upydev.shell.commands import ShellCmds
         # TODO: create own dummy args parse help
         sh = ShellCmds(None)
-        sh.parser = parser
-        sh.cmd('-h')
+        # sh.parser = parser
+        sh_cmd('-h')
         sys.exit()
 
     dt = check_device_type(args.t)
@@ -106,7 +156,7 @@ def gen_command(args, unkwargs, **kargs):
         sh = ShellBleCmds(dev, topargs=args)
 
     sh.dev_name = kargs.get('device')
-    sh.parser = parser
+    # sh.parser = parser
     inp = kargs.get('command_line')
     inp = inp.split('-@')[0]
 
@@ -114,19 +164,36 @@ def gen_command(args, unkwargs, **kargs):
         if args.m in fs_commands:
             dev.wr_cmd(_CMDDICT_['UPYSH'], silent=True)
         if args.m == 'uconfig':
+            if '-h' in inp:
+                sh_cmd(inp)
+                sys.exit()
             inp = inp.replace('uconfig', 'config')
         sh.cmd(inp)
 
     elif args.m == 'reset':
-        dev.reset(reconnect=False)
+        result = sh_cmd(inp)
+        if '-h' in inp:
+            sys.exit()
+        if not result:
+            hr = False
+        else:
+            args, unknown_args = result
+            hr = args.hr
+        dev.reset(reconnect=False, hr=hr)
         time.sleep(0.5)
         dev.disconnect()
         return
     elif args.m == 'kbi':
+        result = sh_cmd(inp)
+        if '-h' in inp:
+            sys.exit()
         dev.kbi()
         dev.disconnect()
         return
-    elif args.m == 'upysh':
-        dev.cmd(_CMDDICT_['UPYSH'], long_string=True)
-        dev.disconnect()
-        return
+    # elif args.m == 'upysh':
+    #     result = sh_cmd(inp)
+    #     if '-h' in inp:
+    #         sys.exit()
+    #     dev.cmd(_CMDDICT_['UPYSH'], long_string=True)
+    #     dev.disconnect()
+    #     return

@@ -511,6 +511,7 @@ CTIME = dict(help="measure execution time of a shell command",
              options={})
 
 CONFIG = dict(help="set or check config (from *_config.py files)#",
+              desc="* needs config module",
               subcmd=dict(help='indicate parameter to set or check ',
                           default=[],
                           metavar='parameter',

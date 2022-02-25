@@ -402,7 +402,7 @@ class ShellCmds:
             return
         # DISPLAY FREE DISK SPACE
         if command == 'df':
-            resp = self.send_cmd("os.statvfs('')")
+            resp = self.send_cmd("import os;os.statvfs('')")
             size_info = resp
             total_b = size_info[0] * size_info[2]
             used_b = (size_info[0] * size_info[2]) - (size_info[0] * size_info[3])

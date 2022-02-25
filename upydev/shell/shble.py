@@ -139,6 +139,7 @@ MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)
             options={})
 
 UPY_CONFIG = dict(help="enter upy-config dialog",
+                  desc="* custom parameters need config module",
                   subcmd={},
                   options={})
 

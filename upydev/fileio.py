@@ -12,9 +12,9 @@ rawfmt = argparse.RawTextHelpFormatter
 
 UPYDEV_PATH = upydev.__path__[0]
 
-dict_arg_options = {'put': ['dir', 'f', 'fre'],
+dict_arg_options = {'put': ['dir', 'f', 'fre', 'rst'],
                     'get': ['dir', 'f', 'fre'],
-                    'dsync': ['p', 't', 's', 'i'],
+                    'dsync': ['p', 't', 's', 'i', 'f', 'fre'],
                     'update_upyutils': ['f', 'fre'],
                     'install': ['f', 'fre']}
 
@@ -26,7 +26,11 @@ PUT = dict(help="upload files to device",
                        nargs='+'),
            options={"-dir": dict(help='path to upload to',
                                  required=False,
-                                 default='')})
+                                 default=''),
+                    "-rst": dict(help='to soft reset after upload',
+                                 required=False,
+                                 default=False,
+                                 action='store_true')})
 
 GET = dict(help="download files from device",
            subcmd=dict(help='indicate a file/pattern/dir to '
@@ -217,3 +221,7 @@ def fileio_action(args, unkwargs, **kargs):
     else:
         # print(cmd_inp)
         sh.cmd(cmd_inp)
+        if args.m == 'put':
+            args, unknown_args = result
+            if args.rst:
+                dev.reset()

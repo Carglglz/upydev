@@ -401,13 +401,14 @@ def devicemanagement_action(args, unkwargs, **kargs):
             else:
                 if args.t is None:
                     print('Target Address required, see -t')
-                    see_help(command)
+                    sh_cmd(f"{args.m} -h")
                     sys.exit()
                 else:
                     dt = check_device_type(args.t)
                     if dt == 'WebSocketDevice':
                         print('Target Address and Password required, see -t, -p or -sec')
-                        see_help(command)
+                        sh_cmd(f"{args.m} -h")
+                        # see_help(command)
                         sys.exit()
                     elif dt == 'SerialDevice':
                         args.p = 115200
@@ -512,10 +513,11 @@ def devicemanagement_action(args, unkwargs, **kargs):
                     print('{}Device: {}'.format(space, dev))
                     dt = check_device_type(target)
                     if not args.i:
-                        zt_dev = check_zt_group(dev, args)
+                        zt_dev = _check_zt_group(dev)
+                        _target = target
                         if isinstance(zt_dev, dict):
-                            target = f"{target}/{zt_dev['dev']}"
-                        print('Address: {}, Device Type: {}'.format(target, dt))
+                            _target = f"{target}/{zt_dev['dev']}"
+                        print('Address: {}, Device Type: {}'.format(_target, dt))
                     else:
                         if not args.wss:
                             dev = Device(target, passwd, init=True)
@@ -532,9 +534,10 @@ def devicemanagement_action(args, unkwargs, **kargs):
             dt = check_device_type(target)
             if not args.i:
                 zt_dev = _check_zt_group(_dev_name)
+                _target = target
                 if isinstance(zt_dev, dict):
-                    target = f"{target}/{zt_dev['dev']}"
-                print('Address: {}, Device Type: {}'.format(target, dt))
+                    _target = f"{target}/{zt_dev['dev']}"
+                print('Address: {}, Device Type: {}'.format(_target, dt))
             else:
                 if not args.wss:
                     dev = Device(target, passwd, init=True)

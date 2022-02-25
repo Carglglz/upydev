@@ -104,8 +104,8 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'net',
                  'imuacc', 'imugy', 'imumag', 'pinout', 'specs', 'install',
                  'pin_status', 'adc_config', 'aread',
                  'datetime', 'imuacc_sd', 'ads_init',
-                 'ads_read', 'sd_enable', 'spi_config', 'sd_init', 'sd_deinit',
-                 'sd_auto', 'dac_config', 'dac_write', 'dac_sig',
+                 'ads_read', 'enable', 'spi_config', 'init', 'deinit',
+                 'auto', 'dac_config', 'dac_write', 'dac_sig',
                  'buzz_config', 'buzz_set_alarm', 'buzz_interrupt',
                  'buzz_beep', 'servo_config', 'servo_angle', 'stepper_config',
                  'stepper_move', 'dcmotor_config', 'dcmotor_move',
@@ -122,15 +122,13 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'net',
                  'debug', 'set_wss', 'jupyterc', 'pytest',
                  'pytest-setup', 'check', 'set', 'gg', 'probe',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
-                 'rsa', 'wr', 'keygen', 'mkg', 'mkgroup', 'mgg', 'mggroup', 'tree',
-                 'backup', 'rsync', 'make_sgroup', 'mksg',
+                 'rsa', 'wr', 'keygen', 'mkg', 'mgg', 'tree', 'mksg',
                  'ota', 'register', 'lsdevs', 'ls', 'cat', 'vim', 'ifconfig', 'touch',
                  'reload', 'ssl', 'sign', 'verify', 'auth',
                  'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'upip', 'uping',
                  'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
-                 'kg', 'rsa', 'uconfig']
+                 'kg', 'rsa', 'uconfig', 'sd']
 
-keywords_mode_help = ['%' + kw for kw in keywords_mode]
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
                 'gc', 'wu', 'sd', 'pro', 'docs', 'udocs', 'mdocs']
 
@@ -147,10 +145,11 @@ parser = argparse.ArgumentParser(prog=upydev.name,
                                  usage=usag, prefix_chars='-', add_help=False,
                                  allow_abbrev=False)
 parser.version = '{}: {}'.format(upydev.name, upydev.version)
-parser.add_argument(
-    "m", metavar='ACTION', help=helparg, nargs='*', default=['check']).completer = ChoicesCompleter(keywords_mode + keywords_mode_help)
+parser.add_argument("m", metavar='ACTION', help=helparg, nargs='?',
+                    default='check').completer = ChoicesCompleter(keywords_mode)
 parser.add_argument("-@", help=help_dv,
-                    required=False, nargs='+').completer = ChoicesCompleter(see_global_devs(all=True))
+                    required=False,
+                    nargs='+').completer = ChoicesCompleter(see_global_devs(all=True))
 parser.add_argument("-gg", help='global group flag', required=False,
                     action='store_true')
 parser.add_argument("-ggp", help='global group parallel flag', required=False,
@@ -159,247 +158,73 @@ parser.add_argument("-gf", help='group flag for project files', required=False,
                     action='store_true')
 parser.add_argument("-p", help='password', required=False, nargs='?')
 parser.add_argument("-f", help='script or file name', required=False)
-parser.add_argument(
-    "-lh", help='local ip for sync mode if can not be automatically detected',
-    required=False)
+parser.add_argument("-fre", help='scripts or files', nargs='+', required=False)
+
 parser.add_argument(
     "-t", help='target host for example : 192.168.1.40 or for AP 192.168.4.1',
     required=False, nargs='?')
-parser.add_argument(
-    "-sec", help='to configure a device password with no stream trace',
-    required=False, default=False, action='store_true')
-parser.add_argument(
-    "-s", help='source dir in upy device, default is root dir (flash memory); sd for sd card source dir mounted as "/sd"',
-    required=False, nargs='?')
-parser.add_argument(
-    "-dir", help='target dir in upy device, default is root dir (flash memory)', required=False)
-parser.add_argument(
-    "-tree", help='to see the tree structure of a the directory to sync', required=False, default=False, action='store_true')
-parser.add_argument(
-    "-c", help='command to send to upy device, do not wait for a response',
-    required=False, type=str).completer = ChoicesCompleter(keywords_mode)
-parser.add_argument(
-    "-d", help='dsync from device to host flag', required=False, default=False,
-    action='store_true')
-# parser.add_argument(
-#     "-r", help='command to send to upy device, waits for a short response (one line)', required=False)
-# parser.add_argument(
-#     "-rl", help='command to send to upy device, waits for a longer response (multiple lines), so it can catch tracebacks messages', required=False)
-parser.add_argument(
-    "-g", help='to store/read the configuration file globally, if there is no config file in working directory, \n it uses the global file',
-    required=False, default=False, action='store_true')
-parser.add_argument(
-    "-st", help='shows target ip if using config file', required=False, default=False, action='store_true')
-parser.add_argument(
-    "-rst", help='reset flag after put file operation, default true, "f" to disable', required=False)
-parser.add_argument(
-    "-ap", help='[essid] [password] to set AP name and password',
-    required=False, nargs=2)
-parser.add_argument(
-    "-wp", help='[essid] [password] to connect the STA to an AP',
-    required=False, nargs=2)
-parser.add_argument(
-    "-i2c", help='[SCL] [SDA] to config scl and sda i2c pins in upy device',
-    required=False, nargs=2, default=[22, 23])
-parser.add_argument(
-    "-spi", help='[SCk] [MISO] [MOSI] [CS] to config scl and sda i2c pins in upy device',
-    required=False, nargs=4, default=[5, 19, 18, 21], type=int)
-parser.add_argument(
-    "-b", help='[BOARD NAME] to request info of specs or of the pinouts',
-    required=False).completer = ChoicesCompleter(['esp32', 'esp8266'])
-parser.add_argument(
-    "-att",
-    help='[attenuation] for attenuation of adc input, default is 11dB attenuation, do -att info for more info',
-    required=False, default=3)
-parser.add_argument(
-    "-tm",
-    help='[timeout] enable stream mode and indicates a timeout in milliseconds',
-    required=False, type=int)
-parser.add_argument(
-    "-po",
-    help='[pin] indicates the pin to request info',
-    required=False, nargs='+', type=int)
 
-parser.add_argument(
-    "-opt",
-    help='wildcard option to be used by several commands',
-    required=False, nargs='+', type=int)
+parser.add_argument("-s",
+                    help='source dir in upy device, default is root dir '
+                         '(flash memory); sd for sd card source dir mounted as "/sd"',
+                    required=False, nargs='?')
+parser.add_argument("-dir",
+                    help='target dir in upy device, default is root dir (flash memory)',
+                    required=False)
 
-# parser.add_argument(
-#     "-n",
-#     help='tag a log shot from a sensor or adc',
-#     required=False)
+parser.add_argument("-g",
+                    help='to store/read the configuration file globally, '
+                         'if there is no config file in working directory, '
+                         '\n it uses the global file',
+                    required=False, default=False, action='store_true')
+parser.add_argument("-st", help='shows target ip if using config file', required=False,
+                    default=False, action='store_true')
+parser.add_argument("-rst", required=False, default=False, action='store_true')
 parser.add_argument("-wss",
-                    help='Use WebSocket Secure (not available for all commands), this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
+                    help='Use WebSocket Secure (not available for all commands), '
+                         'this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
                     default=False, action='store_true')
 parser.add_argument('-v', action='version')
-parser.add_argument('-start', help='To start a script with sysctl; use as -start [SCRIPT_NAME]',
-                    required=False)
-parser.add_argument('-stop', help='To start a script with sysctl; use as -stop [SCRIPT_NAME]',
-                    required=False)
-parser.add_argument(
-    '-dflev', help='debug file mode level, options [debug, info, warning, error, critical]; default=error', default='error').completer = ChoicesCompleter(log_levs)
-parser.add_argument(
-    '-dslev', help='debug sys.stdout mode level, options [debug, info, warning, error, critical]; default=debug', default='debug').completer = ChoicesCompleter(log_levs)
-parser.add_argument(
-    '-daemon', help='enable "daemon mode", uses nohup so this means running in background, output if any is redirected to [SCRIPT_NAME]_daemon.log', default=False, action='store_true')
-parser.add_argument('-stopd', help='To stop a log daemon script',
-                    default=False, action='store_true')
-parser.add_argument('-follow', help='To follow a daemon log script file, indicate script with -f option',
-                    default=False, action='store_true')
-parser.add_argument('-rep', help='to save the report in a text file',
-                    required=False, default=False, action='store_true')
+
 parser.add_argument('-apmd', help='set target to 192.168.4.1',
                     required=False, default=False, action='store_true')
-parser.add_argument('-chunk_tx', help='chunk size of data packets in kB to send for wifi speed test',
-                    required=False, default=20, type=int)
-parser.add_argument('-chunk_rx', help='chunk size of data packets in kB to receive for wifi speed test',
-                    required=False, default=32, type=int)
-parser.add_argument('-total_size', help='total size of data packets in MB for wifi speed test',
-                    required=False, default=10, type=int)
-parser.add_argument('-show_key', help='show RSA key',
+
+parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection, '
+                                  'or delete private key after gen_rsakey',
                     required=False, default=False, action='store_true')
-parser.add_argument('-tfkey', help='transfer RSA/ECDSA key,ideally this should be done only if connected to the AP of the device',
-                    required=False, default=False, action='store_true')
-parser.add_argument('-key_size', help='indicate RSA key length in bits (default is 2048)',
-                    required=False, default=2048, type=int)
-parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection, or delete private key after gen_rsakey',
-                    required=False, default=False, action='store_true')
-parser.add_argument('-localkey_id', help='To refresh password manually of a current WebREPL connection',
-                    required=False)
-parser.add_argument('-nem', help='To initiate CryptoWebREPL/SSLWebREPL in unencrypted mode only',
-                    required=False, default=False, action='store_true')
-parser.add_argument('-utc', help='utc zone for set_nptime command', type=int,
-                    default=0)
-parser.add_argument('-imu', help='to select the imu library',
-                    default='lsm9ds1')
-parser.add_argument('-ads', help='to select the ads library and config options',
-                    default='ads1115')
-parser.add_argument('-ch', help='to select the ads analog channel to read from',
-                    type=int, default=0)
-parser.add_argument('-bme', help='to select the bme library and config options',
-                    default='bme280')
-parser.add_argument('-ina', help='to select the ina library and config options',
-                    default='ina219')
-parser.add_argument('-batt', help='to indicate battery capacity',
-                    type=int, nargs='+')
-parser.add_argument('-sig', help='to indicate a value or type of signal to write',
-                    nargs='+')
-parser.add_argument('-at', help='[HOUR] [MINUTE] [SECONDS]',
-                    nargs='+', type=int, default=[0, 0, 0])
+
 parser.add_argument('-to', help='indicate serial device to upload key/cert',
                     required=False)
 
-parser.add_argument('-client', help='[ID] [BROKER ADDRESS] [USER] [PASSWORD]',
-                    nargs='+', default=[None, 'test.mosquitto.org'])
-parser.add_argument('-server', help='For Client Socket:[IP] [PORT] [BUFFER LENGTH]; Server Socket [PORT] [BUFFER LENGTH]',
+
+parser.add_argument('-devs',
+                    help='to indicate the devices that will be part of a '
+                         'group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
                     nargs='+')
-parser.add_argument('-md', help='for command suboptions',
-                    nargs='+').completer = ChoicesCompleter(['list', 'get', 'serial_ports', 'latest'])
-parser.add_argument(
-    '-port', help='serial port of the device to flash to').completer = ChoicesCompleter(serial_ports())
-parser.add_argument('-devs', help='to indicate the devices that will be part of a group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
-                    nargs='+')
-parser.add_argument('-add', help='to indicate the devices that will be added to a group, use as -add [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
-                    nargs='+')
-parser.add_argument('-rm', help='to indicate the devices that will be removed from a group, use as -rm [DEV_1] [DEV_2]...',
-                    nargs='+')
-parser.add_argument(
-    '-G', help='to indicate the group of devices that the command is directed to').completer = ChoicesCompleter(see_groups())
-parser.add_argument('-fre', help='special option to put or get files from upy device, can be "cwd", an expresion to match or name of files',
-                    nargs='+')
-parser.add_argument('-wdl', help='option to create and check a watchdog log file in cwd, so only new or modified files are uploaded',
-                    default=False, action='store_true')
-parser.add_argument('-swdl', help='flag used internally for -wdl mode',
-                    default=True, action='store_false')
-parser.add_argument('-i', help='Show extensive device information with check command',
-                    default=False, action='store_true')
-parser.add_argument('-sr', help='Serial scan flag for scan command',
-                    default=False, action='store_true')
-parser.add_argument('-bl', help='Bluetooth Low Energy scan flag for scan command',
-                    default=False, action='store_true')
-parser.add_argument('-nt', help='Local Area Network scan flag for scan command',
-                    default=False, action='store_true')
-parser.add_argument('-rf', help='remove files or directories in dsync mode',
-                    default=False, action='store_true')
-parser.add_argument("-zt", help='zerotier bridge; [HOST/FWD-HOST]',
-                    default=None)
-parser.add_argument(
-    '-GP', help='to indicate the group of devices that the command is directed to, for parallel command execution').completer = ChoicesCompleter(see_groups())
+
+parser.add_argument('-G',
+                    help='to indicate the group of devices that the command '
+                         'is directed to').completer = ChoicesCompleter(see_groups())
+
+parser.add_argument('-GP',
+                    help='to indicate the group of devices that the command is '
+                         'directed to, for parallel '
+                         'command execution').completer = ChoicesCompleter(see_groups())
+
 argcomplete.autocomplete(parser)
 args, unknown_args = parser.parse_known_args()
 
 
-multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
-                     'pytest', 'mkg', 'mgg', 'mksg', 'du', 'tree',
-                     'rsync', 'docs', 'udocs', 'mdocs',
-                     'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls', 'cat',
-                     'vim', 'sysctl', 'log', 'pytest', 'kg', 'rsa', 'set', 'mkg',
-                     'see', 'mgg', 'mksg', 'uconfig']
-multiple_args_fw = ['fwr', 'flash']
-
-if len(args.m) == 1:
-    args.m = args.m[0]
-
-elif len(args.m) == 2:
-    second_arg = args.m[1]
-    args.m = args.m[0]
-    if args.m in multiple_args_fio:
-        args.f = second_arg
-        if args.f == 'cwd' or '*' in args.f or args.f == '.':
-            args.fre = [args.f]
-    elif args.m in multiple_args_fw:
-        if args.m == 'fwr':
-            args.md = [second_arg]
-        elif args.m == 'flash' or args.m == 'mpyx':
-            args.f = second_arg
-    elif args.m == 'sd':
-        if second_arg == 'enable':
-            args.m = 'sd_enable'
-        elif second_arg == 'init':
-            args.m = 'sd_init'
-        elif second_arg == 'deinit':
-            args.m = 'sd_deinit'
-        elif second_arg == 'auto':
-            args.m = 'sd_auto'
-    elif args.m == 'see' or args.m == 'probe':
-        args.G = second_arg
-    elif args.m == 'set_hostname' or args.m == 'set_localname':
-        args.f = second_arg
-    elif args.m == 'rsa_sign':
-        args.f = second_arg
-    elif args.m == 'rsa_verify':
-        args.f = second_arg
-    elif args.m == 'rsa' and second_arg == 'auth':
-        args.m = "rsa_auth"
+# multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
+#                      'pytest', 'mkg', 'mgg', 'mksg', 'du', 'tree',
+#                      'rsync', 'docs', 'udocs', 'mdocs',
+#                      'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls', 'cat',
+#                      'vim', 'sysctl', 'log', 'pytest', 'kg', 'rsa', 'set', 'mkg',
+#                      'see', 'mgg', 'mksg', 'uconfig']
+# multiple_args_fw = ['fwr', 'flash']
 
 
-elif len(args.m) > 2:
-    rest_args = args.m[1:]
-    args.m = args.m[0]
-    if args.m in multiple_args_fio:
-        args.fre = rest_args
-    elif args.m in multiple_args_fw:
-        if args.m == 'fwr':
-            args.md = rest_args
-        elif args.m == 'flash':
-            args.f = rest_args[0]
-            args.port = rest_args[1]
-    # elif args.m == 'rsa':
-    #     rsa_mode, args.f, = rest_args[:2]
-    #     if args.f == 'host':
-    #         args.lh = True
-    #         args.f = rest_args[-1]
-    #     args.m = f"{args.m}_{rsa_mode}"
-    # elif args.m == 'kg' or args.m == 'keygen':
-    #     rsa_mode, rsa_host, = rest_args[:2]
-    #     if rsa_mode == 'rsa' and rsa_host == 'host':
-    #         args.m = 'gen_rsakey'
-    #         args.lh = True
-        # print(args.m, args.f, args.fre, args.md)
-        # sys.exit()
-
-        # DEVICE MANAGEMENT ACTIONS
+# DEVICE MANAGEMENT ACTIONS
 
 DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'register', 'lsdevs',
                              'gg', 'see',
@@ -424,9 +249,8 @@ SHELL_REPL_ACTIONS = ['set_wss', 'jupyterc', 'shell', 'shl']
 
 # DEBUGGING ACTIONS
 
-DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'diagnose', 'errlog',
-                     'stream_test', 'sysctl', 'log', 'pytest', 'run', 'timeit',
-                     'reload', 'uping']
+DEBUGGING_ACTIONS = ['ping', 'probe', 'scan',
+                     'stream_test', 'sysctl', 'log', 'pytest', 'run', 'timeit']
 
 # FILEIO ACTIONS
 
@@ -440,7 +264,7 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'shasum', 'ls', 'cat', 'vim',
                     'enable_sh', 'diff', 'mkdir', 'head', 'rm', 'rmdir',
                     'pwd', 'rssi', 'ifconfig', 'upy-config', 'ctime',
-                    'uconfig', 'upip', 'sd']
+                    'uconfig', 'upip', 'sd', 'reload', 'uping']
 
 # PROTOTYPE
 PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs',
@@ -458,17 +282,14 @@ PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs',
                       'ads_read', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
                       'ina_batt']
 
-# *[cmd for cmd in keywords_mode if 'buzz' in cmd]
-#############################################
 
-
-def see_groups():
-    avoid_files = ['upydev_.config', 'help.config', 'esp32h.config']
-    local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
-    ) if '.config' in group_file and group_file not in 'upydev_.config']
-    globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
-        UPYDEV_PATH) if '.config' in group_file and group_file not in avoid_files]
-    return local_cwd + globl_wd
+# def see_groups():
+#     avoid_files = ['upydev_.config', 'help.config', 'esp32h.config']
+#     local_cwd = [group_file.split('.')[0] for group_file in os.listdir(
+#     ) if '.config' in group_file and group_file not in 'upydev_.config']
+#     globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
+#         UPYDEV_PATH) if '.config' in group_file and group_file not in avoid_files]
+#     return local_cwd + globl_wd
 
 
 #############################################
@@ -584,15 +405,13 @@ def pytest(devname):
     else:
         test = ''
     pytest_cmd_str = 'pytest {} -s --dev {}'.format(test, devname)
-    if args.md:
-        pytest_cmd_str = ' '.join([pytest_cmd_str, args.md[0]])
     pytest_cmd = shlex.split(pytest_cmd_str)
     old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     def preexec_function(action=old_action):
         signal.signal(signal.SIGINT, action)
     try:
-        pytest_session = subprocess.call(pytest_cmd, preexec_fn=preexec_function)
+        subprocess.call(pytest_cmd, preexec_fn=preexec_function)
         signal.signal(signal.SIGINT, old_action)
     except KeyboardInterrupt:
         pass
@@ -680,9 +499,6 @@ def handle_action(args, exit=True, device_name=None):
                 key, cert = key_dict['Files']
                 args.fre = [key, cert]
                 fileio_action(args, device=dev_name)
-                # put_f(args.t, args.p, rst=False)
-                # args.f = cert
-                # put_f(args.t, args.p, rst=args.rst)
             elif key_dict['mode'] == 'RSA':
                 args.fre = key_dict['Files']
                 fileio_action(args, device=dev_name)
@@ -719,37 +535,6 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = _dev_name
         gen_command(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                     device=dev_name)
-        # gen_command(args.m, args.t, args.p, f=args.f, s=args.s, wp=args.wp,
-        #             ap=args.ap, i2c=args.i2c, spi=args.spi, utc=args.utc,
-        #             init=True, ssl=args.wss, auth=args.wss)
-
-    #############################################
-    # # WLAN UTILS COMMANDS
-    # elif args.m in WLAN_UTILS_COMMANDS:
-    #     from upydev.wlancommands import wlan_command
-    #     wlan_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
-    #                  init=True, ssl=args.wss, auth=args.wss)
-    #
-    # #############################################
-    #
-    # # SD COMMANDS
-    # elif args.m in SD_UTILS_COMMANDS:
-    #     from upydev.sdcommands import sd_command
-    #     sd_command(args.m, args.t, args.p, po=args.po,
-    #                init=True, ssl=args.wss, auth=args.wss)
-    #
-    # #############################################
-    #
-    # # PROTOTYPE COMMANDS
-    # elif args.m in PROTOTYPE_COMMANDS:
-    #     from upydev.prototypecommands import prototype_command
-    #     if vars(args)['@'] is not None:
-    #         dev_name = entryp
-    #     else:
-    #         dev_name = _dev_name
-    #     prototype_command(args, device=dev_name)
-
-    #############################################
 
 
 KW_NOT_GROUP = ['probe', 'scan', 'mksg', 'make_sgroup']
@@ -778,7 +563,7 @@ if args.m == 'h' or args.m == 'help':
     print("\n (Do '$ upydev -h' to see help info about optional arguments too)")
     sys.exit()
 
-if args.m in help_actions and '-h' not in unknown_args and not args.f and not args.fre:
+if args.m in help_actions and '-h' not in unknown_args and not args.f:
     if not any([args.m in GENERAL_COMMANDS]):
         if args.m == 'dm':
             from upydev.devicemanagement import sh_cmd
@@ -818,10 +603,10 @@ if args.m in help_actions and '-h' not in unknown_args and not args.f and not ar
             see_docs(args)
             sys.exit()
 
-if args.m not in keywords_mode and args.m.startswith('%'):
-    action = args.m.replace('%', '')
-    see_help(action)
-    sys.exit()
+# if args.m not in keywords_mode and args.m.startswith('%'):
+#     action = args.m.replace('%', '')
+#     see_help(action)
+#     sys.exit()
 
 if vars(args)['@']:
     n_devices = len(vars(args)['@'])
@@ -959,7 +744,7 @@ if args.gf:
                     devices = json.loads(group.read())
                 args.G = config.replace('.config', '')
                 break
-            except Exception as e:
+            except Exception:
                 args.G = 'UPY_G'
     else:
         args.G = 'UPY_G'
@@ -971,7 +756,8 @@ if args.m in DEVICE_MANAGEMENT_ACTIONS:
         devicemanagement_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                                 device=_dev_name)
     else:
-        if not args.f and not args.fre:
+        from upydev.shell.constants import SET
+        if not any([uk in SET['alt_ops'] for uk in unknown_args]):
             from upydev.devicemanagement import devicemanagement_action
             devicemanagement_action(args, unknown_args,
                                     command_line=' '.join(sys.argv[1:]),
@@ -996,10 +782,10 @@ if args.t is None:
             else:
                 _dev_name = 'upydevice'
             # @ ENTRY POINT
-            if args.b is not None:
-                if "@" in args.b:
-                    gf, entryp = args.b.split('@')
-                    args.t, args.p = address_entry_point(entryp, gf)
+            # if args.b is not None:
+            #     if "@" in args.b:
+            #         gf, entryp = args.b.split('@')
+            #         args.t, args.p = address_entry_point(entryp, gf)
             if vars(args)['@']:
                 entryp = vars(args)['@'][0]
                 args.t, args.p = address_entry_point(entryp, args.G)
@@ -1148,7 +934,7 @@ if args.GP is not None:
                             process_devices[dev].terminate()
                         break
 
-    except Exception as e:
+    except Exception:
         print(traceback.format_exc())
         print('file not found, please create a group first')
         sys.exit()
