@@ -26,8 +26,16 @@ shparser.version = f'{uname} shell: {uversion}'
 shparser.add_argument('-v', action='version')
 
 for command, subcmd in SHELL_CMD_DICT_PARSER.items():
+    if 'desc' in subcmd.keys():
+        _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
+    else:
+        _desc = subcmd['help']
     _subparser = subshparser_cmd.add_parser(command, help=subcmd['help'],
-                                            description=subcmd['help'])
+                                            description=_desc,
+                                            formatter_class=rawfmt)
+    for pos_arg in subcmd.keys():
+        if pos_arg not in ['subcmd', 'help', 'desc', 'options', 'alt_ops']:
+            _subparser.add_argument(pos_arg, **subcmd[pos_arg])
     if subcmd['subcmd']:
         _subparser.add_argument('subcmd', **subcmd['subcmd'])
     for option, op_kargs in subcmd['options'].items():

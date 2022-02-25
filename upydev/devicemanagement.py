@@ -202,7 +202,7 @@ for command, subcmd in DM_CMD_DICT_PARSER.items():
                                           description=_desc,
                                           formatter_class=rawfmt)
     for pos_arg in subcmd.keys():
-        if pos_arg not in ['subcmd', 'help', 'desc', 'options']:
+        if pos_arg not in ['subcmd', 'help', 'desc', 'options', 'alt_ops']:
             _subparser.add_argument(pos_arg, **subcmd[pos_arg])
     if subcmd['subcmd']:
         _subparser.add_argument('subcmd', **subcmd['subcmd'])
@@ -271,47 +271,6 @@ def load_local_config(gconf):
 
 
 UPYDEV_PATH = upydev.__path__[0]
-
-DEVICE_MANAGEMENT_HELP = """
-> DEVICE MANAGEMENT: Usage '$ upydev ACTION [opts]'
-    ACTION:
-    - config : to save upy device settings (see -t, -p, -g, -@, -gg),
-                so the target and password arguments wont be required any more
-                * -gg flag will add the device to the global group (UPY_G)
-            (-t target -p password -g global directory -@ device name -gg global group)
-
-    - check: to check current device information or with -@ entry point if stored in the global group.
-             (Use -i option to see additional info if the device is reachable/connected)
-
-    - set: to set current device configuration from a device saved in the global group with -@ entry point
-
-    - register: to register a device name as a shell function so it can called from the command line and pass
-                any args to upydev. This adds the function in ~/.profile or ~/.brashrc or any other config file
-                indicated with -s option
-    - lsdevs: to see which devices are registered, this also defines lsdevs as a shell function
-              so it can be called directly.
-
-    - make_group: to make a group of devices to send commands to. Use -f for the name
-                  of the group and -devs option to indicate a name, ip and the
-                  password of each board. (To store the group settings globally use -g option)
-
-    - mg_group: to manage a group of devices to send commands to. Use -G for the name
-                  of the group and -add option to add devices (indicate a name, ip and the
-                  password of each board) or -rm to remove devices (indicated by name)
-
-    - make_sgroup: to make a subset group of an existing group, alias 'mksg'.  Use -f for the name
-                  of the subgroup, -G for the name of parent group and -devs option to indicate the names
-                  of the devices to include.
-
-    - see: To get specific info about a devices group use -G option as "see -G [GROUP NAME]"
-
-    - gg: To see global group
-"""
-
-
-KEY_N_ARGS = {}
-
-VALS_N_ARGS = []
 
 
 def check_zt_group(key, args):

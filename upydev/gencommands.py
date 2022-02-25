@@ -1,9 +1,43 @@
 from upydevice import Device, check_device_type
 from upydev.commandlib import _CMDDICT_
+from upydev.shell.constants import SHELL_CMD_DICT_PARSER
+import argparse
 import time
 import sys
 
+rawfmt = argparse.RawTextHelpFormatter
+
 fs_commands = ['ls', 'cat', 'head']
+
+usag = """%(prog)s command [options]\n
+"""
+
+_help_subcmds = "%(prog)s [command] -h to see further help of any command"
+
+parser = argparse.ArgumentParser(prog="upydev",
+                                 description=('general comands tools'
+                                              + '\n\n'
+                                                + _help_subcmds),
+                                 formatter_class=rawfmt,
+                                 usage=usag, prefix_chars='-')
+subparser_cmd = parser.add_subparsers(title='commands', prog='', dest='m',
+                                      )
+
+for command, subcmd in SHELL_CMD_DICT_PARSER.items():
+    if 'desc' in subcmd.keys():
+        _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
+    else:
+        _desc = subcmd['help']
+    _subparser = subparser_cmd.add_parser(command, help=subcmd['help'],
+                                          description=_desc,
+                                          formatter_class=rawfmt)
+    for pos_arg in subcmd.keys():
+        if pos_arg not in ['subcmd', 'help', 'desc', 'options', 'alt_ops']:
+            _subparser.add_argument(pos_arg, **subcmd[pos_arg])
+    if subcmd['subcmd']:
+        _subparser.add_argument('subcmd', **subcmd['subcmd'])
+    for option, op_kargs in subcmd['options'].items():
+        _subparser.add_argument(option, **op_kargs)
 
 
 def print_sizefile_all(fileslist, tabs=0, frep=None):
@@ -55,6 +89,7 @@ def gen_command(args, unkwargs, **kargs):
         from upydev.shell.commands import ShellCmds
         # TODO: create own dummy args parse help
         sh = ShellCmds(None)
+        sh.parser = parser
         sh.cmd('-h')
         sys.exit()
 
@@ -71,6 +106,7 @@ def gen_command(args, unkwargs, **kargs):
         sh = ShellBleCmds(dev, topargs=args)
 
     sh.dev_name = kargs.get('device')
+    sh.parser = parser
     inp = kargs.get('command_line')
     inp = inp.split('-@')[0]
 

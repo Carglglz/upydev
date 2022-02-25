@@ -133,7 +133,7 @@ for command, subcmd in KG_CMD_DICT_PARSER.items():
                                           description=_desc,
                                           formatter_class=rawfmt)
     for pos_arg in subcmd.keys():
-        if pos_arg not in ['subcmd', 'help', 'desc', 'options']:
+        if pos_arg not in ['subcmd', 'help', 'desc', 'options', 'alt_ops']:
             _subparser.add_argument(pos_arg, **subcmd[pos_arg])
     if subcmd['subcmd']:
         _subparser.add_argument('subcmd', **subcmd['subcmd'])

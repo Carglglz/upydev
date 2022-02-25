@@ -1,210 +1,219 @@
-
-from upydev.wsio import wstool, WebSocketFileIO
-from upydev.serialio import serialtool, SerialFileIO
-from upydev.bleio import bletool, BleFileIO
-from upydev.rsyncio import synctool, SyncFileIO
-from upydev.dsyncio import d_sync_recursive, check_wdlog, dev2host_sync_recursive
-from upydev.helpinfo import see_help
 from upydevice import check_device_type, Device
+from upydev.serialio import SerialFileIO
+from upydev.wsio import WebSocketFileIO
+from upydev.bleio import BleFileIO
 import upydev
 import os
 import sys
+import argparse
+import shlex
 
-FILEIO_HELP = """
-> FILEIO: Usage '$ upydev ACTION [opts]'
-    ACTIONS:
-        - put: to upload a file to upy device (see -f, -s, -fre, -dir, -rst, -wdl, -gf)
-                e.g. $ upydev put myfile.py, $ upydev put cwd, $ upydev put test_*.py
+rawfmt = argparse.RawTextHelpFormatter
 
-        - get: to download a file from upy device (see -f, -s, -fre, -dir, -gf)
+UPYDEV_PATH = upydev.__path__[0]
 
-        - fget: for a faster transfer of large files
-            (this needs sync_tool.py in upy device) (see -f, -s, -lh, -wdl, -gf)
+dict_arg_options = {'put': ['dir', 'f', 'fre'],
+                    'get': ['dir', 'f', 'fre'],
+                    'dsync': ['p', 't', 's', 'i'],
+                    'update_upyutils': ['f', 'fre'],
+                    'install': ['f', 'fre']}
 
-        - dsync: to recursively sync a folder in upydevice filesystem
-                 where second arg is the directory (can be current working directory too '.',
-                 Otherwise use -dir to indicate the folder (must be in cwd).
-                 To sync to an Sd card mounted as 'sd' use -s sd.
-                 Use -rf to remove files or directories deleted in local dir.
-                 Use -d flag to sync from device to host.
-                 Use -wdl flag to sync only modified files.
+PUT = dict(help="upload files to device",
+           subcmd=dict(help='indicate a file/pattern/dir to '
+                            'upload',
+                       default=[],
+                       metavar='file/pattern/dir',
+                       nargs='+'),
+           options={"-dir": dict(help='path to upload to',
+                                 required=False,
+                                 default='')})
 
-        - rsync: same as "dsync [DIR] -rf -wdl". To recursively sync only modified files.
-                 (deleting files too)
+GET = dict(help="download files from device",
+           subcmd=dict(help='indicate a file/pattern/dir to '
+                            'download',
+                       default=[],
+                       metavar='file/pattern/dir',
+                       nargs='+'),
+           options={"-dir": dict(help='path to download from',
+                                 required=False,
+                                 default=''),
+                    "-d": dict(help='depth level search for pattrn', required=False,
+                               default=0,
+                               type=int),
+                    "-fg": dict(help='switch off faster get method',
+                                required=False,
+                                default=True,
+                                action='store_false'),
+                    "-b": dict(help='read buffer for faster get method', required=False,
+                               default=512,
+                               type=int)})
 
-        - backup: same as "dsync . -d" to make a backup of the device filesystem.
+DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
+             desc="* needs shasum.py in device",
+             subcmd=dict(help='indicate a dir/pattern to '
+                         'sync',
+                         default=['.'],
+                         metavar='dir/pattern',
+                         nargs='*'),
+             options={"-rf": dict(help='remove recursive force a dir or file deleted'
+                                       ' in local/device directory',
+                                  required=False,
+                                  default=False,
+                                  action='store_true'),
+                      "-d": dict(help='sync from device to host', required=False,
+                                 default=False,
+                                 action='store_true'),
+                      "-fg": dict(help='switch off faster get method',
+                                  required=False,
+                                  default=True,
+                                  action='store_false'),
+                      "-b": dict(help='read buffer for faster get method',
+                                 required=False,
+                                 default=512,
+                                 type=int),
+                      "-t": dict(help='show tree of directory to sync', required=False,
+                                 default=False,
+                                 action='store_true'),
+                      "-f": dict(help='force sync, no hash check', required=False,
+                                 default=False,
+                                 action='store_true'),
+                      "-p": dict(help='show diff', required=False,
+                                 default=False,
+                                 action='store_true'),
+                      "-n": dict(help='dry-run and save stash', required=False,
+                                 default=False,
+                                 action='store_true'),
+                      "-i": dict(help='ignore file/dir or pattern', required=False,
+                                 default=[],
+                                 nargs='*')})
 
-        - install : install libs to '/lib' path with upip; indicate lib with -f option
+UPDATE_UPYUTILS = dict(help="update upyutils scripts",
+                       subcmd=dict(help=("filter to match one/multiple "
+                                         "upyutils; default: all"),
+                                   default=['*'],
+                                   nargs='*',
+                                   metavar='name/pattern'),
+                       options={},
+                       alt_ops=os.listdir(os.path.join(UPYDEV_PATH,
+                                                       'upyutils_dir')))
 
-        - update_upyutils: to update the latest versions of sync_tool.py, upylog.py,
-                        upynotify.py, upysecrets.py, upysh2.py, nanoglob.py, uping.py, time_it.py,
-                        wss_repl.py and wss_helper.py.
+INSTALL = dict(help="install libraries or modules with upip to ./lib",
+               subcmd=dict(help='indicate a lib/module to install',
+                           metavar='module'),
+               options={})
 
+FIO_CMD_DICT_PARSER = {"put": PUT, "get": GET, "dsync": DSYNC,
+                       "update_upyutils": UPDATE_UPYUTILS, "install": INSTALL}
+
+usag = """%(prog)s command [options]\n
 """
 
+_help_subcmds = "%(prog)s [command] -h to see further help of any command"
 
-def install_w_upip(args, dt, dev_name):
-    if args.f is None:
-        see_help(args.m)
-        sys.exit()
+parser = argparse.ArgumentParser(prog="upydev",
+                                 description=('file io tools'
+                                              + '\n\n'
+                                                + _help_subcmds),
+                                 formatter_class=rawfmt,
+                                 usage=usag, prefix_chars='-')
+subparser_cmd = parser.add_subparsers(title='commands', prog='', dest='m',
+                                      )
+
+for command, subcmd in FIO_CMD_DICT_PARSER.items():
+    if 'desc' in subcmd.keys():
+        _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
     else:
-        dev = Device(args.t, args.p, init=True, ssl=args.wss,
-                     auth=args.wss)
-        if dt == 'WebSocketDevice':
-            print('Installing {} in {} ...'.format(args.f, dev_name))
-            dev.wr_cmd("import upip;upip.install('{}');True".format(args.f),
-                       silent=True, long_string=True)
-            if 'Error' not in dev.response:
-                print(dev.response.replace('(\x02ng', 'Installing').replace('True\n', ''),
-                      end='')
-                result = dev.cmd('_', silent=True, rtn_resp=True)
-                if result:
-                    print('Done!')
-            else:
-                print(dev.response.replace('True\n', ''), end='')
-            dev.disconnect()
-            return
-
-        elif dt == 'SerialDevice':
-            sdevIO = SerialFileIO(dev)
-            sdevIO.upip_install(args, dev_name)
-
-        elif dt == 'BleDevice':
-            bledevIO = BleFileIO(dev)
-            bledevIO.upip_install(args, dev_name)
-
-        dev.disconnect()
-    return
+        _desc = subcmd['help']
+    _subparser = subparser_cmd.add_parser(command, help=subcmd['help'],
+                                          description=_desc,
+                                          formatter_class=rawfmt)
+    for pos_arg in subcmd.keys():
+        if pos_arg not in ['subcmd', 'help', 'desc', 'options', 'alt_ops']:
+            _subparser.add_argument(pos_arg, **subcmd[pos_arg])
+    if subcmd['subcmd']:
+        _subparser.add_argument('subcmd', **subcmd['subcmd'])
+    for option, op_kargs in subcmd['options'].items():
+        _subparser.add_argument(option, **op_kargs)
 
 
-def update_upyutils(args, dt, dev_name):
-    print('Updating device upyutils...')
-    utils_dir = os.path.join(upydev.__path__[0], 'upyutils_dir')
-    args.m = 'put'
-    args.fre = [os.path.join(utils_dir, util) for util in os.listdir(utils_dir)
-                if util.endswith('.py')]
-    args.dir = 'lib'
-    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
-    is_lib = dev.wr_cmd("import os; 'lib' in os.listdir()", rtn_resp=True, silent=True)
-    if not is_lib:
-        print('Making ./lib directory ...')
-        dev.wr_cmd("os.mkdir('./lib')")
-        dev.disconnect()
-    if dt == 'WebSocketDevice':
-        wstool(args, dev_name)
+def parseap(command_args):
+    try:
+        return parser.parse_known_args(command_args)
+    except SystemExit:  # argparse throws these because it assumes you only want
+        # to do the command line
+        return None  # should be a default one
 
-    elif dt == 'SerialDevice':
-        serialtool(args, dev_name)
 
-    elif dt == 'BleDevice':
-        bletool(args, dev_name)
+def sh_cmd(cmd_inp):
+    # parse args
+    command_line = shlex.split(cmd_inp)
+
+    all_args = parseap(command_line)
+
+    if not all_args:
+        return
+    else:
+        args, unknown_args = all_args
+
+    return args, unknown_args
+
+
+def filter_bool_opt(k, v):
+    if v and isinstance(v, bool):
+        return f"{k}"
+    else:
+        return ""
+
+
+def expand_margs(v):
+    if isinstance(v, list):
+        return ' '.join([str(val) for val in v])
+    else:
+        return v
 
 
 #############################################
-def fileio_action(args, **kargs):
-    dev_name = kargs.get('device')
+def fileio_action(args, unkwargs, **kargs):
+    args_dict = {f"-{k}": v for k, v in vars(args).items()
+                 if k in dict_arg_options[args.m]}
+    args_list = [f"{k} {expand_margs(v)}" if v and not isinstance(v, bool)
+                 else filter_bool_opt(k, v) for k, v in args_dict.items()]
+    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    # print(cmd_inp)
+    # sys.exit()
+    # debug command:
+    if cmd_inp.startswith('!'):
+        args = parseap(shlex.split(cmd_inp[1:]))
+        print(args)
+        return
+    if '-h' in unkwargs:
+        sh_cmd(f"{args.m} -h")
+        sys.exit()
+
+    result = sh_cmd(cmd_inp)
+    # print(result)
+    if not result:
+        sys.exit()
+
+    dev = Device(args.t, args.p, ssl=args.wss, auth=args.wss, init=True)
     dt = check_device_type(args.t)
-    if args.m == 'put' or args.m == 'get':
-        if args.wdl and args.m == 'put':
-            modified_files, deleted_files = check_wdlog(save_wdlog=True)
-            args.fre = modified_files
-            if not args.fre:
-                # sys.exit()
-                return
-        if dt == 'WebSocketDevice':
-            wstool(args, dev_name)
 
-        elif dt == 'SerialDevice':
-            serialtool(args, dev_name)
+    if dt == 'SerialDevice':
+        from upydev.shell.shserial import ShellSrCmds
+        sh = ShellSrCmds(dev, topargs=args)
+    elif dt == 'WebSocketDevice':
+        from upydev.shell.shws import ShellWsCmds
+        sh = ShellWsCmds(dev, topargs=args)
+    elif dt == 'BleDevice':
+        from upydev.shell.shble import ShellBleCmds
+        sh = ShellBleCmds(dev, topargs=args)
 
-        elif dt == 'BleDevice':
-            bletool(args, dev_name)
-    elif args.m == 'update_upyutils':
-        update_upyutils(args, dt, dev_name)
-
-    elif args.m == 'install':
-        install_w_upip(args, dt, dev_name)
-
-    elif args.m == 'fget':
-        if dt == 'WebSocketDevice':
-            synctool(args, dev_name)
-        else:
-            print('Use "get" instead')
-    elif args.m == 'dsync' or args.m == 'backup' or args.m == 'rsync':
-        if args.m == 'backup':
-            args.d = True
-            args.f = '.'
-        if args.m == 'rsync':
-            args.rf = True
-            args.wdl = True
-        dir_lib = args.f
-        dev_lib = args.dir
-        dev = Device(args.t, args.p, init=True, ssl=args.wss,
-                     auth=args.wss)
-        dev.wr_cmd('import os')
-        if not dev_lib:
-            dev_lib = "./"
-        dev_to_host = args.d
-        if dt == 'WebSocketDevice':
-            wsdevIO = WebSocketFileIO(dev, args, devname=dev_name)
-            # print('Syncing @ {} '.format(dev_name), end='\n\n')
-            if not dev_to_host:
-                print('Syncing to @ {} '.format(dev_name), end='\n\n')
-                d_sync_recursive(dir_lib, devIO=wsdevIO,
-                                 show_tree=True, rootdir=dev_lib,
-                                 root_sync_folder=dir_lib,
-                                 args=args,
-                                 dev_name=dev_name)
-            else:
-                # check if sync_tool.py in device
-                use_SyncFileIO = dev.wr_cmd("'sync_tool.py' in os.listdir('lib')",
-                                            silent=True,
-                                            rtn_resp=True)
-                if use_SyncFileIO:
-                    wsdevIO = SyncFileIO(dev, args, dev_name, port=8005)
-                    wsdevIO.connect(args)
-                print('Syncing from @ {} '.format(dev_name), end='\n\n')
-                dev2host_sync_recursive(dir_lib, devIO=wsdevIO,
-                                        show_tree=True, rootdir=dev_lib,
-                                        root_sync_folder=dir_lib,
-                                        args=args,
-                                        dev_name=dev_name)
-        elif dt == 'SerialDevice':
-            sdevIO = SerialFileIO(dev)
-            # print('Syncing @ {} '.format(dev_name), end='\n\n')
-            if not dev_to_host:
-                print('Syncing to @ {} '.format(dev_name), end='\n\n')
-                d_sync_recursive(dir_lib, devIO=sdevIO,
-                                 show_tree=True,
-                                 rootdir=dev_lib,
-                                 root_sync_folder=dir_lib,
-                                 args=args,
-                                 dev_name=dev_name)
-            else:
-                print('Syncing from @ {} '.format(dev_name), end='\n\n')
-                dev2host_sync_recursive(dir_lib, devIO=sdevIO,
-                                        show_tree=True,
-                                        rootdir=dev_lib,
-                                        root_sync_folder=dir_lib,
-                                        args=args,
-                                        dev_name=dev_name)
-
-        elif dt == 'BleDevice':
-            bledevIO = BleFileIO(dev)
-            # print('Syncing @ {} '.format(dev_name), end='\n\n')
-            if not dev_to_host:
-                print('Syncing to @ {} '.format(dev_name), end='\n\n')
-                d_sync_recursive(dir_lib, devIO=bledevIO,
-                                 show_tree=True,
-                                 rootdir=dev_lib,
-                                 root_sync_folder=dir_lib,
-                                 args=args,
-                                 dev_name=dev_name)
-            else:
-                print('Syncing from @ {} '.format(dev_name), end='\n\n')
-                dev2host_sync_recursive(dir_lib, devIO=bledevIO,
-                                        show_tree=True,
-                                        rootdir=dev_lib,
-                                        root_sync_folder=dir_lib,
-                                        args=args,
-                                        dev_name=dev_name)
+    sh.dev_name = kargs.get('device')
+    sh.dsyncio.dev_name = kargs.get('device')
+    inp = kargs.get('command_line')
+    inp = inp.split('-@')[0]
+    if args.m == 'dsync':
+        sh.cmd(inp)
+    else:
+        # print(cmd_inp)
+        sh.cmd(cmd_inp)

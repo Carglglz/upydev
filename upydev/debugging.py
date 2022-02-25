@@ -229,7 +229,7 @@ for command, subcmd in DB_CMD_DICT_PARSER.items():
                                           description=_desc,
                                           formatter_class=rawfmt)
     for pos_arg in subcmd.keys():
-        if pos_arg not in ['subcmd', 'help', 'desc', 'options']:
+        if pos_arg not in ['subcmd', 'help', 'desc', 'options', 'alt_ops']:
             _subparser.add_argument(pos_arg, **subcmd[pos_arg])
     if subcmd['subcmd']:
         _subparser.add_argument('subcmd', **subcmd['subcmd'])
@@ -293,46 +293,6 @@ else:
 
 AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
                     4: 'WPA/WAP2 PSK'}
-
-DEBUGGING_HELP = """
-> DEBUGGING: Usage '$ upydev ACTION [opts]'
-    ACTIONS:
-        - ping : pings the target to see if it is reachable, CTRL-C to stop
-
-        - probe: to test if a device is reachable, use -gg flag for global group and -devs
-                 to filter which ones.
-        - scan: to scan for devices, use with -sr [serial], -nt [network], or -bl [ble],
-                if no flag, provided will do all three scans.
-
-        - run : just calls import 'script', where 'script' is indicated by -f option
-                (script must be in upydevice or in sd card indicated by -s option
-                and the sd card must be already mounted as 'sd');
-                * Supports CTRL-C to stop the execution and exits nicely.
-
-        - timeit: to measure execution time of a module/script indicated with -f option.
-                  This is an implementation of
-                  https://github.com/peterhinch/micropython-samples/tree/master/timed_function
-
-        - stream_test: to test download speed (from device to host). Default test is 10 MB of
-                       random bytes are sent in chunks of 20 kB and received in chunks of 32 kB.
-                       To change test parameters use -chunk_tx , -chunk_rx, and -total_size.
-
-        - sysctl : to start/stop a script without following the output. To follow initiate
-                   wrepl/srepl as normal, and exit with CTRL-x (webrepl) or CTRL-A,X (srepl)
-                   TO START: use -start [SCRIPT_NAME], TO STOP: use -stop [SCRIPT_NAME]
-
-        - log: to log the output of a upydevice script, indicate script with -f option, and
-                the sys.stdout log level and file log level with -dslev and -dflev (defaults
-                are debug for sys.stdout and error for file). To log in background use -daemon
-                option, then the log will be redirected to a file with level -dslev.
-                To stop the 'daemon' log mode use -stopd and indicate script with -f option.
-                'Normal' file log and 'Daemon' file log are under .upydev_logs folder in $HOME
-                directory, named after the name of the script. To follow an on going 'daemon'
-                mode log, use -follow option and indicate the script with -f option.
-
-        - pytest: to run upydevice test with pytest, do "pytest-setup" first to enable selection
-                 of specific device with -@ entry point.
-                 """
 
 
 def sortSecond(val):

@@ -11,6 +11,9 @@ import shlex
 import signal
 import shutil
 import os
+import argparse
+
+rawfmt = argparse.RawTextHelpFormatter
 
 shws_cmd_kw = ["repl", "getcert", "debugws", "ota"]
 
@@ -145,18 +148,31 @@ UPY_CONFIG = dict(help="enter upy-config dialog",
                   subcmd={},
                   options={})
 
+INSTALL = dict(help="install libraries or modules with upip to ./lib",
+               subcmd=dict(help='indicate a lib/module to install',
+                           metavar='module'),
+               options={})
+
 SHELLWS_CMD_DICT_PARSER = {"repl": WREPL, "getcert": GETCERT, "jupyterc": JUPYTERC,
                            "pytest": PYTEST, "put": PUT, "get": GET,
                            "dsync": DSYNC, "debugws": DEBUG, "fw": FW, "mpyx": MPYX,
-                           "ota": OTA, "upy-config": UPY_CONFIG}
+                           "ota": OTA, "upy-config": UPY_CONFIG, "install": INSTALL}
 
 
 class ShellWsCmds(ShellCmds):
     def __init__(self, *args, **kargs):
         super().__init__(*args, **kargs)
         for command, subcmd in SHELLWS_CMD_DICT_PARSER.items():
+            if 'desc' in subcmd.keys():
+                _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
+            else:
+                _desc = subcmd['help']
             _subparser = subshparser_cmd.add_parser(command, help=subcmd['help'],
-                                                    description=subcmd['help'])
+                                                    description=_desc,
+                                                    formatter_class=rawfmt)
+            for pos_arg in subcmd.keys():
+                if pos_arg not in ['subcmd', 'help', 'desc', 'options', 'alt_ops']:
+                    _subparser.add_argument(pos_arg, **subcmd[pos_arg])
             if subcmd['subcmd']:
                 _subparser.add_argument('subcmd', **subcmd['subcmd'])
             for option, op_kargs in subcmd['options'].items():
@@ -364,3 +380,16 @@ class ShellWsCmds(ShellCmds):
                                                         silent=True, rtn_resp=True)
 
             show_upy_config_dialog(self.dev, self.dev.dev_platform)
+
+        if cmd == 'install':
+            print(f'Installing {rest_args} in {self.dev_name}:./lib ...')
+            self.dev.wr_cmd(f"import upip;upip.install('{rest_args}');True",
+                            follow=True)
+            # if 'Error' not in self.dev.response:
+            #     print(self.dev.response.replace('(\x02ng', 'Installing').replace('True\n', ''),
+            #           end='')
+            #     result = self.dev.cmd('_', silent=True, rtn_resp=True)
+            #     if result:
+            #         print('Done!')
+            # else:
+            #     print(self.dev.response.replace('True\n', ''), end='')

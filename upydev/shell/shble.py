@@ -6,12 +6,16 @@ from upydev.shell.shfileio import ShDsyncIO
 from upydev.shell.shfwio import ShfwIO
 from upydev.shell.nanoglob import glob as nglob
 from upydev.shell.upyconfig import show_upy_config_dialog
+from upydev import upip_host
 import subprocess
 import shlex
 import signal
 import shutil
 import os
 import textwrap
+import argparse
+
+rawfmt = argparse.RawTextHelpFormatter
 
 shbl_cmd_kw = ["services", "ota"]
 
@@ -138,10 +142,16 @@ UPY_CONFIG = dict(help="enter upy-config dialog",
                   subcmd={},
                   options={})
 
+INSTALL = dict(help="install libraries or modules with upip to ./lib",
+               subcmd=dict(help='indicate a lib/module to install',
+                           metavar='module'),
+               options={})
+
 SHELLBLE_CMD_DICT_PARSER = {"jupyterc": JUPYTERC,
                             "pytest": PYTEST, "put": PUT, "get": GET,
                             "dsync": DSYNC, "fw": FW, "mpyx": MPYX, "ota": OTA,
-                            "services": SERVS, "upy-config": UPY_CONFIG}
+                            "services": SERVS, "upy-config": UPY_CONFIG,
+                            "install": INSTALL}
 
 wrapper = textwrap.TextWrapper(initial_indent=" "*4,)
 
@@ -161,8 +171,16 @@ class ShellBleCmds(ShellCmds):
     def __init__(self, *args, **kargs):
         super().__init__(*args, **kargs)
         for command, subcmd in SHELLBLE_CMD_DICT_PARSER.items():
+            if 'desc' in subcmd.keys():
+                _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
+            else:
+                _desc = subcmd['help']
             _subparser = subshparser_cmd.add_parser(command, help=subcmd['help'],
-                                                    description=subcmd['help'])
+                                                    description=_desc,
+                                                    formatter_class=rawfmt)
+            for pos_arg in subcmd.keys():
+                if pos_arg not in ['subcmd', 'help', 'desc', 'options', 'alt_ops']:
+                    _subparser.add_argument(pos_arg, **subcmd[pos_arg])
             if subcmd['subcmd']:
                 _subparser.add_argument('subcmd', **subcmd['subcmd'])
             for option, op_kargs in subcmd['options'].items():
@@ -398,3 +416,24 @@ class ShellBleCmds(ShellCmds):
                                                         silent=True, rtn_resp=True)
 
             show_upy_config_dialog(self.dev, self.dev.dev_platform)
+
+        if cmd == 'install':
+            self.upip_install(rest_args)
+
+    def upip_install(self, lib):
+        try:
+            pckg_content, pckg_dir = upip_host.install_pkg(lib, ".")
+            # sync local lib to device lib
+            print(f'Installing {pckg_dir} to {self.dev_name}:./lib')
+            # cwd_now = self.dev.cmd('os.getcwd()', silent=True, rtn_resp=True)
+            # if self.dev.dev_platform == 'pyboard':
+            # self.dev.cmd("os.chdir('/flash')")
+            # d_sync_recursive(dir_lib, show_tree=True, root_sync_folder=".")
+            self.sh_cmd(f"dsync ./lib")
+            # rm_lib = input('Do you want to remove local lib? (y/n): ')
+            # if rm_lib == 'y':
+            #     shutil.rmtree(dir_lib)
+            print(f"Successfully installed {pckg_dir} to {self.dev_name}:./lib")
+            # self.dev.cmd("os.chdir('{}')".format(cwd_now))
+        except Exception:
+            print('Please indicate a library to install')

@@ -409,7 +409,8 @@ class ShDsyncIO:
             else:
                 # top_dir = rest_args[0]
                 # rest_args[0] = f"./{top_dir}"
-                rest_args = [f"./{top_dir}" for top_dir in rest_args]
+                rest_args = [f"./{top_dir}" if not top_dir.startswith('./')
+                             else top_dir for top_dir in rest_args]
                 top_dir = rest_args
 
             if args.n:
@@ -630,7 +631,8 @@ class ShDsyncIO:
             else:
                 # top_dir = rest_args[0]
                 # rest_args[0] = f"./{top_dir}"
-                rest_args = [f"./{top_dir}" for top_dir in rest_args]
+                rest_args = [f"./{top_dir}" if not top_dir.startswith('./')
+                             else top_dir for top_dir in rest_args]
                 top_dir = rest_args
 
             if args.n:

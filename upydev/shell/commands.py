@@ -19,6 +19,7 @@ from upydev.shell.redirectsh import Tee
 from upydev.shell.nanoglob import glob as nglob
 from upydev.shell.shasum import _shasum_data, shasum
 from upydev.shell.upyconfig import config_parser, param_parser
+from upydev.sdcommands import sd_command
 import traceback
 import ast
 import time
@@ -35,7 +36,7 @@ _LOCAL_SHELL_CMDS = ['ldu', 'lsl', 'lpwd', 'lcd']
 
 _SPECIAL_SHELL_CMDS = ['jupyterc', 'get', 'put', 'fw', 'flash', 'dsync',
                        'repl', 'pytest', 'getcert', 'git', 'update_upyutils',
-                       'upy-config', 'debugws', 'mpyx', 'ota', 'services']
+                       'upy-config', 'debugws', 'mpyx', 'ota', 'services', 'install']
 
 
 class ShellFlags:
@@ -534,9 +535,9 @@ class ShellCmds:
                     if stat_on:
                         print('Station Disabled')
 
-                elif rest_args == 'conn':
+                elif rest_args == 'config':
                     if not args.wp:
-                        print('arg -wp required, see help.')
+                        print('arg -wp required for config command, see help.')
                         return
                     ssid, passwd = args.wp
                     print(f'Connecting to {ssid}...')
@@ -662,7 +663,7 @@ class ShellCmds:
 
                 elif rest_args == 'config':
                     if not args.ap:
-                        print('arg -ap required, see help.')
+                        print('arg -ap required for config command, see help.')
                         return
                     ssid, passwd = args.ap
                     print(f'Configuring {ssid} Access Point ...')
@@ -1012,8 +1013,9 @@ class ShellCmds:
                         print('indicate a library to install with upip')
                     else:
                         for lib in _rest_args:
-                            self.send_cmd(f"import upip;upip.install('{lib}')",
-                                          sh_silent=False)
+                            self.sh_cmd(f'install {lib}')
+                            # self.send_cmd(f"import upip;upip.install('{lib}')",
+                            #               sh_silent=False)
                 elif sbcmd == 'info':
                     if not _rest_args:
                         print('indicate a library to see info about')
@@ -1333,6 +1335,11 @@ class ShellCmds:
                                    devname=self.dev_name)
                 fileio.put_files(fileargs,
                                  self.dev_name)
+            return
+
+        # SD
+        if command == 'sd':
+            sd_command(self.dev, rest_args, args)
             return
 
         # EXIT

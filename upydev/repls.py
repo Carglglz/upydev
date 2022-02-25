@@ -17,9 +17,9 @@ REPLS = dict(help="enter REPL",
                       "-p": dict(help='device password or baudrate',
                                  required=True),
                       "-wss": dict(help='use WebSocket Secure',
-                                 required=False,
-                                 default=False,
-                                 action='store_true'),
+                                   required=False,
+                                   default=False,
+                                   action='store_true'),
                       "-rkey": dict(help='generate new password after exit '
                                          '(WebSocketDevices)',
                                     required=False,
@@ -38,13 +38,13 @@ ld = """\n\nREPL type will be selected by device (address) class:\n\n\
 WebSecREPL\n\n    BleDevice -> BleREPL"""
 
 rplparser = argparse.ArgumentParser(prog="upydev",
-                                   description=(f'REPL for MicroPython devices {ld}'
-                                                + '\n\n'
-                                                + _help_subcmds),
-                                   formatter_class=rawfmt,
-                                   usage=usag, prefix_chars='-')
+                                    description=(f'REPL for MicroPython devices {ld}'
+                                                 + '\n\n'
+                                                 + _help_subcmds),
+                                    formatter_class=rawfmt,
+                                    usage=usag, prefix_chars='-')
 subrplparser_cmd = rplparser.add_subparsers(title='commands', prog='', dest='m',
-                                          )
+                                            )
 
 for command, subcmd in REPL_CMD_DICT_PARSER.items():
     _subparser = subrplparser_cmd.add_parser(command, help=subcmd['help'],
@@ -55,21 +55,13 @@ for command, subcmd in REPL_CMD_DICT_PARSER.items():
         _subparser.add_argument(option, **op_kargs)
 
 
-
-REPLS_HELP = """
-> REPLS: Usage '$ upydev ACTION [opts]'
-    ACTIONS:
-        - repl/rpl: to enter one of the following depending of upydevice type:
-                * WebSocketDevice --> wrepl/wssrepl (with -wss flag)
-                * SerialDeivce --> srepl
-"""
-
 def parseap(command_args):
     try:
         return rplparser.parse_known_args(command_args)
     except SystemExit:  # argparse throws these because it assumes you only want
         # to do the command line
         return None  # should be a default one
+
 
 def sh_cmd(cmd_inp):
     # parse args
@@ -84,7 +76,8 @@ def sh_cmd(cmd_inp):
 
     return args, unknown_args
 
-def filter_bool_opt(k,v):
+
+def filter_bool_opt(k, v):
     if v and isinstance(v, bool):
         return f"{k}"
     else:
@@ -96,7 +89,7 @@ def wrepl(args, device):
     web_repl_cmd_str = 'web_repl {} -p {}'.format(args.t, args.p)
     web_repl_cmd = shlex.split(web_repl_cmd_str)
     try:
-        web_repl = subprocess.call(web_repl_cmd)
+        subprocess.call(web_repl_cmd)
     except KeyboardInterrupt:
         pass
         print('')
@@ -110,7 +103,7 @@ def wssrepl(args, device):
     web_repl_cmd_str = 'web_repl {} -p {} -wss'.format(args.t, args.p)
     web_repl_cmd = shlex.split(web_repl_cmd_str)
     try:
-        web_repl = subprocess.call(web_repl_cmd)
+        subprocess.call(web_repl_cmd)
     except KeyboardInterrupt:
         pass
         print('')
@@ -125,7 +118,7 @@ def srepl(args, device):
     serial_repl_cmd_str = 'picocom -t \x02 {} -b{} -q '.format(s_port, args.p)
     serial_repl_cmd = shlex.split(serial_repl_cmd_str)
     try:
-        serial_repl = subprocess.call(serial_repl_cmd)
+        subprocess.call(serial_repl_cmd)
     except KeyboardInterrupt:
         pass
         print('')
@@ -133,10 +126,10 @@ def srepl(args, device):
 
 def repl_action(args, unkwargs, **kargs):
     dev_name = kargs.get('device')
-    #get top args and make command line filtering
-    args_dict = {f"-{k}": v for k,v in vars(args).items() if k in repl_options}
+    # get top args and make command line filtering
+    args_dict = {f"-{k}": v for k, v in vars(args).items() if k in repl_options}
     args_list = [f"{k} {v}" if v and not isinstance(v, bool)
-                 else filter_bool_opt(k,v) for k,v in args_dict.items()]
+                 else filter_bool_opt(k, v) for k, v in args_dict.items()]
     if args.m == 'repl':
         args.m = 'rpl'
     cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
@@ -168,7 +161,7 @@ def repl_action(args, unkwargs, **kargs):
         elif dt == 'SerialDevice':
             print('Initiating SerialREPL terminal for {} ...'.format(dev_name))
             print('Do C-a, C-x to exit')
-            dev = Device(args.t, args.p, init=True)
+            Device(args.t, args.p, init=True)
             srepl(args, dev_name)
 
         elif dt == 'BleDevice':

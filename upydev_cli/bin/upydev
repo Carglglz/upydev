@@ -157,19 +157,20 @@ parser.add_argument("-ggp", help='global group parallel flag', required=False,
                     action='store_true')
 parser.add_argument("-gf", help='group flag for project files', required=False,
                     action='store_true')
-parser.add_argument("-p", help='password', required=False)
+parser.add_argument("-p", help='password', required=False, nargs='?')
 parser.add_argument("-f", help='script or file name', required=False)
 parser.add_argument(
     "-lh", help='local ip for sync mode if can not be automatically detected',
     required=False)
 parser.add_argument(
     "-t", help='target host for example : 192.168.1.40 or for AP 192.168.4.1',
-    required=False)
+    required=False, nargs='?')
 parser.add_argument(
     "-sec", help='to configure a device password with no stream trace',
     required=False, default=False, action='store_true')
 parser.add_argument(
-    "-s", help='source dir in upy device, default is root dir (flash memory); sd for sd card source dir mounted as "/sd"', required=False)
+    "-s", help='source dir in upy device, default is root dir (flash memory); sd for sd card source dir mounted as "/sd"',
+    required=False, nargs='?')
 parser.add_argument(
     "-dir", help='target dir in upy device, default is root dir (flash memory)', required=False)
 parser.add_argument(
@@ -429,25 +430,17 @@ DEBUGGING_ACTIONS = ['ping', 'probe', 'scan', 'diagnose', 'errlog',
 
 # FILEIO ACTIONS
 
-FILEIO_ACTIONS = ['put', 'get', 'fget', 'rsync',
-                  'backup', 'install', 'upip']
+FILEIO_ACTIONS = ['put', 'get', 'install', 'dsync', 'update_upyutils']
 
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'uhelp', 'modules', 'mem', 'du', 'df', 'tree',
                     'net', 'ap', 'i2c', 'spi_config', 'set',
                     'datetime', 'gc',
-                    'shasum', 'ls', 'cat', 'vim', 'update_upyutils',
+                    'shasum', 'ls', 'cat', 'vim',
                     'enable_sh', 'diff', 'mkdir', 'head', 'rm', 'rmdir',
-                    'pwd', 'rssi', 'ifconfig', 'upy-config', 'dsync', 'ctime',
-                    'uconfig']
-# WLAN COMMANDS
-
-WLAN_UTILS_COMMANDS = ['wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
-                       'wap_conn', 'wu']
-
-# SD COMMANDS
-SD_UTILS_COMMANDS = ['sd', 'sd_enable', 'sd_init', 'sd_deinit', 'sd_auto']
+                    'pwd', 'rssi', 'ifconfig', 'upy-config', 'ctime',
+                    'uconfig', 'upip', 'sd']
 
 # PROTOTYPE
 PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs',
@@ -630,7 +623,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
-        fileio_action(args, device=dev_name)
+        fileio_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
+                      device=dev_name)
 
     # REPL ACTIONS
 
@@ -730,30 +724,30 @@ def handle_action(args, exit=True, device_name=None):
         #             init=True, ssl=args.wss, auth=args.wss)
 
     #############################################
-    # WLAN UTILS COMMANDS
-    elif args.m in WLAN_UTILS_COMMANDS:
-        from upydev.wlancommands import wlan_command
-        wlan_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
-                     init=True, ssl=args.wss, auth=args.wss)
-
-    #############################################
-
-    # SD COMMANDS
-    elif args.m in SD_UTILS_COMMANDS:
-        from upydev.sdcommands import sd_command
-        sd_command(args.m, args.t, args.p, po=args.po,
-                   init=True, ssl=args.wss, auth=args.wss)
-
-    #############################################
-
-    # PROTOTYPE COMMANDS
-    elif args.m in PROTOTYPE_COMMANDS:
-        from upydev.prototypecommands import prototype_command
-        if vars(args)['@'] is not None:
-            dev_name = entryp
-        else:
-            dev_name = _dev_name
-        prototype_command(args, device=dev_name)
+    # # WLAN UTILS COMMANDS
+    # elif args.m in WLAN_UTILS_COMMANDS:
+    #     from upydev.wlancommands import wlan_command
+    #     wlan_command(args.m, args.t, args.p, wp=args.wp, ap=args.ap,
+    #                  init=True, ssl=args.wss, auth=args.wss)
+    #
+    # #############################################
+    #
+    # # SD COMMANDS
+    # elif args.m in SD_UTILS_COMMANDS:
+    #     from upydev.sdcommands import sd_command
+    #     sd_command(args.m, args.t, args.p, po=args.po,
+    #                init=True, ssl=args.wss, auth=args.wss)
+    #
+    # #############################################
+    #
+    # # PROTOTYPE COMMANDS
+    # elif args.m in PROTOTYPE_COMMANDS:
+    #     from upydev.prototypecommands import prototype_command
+    #     if vars(args)['@'] is not None:
+    #         dev_name = entryp
+    #     else:
+    #         dev_name = _dev_name
+    #     prototype_command(args, device=dev_name)
 
     #############################################
 
@@ -785,17 +779,14 @@ if args.m == 'h' or args.m == 'help':
     sys.exit()
 
 if args.m in help_actions and '-h' not in unknown_args and not args.f and not args.fre:
-    if not any([args.m in GENERAL_COMMANDS,
-                args.m in WLAN_UTILS_COMMANDS,
-                args.m in SD_UTILS_COMMANDS,
-                args.m in PROTOTYPE_COMMANDS]):
+    if not any([args.m in GENERAL_COMMANDS]):
         if args.m == 'dm':
             from upydev.devicemanagement import sh_cmd
             sh_cmd('-h')
             sys.exit()
         elif args.m == 'fio':
-            from upydev.fileio import FILEIO_HELP
-            print(FILEIO_HELP)
+            from upydev.fileio import sh_cmd
+            sh_cmd('-h')
             sys.exit()
         elif args.m == 'fw':
             from upydev.firmwaretools import sh_cmd

@@ -5,21 +5,22 @@ from upydev.shell.constants import AUTHMODE_DICT
 from binascii import hexlify
 import time
 
+
 def config_parser(dev, conf):
-        config_params = [param for param in dev.wr_cmd(f"dir({conf.upper()})",
-                                                       silent=True, rtn_resp=True)
-                         if param != '__class__']
-        return config_params
+    config_params = [param for param in dev.wr_cmd(f"dir({conf.upper()})",
+                                                   silent=True, rtn_resp=True)
+                     if param != '__class__']
+    return config_params
+
 
 def param_parser(conf_str, k):
-        # print(conf_str, k)
-        start = conf_str.find(k) + len(k)
-        offset_end = conf_str[start:].find(',')
-        if offset_end < 0:
-            offset_end = conf_str[start:].find(')')
-        end = start + offset_end
-        # print(conf_str[start:end].replace('=', ''))
-        return ast.literal_eval(conf_str[start:end].replace('=', ''))
+    start = conf_str.find(k) + len(k)
+    offset_end = conf_str[start:].find(',')
+    if offset_end < 0:
+        offset_end = conf_str[start:].find(')')
+    end = start + offset_end
+    return ast.literal_eval(conf_str[start:end].replace('=', ''))
+
 
 def set_val(val):
     if isinstance(val, str):
@@ -41,8 +42,8 @@ def show_upy_config_dialog(dev, dev_platform):
                 ("interface", "{:25}{}".format("2 Interfacing Options",
                                                "Configure connections to peripherals")),
                 ("params", "{:25}{}".format("3 Custom Parameters",
-                                               "Configure custom parameters of "
-                                               "config files"))
+                                            "Configure custom parameters of "
+                                            "config files"))
             ]
         ).run()
     if results_array is not None:
@@ -265,7 +266,6 @@ def show_upy_config_dialog(dev, dev_platform):
                         dev.wr_cmd(
                             "from machine import Pin, I2C;i2c = I2C(scl=Pin({}), sda=Pin({}))".format(scl, sda))
 
-
                     message_dialog(title=_TITLE,
                                    text="I2C Default configuration enabled successfully as 'i2c'").run()
                 elif results_array == 'I2C_CUSTOM':
@@ -289,7 +289,6 @@ def show_upy_config_dialog(dev, dev_platform):
                         dev.wr_cmd(
                             "from machine import Pin, I2C;i2c_custom = I2C(scl=Pin({}), sda=Pin({}), freq={})".format(scl, sda, freq))
 
-
                     message_dialog(title=_TITLE,
                                    text="I2C Custom configuration enabled successfully as 'i2c_custom'").run()
 
@@ -303,7 +302,7 @@ def show_upy_config_dialog(dev, dev_platform):
             params_config = {param: dev.wr_cmd(f"from {config} import {param.upper()}"
                                                f"; {param.upper()}", silent=True,
                                                rtn_resp=True)
-                            for param, config in _params_config}
+                             for param, config in _params_config}
             # print(params_config)
             params_vals = [(param[0],
                             f"{str(n) + ' ' + param[0]:10}: Configure {param[0]}")
@@ -315,7 +314,7 @@ def show_upy_config_dialog(dev, dev_platform):
                     ok_text="Select",
                     cancel_text="Finish",
                     values=params_vals + [('NEW', f"{str(n) + ' New configuration':10}:"
-                                                   " Create new configuration")]
+                                           " Create new configuration")]
                 ).run()
             if param_option != 'NEW' and param_option:
                 param_in_config = config_parser(dev, param_option)
@@ -323,7 +322,7 @@ def show_upy_config_dialog(dev, dev_platform):
                 new_conf = {}
                 for param in param_in_config:
                     def_conf[param] = param_parser(params_config[param_option], param)
-                for k,v in def_conf.items():
+                for k, v in def_conf.items():
                     new_param_config = input_dialog(title=_TITLE,
                                                     text=f"{k}: ({v})").run()
                     try:
@@ -331,7 +330,7 @@ def show_upy_config_dialog(dev, dev_platform):
                     except ValueError:
                         new_conf[k] = new_param_config
                 new_params_str = ','.join([f'{k}={set_val(v)}'
-                                           for k,v in new_conf.items()])
+                                           for k, v in new_conf.items()])
                 new_conf_str = (f"from config.params import set_{param_option}"
                                 f";set_{param_option}({new_params_str})")
                 dev.wr_cmd(new_conf_str)
@@ -342,13 +341,13 @@ def show_upy_config_dialog(dev, dev_platform):
             elif param_option == 'NEW':
                 # NEW CONFIG
                 new_config = input_dialog(title=_TITLE,
-                                                text=f"Name:").run()
+                                          text="Name:").run()
                 dev.wr_cmd(f"from config import add_param; add_param('{new_config }')")
                 new_params = input_dialog(title=f"upydev {dev_platform} "
                                                 "Configuration Tool",
-                                                text=f"Parameters: parameter=value,"
+                                                text="Parameters: parameter=value,"
                                                      " param...").run()
-                reload_cmd = (f"import sys;del(sys.modules['config.params']);"
+                reload_cmd = ("import sys;del(sys.modules['config.params']);"
                               "gc.collect()")
                 dev.wr_cmd(reload_cmd, silent=True)
                 dev.wr_cmd(f"from config.params import set_{new_config}"

@@ -74,30 +74,13 @@ for command, subcmd in SHELLREPL_CMD_DICT_PARSER.items():
         _subparser.add_argument(option, **op_kargs)
 
 
-SHELL_REPLS_HELP = """
-> SHELL-REPLS: Usage '$ upydev ACTION [opts]'
-    ACTIONS:
-        - shell/shl: To enter one of the following SHELL-REPLS depending of upydevice type:
-                    * WebSocketDevice --> ssl_wrepl/wssl (with -wss flag)
-                    * SerialDeivce --> sh_repl/shr
-                    * BleDevice --> ble
-
-        - set_wss: To toggle between WebSecureREPL and WebREPL, to enable WebSecureREPL do 'set_wss', to disable 'set_wss -wss'
-
-
-        - jupyterc: to run MicroPython upydevice kernel for jupyter console, CTRL-D to exit,
-                    %%lsmagic to see magic commands and how to connect to a
-                    device either WebREPL (%%websocketconnect) or Serial connection (%%serialconnect).
-                    Hit tab to autcomplete magic commands, and MicroPython/Python code.
-                    (This needs jupyter and MicroPython upydevice kernel to be installed)"""
-
-
 def parseap(command_args):
     try:
         return parser.parse_known_args(command_args)
     except SystemExit:  # argparse throws these because it assumes you only want
         # to do the command line
         return None  # should be a default one
+
 
 def sh_cmd(cmd_inp):
     # parse args
@@ -112,11 +95,13 @@ def sh_cmd(cmd_inp):
 
     return args, unknown_args
 
+
 def filter_bool_opt(k,v):
     if v and isinstance(v, bool):
         return f"{k}"
     else:
         return ""
+
 
 
 
@@ -290,7 +275,6 @@ def shell_repl_action(args, unkwargs, **kargs):
             print('shell-repl @ {}'.format(dev_name))
             ble_repl(args, dev_name)
         sys.exit()
-
 
     elif args.m == 'set_wss':
         if not args.wss:

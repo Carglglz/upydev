@@ -65,7 +65,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'config', 'fw', 'mpyx']
+                    'diff', 'config', 'fw', 'mpyx', 'sd']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -395,12 +395,13 @@ RSSI = dict(help="prints device's RSSI (WiFi or BLE)",
             options={})
 
 NET = dict(help="manage network station interface (STA._IF)",
-           subcmd=dict(help='{status, on, off, conn, scan}; default: status',
+           desc="enable/disable station inteface, config and connect to or scan APs",
+           subcmd=dict(help='{status, on, off, config, scan}; default: status',
                        default='status',
-                       metavar='action',
-                       choices=['status', 'on', 'off', 'conn', 'scan'],
+                       metavar='command',
+                       choices=['status', 'on', 'off', 'config', 'scan'],
                        nargs='?'),
-           options={"-wp": dict(help='ssid, password for conn command',
+           options={"-wp": dict(help='ssid, password for config command',
                                 required=False,
                                 nargs=2)})
 IFCONFIG = dict(help="prints network interface configuration (STA._IF)",
@@ -411,9 +412,10 @@ IFCONFIG = dict(help="prints network interface configuration (STA._IF)",
                                     action='store_true')})
 
 AP = dict(help="manage network acces point interface (AP._IF)",
+          desc="enable/disable ap inteface, config an AP or scan connected clients",
           subcmd=dict(help='{status, on, off, scan, config}; default: status',
                       default='status',
-                      metavar='action',
+                      metavar='command',
                       choices=['status', 'on', 'off', 'config', 'scan'],
                       nargs='?'),
           options={"-ap": dict(help='ssid, password for config command',
@@ -518,6 +520,29 @@ CONFIG = dict(help="set or check config (from *_config.py files)#",
                                   default=False,
                                   action='store_true')})
 
+SD = dict(help="commands to manage an sd",
+          desc='enable an sd module, mount/unmount an sd or auto mount/unmount sd\n\n'
+               '* auto command needs SD_AM.py in device',
+          subcmd=dict(help='actions to mount/unmount sd : {enable, init, deinit, auto}',
+                      default='enable',
+                      choices=['enable', 'init', 'deinit', 'auto'],
+                      metavar='command'),
+          options={"-po": dict(help='pin of LDO 3.3V regulator to enable',
+                               default=15,
+                               type=int),
+                   "-sck": dict(help='sck pin for sd SPI',
+                                default=5,
+                                type=int),
+                   "-mosi": dict(help='mosi pin for sd SPI',
+                                 default=18,
+                                 type=int),
+                   "-miso": dict(help='miso pin for sd SPI',
+                                 default=19,
+                                 type=int),
+                   "-cs": dict(help='cs pin for sd SPI',
+                               default=21,
+                               type=int)})
+
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "touch": TOUCH, "cd": CD, "pwd": PWD,
@@ -532,4 +557,4 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "lcd": LCD,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
                          "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
-                         "diff": DIFF, "config": CONFIG}
+                         "diff": DIFF, "config": CONFIG, "sd": SD}
