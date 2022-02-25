@@ -168,9 +168,9 @@ parser.add_argument("-s",
                     help='source dir in upy device, default is root dir '
                          '(flash memory); sd for sd card source dir mounted as "/sd"',
                     required=False, nargs='?')
-parser.add_argument("-dir",
-                    help='target dir in upy device, default is root dir (flash memory)',
-                    required=False)
+# parser.add_argument("-dir",
+#                     help='target dir in upy device, default is root dir (flash memory)',
+#                     required=False)
 
 parser.add_argument("-g",
                     help='to store/read the configuration file globally, '
@@ -200,7 +200,7 @@ parser.add_argument('-to', help='indicate serial device to upload key/cert',
 parser.add_argument('-devs',
                     help='to indicate the devices that will be part of a '
                          'group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
-                    nargs='+')
+                    nargs='*')
 
 parser.add_argument('-G',
                     help='to indicate the group of devices that the command '
@@ -212,6 +212,7 @@ parser.add_argument('-GP',
                          'command execution').completer = ChoicesCompleter(see_groups())
 
 argcomplete.autocomplete(parser)
+
 args, unknown_args = parser.parse_known_args()
 
 
