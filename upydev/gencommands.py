@@ -30,7 +30,11 @@ CONFIG = dict(help="set or check config (from *_config.py files)#",
 KBI = dict(help="to send KeyboardInterrupt to device",
            subcmd={},
            options={})
-GC_CMD_DICT = {"reset": RESET, "uconfig": CONFIG, "kbi": KBI}
+
+UPYSH = dict(help="import upysh",
+             subcmd={},
+             options={})
+GC_CMD_DICT = {"reset": RESET, "uconfig": CONFIG, "kbi": KBI, "upysh": UPYSH}
 
 GC_CMD_DICT_PARSER = {}
 
@@ -190,10 +194,10 @@ def gen_command(args, unkwargs, **kargs):
         dev.kbi()
         dev.disconnect()
         return
-    # elif args.m == 'upysh':
-    #     result = sh_cmd(inp)
-    #     if '-h' in inp:
-    #         sys.exit()
-    #     dev.cmd(_CMDDICT_['UPYSH'], long_string=True)
-    #     dev.disconnect()
-    #     return
+    elif args.m == 'upysh':
+        result = sh_cmd(inp)
+        if '-h' in inp:
+            sys.exit()
+        dev.cmd(_CMDDICT_['UPYSH'], long_string=True)
+        dev.disconnect()
+        return

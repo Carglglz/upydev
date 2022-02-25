@@ -263,9 +263,9 @@ def load_local_config(gconf):
         else:
             _dev_name = 'upydevice'
     except Exception:
-        print('upydev_.config file not found, please provide target and password or\
-         create config file with command "config"')
-        see_help('config')
+        print('upydev: no device configured (upydev_.config file not found)')
+        sh_cmd("config -h")
+        sys.exit()
 
     return (target, passwd, _dev_name)
 

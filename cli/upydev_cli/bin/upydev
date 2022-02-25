@@ -97,30 +97,16 @@ Requirements: Needs REPL to be accessible.
         * USB: Connected through USB data cable. """
 
 # UPY MODE KEYWORDS AND COMMANDS
-keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'net',
+keywords_mode = ['put', 'get', 'config', 'info', 'net',
                  'i2c', 'id', 'reset', 'upysh',
-                 'battery', 'mem', 'ping', 'du', 'df',
-                 'uhelp', 'modules', 'ap', 'run', 'imu_init',
-                 'imuacc', 'imugy', 'imumag', 'pinout', 'specs', 'install',
-                 'pin_status', 'adc_config', 'aread',
-                 'datetime', 'imuacc_sd', 'ads_init',
-                 'ads_read', 'enable', 'spi_config', 'init', 'deinit',
-                 'auto', 'dac_config', 'dac_write', 'dac_sig',
-                 'buzz_config', 'buzz_set_alarm', 'buzz_interrupt',
-                 'buzz_beep', 'servo_config', 'servo_angle', 'stepper_config',
-                 'stepper_move', 'dcmotor_config', 'dcmotor_move',
-                 'dcmotor_stop', 'mpyx', 'timeit', 'mqtt_config', 'mqtt_conn',
-                 'mqtt_pub', 'mqtt_sub', 'mqtt_check', 'socli_init',
-                 'socli_conn', 'socli_send', 'socli_recv', 'socli_close',
-                 'sosrv_init', 'sosrv_start', 'sosrv_send', 'sosrv_recv',
-                 'sosrv_close', 'rget_json', 'rget_text', 'fwr', 'flash',
-                 'see', 'bme_init', 'bme_read', 'ina_init', 'ina_read',
-                 'ina_batt', 'make_group', 'mg_group', 'find',
-                 'wlan_init', 'wsta_config', 'wap_config', 'wsta_conn',
-                 'wap_conn', 'kbi', 'diagnose', 'errlog', 'dsync',
+                 'mem', 'ping', 'du', 'df',
+                 'uhelp', 'modules', 'ap', 'run',
+                 'install', 'init', 'deinit',
+                 'auto', 'mpyx', 'timeit', 'fwr', 'flash',
+                 'see', 'kbi', 'dsync',
                  'stream_test', 'sysctl', 'log', 'update_upyutils',
-                 'debug', 'set_wss', 'jupyterc', 'pytest',
-                 'pytest-setup', 'check', 'set', 'gg', 'probe',
+                 'set_wss', 'jupyterc', 'pytest',
+                 'setup', 'check', 'set', 'gg', 'probe', 'rtc', 'hostname', 'localname',
                  'scan', 'repl', 'rpl', 'shell', 'shl', 'list', 'latest',
                  'rsa', 'wr', 'keygen', 'mkg', 'mgg', 'tree', 'mksg',
                  'ota', 'register', 'lsdevs', 'ls', 'cat', 'vim', 'ifconfig', 'touch',
@@ -130,7 +116,7 @@ keywords_mode = ['put', 'get', 'fget', 'cmd', 'config', 'info', 'net',
                  'kg', 'rsa', 'uconfig', 'sd']
 
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
-                'gc', 'wu', 'sd', 'pro', 'docs', 'udocs', 'mdocs']
+                'gc', 'docs', 'udocs', 'mdocs']
 
 keywords_mode += help_actions
 
@@ -140,7 +126,8 @@ help_dv = "To point the command to a specific device saved in the global group"
 
 # ARG PARSER
 parser = argparse.ArgumentParser(prog=upydev.name,
-                                 description='Command line tool for MicroPython devices',
+                                 description='Command line tool for '
+                                             'MicroPython devices',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  usage=usag, prefix_chars='-', add_help=False,
                                  allow_abbrev=False)
@@ -168,9 +155,6 @@ parser.add_argument("-s",
                     help='source dir in upy device, default is root dir '
                          '(flash memory); sd for sd card source dir mounted as "/sd"',
                     required=False, nargs='?')
-# parser.add_argument("-dir",
-#                     help='target dir in upy device, default is root dir (flash memory)',
-#                     required=False)
 
 parser.add_argument("-g",
                     help='to store/read the configuration file globally, '
@@ -260,7 +244,7 @@ FILEIO_ACTIONS = ['put', 'get', 'install', 'dsync', 'update_upyutils']
 # GENERAL COMMANDS
 GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'uhelp', 'modules', 'mem', 'du', 'df', 'tree',
-                    'net', 'ap', 'i2c', 'spi_config', 'set',
+                    'net', 'ap', 'i2c', 'set',
                     'datetime', 'gc',
                     'shasum', 'ls', 'cat', 'vim',
                     'enable_sh', 'diff', 'mkdir', 'head', 'rm', 'rmdir',
@@ -538,7 +522,7 @@ def handle_action(args, exit=True, device_name=None):
                     device=dev_name)
 
 
-KW_NOT_GROUP = ['probe', 'scan', 'mksg', 'make_sgroup']
+KW_NOT_GROUP = ['probe', 'scan', 'mksg', 'mksg']
 
 
 #############################################
@@ -794,10 +778,10 @@ if args.t is None:
                 args.t = '192.168.4.1'
             if args.st:
                 print('Target:{}'.format(args.t))
-        except Exception as e:
-            print('upydev_.config file not found, please provide target and password or\
- create config file with command "config"')
-            see_help('config')
+        except Exception:
+            print('upydev: no device configured (upydev_.config file not found)')
+            from upydev.devicemanagement import sh_cmd
+            sh_cmd('-h')
             sys.exit()
 
 
