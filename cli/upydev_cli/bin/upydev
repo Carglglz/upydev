@@ -25,7 +25,7 @@ import multiprocessing
 from argcomplete.completers import ChoicesCompleter
 from ipaddress import ip_address
 from upydevice import check_device_type, Device, DeviceNotFound
-from upydev.helpinfo import HELP_INFO_ARG, see_help
+from upydev.helpinfo import HELP_INFO_ARG
 
 UPYDEV_PATH = upydev.__path__[0]
 
@@ -56,7 +56,8 @@ def see_global_devs(ws=True, serial=False, ble=False, all=False):
     # globl_wd = [group_file.split('.')[0] for group_file in os.listdir(
     #     upydev.__path__[0]) if '.config' in group_file and group_file not in avoid_files]
     try:
-        with open('{}/UPY_G.config'.format(UPYDEV_PATH), 'r', encoding='utf-8') as group:
+        with open(os.path.join(UPYDEV_PATH, 'UPY_G.config'), 'r',
+                  encoding='utf-8') as group:
             devices = json.loads(group.read())
             # print(devices)
         if ws:
@@ -71,7 +72,7 @@ def see_global_devs(ws=True, serial=False, ble=False, all=False):
         if all:
             devs = [dev for dev in devices]
         return devs
-    except Exception as e:
+    except Exception:
         return []
 
 
@@ -427,6 +428,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
+        if device_name:
+            dev_name = device_name
         fileio_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                       device=dev_name)
 
@@ -839,7 +842,7 @@ if args.G is not None:
                             os.mkdir(dev)
                         os.chdir(dev)
                 try:
-                    handle_action(args, exit=False)
+                    handle_action(args, exit=False, device_name=_dev_name)
                 except Exception as e:
                     print(e)
                 if args.gf:

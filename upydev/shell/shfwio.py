@@ -429,7 +429,7 @@ class ShfwIO:
             if self.dev.dev_class == 'WebSocketDevice':
 
                 OTA_server = OTAServer(self.dev, port=8014, firmware=fwfile,
-                                       tls=args.sec)
+                                       tls=args.sec, zt=args.zt)
                 OTA_server.start_ota()
                 time.sleep(1)
                 self.dev.cmd_nb('import machine;machine.reset()', block_dev=False)
@@ -445,8 +445,9 @@ class ShfwIO:
                         print('Trying to reconnect again...')
                     except KeyboardInterrupt:
                         return
-                print('Done!')
                 os.remove(fwfile)
+                self.dev.wr_cmd("import gc;from upysh import *", silent=True)
+                print('Done!')
             elif self.dev.dev_class == 'BleDevice':
                 # Enable dfu mode
                 print('ota: enabling DFU Mode...')

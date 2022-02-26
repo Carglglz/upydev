@@ -134,7 +134,11 @@ OTA = dict(help="to flash a firmware file using OTA system",
                                action='store_true'),
                     "-sec": dict(help='to enable OTA TLS',
                                  required=False,
-                                 action='store_true')})
+                                 default=False,
+                                 action='store_true'),
+                    "-zt": dict(help='zerotierone host IP',
+                                required=False,
+                                default=False)})
 
 MPYX = dict(help="freeze .py files using mpy-cross. (must be available in $PATH)",
             subcmd=dict(help='indicate a file/pattern to '

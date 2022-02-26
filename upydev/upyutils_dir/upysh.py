@@ -170,7 +170,15 @@ pwd = PWD()
 ls = LS()
 clear = CLEAR()
 
-cd = os.chdir
+
+def cd(dir):
+    try:
+        os.chdir(dir)
+    except Exception:
+        print(f'cd: {dir} : is not a directory')
+
+
+# cd = os.chdir
 # mkdir = os.mkdir
 mv = os.rename
 # rm = os.remove

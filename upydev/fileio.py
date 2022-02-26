@@ -7,6 +7,7 @@ import os
 import sys
 import argparse
 import shlex
+import time
 
 rawfmt = argparse.RawTextHelpFormatter
 
@@ -224,4 +225,5 @@ def fileio_action(args, unkwargs, **kargs):
         if args.m == 'put':
             args, unknown_args = result
             if args.rst:
-                dev.reset()
+                dev.reset(reconnect=False)
+                time.sleep(1)

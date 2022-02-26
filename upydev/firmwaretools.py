@@ -71,6 +71,7 @@ OTA = dict(help="to flash a firmware file using OTA system (ota.py, otable.py)",
                                action='store_true'),
                     "-sec": dict(help='to enable OTA TLS',
                                  required=False,
+                                 default=False,
                                  action='store_true'),
                     "-t": dict(help="device target address",
                                required=True),
@@ -79,7 +80,10 @@ OTA = dict(help="to flash a firmware file using OTA system (ota.py, otable.py)",
                     "-wss": dict(help='use WebSocket Secure',
                                  required=False,
                                  default=False,
-                                 action='store_true')})
+                                 action='store_true'),
+                    "-zt": dict(help='zerotierone host IP',
+                                required=False,
+                                default=False)})
 
 
 FW_CMD_DICT_PARSER = {"mpyx": MPYX, "fwr": FW, "flash": FLASH, "ota": OTA}
@@ -598,7 +602,7 @@ def firmwaretools_action(args, unkwargs, **kargs):
                         print('Device not reachable, connect the device and try again.')
                         sys.exit()
                 OTA_server = OTAServer(
-                    dev, port=8014, firmware=fwfile, tls=args.sec)
+                    dev, port=8014, firmware=fwfile, tls=args.sec, zt=args.zt)
                 OTA_server.start_ota()
                 # print('Rebooting device...')
                 time.sleep(1)

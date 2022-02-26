@@ -45,7 +45,7 @@ class OTAServer:
     OTA Server Class
     """
 
-    def __init__(self, dev, port, firmware, buff=BLOCKLEN, tls=False):
+    def __init__(self, dev, port, firmware, buff=BLOCKLEN, tls=False, zt=False):
 
         try:
             self.host = self.find_localip()
@@ -61,6 +61,10 @@ class OTAServer:
         self.conn = None
         self.addr_client = None
         self._use_tls = tls
+        self.host_fwd = None
+        if zt:
+            self.host_fwd = self.dev.hostname
+            self.host = zt
         if tls:
             self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
             self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
@@ -111,7 +115,11 @@ class OTAServer:
         if self._use_tls:
             print('OTA TLS enabled...')
         self.dev.wr_cmd('from ota import OTA')
-        self.dev.cmd_nb(f'mOTA = OTA("{self.host}","{self.port}", "{self.check_sha}", {self._use_tls})',
+        host = self.host
+        if self.host_fwd:
+            host = self.host_fwd
+        self.dev.cmd_nb(f'mOTA = OTA("{host}","{self.port}", "{self.check_sha}", '
+                        f'{self._use_tls})',
                         block_dev=False)
         self.conn, self.addr_client = self.serv_soc.accept()
         print('Connection received...')
@@ -194,7 +202,7 @@ class OTAServer:
                         else:
                             break
 
-                except Exception as e:
+                except Exception:
                     # print(e)
                     time.sleep(0.02)
                     pass

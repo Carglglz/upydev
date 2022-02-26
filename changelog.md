@@ -8,28 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - `register` command to register a device name as a callable shell function
 - `ota` command to do OTA Firmware updates (esp32). This needs `ota.py` for network (LAN/WiFi) or `otable.py` for BLE. (`upyutils` directory) and `firmware.bin` file in `build-GENERIC_OTA` or from micropython esp32-ota downloads.
-Firmware file indicated with `-f` option or as second arg.
 - `ota` with `-sec` option to do OTA over TLS. (This needs `kg ssl` first).
-- `rsa_sign`, `rsa_verify` commands to sign file or verify signatures made with device RSA key
+- `rsa sign`, `rsa verify` commands to sign file or verify signatures made with device RSA key
 - `kg rsa host`, to generate a host RSA key pair and send public key to device.
 - `rsa sign host [FILE]` to sign a file with host RSA key.
 - `rsa verify host [FILE]` to verify in the device a file signature made with host RSA key
 - `rsa` lib in `upyutils` to support RSA key load, sign, verify, encrypt, decrypt,
 generation and export in PEM format
-- `gen_rsakey` added option `-rkey` to remove RSA private key from the host, so in combination with `-tfkey` option, the RSA private key will be stored only in the device.
+- `kg rsa` added option `-rkey` to remove RSA private key from the host, so in combination with `-tfkey` option, the RSA private key will be stored only in the device.
 - `rsa auth` to authenticate a device with a RSA encrypted challenge.
 - `shasum.py` lib in `upyutils` to support hash SHA-256 check
 - `shasum` and `shasum_c` to compute hash SHA-256 of files and check shasum files.
-- `ls` command to improve ls from `upysh`, with mutiple dirs and pattern matching
-- `cat` command that accepts mutiple files and pattern matching
+- `ls` command to improve ls from `upysh`, with multiple dirs and pattern matching
+- `cat` command that accepts multiple files and pattern matching
+- refactored help
+- dropped wlan utils
+- dropped prototype commands (this will be a stand alone cli or add-on for upydev)
 # Fix
 - `mpyx` command with multiple files
-- `rf_wrkey` now use RSA public key for password derivation and send encrypted password
+- `kg wr` now use RSA public key for password derivation and send encrypted password
 that is decrypted and stored in device.
 - Load time in MacOS caused by upydevice->BleDevice->bleak->corebluetooth
 - Save in ecdsa key/cert directly in `DER`, no need for `openssl` in `PATH`.
 - Allow mdns name in ssl certificate.
-- Improved file io operations (`put`, `get`, `fget`, `dsync`, `rsync`, `backup`...), more flexibility indicating files / dirs / pattern matching etc. Improved overall performance, specially for WebSocketDevices.
+- Improved file io operations (`put`, `get`, `dsync` ...), more flexibility indicating files / dirs / pattern matching etc. Improved overall performance, specially for WebSocketDevices.
 - fix `ping`, `probe` for zerotier devices (this needs updated config, see how-to section in docs.)
 - fix `update_upyutils` if dir `lib` does not exists.
 - refactored shells-repls, now `shl`, or `rpl` commands only
