@@ -588,7 +588,7 @@ if args.m in help_actions and '-h' not in unknown_args and not args.f:
 
         elif args.m in ['docs', 'udocs', 'mdocs']:
             from upydev.helpinfo import see_docs
-            see_docs(args)
+            see_docs(args, unknown_args)
             sys.exit()
 
 # if args.m not in keywords_mode and args.m.startswith('%'):

@@ -60,15 +60,15 @@ def see_help(cmd):
         pass
 
 
-def see_docs(args):
+def see_docs(args, unkwargs):
     if args.m == 'mdocs':
         docs_url = "docs.micropython.org"
     elif args.m == 'docs':
         docs_url = "upydev.readthedocs.io"
     elif args.m == 'udocs':
         docs_url = "upydevice.readthedocs.io"
-    if args.f:
-        key_word = args.f
+    if unkwargs:
+        key_word = unkwargs[0]
         search = f'https://{docs_url}/en/latest/search.html?q={key_word}&check_keywords=yes&area=default'
         webbrowser.open(search)
     else:
