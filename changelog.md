@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.8] Unreleased Github Repo [develop]
 ## Added
+- added tests and example tests to run with devices
 - added shell support for command concatenation (`&&`)
 - added shell basic support for pipe device output to a local file (`>, >>, |`)
 - `register` command to register a device name or group as a callable shell function

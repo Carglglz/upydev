@@ -441,6 +441,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
+        if device_name:
+            dev_name = device_name
         repl_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                     device=dev_name)
 
@@ -452,6 +454,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
+        if device_name:
+            dev_name = device_name
         firmwaretools_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                              device=dev_name)
 
@@ -463,6 +467,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
+        if device_name:
+            dev_name = device_name
         debugging_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                          device=dev_name)
 
@@ -473,6 +479,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
+        if device_name:
+            dev_name = device_name
         key_dict = keygen_action(args, unknown_args,
                                  command_line=' '.join(sys.argv[1:]), device=dev_name)
         if key_dict:
@@ -510,6 +518,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
+        if device_name:
+            dev_name = device_name
         shell_repl_action(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                           device=dev_name)
 
@@ -521,6 +531,8 @@ def handle_action(args, exit=True, device_name=None):
             dev_name = entryp
         else:
             dev_name = _dev_name
+        if device_name:
+            dev_name = device_name
         gen_command(args, unknown_args, command_line=' '.join(sys.argv[1:]),
                     device=dev_name)
 
@@ -794,21 +806,6 @@ if args.G is not None:
         # print(group_file)
         if '{}.config'.format(group_file) not in os.listdir() or args.g:
             group_file = os.path.join(UPYDEV_PATH, args.G)
-        # if args.m == 'see':
-        #     see()
-        #     sys.exit()
-        if args.m == 'pytest':
-            print('Running pytest in group: {}'.format(group_file.split('/')[-1]))
-            with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
-                devices = json.loads(group.read())
-                # print(devices)
-            devs = devices.keys()
-            if args.devs is not None:
-                devs = args.devs
-            for dev in devs:
-                print('Running pytest with Device: {}'.format(dev))
-                pytest(dev)
-            sys.exit()
         if args.m not in KW_NOT_GROUP:
             print('Sending command to group: {}'.format(group_file.split('/')[-1]))
             with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
@@ -837,7 +834,7 @@ if args.G is not None:
                 print('{} @ {}'.format(dev_type, dev_addr))
                 print('Sending command {} ...'.format(args.m), end='\n\n')
                 if args.gf:
-                    if args.m == 'get' or args.m == 'put' or args.m == 'fget':
+                    if args.m == 'get' or args.m == 'put':
                         if dev not in os.listdir():
                             os.mkdir(dev)
                         os.chdir(dev)
@@ -846,7 +843,7 @@ if args.G is not None:
                 except Exception as e:
                     print(e)
                 if args.gf:
-                    if args.m == 'get' or args.m == 'put' or args.m == 'fget':
+                    if args.m == 'get' or args.m == 'put':
                         os.chdir(current_dir)
                 args = original_args
 
