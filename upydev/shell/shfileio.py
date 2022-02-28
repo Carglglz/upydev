@@ -260,6 +260,7 @@ class ShDsyncIO:
                                 follow=True,
                                 long_string=True,
                                 multiline=True,
+                                silent=True,
                                 pipe=self.fastfileio.get)
                 self.fastfileio.save_file()
                 print('\n')

@@ -4,15 +4,19 @@ import argparse
 import sys
 from binascii import hexlify
 import time
+import os
 from upydev.shell.constants import style_p, shell_message, d_prompt
 from upydev.shell.commands import _SHELL_FLAGS
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
+from prompt_toolkit.history import FileHistory
 from prompt_toolkit import PromptSession
 from upydev.shell.shserial import ShellSrCmds, shsr_cmd_kw, SHELLSR_CMD_DICT_PARSER
 from upydev.shell.keybindings import ShellKeyBindings
 
+
+_SHELL_HISTORY = os.path.expanduser('~/.upydev_shl_history')
 
 # ARGPARSE HERE TO ACCEPT TARGET AND PASSWORD
 parser = argparse.ArgumentParser()
@@ -39,7 +43,7 @@ except DeviceNotFound as e:
 time.sleep(0.2)
 
 uid = dev.cmd("from machine import unique_id; unique_id()", silent=True,
-                  rtn_resp=True)
+              rtn_resp=True)
 try:
     unique_id = hexlify(uid).decode()
 except Exception:
@@ -70,7 +74,7 @@ else:
     _SHELL_FLAGS.shell_mode['S'] = True
 
     dev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
-                  ';gc.collect()', silent=True)
+               ';gc.collect()', silent=True)
     dev.wr_cmd("help('modules')", silent=True, long_string=True)
     # dev.open_wconn()
     _SHELL_FLAGS.frozen_modules['FM'] = dev.output.split()[:-6]
@@ -93,7 +97,20 @@ def check_prompt():
     return _SHELL_FLAGS.prompt['p']
 
 
-session_p = PromptSession(enable_suspend=True)
+# COMMAND HISTORY
+if _SHELL_HISTORY.rsplit('/', 1)[-1] not in os.listdir(os.path.expanduser('~')):
+    with open(_SHELL_HISTORY, 'w') as shl_hist:
+        pass
+# ROTATE HISTORY FILE
+with open(_SHELL_HISTORY, 'r+') as shl_hist:
+    lines = shl_hist.readlines()
+    if len(lines) > 3 * (100):
+        shl_hist.seek(0)
+        shl_hist.write(''.join(lines[3:]))
+        shl_hist.truncate(len(''.join(lines[3:])))
+
+
+session_p = PromptSession(enable_suspend=True, history=FileHistory(_SHELL_HISTORY))
 
 # REPL/SHELL LOOP
 repl = True

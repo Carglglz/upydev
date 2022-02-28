@@ -954,9 +954,10 @@ class CatFileIO:
             with open(self.filename, 'ab') as f:
                 if data == b'':
                     return
+                if (self.cnt + len(data)) > self.filesize:
+                    offset = (self.cnt + len(data)) - self.filesize
+                    data = data[:-offset]
                 self.cnt += len(data)
-                if self.cnt > self.filesize:
-                    data = data[:-1]
                 f.write(data)
                 loop_index_f = (self.cnt/self.filesize)*self.bar_size
                 loop_index = int(loop_index_f)

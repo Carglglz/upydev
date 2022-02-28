@@ -19,7 +19,8 @@ SHELL_CMD_TEST = ['info', 'mem', 'df', 'ls', 'cat', 'tree', 'du', 'run -r',
 
 NEEDS_FILE = ['cat', 'shasum', 'put', 'get', 'run -r']
 
-RAW_COMMANDS = {'toggle_led': "import time;led.on();time.sleep(1);led.off()"}
+RAW_COMMANDS = {'toggle_led': "import time;led.on();time.sleep(1);led.off()",
+                "print": "import time;print('hello test');time.sleep(1)"}
 
 DUMMY_FILE = 'dummy.py'
 
@@ -136,7 +137,7 @@ for command in SHELL_CMD_TEST[:] + list(RAW_COMMANDS.keys()):
             print('Test Result: ', end='')
             raise e
 
-    globals()[f'test_command_{command}'] = add_command
+    globals()[f'test_command_{command.split()[0]}'] = add_command
 
 
 # def test_blink_led():

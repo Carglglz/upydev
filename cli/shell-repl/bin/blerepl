@@ -4,18 +4,21 @@ from upydevice import DeviceNotFound
 import argparse
 import time
 import sys
+import os
 from binascii import hexlify
 from upydev.shell.constants import style_p, shell_message, d_prompt
 from upydev.shell.commands import _SHELL_FLAGS
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
+from prompt_toolkit.history import FileHistory
 from prompt_toolkit import PromptSession
 from upydev.shell.shble import ShellBleCmds, shbl_cmd_kw, SHELLBLE_CMD_DICT_PARSER
 from upydev.shell.keybindings import ShellKeyBindings
-from prompt_toolkit.application import in_terminal, run_in_terminal
+from prompt_toolkit.application import in_terminal
 import asyncio
 
+_SHELL_HISTORY = os.path.expanduser('~/.upydev_shl_history')
 
 _WASPDEV = ["P8", "PineTime", "Pixl.js"]
 _IS_WASPDEV = False
@@ -226,7 +229,22 @@ def check_prompt():
         return ''
 
 
-session_p = PromptSession(enable_suspend=True)
+# COMMAND HISTORY
+if _SHELL_HISTORY.rsplit('/', 1)[-1] not in os.listdir(os.path.expanduser('~')):
+    with open(_SHELL_HISTORY, 'w') as shl_hist:
+        pass
+# ROTATE HISTORY FILE
+with open(_SHELL_HISTORY, 'r+') as shl_hist:
+    lines = shl_hist.readlines()
+    if len(lines) > 3 * (100):
+        shl_hist.seek(0)
+        shl_hist.write(''.join(lines[3:]))
+        shl_hist.truncate(len(''.join(lines[3:])))
+
+
+session_p = PromptSession(enable_suspend=True, history=FileHistory(_SHELL_HISTORY))
+
+
 # REPL/SHELL LOOP
 repl = True
 while repl:
