@@ -56,6 +56,7 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
   serialshellrepl
   sslwebshellrepl
   bleshellrepl
+  shell_repl
 
 
 .. toctree::

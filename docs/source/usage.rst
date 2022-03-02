@@ -14,7 +14,7 @@ Upydev can handle three types of directives:
 
 	2) A predefined MicroPython command:
 			This always requires a connected device and it translates into MicroPython code snippets.
-			e.g. ``$ upydev info``, ``$ upydev meminfo``, ``$ upydev df``
+			e.g. ``$ upydev info``, ``$ upydev mem``, ``$ upydev df``
 
 	3) "Raw" or unregistered commands:
 			Commands that are not registered in upydev are sent directly to the device as in a REPL.
@@ -27,17 +27,17 @@ Mode/Tools
 	> :ref:`modetools:HELP`
 			To see help on any mode, tool or command.
 
-			ACTIONS: ``help``, ``h``, ``dm``, ``fio``, ``fw``, ``kg``, ``rp``, ``sh``, ``db``, ``gp``, ``gc``, ``wu``, ``sd``, ``pro``.
+			ACTIONS: ``help``, ``h``, ``dm``, ``fio``, ``fw``, ``kg``, ``rp``, ``sh``, ``db``, ``gp``, ``gc``.
 
 	> :ref:`modetools:Device Management`
 			To manage configuration of a device/group of devices.
 
-			ACTIONS : ``config``, ``check``, ``set``, ``register``, ``lsdevs``, ``make_group``, ``mg_group``, ``make_sgroup``, ``see``, ``gg``
+			ACTIONS : ``config``, ``check``, ``set``, ``register``, ``lsdevs``, ``mkg``, ``mgg``, ``mksg``, ``see``, ``gg``
 
 	> :ref:`modetools:File IO operations`
 			To upload/download files to/from a device.
 
-			ACTIONS: ``put``, ``get``, ``fget``, ``dsync``, ``rsync``, ``backup``, ``install``, ``update_upyutils``
+			ACTIONS: ``put``, ``get``, ``dsync``, ``install``, ``update_upyutils``
 
 	> :ref:`modetools:Firmware`
 			To list, get or flash the firmware of a device.
@@ -47,23 +47,23 @@ Mode/Tools
 	> :ref:`modetools:Keygen`
 			To generate SSL key-certs and random WebREPL passwords.
 
-			ACTIONS: ``gen_rsakey``, ``rsa_sign``, ``rsa_verify``, ``rf_wrkey``, ``sslgen_key``
+			ACTIONS: ``kg rsa``, ``kg wr``, ``kg ssl``, ``rsa sign``, ``rsa verify``, ``rsa auth``
 
 
 	> :ref:`modetools:REPL`
 			To enter the REPL.
 
-			ACTIONS: ``repl``, ``rpl``, ``wrepl``, ``wssrepl``, ``srepl``
+			ACTIONS: ``repl``, ``rpl``
 
 	> :ref:`modetools:SHELL-REPL`:
-			To enter shell-repl modes.
+			To enter shell-repl.
 
-			ACTIONS: ``shell``, ``shl``, ``ssl_wrepl``, ``ssl``, ``sh_srepl``, ``shr``, ``wssl``, ``set_wss``, ``ble``, ``jupyterc``
+			ACTIONS: ``shell``, ``shl``,  ``shl-config``, ``set_wss``, ``jupyterc``
 
 	> :ref:`modetools:Debugging`
 			To debug device connection, run scripts or run interactive test with pytest.
 
-			ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``diagnose``, ``errlog``, ``stream_test``, ``sysctl``, ``log``, ``debug``, ``pytest-setup``, ``pytest``
+			ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``stream_test``, ``sysctl``, ``log``, ``pytest setup``, ``pytest``
 
 	> :ref:`Group Command Mode <modetools:Group Mode>`
 			To operate with a group of devices.
@@ -76,15 +76,3 @@ upy Commands
 	> :ref:`upycmd:General Commands`
 
 		A set of commands to control or configure the device.
-
-	> :ref:`upycmd:WiFi Utils`
-
-		To set or manage WiFi configuration or connection mode.
-
-	> :ref:`upycmd:SD`
-
-		A set of commands to mount/unmount a SD card.
-
-	> :ref:`upycmd:Prototype`
-
-		A set of commands to test/prototype sensors, actuators, networking...

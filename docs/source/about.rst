@@ -25,6 +25,7 @@ Requirements (modules)
   - `websocket-client <https://github.com/websocket-client/websocket-client>`_
   - `Pygments <https://github.com/pygments/pygments>`_
   - `pyusb <https://github.com/pyusb/pyusb>`_
+  - `braceexpand <https://github.com/trendels/braceexpand>`_
   - `upydevice <https://github.com/Carglglz/upydevice>`_
 
 Tested on

@@ -73,18 +73,25 @@ class OTAServer:
             dev_id = hexlify(id_bytes).decode()
             self.key = os.path.join(_PATH[0], f'SSL_key{dev_id}.pem')
             self.cert = os.path.join(_PATH[0], f'SSL_certificate{dev_id}.pem')
-            while True:
-                try:
-                    my_p = getpass.getpass(
-                        prompt=f"Enter passphrase for key '{self.key.split('/')[-1]}':",
-                        stream=None)
-                    self.context.load_cert_chain(keyfile=self.key,
-                                                 certfile=self.cert,
-                                                 password=my_p)
-                    break
-                except ssl.SSLError:
-                    # print(e)
-                    print('Passphrase incorrect, try again...')
+            my_p = self.dev.passphrase
+            if not my_p:
+                while True:
+                    try:
+                        my_p = getpass.getpass(
+                            prompt="Enter passphrase for key "
+                                   f"'{self.key.split('/')[-1]}':",
+                            stream=None)
+                        self.context.load_cert_chain(keyfile=self.key,
+                                                     certfile=self.cert,
+                                                     password=my_p)
+                        break
+                    except ssl.SSLError:
+                        # print(e)
+                        print('Passphrase incorrect, try again...')
+            else:
+                self.context.load_cert_chain(keyfile=self.key,
+                                             certfile=self.cert,
+                                             password=my_p)
             self.context.verify_mode = ssl.CERT_REQUIRED
             self.context.load_verify_locations(cafile=self.cert)
         self._fw_file = firmware

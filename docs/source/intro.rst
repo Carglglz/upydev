@@ -29,7 +29,7 @@ Features
 * Tools to allow configuration, management, communication and control of MicroPython devices.
 * Command line Autocompletion
 * File IO operations (upload, download one or multiple files, recursively sync directories...)
-* SHELL-REPL modes: Serial, WiFi (SSL/WebREPL), BLE
+* SHELL-REPL: Serial, WiFi (WebREPL/WebSecureREPL) and Bluetooth Low Energy
 * OTA\* Firmware updates WiFi (TCP/SSL), BLE (\*esp32 only)
 * Custom commands for debugging, testing and prototyping.
 * Group mode to operate with multiple devices
@@ -62,8 +62,19 @@ To get help, use ``h`` or ``help`` command :
 
     $ upydev help
 
-Or see help about a specific command ``$ upydev %[COMMAND]``:
+Or see help about a specific command ``$ upydev [COMMAND] -h``:
 
 .. code-block:: console
 
-    $ upydev %put
+    $ upydev put -h
+    usage:  put [-h] [-dir DIR] [-rst] file/pattern/dir [file/pattern/dir ...]
+
+    upload files to device
+
+    positional arguments:
+      file/pattern/dir  indicate a file/pattern/dir to upload
+
+    optional arguments:
+      -h, --help        show this help message and exit
+      -dir DIR          path to upload to
+      -rst              to soft reset after upload

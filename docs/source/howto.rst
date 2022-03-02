@@ -178,22 +178,21 @@ Now connecting to the raspberry pi zerotier IP and port *8266* should redirect t
 
 Where *142.64.115.62* is the IP of the raspberry pi zerotier interface.
 
-To configure SSL shell-repl through zerotier network: (e.g your computer has a zerotier IP *142.64.115.75*)
+To configure shell-repl with WebSecureREPL through zerotier network do the same as above but with port 8833.
+
+To enable ota firmware updates (e.g your computer has a zerotier IP *142.64.115.75*)
 
 .. code-block:: console
 
-    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8443 -j DNAT --to-destination 142.64.115.75:8443
-    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8433 -j DNAT --to-destination 142.64.115.75:8433
+    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8014 -j DNAT --to-destination 142.64.115.75:8014
     $ sudo iptables -t nat -A POSTROUTING -j MASQUERADE
 
 And if using a firewall e.g. `ufw`
 
 .. code-block:: console
 
-    $ sudo ufw allow 8443
-    $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8443 from any
-    $ sudo ufw allow 8433
-    $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8433 from any
+    $ sudo ufw allow 8014
+    $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8014 from any
     $ sudo ufw reload
 
 .. note::
@@ -205,7 +204,7 @@ And if using a firewall e.g. `ufw`
 
   Add this rule ``$ sudo iptables -t nat -I POSTROUTING -o lo -j ACCEPT``
 
-Now SSL shell-repl mode is available using ``-zt`` option: e.g.
+Now shell-repl mode is available using ``-zt`` option: e.g.
 
 
 .. code-block:: console
@@ -222,7 +221,7 @@ Or configure a device with the ``-zt`` option so it is not required anymore, e.g
     WebSocketDevice zerotdevice settings saved in global group!
     WebSocketDevice zerotdevice settings saved in ZeroTier group!
 
-Now to access the SSL shell-repl mode through zerotier network:
+Now to access the shell-repl mode through zerotier network:
 
 .. code-block:: console
 
@@ -254,7 +253,7 @@ TESTING DEVICES WITH PYTEST
 ---------------------------
 
 `upydevice <https://github.com/Carglglz/upydevice/tree/master>`_ device classes allow to test MicroPython code in devices interactively with pytest, e.g. button press, screen swipes, sensor calibration, actuators, servo/stepper/dc motors , etc.
-Under `test <https://github.com/Carglglz/upydevice/tree/master/test>`_ directory there are example tests to run with devices.
+Under `tests <https://github.com/Carglglz/upydev/tree/develop/tests>`_ directory there are example tests to run with devices.
 e.g.
 
 .. code-block:: console

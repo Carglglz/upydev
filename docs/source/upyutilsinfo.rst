@@ -2,7 +2,7 @@ Upyutils
 ========
 
 
-*This collection of scripts needs to be uploaded to the upy device to use some commands.*
+*This collection of scripts needs to be uploaded to the device to use some commands.*
 
 Bluetooth Low Energy
 ^^^^^^^^^^^^^^^^^^^^
@@ -14,6 +14,11 @@ Bluetooth Low Energy
 **ble_uart_repl.py**: module to enable bluetooth low energy REPL through UART GATT profile
 
 **otable.py**: module to enable bluetooth low energy DFU mode in esp32 and do OTA firmware updates.
+
+Config
+^^^^^^
+**config**: *(__init__.py, configfuncs.py, params.py)*
+config module to easily configure/set parameters as named tuples.
 
 Cryptography
 ^^^^^^^^^^^^
@@ -110,3 +115,7 @@ Shell
 ^^^^^^
 
 **upysh2.py**: upysh extesion with tree, du, and rm -r commands.
+
+**upysh.py**: upysh custom version with ls, cat extended with pprint output and matching patterns.
+
+**nanoglob.py**: glob module to match any pattern in device filesystem.

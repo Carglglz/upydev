@@ -24,7 +24,7 @@ CONFIG = dict(help="to save device settings",
               desc="this will allow set default device configuration or \n"
                    "target a specific device in a group.\n"
                    "\ndefault: a configuration file 'upydev_.config' is saved in\n"
-                   "current working directory, use -[options] to custom configuration",
+                   "current working directory, use -[options] for custom configuration",
               subcmd={},
               options={"-t": dict(help="device target address"),
                        "-p": dict(help='device password or baudrate'),

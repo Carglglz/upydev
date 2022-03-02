@@ -119,7 +119,6 @@ kb_info = """
     - CTRL-a : set cursor position at the beggining
     - CTRL-j : set cursor position at the end of line
     - CTRL-f : toggle autosuggest mode (Fish shell like)(use right arrow to complete)
-    - CTRL-g : To active listen for device output (Timer or hardware interrupts), CTRL-c to break
     - CRTL-s : toggle shell mode to navigate filesystem (see shell commands)
     - CTRL-k : prints the custom keybindings (this list)
 """
