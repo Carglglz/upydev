@@ -114,7 +114,7 @@ keywords_mode = ['put', 'get', 'config', 'info', 'net',
                  'reload', 'ssl', 'sign', 'verify', 'auth',
                  'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'upip', 'uping',
                  'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
-                 'kg', 'rsa', 'uconfig', 'sd']
+                 'kg', 'rsa', 'uconfig', 'sd', 'shl-config']
 
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
                 'gc', 'docs', 'udocs', 'mdocs']
@@ -231,7 +231,7 @@ REPL_ACTIONS = ['repl', 'rpl']
 
 # SHELL-REPL ACTIONS
 
-SHELL_REPL_ACTIONS = ['set_wss', 'jupyterc', 'shell', 'shl']
+SHELL_REPL_ACTIONS = ['set_wss', 'jupyterc', 'shell', 'shl', 'shl-config']
 
 # DEBUGGING ACTIONS
 

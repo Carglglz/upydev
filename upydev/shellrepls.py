@@ -7,6 +7,9 @@ import signal
 from upydevice import Device
 import time
 import argparse
+import json
+import os
+from upydev.devicemanagement import UPYDEV_PATH
 rawfmt = argparse.RawTextHelpFormatter
 
 
@@ -31,23 +34,53 @@ SHELLREPLS = dict(help="enter shell-repl",
                                         required=False,
                                         action='store_true')})
 
+SHELL_CONFIG = dict(help="configure shell prompt colors",
+                    desc='see\nhttps://python-prompt-toolkit.readthedocs.io/en/master/'
+                         'pages/asking_for_input.html#colors\nfor color options',
+                    subcmd={},
+                    options={"--userpath": dict(help='user path color; default:'
+                                                     ' ansimagenta bold',
+                                                required=False,
+                                                default='ansimagenta bold'),
+                             "--username": dict(help='user name color; default:'
+                                                     ' ansigreen bold',
+                                                required=False,
+                                                default='ansigreen bold'),
+                             "--at": dict(help='@ color; default: ansigreen bold',
+                                          required=False,
+                                          default='ansigreen bold'),
+                             "--colon": dict(help='colon color; default: white',
+                                             required=False,
+                                             default='#ffffff'),
+                             "--pound": dict(help='pound color; default: ansiblue bold',
+                                             required=False,
+                                             default='ansiblue bold'),
+                             "--host": dict(help='host color; default: ansigreen bold',
+                                            required=False,
+                                            default='ansigreen bold'),
+                             "--path": dict(help='path color; default: ansiblue bold',
+                                            required=False,
+                                            default='ansiblue bold')})
+
+
 SET_WSS = dict(help="toggle between WebSecREPL and WebREPL",
-                  subcmd={},
-                  options={"-t": dict(help="device target address",
-                                      required=True),
-                           "-p": dict(help='device password',
-                                      required=True),
-                           "-wss": dict(help='use WebSocket Secure',
-                                        required=False,
-                                        default=False,
-                                        action='store_true'),
-                           })
+               subcmd={},
+               options={"-t": dict(help="device target address",
+                                   required=True),
+                        "-p": dict(help='device password',
+                                   required=True),
+                        "-wss": dict(help='use WebSocket Secure',
+                                     required=False,
+                                     default=False,
+                                     action='store_true'),
+                        })
 
 JUPYTER = dict(help="MicroPython upydevice kernel for jupyter console, CTRL-D to exit",
-                  subcmd={},
-                  options={})
+               subcmd={},
+               options={})
 
-SHELLREPL_CMD_DICT_PARSER = {"shl": SHELLREPLS, "set_wss": SET_WSS,
+SHELLREPL_CMD_DICT_PARSER = {"shl": SHELLREPLS, "shl-config": SHELL_CONFIG,
+                             "set_wss": SET_WSS,
                              "jupyterc": JUPYTER}
 
 
@@ -57,17 +90,23 @@ usag = """%(prog)s command [options]\n
 _help_subcmds = "%(prog)s [command] -h to see further help of any command"
 
 parser = argparse.ArgumentParser(prog="upydev",
-                                   description=('shell-repl for MicroPython devices'
-                                                + '\n'
+                                 description=('shell-repl for MicroPython devices'
+                                              + '\n'
                                                 + _help_subcmds),
-                                   formatter_class=rawfmt,
-                                   usage=usag, prefix_chars='-')
+                                 formatter_class=rawfmt,
+                                 usage=usag, prefix_chars='-',
+                                 allow_abbrev=False)
 subparser_cmd = parser.add_subparsers(title='commands', prog='', dest='m',
-                                          )
+                                      )
 
 for command, subcmd in SHELLREPL_CMD_DICT_PARSER.items():
+    if 'desc' in subcmd.keys():
+        _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
+    else:
+        _desc = subcmd['help']
     _subparser = subparser_cmd.add_parser(command, help=subcmd['help'],
-                                             description=subcmd['help'])
+                                          description=_desc,
+                                          formatter_class=rawfmt)
     if subcmd['subcmd']:
         _subparser.add_argument('subcmd', **subcmd['subcmd'])
     for option, op_kargs in subcmd['options'].items():
@@ -96,13 +135,11 @@ def sh_cmd(cmd_inp):
     return args, unknown_args
 
 
-def filter_bool_opt(k,v):
+def filter_bool_opt(k, v):
     if v and isinstance(v, bool):
         return f"{k}"
     else:
         return ""
-
-
 
 
 def ssl_wrepl(args, device):
@@ -244,9 +281,9 @@ def jupyterc():
 def shell_repl_action(args, unkwargs, **kargs):
     dev_name = kargs.get('device')
     #get top args and make command line filtering
-    args_dict = {f"-{k}": v for k,v in vars(args).items() if k in arg_options}
+    args_dict = {f"-{k}": v for k, v in vars(args).items() if k in arg_options}
     args_list = [f"{k} {v}" if v and not isinstance(v, bool)
-                 else filter_bool_opt(k,v) for k,v in args_dict.items()]
+                 else filter_bool_opt(k, v) for k, v in args_dict.items()]
     if args.m == 'shell':
         args.m = 'shl'
     cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
@@ -275,6 +312,16 @@ def shell_repl_action(args, unkwargs, **kargs):
             print('shell-repl @ {}'.format(dev_name))
             ble_repl(args, dev_name)
         sys.exit()
+
+    elif args.m == 'shl-config':
+        config_dict = {}
+        for k, v in vars(args).items():
+            if k != 'm':
+                if k == 'text':
+                    k = ''
+                config_dict[k] = v
+        with open(os.path.join(UPYDEV_PATH, '.upydev_shl_.config'), 'w') as shconf:
+            shconf.write(json.dumps(config_dict))
 
     elif args.m == 'set_wss':
         if not args.wss:

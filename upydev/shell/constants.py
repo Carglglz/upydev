@@ -3,11 +3,13 @@ from prompt_toolkit.key_binding import KeyBindings
 from pygments.styles import get_all_styles
 from upydev import __path__ as _UPYDEVPATH
 import os
+import json
+
+SHELL_CONFIG = '.upydev_shl_.config'
 
 # Prompt Style
 style_p = Style.from_dict({
     # User input (default text).
-    '':          '#ffffff',
 
     # Prompt.
     'userpath': 'ansimagenta bold',
@@ -18,6 +20,12 @@ style_p = Style.from_dict({
     'host':     'ansigreen bold',
     'path':     'ansiblue bold',
 })
+
+# apply shell config if exists:
+if SHELL_CONFIG in os.listdir(_UPYDEVPATH[0]):
+    with open(os.path.join(_UPYDEVPATH[0], SHELL_CONFIG), 'r') as shconf:
+        config_dict = json.loads(shconf.read())
+    style_p = Style.from_dict(config_dict)
 
 # Prompt format
 shell_message = [
