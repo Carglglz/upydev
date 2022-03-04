@@ -17,6 +17,10 @@
 .DS_Store
 
 SSL_CUSTOM_AUTH.py
+cryp_web_repl_dir/*
+dbg_wrepl_cmd_dir/*
+_DOCS/*
+__pycache__/*
 
 TODO.*
 .nosync

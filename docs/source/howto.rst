@@ -53,7 +53,7 @@ WEBSOCKET DEVICES (WIFI)
     In another window use upydev normally. Now in the terminal window with the serial repl you can see which commands are sent.
 
 
-  **Working with dchp_hostnames instead of IP**
+  **Working with dchp_hostname instead of IP**
 
   To do this activate station interface and set ``dhcp_hostname`` before connecting to the WLAN, e.g. in MicroPython REPL/script
 
@@ -115,6 +115,11 @@ WEBSOCKET DEVICES (WIFI)
       2 packets transmitted, 2 packets received, 0.0% packet loss
       round-trip min/avg/max/stddev = 56.655/66.203/75.751/9.548 ms
 
+.. note::
+
+  Be aware some systems default ``ping`` use ``ipv6`` first, and fallback to ``ipv4`` while
+  resolving mDNS names, which may cause some delay. Use  ``ping -4`` instead which will use
+  ``ipv4`` directly and resolve the name faster.
 
 ------
 
@@ -173,22 +178,21 @@ Now connecting to the raspberry pi zerotier IP and port *8266* should redirect t
 
 Where *142.64.115.62* is the IP of the raspberry pi zerotier interface.
 
-To configure SSL shell-repl through zerotier network: (e.g your computer has a zerotier IP *142.64.115.75*)
+To configure shell-repl with WebSecureREPL through zerotier network do the same as above but with port 8833.
+
+To enable ota firmware updates (e.g your computer has a zerotier IP *142.64.115.75*)
 
 .. code-block:: console
 
-    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8443 -j DNAT --to-destination 142.64.115.75:8443
-    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8433 -j DNAT --to-destination 142.64.115.75:8433
+    $ sudo iptables -t nat -A PREROUTING -p tcp --dport 8014 -j DNAT --to-destination 142.64.115.75:8014
     $ sudo iptables -t nat -A POSTROUTING -j MASQUERADE
 
 And if using a firewall e.g. `ufw`
 
 .. code-block:: console
 
-    $ sudo ufw allow 8443
-    $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8443 from any
-    $ sudo ufw allow 8433
-    $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8433 from any
+    $ sudo ufw allow 8014
+    $ sudo ufw route allow in on wlan0 out on ztrta7qtbo to 142.64.115.75 port 8014 from any
     $ sudo ufw reload
 
 .. note::
@@ -200,7 +204,7 @@ And if using a firewall e.g. `ufw`
 
   Add this rule ``$ sudo iptables -t nat -I POSTROUTING -o lo -j ACCEPT``
 
-Now SSL shell-repl mode is available using ``-zt`` option: e.g.
+Now shell-repl mode is available using ``-zt`` option: e.g.
 
 
 .. code-block:: console
@@ -209,7 +213,7 @@ Now SSL shell-repl mode is available using ``-zt`` option: e.g.
 
 Where *192.168.1.79* is the IP of the raspberry pi in the local area network.
 
-Or configre a device with the ``-zt`` option so it is not required anymore, e.g.
+Or configure a device with the ``-zt`` option so it is not required anymore, e.g.
 
 .. code-block:: console
 
@@ -217,17 +221,39 @@ Or configre a device with the ``-zt`` option so it is not required anymore, e.g.
     WebSocketDevice zerotdevice settings saved in global group!
     WebSocketDevice zerotdevice settings saved in ZeroTier group!
 
-Now to access the SSL shell-repl mode through zerotier network:
+Now to access the shell-repl mode through zerotier network:
 
 .. code-block:: console
 
     $ upydev shl@zerotdevice
 
+
+.. note::
+
+  To allow ``ping`` and ``probe`` work correctly instead of pinging the raspberry pi,
+  add the ssh alias of the raspberry pi and the local ip or mDNS name of the device to ``-zt`` option as ``:[ALIAS]/[DEVICE_IP]`` e.g. :
+
+    .. code-block:: console
+
+      $ upydev config -t 142.64.115.62 -p mypass -gg -@ zerowpy -zt 142.64.115.75/192.168.1.79:rpi/192.168.1.46
+      # OR
+      upydev config -t 142.64.115.62 -p mypass -gg -@ zerowpy -zt 142.64.115.75/192.168.1.79:rpi/weatpy.local
+
+  This expects the raspberry pi to be accesible through ``ssh [ALIAS]``, and the keys added to the ``ssh-agent``.
+  See `ssh add keys <https://www.ssh.com/academy/ssh/add>`_ and `ssh alias <https://ostechnix.com/how-to-create-ssh-alias-in-linux/>`_
+
+  Now ``ping`` and ``probe`` should actually reach the device through raspbery pi ping, e.g.:
+
+  .. code-block:: console
+
+      $ upydev ping -@ zerowpy
+
+
 TESTING DEVICES WITH PYTEST
 ---------------------------
 
 `upydevice <https://github.com/Carglglz/upydevice/tree/master>`_ device classes allow to test MicroPython code in devices interactively with pytest, e.g. button press, screen swipes, sensor calibration, actuators, servo/stepper/dc motors , etc.
-Under `test <https://github.com/Carglglz/upydevice/tree/master/test>`_ directory there are example tests to run with devices.
+Under `tests <https://github.com/Carglglz/upydev/tree/develop/tests>`_ directory there are example tests to run with devices.
 e.g.
 
 .. code-block:: console

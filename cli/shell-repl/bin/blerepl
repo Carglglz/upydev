@@ -1,0 +1,287 @@
+#!/usr/bin/env python
+from upydevice.bledevice import ble_scan, AsyncBleDevice
+from upydevice import DeviceNotFound
+import argparse
+import time
+import sys
+import os
+from binascii import hexlify
+from upydev.shell.constants import style_p, shell_message, d_prompt
+from upydev.shell.commands import _SHELL_FLAGS
+from prompt_toolkit.filters import Condition
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit import PromptSession
+from upydev.shell.shble import ShellBleCmds, shbl_cmd_kw, SHELLBLE_CMD_DICT_PARSER
+from upydev.shell.keybindings import ShellKeyBindings
+from prompt_toolkit.application import in_terminal
+import asyncio
+
+_SHELL_HISTORY = os.path.expanduser('~/.upydev_shl_history')
+
+_WASPDEV = ["P8", "PineTime", "Pixl.js"]
+_IS_WASPDEV = False
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-t", help='device uuid, can be "auto" or @name', required=True)
+parser.add_argument("-v", help='verbose mode',
+                    default=False, action='store_true')
+parser.add_argument(
+    "-dev", help='device name, default unique_id', required=False)
+parser.add_argument("-r", help='reset on exit',
+                    default=False, action='store_true')
+parser.add_argument("-buff", help='Ble max writing length to use',
+                    default=100, type=int)
+args = parser.parse_args()
+
+
+if args.t != "auto" and "@" not in args.t:
+    dev = AsyncBleDevice(args.t, name=args.dev, lenbuff=args.buff)
+else:
+    if args.t == "auto":
+        devs = []
+        while len(devs) == 0:
+            try:
+                devs = ble_scan()
+            except KeyboardInterrupt:
+                sys.exit()
+        dev = AsyncBleDevice(devs[0], lenbuff=args.buff)
+    elif "@" in args.t:
+        devs = []
+        while len(devs) == 0:
+            try:
+                devs = ble_scan()
+            except KeyboardInterrupt:
+                sys.exit()
+        bdev = args.t.split("@")[1]
+        for dev in devs:
+            if bdev in dev.name:
+                dev = AsyncBleDevice(devs[0], lenbuff=args.buff)
+                break
+try:
+    dev.connect(show_servs=args.v, debug=args.v)
+except DeviceNotFound as e:
+    print(e)
+    sys.exit()
+if dev.name in _WASPDEV:
+    dev.len_buffer = 20  # FIXME: INCREASE MTU SIZE IN NRF52
+    _IS_WASPDEV = True
+if not dev.connected:
+    print('Device not reachable, try again.')
+    sys.exit()
+
+if args.dev is not None:
+    dev.name = args.dev
+
+time.sleep(0.2)
+kbi = dev.kbi()
+time.sleep(0.2)
+uid = dev.wr_cmd("from machine import unique_id; unique_id()",
+                 silent=True, rtn_resp=True)
+try:
+    unique_id = hexlify(uid).decode()
+except Exception:
+    unique_id = uid
+
+time.sleep(0.2)
+devp = dev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
+dev_platform = devp
+if args.v:
+    print('{}@{}'.format(dev_platform, unique_id))
+if dev.name is None:
+    dev.name = '{}-{}'.format(dev_platform, unique_id)
+
+print('BleREPL connected')
+time.sleep(0.2)
+dev.banner()
+print('- CTRL-k to see keybindings or -h to see help\n'
+      '- CTRL-s to toggle shell/repl mode\n'
+      '- CTRL-x or "exit" to exit')
+
+# SET DEV NAME
+host_name = unique_id
+if args.dev is not None:
+    host_name = args.dev
+
+shell_message[1] = ('class:username', dev_platform)
+shell_message[3] = ('class:host', host_name)
+
+
+# START IN SHELL MODE
+if _SHELL_FLAGS.shell_mode['S']:
+    _SHELL_FLAGS.prompt['p'] = d_prompt
+    _SHELL_FLAGS.shell_mode['S'] = False
+else:
+    _SHELL_FLAGS.prompt['p'] = _SHELL_FLAGS.shell_prompt['s']
+    _SHELL_FLAGS.shell_mode['S'] = True
+
+    dev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
+               ';gc.collect()', silent=True)
+    if not _IS_WASPDEV:
+        dev.wr_cmd("help('modules')", silent=True, long_string=True)
+
+        _SHELL_FLAGS.frozen_modules['FM'] = dev.output.split()[:-6]
+
+    dev.output = None
+
+# SHELL-COMMANDS
+sh = ShellBleCmds(dev, flags=_SHELL_FLAGS, topargs=args)
+
+# KEYBINDINGS
+kb = ShellKeyBindings(_SHELL_FLAGS, dev, sh, shbl_cmd_kw, SHELLBLE_CMD_DICT_PARSER)
+
+
+flags = _SHELL_FLAGS
+kb.remove('c-c')
+# kb.remove('c-t')
+# kb.remove('c-d')
+_dev_cmd_finished = True
+
+
+# @kb.add('c-t')
+# def runtempbuff(event):
+#     "Run contents of _tmp_script.py"
+#     def run_tmpcode():
+#         print('Running Buffer')
+#         with open('_tmp_script.py', 'r') as fbuff:
+#             filebuffer = fbuff.read()
+#         event.app.current_buffer.reset()
+#         dev.paste_buff(filebuffer)
+#         event.app.current_buffer.reset()
+#         try:
+#             dev.wr_cmd('\x04', follow=True, long_string=True)
+#         except KeyboardInterrupt:
+#             dev.kbi()
+#     run_in_terminal(run_tmpcode)
+
+
+# @kb.add('c-d')
+# def paste_mode_exit(event):
+#     "PASTE MODE VIM EXEC, SOFT RESET IN REPL"
+#     # event.app.current_buffer.insert_text('import')
+#
+#     def cmd_paste_exit():
+#         print('Running Buffer...')
+#         event.app.current_buffer.reset()
+#         try:
+#             dev.wr_cmd('\x04', follow=True, long_string=True)
+#         except KeyboardInterrupt:
+#             dev.kbi()
+#         flags.paste['p'] = False
+#
+#     if flags.paste['p']:
+#         run_in_terminal(cmd_paste_exit)
+
+
+@kb.add('c-c')
+def send_KBI(event):
+
+    async def run_kb():
+        try:
+            last_cmd = ''
+            if flags.shell_mode['S']:
+                print('^C')
+                event.app.current_buffer.reset()
+                flags.paste['p'] = False
+                data = bytes(dev._kbi + '\r', 'utf-8')
+                await dev.ble_client.write_gatt_char(dev.writeables['Nordic UART RX'],
+                                                     data)
+            else:
+
+                data = bytes(dev._kbi + '\r', 'utf-8')
+                print('^C')
+                await dev.ble_client.write_gatt_char(dev.writeables['Nordic UART RX'],
+                                                     data)
+
+                flags.paste['p'] = False
+                if not flags.shell_mode['S']:
+                    flags.prompt['p'] = d_prompt
+                    last_cmd = event.app.current_buffer.document.text
+                event.app.current_buffer.reset()
+        except Exception as e:
+            print(e)
+
+        def cmd_kbi(command=last_cmd):
+            if flags.prompt['p'] == ">>> ":
+                print(flags.prompt['p'] + command)
+        cmd_kbi()
+
+        return None
+
+    async def f():
+        async with in_terminal():
+            await run_kb()
+
+    loop = asyncio.get_event_loop()
+    loop.create_task(f())
+
+
+@Condition
+def autosuggest_is_on():
+    return _SHELL_FLAGS.autosuggest['A']
+
+
+def check_prompt():
+    if dev.cmd_finished:
+        return _SHELL_FLAGS.prompt['p']
+    else:
+        return ''
+
+
+# COMMAND HISTORY
+if _SHELL_HISTORY.rsplit('/', 1)[-1] not in os.listdir(os.path.expanduser('~')):
+    with open(_SHELL_HISTORY, 'w') as shl_hist:
+        pass
+# ROTATE HISTORY FILE
+with open(_SHELL_HISTORY, 'r+') as shl_hist:
+    lines = shl_hist.readlines()
+    if len(lines) > 3 * (100):
+        shl_hist.seek(0)
+        shl_hist.write(''.join(lines[3:]))
+        shl_hist.truncate(len(''.join(lines[3:])))
+
+
+session_p = PromptSession(enable_suspend=True, history=FileHistory(_SHELL_HISTORY))
+
+
+# REPL/SHELL LOOP
+repl = True
+while repl:
+    try:
+        dev.output = None
+        if _SHELL_FLAGS.exit['exit']:
+            break
+        else:
+            do_autsugg = ConditionalAutoSuggest(AutoSuggestFromHistory(),
+                                                autosuggest_is_on)
+            inp = session_p.prompt(check_prompt,
+                                   auto_suggest=do_autsugg,
+                                   key_bindings=kb, style=style_p,
+                                   rprompt=sh.get_rprompt,
+                                   refresh_interval=0.2)
+
+            if inp is not None and inp != '' and not _SHELL_FLAGS.paste['p']:
+                # SHELL MODE
+                if _SHELL_FLAGS.shell_mode['S']:  # SHELL
+                    sh.cmd(inp)
+                else:  # REPL
+                    dev.wr_cmd(inp, follow=True)
+                if inp != '':
+                    pass
+    except Exception as e:
+        print(e)
+        continue
+    except KeyboardInterrupt:
+        continue
+    except EOFError:
+        # print('This is EOF ERROR!')
+        continue
+if dev.connected and dev.is_connected():
+
+    dev.disconnect()
+print('logout')
+if host_name != unique_id:
+    print('Connection to {} closed.'.format(host_name))
+else:
+    print('Connection to {} closed.'.format(dev.name))

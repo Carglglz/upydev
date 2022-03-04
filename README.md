@@ -6,12 +6,10 @@
 
 [![PyPI version](https://badge.fury.io/py/upydev.svg)](https://badge.fury.io/py/upydev)[![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
 
-### Command line tool for wireless MicroPython devices
+### Command line tool for MicroPython devices
 
 **uPydev** is an acronym of '**MicroPy**thon **dev**ice', and it is intended to be a command line tool to make easier the development, prototyping and testing process of devices based on boards running MicroPython. It is intended to be cross-platform and
 connection agnostic (Serial, WiFi and Bluetooth Low Energy).
-
-⚠️ ***Keep in mind that this project is in ALPHA state, sometimes, some commands may not work/return anything*** ⚠️
 
 ### Features:
 
@@ -19,6 +17,7 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 * Command line Autocompletion
 * File IO operations (upload, download one or multiple files, recursively sync directories...)
 * SHELL-REPL modes: Serial, WiFi (SSL/WebREPL), BLE
+* OTA\* Firmware updates WiFi (TCP/SSL), BLE  (\* esp32 only)
 * Custom commands for debugging, testing and prototyping.
 * Group mode to operate with multiple devices
 ------
@@ -67,10 +66,10 @@ upydev will use local working directory configuration unless it does not find an
 ```
 
 
-  To check configuration
+  To check configuration ``upydev`` or ``upydev check``
 
 ```bash
-$ upydev check
+$ upydev
 Device: mycustomdevice
 Address: 192.168.1.40, Device Type: WebSocketDevice
 ```
@@ -78,7 +77,7 @@ Address: 192.168.1.40, Device Type: WebSocketDevice
   Or to get more information if the device is online
 
 ```bash
-$ upydev check -i
+$ upydev -i
 Device: mycustomdevice
 WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
 Firmware: MicroPython v1.13-221-gc8b055717 on 2020-12-05; ESP32 module with ESP32
@@ -101,6 +100,37 @@ $ upydev config -t 192.168.1.40 -p mypass -g
 $ upydev config -t 192.168.1.40 -p mypass -gg -@ mydevice
 ```
 
+- [Optional]
+Finally use `register` command to
+define a function in ``~/.bashrc`` or ``~/.profile``
+
+```bash
+$ upydev register -@ mydevice
+````
+
+```bash
+function mydevice() { upydev "$@" -@ mydevice; }
+function _argcomp_upydev() { _python_argcomplete upydev; }
+complete -o bashdefault -o default -o nospace -F _argcomp_upydev mydevice
+```
+
+Now ``mydevice`` will accept any args and pass them to upydev, as well as
+autocompletion of args, e.g.
+
+```bash
+$ mydevice
+Device: mydevice
+Address: 192.168.1.40, Device Type: WebSocketDevice
+```
+Or if the device is connected.
+
+```bash
+$ mydevice -i
+Device: mydevice
+WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
+Firmware: MicroPython v1.17-290-g802ef271b-dirty on 2022-01-04; ESP32 module with ESP32
+(MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+```
 
 Once the device is configured see next section or read  [Usage documentation](https://upydev.readthedocs.io/en/latest/usage.html) to check which modes and tools are available.
 
@@ -138,4 +168,4 @@ Example: Raw commands
 `$ upydev "import my_lib;foo();my_var=2*3"`
 
 
-Too see documentation check [Upydev readthedocs](https://upydev.readthedocs.io/en/latest/)
+To see documentation check [Upydev readthedocs](https://upydev.readthedocs.io/en/latest/)

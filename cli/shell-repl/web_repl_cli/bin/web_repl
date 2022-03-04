@@ -1,0 +1,613 @@
+#!/usr/bin/env python3
+# @Author: carlosgilgonzalez
+# @Date:   2019-07-07T21:01:25+01:00
+# @Last modified by:   carlosgilgonzalez
+# @Last modified time: 2019-10-23T02:12:53+01:00
+
+
+# complete rewrite of console webrepl client from aivarannamaa:
+# https://forum.micropython.org/viewtopic.php?f=2&t=3124&p=29865#p29865
+#
+
+# partial rewrite of console webrepl client from : Hermann-SW
+# https://github.com/Hermann-SW/webrepl
+#
+
+from time import sleep
+import sys
+import websocket
+from prompt_toolkit import PromptSession
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.auto_suggest import ConditionalAutoSuggest
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.filters import Condition
+from upydevice import wsclient
+import asyncio
+from upydev import __path__ as ca_path
+import ssl
+
+CA_PATH = ca_path[0]
+
+
+# KEYPRESS EVENTS
+
+kb_info = """
+Custom keybindings:
+- CTRL-x : to exit WebREPL Terminal
+- CTRL-e : Enters paste mode
+- CTRL-d: In normal mode does a soft reset (and exit), in paste mode : executes pasted script
+- CTRL-c : Keyboard interrupt in normal mode, in paste mode : cancel
+- CTRL-r: Backsapce x 20 (to erase current line in chunks) or flush line buffer
+- CTRL-u: import shortcut command (writes import)
+- CTRL-f: to list files in cwd (ls shorcut command)
+- CTRL-n: shows mem info
+- CTRL-y: gc.collect() shortcut command
+- CTRL-space: repeats last command
+- CTRL-t: runs test_code.py if present
+- CTRL-w: flush test_code from sys modules, so it can be run again
+- CTRL-a: force synchronized mode (better if using wrepl through ssh session)
+- CTRL-p: toggle autosuggest mode (Fish shell like) (if not in synchronized mode)
+- CTRL-k: prints the custom keybindings (this list)
+>>> """
+
+kb = KeyBindings()
+
+# CONDITIONAL ASYNC MODE
+
+
+@Condition
+def sync_is_active():
+    global sync_mode
+    " Only activate key binding on sync mode"
+    return sync_mode
+
+# CONDITIONAL AUTOSUGGEST
+
+
+@Condition
+def autosuggest_is_on():
+    global autosuggest_mode
+    return autosuggest_mode
+
+
+# Debug sync_mode
+@kb.add('c-a')
+def sync_press(event):
+    global sync_mode, override_async
+    if sync_mode is False:
+        sync_mode = True
+    else:
+        sync_mode = False
+    if override_async is False:
+        override_async = True
+    else:
+        override_async = False
+
+
+@kb.add('tab')
+def tabpress(event):
+    global mode_paste, sync_mode
+    "Sends line buffer to WebREPL and hits tab, then refresh buffer for message receiving"
+    if not mode_paste:
+        if not sync_mode:
+            sync_mode = True
+            ws.send(event.app.current_buffer.document.text)
+            ws.send('\x09')
+            event.app.current_buffer.reset()
+        else:
+            ws.send('\x09')
+    else:
+        event.app.current_buffer.insert_text('    ')  # insert_text('\x09')
+
+
+@kb.add('up')
+def uppress(event):
+    global mode_paste, sync_mode
+    "Sends UP to navigate history commands"
+    if not mode_paste:
+        if not sync_mode:
+            sync_mode = True
+            event.app.current_buffer.reset()
+        ws.send('\033[A')
+    else:
+        event.app.current_buffer.cursor_up()
+
+
+@kb.add('<any>', filter=sync_is_active)
+def aress(event):
+    global mode_paste, received
+    "Sends character keypress"
+    if not mode_paste:
+        event.app.current_buffer.insert_text(event.key_sequence[0].data)
+        ws.send(event.key_sequence[0].data)
+        # ws.send(event.key_sequence[0].data)
+        # event.app.current_buffer.delete_before_cursor(1)
+        while not received:
+            try:
+                pass
+            except KeyboardInterrupt:
+                sys.exit()
+        event.app.current_buffer.delete_before_cursor(1)
+    else:
+        event.app.current_buffer.insert_text(event.key_sequence[0].data)
+
+
+@kb.add('down')
+def downpress(event):
+    global mode_paste, sync_mode
+    "Sends DOWN to navigate history commands"
+    if not mode_paste:
+        if not sync_mode:
+            sync_mode = True
+            event.app.current_buffer.reset()
+        ws.send('\033[B')
+    else:
+        event.app.current_buffer.cursor_down()
+
+
+@kb.add('left', filter=sync_is_active)
+def leftpress(event):
+    global mode_paste
+    "LEFT command"
+    if not mode_paste:
+        ws.send('\033[D')
+    else:
+        pass
+
+
+@kb.add('right', filter=sync_is_active)
+def rightpress(event):
+    global mode_paste
+    " right command"
+    if not mode_paste:
+        ws.send('\033[C')
+    else:
+        pass
+
+
+@kb.add('enter')
+def enterpress(event):
+    global mode_paste, sync_mode, received, override_async
+    "Sends line buffer to WebREPL and hits enter, then refresh buffer for message receiving"
+    if not mode_paste:
+        received = False
+        if not override_async:
+            sync_mode = False
+        if not sync_mode:
+            # ws.send(event.app.current_buffer.document.text)
+            # event.app.current_buffer.reset()
+            if event.app.current_buffer.document.text != '':
+                event.app.current_buffer.history.append_string(
+                    event.app.current_buffer.document.text)
+            msg = event.app.current_buffer.document.text
+            event.app.current_buffer.reset()
+            ws.send(msg)
+            # event.app.current_buffer.reset()
+        ws.send('\x0d')
+        # sleep(0.1)
+        while not received:
+            try:
+                pass
+            except KeyboardInterrupt:
+                sys.exit()
+        event.app.current_buffer.reset()
+    else:
+        event.app.current_buffer.newline()  # insert_text('\n')
+
+
+@kb.add('c-y')
+def gc_collect_press(event):
+    "Send gc collect command to free some Memory"
+    ws.send('import gc;gc.collect()')
+    event.app.current_buffer.reset()
+    ws.send('\x0d')
+
+
+@kb.add('c-f')
+def ls_press(event):
+    "Sends ls command to print files in cwd"
+    ws.send('from upysh import *;ls')
+    ws.send('\x0d')
+
+
+@kb.add('c-b')
+def mpy_info_press(event):
+    "Sends CTRL-B"
+    ws.send('\x02')
+
+
+@kb.add('c-k')
+def see_dir_press(event):
+    "CTRL-Commands info"
+    # event.app.current_buffer.insert_text('import')
+    print(kb_info)
+    # ws.send('dir()')
+    # ws.send('\x0d')
+
+
+@kb.add('c-n')
+def see_mem_press(event):
+    "Sends mem info command to see mem info"
+    # event.app.current_buffer.insert_text('import')
+    ws.send('from micropython import mem_info;mem_info()')
+    ws.send('\x0d')
+
+
+@kb.add('c-u')
+def hystorylogpress(event):
+    "import shortcut"
+    event.app.current_buffer.insert_text('import')
+    # ws.send(event.app.current_buffer.document.text)
+    # event.app.current_buffer.reset()
+
+
+@kb.add('c-r')
+def refreshpress(event):
+    "Backsapce x20 command, and flush buffer"
+    event.app.current_buffer.reset()
+    for i in range(20):
+        ws.send('\x08')
+
+
+@kb.add('c-t')
+def testpress(event):
+    "Test code command"
+    ws.send('import test_code')
+    ws.send('\x0d')
+
+
+@kb.add('c-w')
+def reloadpress(event):
+    "Reload test_code command"
+    ws.send("import sys;del(sys.modules['test_code']);gc.collect()")
+    ws.send('\x0d')
+
+
+@kb.add('c-space')
+def autocomppress(event):
+    "Send last command"
+    ws.send('\033[A')
+    ws.send('\x0d')
+
+
+@kb.add('backspace', filter=sync_is_active)
+def backpress(event):
+    global mode_paste, sync_mode
+    "Send backspace command"
+    if not mode_paste:
+        ws.send('\x08')
+    else:
+        event.app.current_buffer.delete_before_cursor(1)
+
+
+@kb.add('c-d')
+def resetpress(event):
+    global mode_paste
+    " MPY soft Reset in Normal mode, execute in paste mode"
+    if mode_paste:
+        mode_paste = False
+        # print(len(event.app.current_buffer.document.text))
+        buffering = event.app.current_buffer.document.text
+        # event.app.current_buffer.reset()
+        event.app.current_buffer.delete_before_cursor(
+            len(event.app.current_buffer.document.text))
+        for i in range(0, len(buffering), 80):
+            ws.send(buffering[i:i+80])
+            sleep(0.1)
+        sleep(0.5)
+        ws.send('\x0d')
+        sleep(0.001*len(buffering))
+        ws.send('\x04')
+
+    else:
+        ws.send('\x04')
+        print('MPY: soft reboot')
+        event.app.exit()
+
+
+@kb.add('c-c')
+def keyintpress(event):
+    global mode_paste
+    " Keyboard interrupt MPY, cancel in paste mode"
+    ws.send('\x03')
+    event.app.current_buffer.reset()
+    mode_paste = False
+
+
+@kb.add('c-e')
+def paste_modepress(event):
+    global mode_paste
+    " Paste mode "
+    ws.send('\x05')
+    mode_paste = True
+
+
+@kb.add('c-x')
+def exitpress(event):
+    global exit_flag
+    " Exit webREPL terminal "
+    print('\n>>> closing...')
+    exit_flag = True
+    event.app.exit()
+
+
+@kb.add('c-p')
+def toggle_autosgst(event):
+    global autosuggest_mode
+    if autosuggest_mode:
+        autosuggest_mode = False
+    else:
+        autosuggest_mode = True
+
+
+@kb.add('s-tab')
+def shif_tab(event):
+    global mode_paste, sync_mode
+    "Send dedent command"
+    if not mode_paste:
+        ws.send('\x08')
+    else:
+        event.app.current_buffer.delete_before_cursor(4)
+
+
+# PROMPT SESSION
+session_p = PromptSession()
+
+try:
+    import thread
+except ImportError:
+    import _thread as thread
+
+try:                   # from https://stackoverflow.com/a/7321970
+    input = raw_input  # Fix Python 2.x.
+except NameError:
+    pass
+
+
+def help(rc=0):
+    exename = sys.argv[0].rsplit("/", 1)[-1]
+    print("%s - remote shell using MicroPython WebREPL protocol" % exename)
+    print("Arguments:")
+    print("  [-p password] [-dbg] [-r] <host> - remote shell (to <host>:8266)")
+    print("Examples:")
+    print("  %s 192.168.4.1" % exename)
+    print("  %s -p abcd 192.168.4.1" % exename)
+    print("  %s -p abcd -r 192.168.4.1 < <(sleep 1 && echo \"...\")" % exename)
+    print("Special command control sequences:")
+    print("  line with single characters")
+    print("    'A' .. 'E' - use when CTRL-A .. CTRL-E needed")
+    print('  just "exit" - end shell')
+    sys.exit(rc)
+
+
+inp = ""
+raw_mode = False
+normal_mode = True
+paste_mode = False
+prompt = "Password: "
+prompt_seen = False
+passwd = None
+passphrase = None
+debug = False
+redirect = False
+exit_flag = None
+mode_paste = False
+sync_mode = False
+override_async = False
+received = False
+autosuggest_mode = False
+websec = False
+
+for i in range(len(sys.argv)):
+    if sys.argv[i] == '-p':
+        sys.argv.pop(i)
+        passwd = sys.argv.pop(i)
+        if ':' in passwd:
+            passwd, passphrase = passwd.split(':')
+            websec = True
+        break
+
+for i in range(len(sys.argv)):
+    if sys.argv[i] == '-dbg':
+        sys.argv.pop(i)
+        debug = True
+        break
+
+for i in range(len(sys.argv)):
+    if sys.argv[i] == '-wss':
+        sys.argv.pop(i)
+        websec = True
+        break
+
+for i in range(len(sys.argv)):
+    if sys.argv[i] == '-r':
+        sys.argv.pop(i)
+        redirect = True
+        break
+
+if len(sys.argv) != 2:
+    help(1)
+
+
+def on_message(ws, message):
+    global inp
+    global raw_mode
+    global normal_mode
+    global paste_mode
+    global prompt
+    global prompt_seen
+    global received
+    received = True
+    if len(inp) == 1 and ord(inp[0]) <= 5:
+        inp = "\r\n" if inp != '\x04' else "\x04"
+    while inp != "" and message != "" and inp[0] == message[0]:
+        inp = inp[1:]
+        message = message[1:]
+    if message != "":
+        if not(raw_mode) or inp != "\x04":
+            inp = ""
+    if inp == '' and prompt != '':
+        if message.endswith(prompt):
+            prompt_seen = True
+        elif normal_mode:
+            if message.endswith("... "):
+                prompt = ""
+            elif message.endswith(">>> "):
+                prompt = ">>> "
+                prompt_seen = True
+
+    if prompt_seen:
+        # if tabbed is True:
+        #     sys.stdout.write(message[:-len(prompt)])
+        #     HISTORY_TAB.append(message[:-len(prompt)])
+        #     # with open('logws.txt', 'a') as wslog:
+        #     #     wslog.write(message)
+        # else:
+        sys.stdout.write(message[:-len(prompt)])
+        #    # with open('logws.txt', 'a') as wslog:
+        #    #     wslog.write(message)
+
+    else:
+
+        # if tabbed is True:
+        #     sys.stdout.write(message)
+        #     HISTORY_TAB.append(message)
+        #     # with open('logws.txt', 'a') as wslog:
+        #     #     wslog.write(message)
+        # else:
+        sys.stdout.write(message)
+        #    # with open('logws.txt', 'a') as wslog:
+        #    #     wslog.write(message)
+    sys.stdout.flush()
+    if paste_mode and message == "=== ":
+        inp = "\n"
+
+
+def on_error(ws, error):
+    if isinstance(error, websocket._exceptions.WebSocketConnectionClosedException):
+        pass
+    elif isinstance(error, websocket._exceptions.WebSocketTimeoutException):
+        pass
+    else:
+        sys.stdout.write(f"### error('{str(error)}')\n")  # \n")
+        sys.stdout.flush()
+
+
+def on_close(ws, status, close_msg):
+    dev_ip = sys.argv[1]
+    sys.stdout.write(f"Connection to {dev_ip} closed.\n")
+    sys.stdout.flush()
+    ws.close()
+    sys.exit(1)
+
+
+# loop = asyncio.new_event_loop()
+
+
+def on_open(ws):
+    # asyncio.set_event_loop(loop)
+    def run(*args):
+        global input
+        global inp
+        global raw_mode
+        global normal_mode
+        global paste_mode
+        global prompt
+        global prompt_seen
+        global session_p
+        global exit_flag
+        global received
+        running = True
+        injected = False
+
+        while running:
+            while ws.sock and ws.sock.connected:
+                while prompt and not(prompt_seen):
+                    sleep(0.1)
+                    if debug:
+                        sys.stdout.write(":"+prompt+";")
+                        sys.stdout.flush()
+                prompt_seen = False
+
+                if prompt == "Password: " and passwd is not None:
+                    inp = passwd
+                    sys.stdout.write("Password: ")
+                    sys.stdout.flush()
+                else:
+
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    inp = session_p.prompt(
+                        prompt,
+                        auto_suggest=ConditionalAutoSuggest(AutoSuggestFromHistory(),
+                                                            autosuggest_is_on), key_bindings=kb)
+
+                try:
+                    if len(inp) != 1 or inp[0] < 'A' or inp[0] > 'E':
+                        inp += "\r\n"
+
+                except Exception as e:
+                    if exit_flag is True:
+                        running = False
+                        break
+                    pass
+
+                if prompt == "Password: ":  # initial "CTRL-C CTRL-B" injection
+                    prompt = ""
+                else:
+                    prompt = "=== " if paste_mode else ">>> "[4*int(raw_mode):]
+
+                if inp == "exit\r\n":
+                    running = False
+                    break
+
+                else:
+                    if ws.sock and ws.sock.connected:
+                        try:
+                            # START TEXT (Micropython header info)
+                            inp += '\x02'
+                            ws.send(inp)
+                            if prompt == "" and not(raw_mode) and not(injected):
+                                # inp += '\x02'
+                                injected = True
+                                ws.send('\x0d')  # ENTER
+                        except TypeError as e:
+                            pass
+                    else:
+                        running = False
+            running = False
+        ws.sock.close()
+        sys.exit(1)
+
+    thread.start_new_thread(run, ())
+
+
+if __name__ == "__main__":
+    websocket.enableTrace(False)
+    dev_ip = sys.argv[1]
+    port = 8266
+    if ':' in dev_ip:
+        dev_ip, port = dev_ip.split(':')
+        port = int(port)
+    if websec:
+        if port == 8266:
+            port = 8833
+        ws = websocket.WebSocketApp(f"wss://{dev_ip}:{port}",
+                                    on_message=on_message,
+                                    on_error=on_error,
+                                    on_close=on_close)
+        hostname = f"wss://{dev_ip}:{port}"
+        key, cert = wsclient.load_cert_from_hostname(CA_PATH, f"wss://{dev_ip}:{port}")
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        context.load_verify_locations(cadata=wsclient.load_custom_CA_data(CA_PATH))
+        context.load_cert_chain(cert, key, password=passphrase)
+        context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
+        ws.on_open = on_open
+        ws.run_forever(sslopt={"context": context, "server_hostname": hostname})
+    else:
+        ws = websocket.WebSocketApp(f"ws://{dev_ip}:{port}",
+                                    on_message=on_message,
+                                    on_error=on_error,
+                                    on_close=on_close)
+        ws.on_open = on_open
+        ws.run_forever()

@@ -25,6 +25,7 @@ Requirements (modules)
   - `websocket-client <https://github.com/websocket-client/websocket-client>`_
   - `Pygments <https://github.com/pygments/pygments>`_
   - `pyusb <https://github.com/pyusb/pyusb>`_
+  - `braceexpand <https://github.com/trendels/braceexpand>`_
   - `upydevice <https://github.com/Carglglz/upydevice>`_
 
 Tested on
@@ -32,7 +33,7 @@ Tested on
 
 - OS:
 
-  - MacOS X (Mojave 10.14.5-6)
+  - MacOS X (Mojave 10.14.5-6, Big Sur 11.6.1)
   - Raspbian GNU/Linux 10 (Buster)
   - Ubuntu 20.04.2 LTS (GNU/Linux 5.8.0-55-generic x86_64)
 
