@@ -286,7 +286,7 @@ def shell_repl_action(args, unkwargs, **kargs):
                  else filter_bool_opt(k, v) for k, v in args_dict.items()]
     if args.m == 'shell':
         args.m = 'shl'
-    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    cmd_inp = f"{args.m} {' '.join(unkwargs)} {' '.join(args_list)}"
     # print(cmd_inp)
     # sys.exit()
     # debug command:
