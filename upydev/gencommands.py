@@ -18,6 +18,7 @@ RESET = dict(help="reset device",
                                   action='store_true')})
 
 CONFIG = dict(help="set or check config (from *_config.py files)#",
+              desc="to set config --> [config]: [parameter]=[value]",
               subcmd=dict(help='indicate parameter to set or check ',
                           default=[],
                           metavar='parameter',

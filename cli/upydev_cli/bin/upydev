@@ -493,11 +493,13 @@ def handle_action(args, exit=True, device_name=None):
                     args.p = baudr
             if key_dict['mode'] == 'SSL':
                 key, cert = key_dict['Files']
-                args.fre = [key, cert]
-                fileio_action(args, device=dev_name)
+                _unknown_args = [key, cert]
+                fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),
+                              device=dev_name)
             elif key_dict['mode'] == 'RSA':
-                args.fre = key_dict['Files']
-                fileio_action(args, device=dev_name)
+                _unknown_args = key_dict['Files']
+                fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),
+                              device=dev_name)
                 if args.rkey:
                     pvkey_id = key_dict['Files'][0].split('/')[-1]
                     print(f'Removing private key {pvkey_id} from host...')
@@ -563,7 +565,7 @@ if args.m == 'h' or args.m == 'help':
     print("\n (Do '$ upydev -h' to see help info about optional arguments too)")
     sys.exit()
 
-if args.m in help_actions and '-h' not in unknown_args and not args.f:
+if args.m in help_actions and '-h' not in unknown_args:
     if not any([args.m in GENERAL_COMMANDS]):
         if args.m == 'dm':
             from upydev.devicemanagement import sh_cmd
@@ -578,9 +580,10 @@ if args.m in help_actions and '-h' not in unknown_args and not args.f:
             sh_cmd('-h')
             sys.exit()
         elif args.m == 'kg':
-            from upydev.keygen import sh_cmd
-            sh_cmd('-h')
-            sys.exit()
+            if not unknown_args:
+                from upydev.keygen import sh_cmd
+                sh_cmd('-h')
+                sys.exit()
         elif args.m == 'rp':
             from upydev.repls import sh_cmd
             sh_cmd('-h')

@@ -22,7 +22,7 @@ copyright = '2020-2021, Carlos G. Gonzalez'
 author = 'Carlos G. Gonzalez'
 
 # The full version, including alpha/beta/rc tags
-release = '0.3.8'
+release = '0.3.9'
 
 
 # -- General configuration ---------------------------------------------------

@@ -443,7 +443,7 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
             certfile.write(cert.public_bytes(serialization.Encoding.DER))
 
     if args.tfkey:
-        print('Transfering ECDSA key and Certificates to the device...')
+        print('Transfering ECDSA key and certificate to the device...')
         ssl_k = key_path_file_der
         ssl_c = cert_path_file_der
         return {'ACTION': 'put', 'mode': 'SSL', 'Files': [ssl_k, ssl_c]}
@@ -825,7 +825,7 @@ def keygen_action(args, unkwargs, **kargs):
                  if k in dict_arg_options[args.m]}
     args_list = [f"{k} {expand_margs(v)}" if v and not isinstance(v, bool)
                  else filter_bool_opt(k, v) for k, v in args_dict.items()]
-    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    cmd_inp = f"{args.m} {' '.join(unkwargs)} {' '.join(args_list)}"
     # print(cmd_inp)
     # sys.exit()
     # debug command:

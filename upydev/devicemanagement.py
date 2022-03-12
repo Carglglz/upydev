@@ -366,7 +366,7 @@ def devicemanagement_action(args, unkwargs, **kargs):
                  if k in dict_arg_options[args.m]}
     args_list = [f"{k} {expand_margs(v)}" if v and not isinstance(v, bool)
                  else filter_bool_opt(k, v) for k, v in args_dict.items()]
-    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    cmd_inp = f"{args.m} {' '.join(unkwargs)} {' '.join(args_list)} "
     # print(cmd_inp)
     # sys.exit()
     # debug command:

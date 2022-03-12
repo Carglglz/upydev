@@ -183,7 +183,7 @@ def fileio_action(args, unkwargs, **kargs):
                  if k in dict_arg_options[args.m]}
     args_list = [f"{k} {expand_margs(v)}" if v and not isinstance(v, bool)
                  else filter_bool_opt(k, v) for k, v in args_dict.items()]
-    cmd_inp = f"{args.m} {' '.join(args_list)} {' '.join(unkwargs)}"
+    cmd_inp = f"{args.m} {' '.join(unkwargs)} {' '.join(args_list)}"
     # print(cmd_inp)
     # sys.exit()
     # debug command:
@@ -218,12 +218,19 @@ def fileio_action(args, unkwargs, **kargs):
     inp = kargs.get('command_line')
     inp = inp.split('-@')[0]
     if args.m == 'dsync':
+        sh_args, unknown_args = result
+        if sh_args.d:
+            dev.wr_cmd('from upysh import rcat', silent=True)
         sh.cmd(inp)
     else:
         # print(cmd_inp)
+        sh_args, unknown_args = result
+        if args.m == 'get':
+            if sh_args.fg:
+                dev.wr_cmd('from upysh import rcat', silent=True)
+
         sh.cmd(cmd_inp)
         if args.m == 'put':
-            args, unknown_args = result
-            if args.rst:
+            if sh_args.rst:
                 dev.reset(reconnect=False)
                 time.sleep(1)
