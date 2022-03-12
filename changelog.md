@@ -32,7 +32,7 @@ generation and export in PEM format
 - refactored help
 - dropped wlan utils
 - dropped prototype commands (this will be a stand alone cli or add-on for upydev)
-## Fix
+# Fix
 - `mpyx` command with multiple files
 - `kg wr` now use RSA public key for password derivation and send encrypted password
 that is decrypted and stored in device.
