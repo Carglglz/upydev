@@ -26,10 +26,23 @@ from argcomplete.completers import ChoicesCompleter
 from ipaddress import ip_address
 from upydevice import check_device_type, Device, DeviceNotFound
 from upydev.helpinfo import HELP_INFO_ARG
+from upydev.argcompleter import argopts_complete
 
 UPYDEV_PATH = upydev.__path__[0]
 
 log_levs = ['debug', 'info', 'warning', 'error', 'critical']
+
+
+def cmd_complete(prefix, parsed_args, **kwargs):
+    if "@" in prefix:
+        return [f'{prefix.split("@")[0]}@{dev}' for dev in see_global_devs(all=True)]
+    else:
+        return keywords_mode
+
+
+def sh_complete(prefix, parsed_args, **kwargs):
+    if parsed_args.m in keywords_mode:
+        return argopts_complete(parsed_args.m)
 
 
 def serial_ports():
@@ -112,17 +125,17 @@ keywords_mode = ['put', 'get', 'config', 'info', 'net',
                  'rsa', 'wr', 'keygen', 'mkg', 'mgg', 'tree', 'mksg',
                  'ota', 'register', 'lsdevs', 'ls', 'cat', 'vim', 'ifconfig', 'touch',
                  'reload', 'ssl', 'sign', 'verify', 'auth',
-                 'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'upip', 'uping',
+                 'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'cd', 'upip', 'uping',
                  'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
-                 'kg', 'rsa', 'uconfig', 'sd', 'shl-config']
+                 'kg', 'rsa', 'uconfig', 'sd', 'shl-config', 'touch']
 
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
                 'gc', 'docs', 'udocs', 'mdocs']
 
 keywords_mode += help_actions
 
-keywords_mode += ['rpl@{}'.format(dev) for dev in see_global_devs(all=True)]
-keywords_mode += ['shl@{}'.format(dev) for dev in see_global_devs(all=True)]
+# keywords_mode += ['rpl@{}'.format(dev) for dev in see_global_devs(all=True)]
+# keywords_mode += ['shl@{}'.format(dev) for dev in see_global_devs(all=True)]
 help_dv = "To point the command to a specific device saved in the global group"
 
 # ARG PARSER
@@ -134,7 +147,9 @@ parser = argparse.ArgumentParser(prog=upydev.name,
                                  allow_abbrev=False)
 parser.version = '{}: {}'.format(upydev.name, upydev.version)
 parser.add_argument("m", metavar='ACTION', help=helparg, nargs='?',
-                    default='check').completer = ChoicesCompleter(keywords_mode)
+                    default='check').completer = cmd_complete
+parser.add_argument("subcmd", metavar='sub', help=helparg, nargs='*',
+                    default=[]).completer = sh_complete
 parser.add_argument("-@", help=help_dv,
                     required=False,
                     nargs='+').completer = ChoicesCompleter(see_global_devs(all=True))
@@ -199,8 +214,8 @@ parser.add_argument('-GP',
 argcomplete.autocomplete(parser)
 
 args, unknown_args = parser.parse_known_args()
-
-
+unknown_args = args.subcmd + unknown_args
+args.subcmd = []
 # multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
 #                      'pytest', 'mkg', 'mgg', 'mksg', 'du', 'tree',
 #                      'rsync', 'docs', 'udocs', 'mdocs',
@@ -250,7 +265,7 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'shasum', 'ls', 'cat', 'vim',
                     'enable_sh', 'diff', 'mkdir', 'head', 'rm', 'rmdir',
                     'pwd', 'rssi', 'ifconfig', 'upy-config', 'ctime',
-                    'uconfig', 'upip', 'sd', 'reload', 'uping']
+                    'uconfig', 'upip', 'sd', 'reload', 'uping', 'cd', 'touch']
 
 # PROTOTYPE
 PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs',
