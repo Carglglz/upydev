@@ -166,7 +166,7 @@ def gen_command(args, unkwargs, **kargs):
     inp = inp.split('-@')[0]
 
     if args.m not in ['reset', 'kbi', 'upysh']:
-        if args.m in fs_commands:
+        if args.m in fs_commands and '-h' not in unkwargs:
             dev.wr_cmd(_CMDDICT_['UPYSH'], silent=True)
         if args.m == 'uconfig':
             if '-h' in inp:
@@ -177,10 +177,8 @@ def gen_command(args, unkwargs, **kargs):
 
     elif args.m == 'reset':
         result = sh_cmd(inp)
-        if '-h' in inp:
-            sys.exit()
         if not result:
-            hr = False
+            sys.exit()
         else:
             args, unknown_args = result
             hr = args.hr
