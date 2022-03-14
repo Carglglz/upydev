@@ -1,21 +1,36 @@
-from upydev.shell.constants import SHELL_CMD_DICT_PARSER
-from upydev.debugging import DB_CMD_DICT_PARSER
-from upydev.devicemanagement import DM_CMD_DICT_PARSER
-from upydev.firmwaretools import FW_CMD_DICT_PARSER
-from upydev.gencommands import GC_CMD_DICT_PARSER
-from upydev.keygen import KG_CMD_DICT_PARSER
-from upydev.shellrepls import SHELLREPL_CMD_DICT_PARSER
-from upydev.repls import REPL_CMD_DICT_PARSER
+# from upydev.shell.constants import SHELL_CMD_DICT_PARSER
+# from upydev.debugging import DB_CMD_DICT_PARSER
+# from upydev.devicemanagement import DM_CMD_DICT_PARSER
+# from upydev.firmwaretools import FW_CMD_DICT_PARSER
+# from upydev.gencommands import GC_CMD_DICT_PARSER
+# from upydev.keygen import KG_CMD_DICT_PARSER
+# from upydev.shellrepls import SHELLREPL_CMD_DICT_PARSER
+# from upydev.repls import REPL_CMD_DICT_PARSER
+import os
+from upydev import __path__
+UPYDEV_PATH = __path__[0]
 
-ALL_PARSER = {}
-ALL_PARSER.update(SHELL_CMD_DICT_PARSER)
-ALL_PARSER.update(DB_CMD_DICT_PARSER)
-ALL_PARSER.update(DM_CMD_DICT_PARSER)
-ALL_PARSER.update(FW_CMD_DICT_PARSER)
-ALL_PARSER.update(GC_CMD_DICT_PARSER)
-ALL_PARSER.update(KG_CMD_DICT_PARSER)
-ALL_PARSER.update(SHELLREPL_CMD_DICT_PARSER)
-ALL_PARSER.update(REPL_CMD_DICT_PARSER)
+ALL_PARSER = {"update_upyutils": dict(alt_ops=os.listdir(os.path.join(UPYDEV_PATH,
+                                                                      'upyutils_dir'))),
+              "fwr": dict(alt_ops=['list', 'get', 'update', 'latest']),
+              "set": dict(alt_ops=['rtc', 'localtime', 'ntptime', 'hostname',
+                                   'localname']),
+              "log": dict(choices=['start', 'stop']),
+              "net": dict(choices=['status', 'scan', 'on', 'off', 'config']),
+              "ap": dict(choices=['status', 'scan', 'on', 'off', 'config']),
+              "kg": dict(choices=['rsa', 'ssl', 'wr']),
+              "rsa": dict(choices=['sign', 'verify', 'auth']),
+              "mem": dict(choices=['info', 'dump']),
+              "i2c": dict(choices=['config', 'scan']),
+              "sd": dict(choices=['enable', 'init', 'deinit', 'auto'])}
+# ALL_PARSER.update(SHELL_CMD_DICT_PARSER)
+# ALL_PARSER.update(DB_CMD_DICT_PARSER)
+# ALL_PARSER.update(DM_CMD_DICT_PARSER)
+# ALL_PARSER.update(FW_CMD_DICT_PARSER)
+# ALL_PARSER.update(GC_CMD_DICT_PARSER)
+# ALL_PARSER.update(KG_CMD_DICT_PARSER)
+# ALL_PARSER.update(SHELLREPL_CMD_DICT_PARSER)
+# ALL_PARSER.update(REPL_CMD_DICT_PARSER)
 
 DEVICE_MANAGEMENT_ACTIONS = ['config', 'check', 'register', 'lsdevs',
                              'gg', 'see',
@@ -61,7 +76,7 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
 def argopts_complete(option):
     if option in ALL_PARSER.keys():
         opt_args = []
-        choices = ALL_PARSER[option]['subcmd'].get('choices')
+        choices = ALL_PARSER[option].get('choices')
         if choices:
             opt_args += choices
         alt_ops = ALL_PARSER[option].get('alt_ops')

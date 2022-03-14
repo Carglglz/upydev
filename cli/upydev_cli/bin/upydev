@@ -43,6 +43,7 @@ def cmd_complete(prefix, parsed_args, **kwargs):
 def sh_complete(prefix, parsed_args, **kwargs):
     if parsed_args.m in keywords_mode:
         return argopts_complete(parsed_args.m)
+        # return keywords_mode
 
 
 def serial_ports():
