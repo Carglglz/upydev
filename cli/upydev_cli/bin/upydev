@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
 # @Author: carlosgilgonzalez
 # @Date:   2019-03-12T18:52:56+00:00
@@ -23,14 +23,23 @@ import time
 import traceback
 import multiprocessing
 from argcomplete.completers import ChoicesCompleter
+from argcomplete import split_line
 from ipaddress import ip_address
 from upydevice import check_device_type, Device, DeviceNotFound
 from upydev.helpinfo import HELP_INFO_ARG
-from upydev.argcompleter import argopts_complete
+from upydev.argcompleter import argopts_complete, get_opts_dict
 
 UPYDEV_PATH = upydev.__path__[0]
 
-log_levs = ['debug', 'info', 'warning', 'error', 'critical']
+
+def get_cmdline_words():
+    if "COMP_LINE" in os.environ and "COMP_POINT" in os.environ:
+        comp_line = os.environ["COMP_LINE"]
+        comp_point = int(os.environ["COMP_POINT"])
+
+        return split_line(comp_line, comp_point)[-2]
+    else:
+        return ['upydev']
 
 
 def cmd_complete(prefix, parsed_args, **kwargs):
@@ -42,8 +51,10 @@ def cmd_complete(prefix, parsed_args, **kwargs):
 
 def sh_complete(prefix, parsed_args, **kwargs):
     if parsed_args.m in keywords_mode:
-        return argopts_complete(parsed_args.m)
-        # return keywords_mode
+        add_opts = argopts_complete(parsed_args.m)
+        return add_opts
+    else:
+        return []
 
 
 def serial_ports():
@@ -98,12 +109,12 @@ helparg = HELP_INFO_ARG
 
 
 usag = """%(prog)s ACTION [options]\n
-This means that if the first argument ACTION is not a Mode keyword or a
-upy command keyword it assumes it is a 'raw' upy command to send to the upy device \n
+This means that if the first argument Action/Mode keyword
+it assumes it is a 'raw' MicroPython command to send to the device \n
 Requirements: Needs REPL to be accessible.
     > Wireless Devices:
         * WiFi: Needs WebREPL enabled in the device;
-        see http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt
+        see https://docs.micropython.org/en/latest/esp32/quickref.html
 
         * Bluetooth Low Energy: Needs BleREPL enabled in the device.
         see https://upydev.readthedocs.io/en/latest/gettingstarted.html#id1
@@ -160,17 +171,16 @@ parser.add_argument("-ggp", help='global group parallel flag', required=False,
                     action='store_true')
 parser.add_argument("-gf", help='group flag for project files', required=False,
                     action='store_true')
-parser.add_argument("-p", help='password', required=False, nargs='?')
-parser.add_argument("-f", help='script or file name', required=False)
-parser.add_argument("-fre", help='scripts or files', nargs='+', required=False)
+parser.add_argument("-p", required=False, nargs='?')
+parser.add_argument("-f", help=argparse.SUPPRESS, required=False)
+parser.add_argument("-fre", help=argparse.SUPPRESS, nargs='+', required=False)
 
 parser.add_argument(
-    "-t", help='target host for example : 192.168.1.40 or for AP 192.168.4.1',
+    "-t",
     required=False, nargs='?')
 
 parser.add_argument("-s",
-                    help='source dir in upy device, default is root dir '
-                         '(flash memory); sd for sd card source dir mounted as "/sd"',
+                    help=argparse.SUPPRESS,
                     required=False, nargs='?')
 
 parser.add_argument("-g",
@@ -178,29 +188,26 @@ parser.add_argument("-g",
                          'if there is no config file in working directory, '
                          '\n it uses the global file',
                     required=False, default=False, action='store_true')
-parser.add_argument("-st", help='shows target ip if using config file', required=False,
+parser.add_argument("-st", help=argparse.SUPPRESS, required=False,
                     default=False, action='store_true')
 parser.add_argument("-rst", required=False, default=False, action='store_true')
 parser.add_argument("-wss",
-                    help='Use WebSocket Secure (not available for all commands), '
-                         'this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
+                    help=argparse.SUPPRESS,
                     default=False, action='store_true')
 parser.add_argument('-v', action='version')
 
-parser.add_argument('-apmd', help='set target to 192.168.4.1',
+parser.add_argument('-apmd', help=argparse.SUPPRESS,
                     required=False, default=False, action='store_true')
 
-parser.add_argument('-rkey', help='To refresh password after WebREPL disconnection, '
-                                  'or delete private key after gen_rsakey',
+parser.add_argument('-rkey', help=argparse.SUPPRESS,
                     required=False, default=False, action='store_true')
 
-parser.add_argument('-to', help='indicate serial device to upload key/cert',
+parser.add_argument('-to', help=argparse.SUPPRESS,
                     required=False)
 
 
 parser.add_argument('-devs',
-                    help='to indicate the devices that will be part of a '
-                         'group, use as -devs [DEV_1] [IP_1] [PASS_1] [DEV_2]...',
+                    help=argparse.SUPPRESS,
                     nargs='*')
 
 parser.add_argument('-G',
@@ -212,19 +219,20 @@ parser.add_argument('-GP',
                          'directed to, for parallel '
                          'command execution').completer = ChoicesCompleter(see_groups())
 
+_cmd = get_cmdline_words()
+if len(_cmd) > 1:
+    args, unknown_args = parser.parse_known_args()
+    if _cmd[1] in keywords_mode:
+        for option, op_kargs in get_opts_dict(_cmd[1]).items():
+            if option[1:] not in vars(args).keys():
+                parser.add_argument(option, **op_kargs)
+
+
 argcomplete.autocomplete(parser)
 
 args, unknown_args = parser.parse_known_args()
 unknown_args = args.subcmd + unknown_args
 args.subcmd = []
-# multiple_args_fio = ['put', 'get', 'fget', 'install', 'dsync', 'run', 'timeit',
-#                      'pytest', 'mkg', 'mgg', 'mksg', 'du', 'tree',
-#                      'rsync', 'docs', 'udocs', 'mdocs',
-#                      'shasum_c', 'shasum', 'mpyx', 'ota', 'register', 'ls', 'cat',
-#                      'vim', 'sysctl', 'log', 'pytest', 'kg', 'rsa', 'set', 'mkg',
-#                      'see', 'mgg', 'mksg', 'uconfig']
-# multiple_args_fw = ['fwr', 'flash']
-
 
 # DEVICE MANAGEMENT ACTIONS
 

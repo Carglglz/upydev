@@ -18,11 +18,11 @@
 # -- Project information -----------------------------------------------------
 
 project = 'upydev'
-copyright = '2020-2021, Carlos G. Gonzalez'
+copyright = '2020-2022, Carlos G. Gonzalez'
 author = 'Carlos G. Gonzalez'
 
 # The full version, including alpha/beta/rc tags
-release = '0.4.0'
+release = '0.4.1'
 
 
 # -- General configuration ---------------------------------------------------
