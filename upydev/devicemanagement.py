@@ -7,6 +7,7 @@ import json
 import upydev
 import argparse
 import shlex
+import traceback
 rawfmt = argparse.RawTextHelpFormatter
 
 dict_arg_options = {'config': ['t', 'zt', 'p', 'wss', 'g', 'gg', 'G', 'sec', '@'],
@@ -527,6 +528,7 @@ def devicemanagement_action(args, unkwargs, **kargs):
                         print(dev)
                 except Exception as e:
                     print(e)
+                    print(traceback.format_exc())
                 space = '\n'
         else:
             target, passwd, _dev_name = load_local_config(args.g)

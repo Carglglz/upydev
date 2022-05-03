@@ -209,15 +209,15 @@ for command in SHELL_CMD_TEST[:] + list(RAW_COMMANDS.keys()):
 #         raise e
 #
 #
-# def test_disconnect():
-#     TEST_NAME = 'DEVICE DISCONNECT'
-#     log.info('{} TEST'.format(TEST_NAME))
-#     try:
-#         dev.disconnect()
-#         assert not dev.connected, 'Device Still Connected'
-#         do_pass(TEST_NAME)
-#         print('Test Result: ', end='')
-#     except Exception as e:
-#         do_fail(TEST_NAME)
-#         print('Test Result: ', end='')
-#         raise e
+def test_disconnect():
+    TEST_NAME = 'DEVICE DISCONNECT'
+    log.info('{} TEST'.format(TEST_NAME))
+    try:
+        dev.disconnect()
+        assert not dev.connected, 'Device Still Connected'
+        do_pass(TEST_NAME)
+        print('Test Result: ', end='')
+    except Exception as e:
+        do_fail(TEST_NAME)
+        print('Test Result: ', end='')
+        raise e
