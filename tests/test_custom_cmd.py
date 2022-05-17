@@ -119,6 +119,9 @@ for command in list(RAW_COMMANDS.keys()):
             do_pass(TEST_NAME)
             print('Test Result: ', end='')
         except Exception as e:
+            if cmd in RELOAD_SCRIPT.keys():
+                dev.cmd(f"import sys,gc;del(sys.modules['{RELOAD_SCRIPT[cmd]}']);"
+                        f"gc.collect()")
             do_fail(TEST_NAME)
             print('Test Result: ', end='')
             raise e
