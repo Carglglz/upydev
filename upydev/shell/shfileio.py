@@ -312,7 +312,7 @@ class ShDsyncIO:
             file_match = nglob(*rest_args, size=True)
             if file_match:
                 source = '/'
-                file_match = [(sz, file.replace(os.getcwd(), ''))
+                file_match = [(sz, file.replace(os.getcwd(), '.'))
                               for sz, file in file_match]
                 if args.dir:
                     source = args.dir
