@@ -450,7 +450,7 @@ SET = dict(help="set device's configuration {rtc, hostname, localname}",
                        default=['rtc'],
                        metavar='parameter', nargs='+'),
            options={"-utc": dict(help='[utc] for "set ntptime" '
-                                 'command', required=False, nargs=1, type=int)},
+                                 'command', required=False, type=int)},
            alt_ops=['rtc', 'localtime', 'ntptime', 'hostname', 'localname'])
 
 DATETIME = dict(help="prints device's RTC time",

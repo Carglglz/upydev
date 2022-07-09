@@ -298,7 +298,7 @@ class ShDsyncIO:
                 # rest_args = [f"{args.dir}/{file}" for file in rest_args]
                 # check dir
                 try:
-                    self.dev.cmd(f"os.stat('{args.dir}')", silent=True)
+                    self.dev.cmd(f"import os;os.stat('{args.dir}')", silent=True)
                     if self.dev._traceback.decode() in self.dev.response:
                         try:
                             raise DeviceException(self.dev.response)
@@ -354,7 +354,7 @@ class ShDsyncIO:
                 rest_args = [f"{args.dir}/{file}" for file in rest_args]
                 # check dir
                 try:
-                    self.dev.cmd(f"os.stat('{args.dir}')", silent=True)
+                    self.dev.cmd(f"import os;os.stat('{args.dir}')", silent=True)
                     if self.dev._traceback.decode() in self.dev.response:
                         try:
                             raise DeviceException(self.dev.response)

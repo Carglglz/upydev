@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.4.2] Unreleased Github Repo [develop]
+## Fix
+- fix lcd ~ home user expand in shl & ssl key,cert gen for zerotier devices with custom port
+- fix test_custom_cmd.py reload script on exception
+- clarify extra free RAM in custom esp32 OTA SSL build
+- fix file not found error in `put` command if file is indicated with absolute path
+- fix `datetime` command missing
+- `import os` missing with `put`, `get` commands if `-dir` indicated
 ## [0.4.1] - 2022-03-15
 ## Fix
 - optimized autocompletion of subcommands and options
