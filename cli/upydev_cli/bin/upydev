@@ -139,7 +139,7 @@ keywords_mode = ['put', 'get', 'config', 'info', 'net',
                  'reload', 'ssl', 'sign', 'verify', 'auth',
                  'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'cd', 'upip', 'uping',
                  'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
-                 'kg', 'rsa', 'uconfig', 'sd', 'shl-config', 'touch']
+                 'kg', 'rsa', 'uconfig', 'sd', 'shl-config', 'touch', 'datetime']
 
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
                 'gc', 'docs', 'udocs', 'mdocs']

@@ -417,6 +417,10 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
                                                       ).sign(key, hashes.SHA256(), default_backend())
     else:
         dev_ip = args.zt["dev"]
+        if ':' in args.t:
+            args.t, port = args.t.split(':')
+        else:
+            port = '8833'
         cert = x509.CertificateBuilder().subject_name(
                     subject).issuer_name(issuer).public_key(key.public_key()
                                                             ).serial_number(x509.random_serial_number()
@@ -426,7 +430,7 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
                                                                                                                                                               x509.IPAddress(
                                                                                                                                                                   host_ip),
                                                                                                                                                               x509.DNSName(
-                                                                                                                     u"wss://{}:8833".format(args.t)),
+                                                                                                                     u"wss://{}:{}".format(args.t, port)),
                                                                                                                      x509.DNSName(
                                                                                                                          u"wss://192.168.4.1:8833"),
                                                                                                                      x509.DNSName(

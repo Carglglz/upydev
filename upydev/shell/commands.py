@@ -1377,7 +1377,7 @@ class ShellCmds:
             else:
                 dir = rest_args
                 try:
-                    os.chdir(dir)
+                    os.chdir(dir.replace('~', os.path.expanduser('~')))
                 except OSError:
                     print(f'lcd: {dir}: Not a directory')
                     return
