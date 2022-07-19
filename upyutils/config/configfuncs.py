@@ -6,6 +6,10 @@
 # with open param_config.py
 # from params import [PARAM]_CONF --> namedtuple
 # write [PARAM] = [PARAM]_CONF({*["=".join([k,v]) for k,v in **kargs]})
+try:
+    from root_path import RPATH
+except Exception:
+    RPATH = ""
 
 
 def set_val(val):
@@ -43,6 +47,6 @@ def add_param(param):
                      + f"    except Exception:\n"
                      + f"        pass\n"
                      + f"    set_config('{param}', **kargs)\n")
-    with open("/lib/config/params.py", 'a') as paramfile:
+    with open(f"{RPATH}/lib/config/params.py", 'a') as paramfile:
         paramfile.write('\n\n')
         paramfile.write(_config_param)
