@@ -53,7 +53,7 @@ class OTA:
         if self.tls:
             try:
                 cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert,
-                                          ca_certs=self.cert,
+                                          cadata=self.cert,
                                           cert_reqs=ssl.CERT_REQUIRED)
             except Exception:
                 cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert)

@@ -60,7 +60,7 @@ def accept_conn(listen_sock):
             cl.setsockopt(socket.SOL_SOCKET, 20, uos.dupterm_notify)
         try:
             cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert,
-                                 ca_certs=cert, cert_reqs=ssl.CERT_REQUIRED)
+                                 cadata=cert, cert_reqs=ssl.CERT_REQUIRED)
         except Exception:
             cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert)
         wss_helper.server_handshake(cl, ssl=True)
