@@ -3,7 +3,6 @@ import socket
 import uos
 import network
 import uwebsocket
-import websocket_helper
 import wss_helper
 import _webrepl
 import ssl
@@ -60,12 +59,12 @@ def accept_conn(listen_sock):
             cl.setsockopt(socket.SOL_SOCKET, 20, uos.dupterm_notify)
         try:
             cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert,
-                                 ca_certs=cert, cert_reqs=ssl.CERT_REQUIRED)
+                                 cadata=cert, cert_reqs=ssl.CERT_REQUIRED)
         except Exception:
             cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert)
         wss_helper.server_handshake(cl, ssl=True)
     else:
-        websocket_helper.server_handshake(cl)
+        wss_helper.server_handshake(cl)
     ws = uwebsocket.websocket(cl, True)
     ws = _webrepl._webrepl(ws)
     cl.setblocking(False)
