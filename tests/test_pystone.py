@@ -18,14 +18,19 @@ XF = '[\u001b[31;1m\u2718\u001b[0m]'
 #                   'get']
 #
 # NEEDS_FILE = ['cat', 'shasum', 'put', 'get', 'run']
+MIN_PYSTONES = {'pyboard':'2200', 'esp32':'1100'}
+LOOPS = 1000
 
-RAW_COMMANDS = {'toggle_led': "import time;led.on();time.sleep(1);led.off()",
-                'run_test_code': "import test_code",
-                'run_test_to_fail': "import test_to_fail"}
+RAW_COMMANDS = {'sys_implementation': "import os;import machine;os.uname();machine.freq()",
+                'import_pystone': "import pystone_lowmem",
+                'run_pystone_benchmark': f"stones = pystone_lowmem.main({LOOPS})",
+                f"assert_pystone_benchmark_>MIN_PYSTONES":
+                "print(f'stones:{stones} > ', end='');"}
 
-ASSERT_RESULT = {'run_test_code': 'test_code', "run_test_to_fail": 'test_to_fail'}
+ASSERT_RESULT = {f"assert_pystone_benchmark_>MIN_PYSTONES": "stones >="}
 
-RELOAD_SCRIPT = {'run_test_code': 'test_code', "run_test_to_fail": 'test_to_fail'}
+
+RELOAD_SCRIPT = {}
 
 #  DUMMY_FILE = 'dummy.py'
 
@@ -50,7 +55,7 @@ log = logging.getLogger('pytest')
 
 
 def test_devname(devname):
-    global dev, log
+    global dev, log, MIN_PYSTONES
     group_file = 'UPY_G'
     # print(group_file)
     if '{}.config'.format(group_file) not in os.listdir():
@@ -108,9 +113,14 @@ for command in list(RAW_COMMANDS.keys()):
         TEST_NAME = f'COMMAND: {cmd}'
         try:
             log.info(f'Running command [{cmd}] test...')
-            dev.wr_cmd(RAW_COMMANDS[cmd], follow=True)
+            if cmd == 'assert_pystone_benchmark_>MIN_PYSTONES':
+                dev.wr_cmd(RAW_COMMANDS[cmd]+f"print({MIN_PYSTONES[dev.dev_platform]})",
+                           follow=True)
+            else:
+                dev.wr_cmd(RAW_COMMANDS[cmd], follow=True)
             if cmd in ASSERT_RESULT.keys():
-                RESULT = dev.wr_cmd(f'{ASSERT_RESULT[cmd]}.RESULT', silent=True,
+                RESULT = dev.wr_cmd(f'{ASSERT_RESULT[cmd]}{MIN_PYSTONES[dev.dev_platform]}',
+                                    silent=True,
                                     rtn_resp=True)
                 assert RESULT is True, f'Test {cmd} FAILED'
             if cmd in RELOAD_SCRIPT.keys():
