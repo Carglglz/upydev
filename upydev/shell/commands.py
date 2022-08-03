@@ -780,6 +780,15 @@ class ShellCmds:
             resp = self.send_cmd("import time;tnow=time.localtime();tnow[:6]")
             print("{}-{}-{}T{}:{}:{}".format(*_ft_datetime(resp)))
 
+        # UPTIME
+        if command == 'uptime':
+            resp = self.send_cmd("import uptime;uptime.uptime()")
+            print(resp)
+
+        # CYCLES
+        if command == 'cycles':
+            self.dev.wr_cmd("import cycles;cycles.get()", follow=True)
+
         # CONFIG
         if command == 'config':
             if not rest_args:

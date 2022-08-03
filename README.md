@@ -149,11 +149,11 @@ Usage:
 This means that if the first argument is not a Mode keyword or a
 upy command keyword it assumes it is a 'raw' upy command to send to the upy device
 
-##### Help: `$ upydev h`, `$ upydev help`, `$ upydev -h` or `$ upydev %[command]`
+##### Help: `$ upydev h`, `$ upydev help`, `$ upydev -h` or `$ upydev [command] -h`
 
 Example: Mode
 
-`$ upydev put dummy.py`, `$ upydev get dummpy.py`
+`$ upydev put dummy.py`, `$ upydev get dummy.py`
 
 Example: uPy command
 

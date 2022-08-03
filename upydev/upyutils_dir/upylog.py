@@ -1,6 +1,7 @@
 import sys
 from micropython import const
 import time
+import os
 
 
 CRITICAL = const(50)
@@ -27,10 +28,13 @@ _filename = 'error.log'
 _format = _format_dict["LVL_MSG"]
 _asciitime = False
 _sdlog = False
+_rotate = 2000
 
 
 class Logger:
-    def __init__(self, name, l_level=_level, log_to_file=False, logfile=_filename, f_time=False, l_format=_format):
+    def __init__(self, name, l_level=_level, log_to_file=False,
+                 logfile=_filename, f_time=False, l_format=_format,
+                 rotate=_rotate):
         self.name = name
         self.level = l_level
         self.logfile = logfile
@@ -42,6 +46,7 @@ class Logger:
         self._t_now = None
         self.date_time = None
         self._n = None
+        self.rotate = rotate
         self._dt_list = [0, 1, 2, 3, 4, 5]
 
     def _level_str(self, level):
@@ -72,12 +77,21 @@ class Logger:
     def isEnabledFor(self, level):
         return level >= (self.level or _level)
 
+    def rotate_log(self):
+        if self.logfile in os.listdir():
+            if os.stat(self.logfile)[6] > self.rotate:
+                with open(self.logfile, 'wb') as flog:
+                    flog.write(b'')
+
+
     def file_log_msg(self, msg):
+        self.rotate_log()
         with open(self.logfile, 'ab') as flog:
             flog.write(msg)
             flog.write('\n')
 
     def file_log_exception(self, ex):
+        self.rotate_log()
         with open(self.logfile, 'ab') as flog:
             sys.print_exception(ex, flog)
             flog.write('\n')
@@ -126,7 +140,7 @@ class Logger:
             self.file_log_exception(e)
 
 
-def getLogger(name, log_to_file=False):
+def getLogger(name, log_to_file=False, rotate=_rotate):
     global _level, _stream, _filename, _format, _format_dict, _asciitime, _sdlog
     if name in _loggers:
         return _loggers[name]

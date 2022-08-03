@@ -15,7 +15,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'config', 'fw', 'mpyx', 'sd']
+                    'diff', 'config', 'fw', 'mpyx', 'sd', 'uptime', 'cycles']
 
 LS = dict(help="list files or directories",
           subcmd=dict(help='indicate a file/dir or pattern to see', default=[],
@@ -252,6 +252,18 @@ DATETIME = dict(help="prints device's RTC time",
                 subcmd={},
                 options={})
 
+UPTIME = dict(help=("prints device's uptime since latest boot, "
+                    "(requires uptime.py and uptime.settime()"
+                    " at boot.py/main.py)"),
+              subcmd={},
+              options={})
+
+CYCLES = dict(help=("prints device's cycle count"
+                    "(requires cycles.py and cycles.set()"
+                    " at boot.py/main.py)"),
+              subcmd={},
+              options={})
+
 SHASUM = dict(help="shasum SHA-256 tool",
               subcmd=dict(help='Get the hash of a file or check a shasum file',
                           default=[],
@@ -361,7 +373,8 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "lcd": LCD,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
                          "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
-                         "diff": DIFF, "config": CONFIG, "sd": SD}
+                         "diff": DIFF, "config": CONFIG, "sd": SD, 'uptime': UPTIME,
+                         "cycles": CYCLES}
 
 # DEBUGGING
 PING = dict(help="ping the device to test if device is"

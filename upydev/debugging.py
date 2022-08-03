@@ -153,7 +153,7 @@ SYSCTL = dict(help="to start/stop a script without following the output",
 
 LOG = dict(help="to log the output of a script running in device",
            desc="log levels (sys.stdout and file), run modes (normal, daemon) are"
-                "available through following options",
+                " available through following options",
            subcmd=dict(help=('indicate a script to run and log'),
                        metavar='script'),
            options={"-t": dict(help="device target address",

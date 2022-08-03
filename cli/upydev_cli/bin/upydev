@@ -139,7 +139,8 @@ keywords_mode = ['put', 'get', 'config', 'info', 'net',
                  'reload', 'ssl', 'sign', 'verify', 'auth',
                  'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'cd', 'upip', 'uping',
                  'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
-                 'kg', 'rsa', 'uconfig', 'sd', 'shl-config', 'touch', 'datetime']
+                 'kg', 'rsa', 'uconfig', 'sd', 'shl-config', 'touch', 'datetime',
+                 'uptime', 'cycles']
 
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
                 'gc', 'docs', 'udocs', 'mdocs']
@@ -274,7 +275,8 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'shasum', 'ls', 'cat', 'vim',
                     'enable_sh', 'diff', 'mkdir', 'head', 'rm', 'rmdir',
                     'pwd', 'rssi', 'ifconfig', 'upy-config', 'ctime',
-                    'uconfig', 'upip', 'sd', 'reload', 'uping', 'cd', 'touch']
+                    'uconfig', 'upip', 'sd', 'reload', 'uping', 'cd', 'touch',
+                    'uptime', 'cycles']
 
 # PROTOTYPE
 PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs',

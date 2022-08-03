@@ -24,3 +24,5 @@ __pycache__/*
 
 TODO.*
 .nosync
+
+tests/_tmp_script.py
