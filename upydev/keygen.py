@@ -426,7 +426,7 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
             while True:
                 try:
                     my_p = getpass.getpass(
-                        prompt="Enter passphrase for host key :", stream=None)
+                        prompt="Enter passphrase for ROOT CA key :", stream=None)
                     # print(my_p)
                     ca_key = serialization.load_pem_private_key(
                         key_file.read(), my_p.encode())
@@ -435,6 +435,11 @@ def ssl_ECDSA_key_certgen(args, dir='', store=True):
                     # print(e)
                     key_file.seek(0)
                     print('Passphrase incorrect, try again...')
+    cert_ca_path_file_pem = os.path.join(UPYDEV_PATH, 'ROOT_CA_cert.pem')
+    with open(cert_ca_path_file_pem, 'rb') as rootCA:
+        root_data = rootCA.read()
+    ROOT_CA_cert = x509.load_pem_x509_certificate(root_data)
+    issuer = ROOT_CA_cert.issuer
     if not args.zt:
         csr = x509.CertificateSigningRequestBuilder().subject_name(
                     subject).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
@@ -556,16 +561,16 @@ def ssl_ECDSA_key_certgen_host(args, dir='', store=True):
         # with open(key_path_file_der, 'wb') as keyfile:
         #     keyfile.write(der)
     cert_data = get_cert_data()
-    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"{}".format(cert_data['COUNTRY_CODE'])),
-                                  x509.NameAttribute(
+    subject = x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, u"{}".format(cert_data['COUNTRY_CODE'])),
+                         x509.NameAttribute(
                                       NameOID.USER_ID, u"{}".format(cert_data['USER'])),
-                                  x509.NameAttribute(
+                         x509.NameAttribute(
                                       NameOID.SURNAME, u"{}".format(cert_data['HOST_NAME'])),
-                                  x509.NameAttribute(
+                         x509.NameAttribute(
                                       NameOID.STREET_ADDRESS, u"{}".format(cert_data['addrs'])),
-                                  x509.NameAttribute(
+                         x509.NameAttribute(
                                       NameOID.ORGANIZATION_NAME, u"MicroPython"),
-                                  x509.NameAttribute(NameOID.COMMON_NAME, u"{}@{}".format(dev_platform, unique_id))])
+                         x509.NameAttribute(NameOID.COMMON_NAME, u"{}@{}".format(dev_platform, unique_id))])
     host_ip = ipaddress.IPv4Address(cert_data['addrs'])
     # if '.local' in args.t:
     #     args.t = socket.gethostbyname(args.t)
@@ -576,7 +581,7 @@ def ssl_ECDSA_key_certgen_host(args, dir='', store=True):
             while True:
                 try:
                     my_p = getpass.getpass(
-                        prompt="Enter passphrase for host key :", stream=None)
+                        prompt="Enter passphrase for ROOT CA key :", stream=None)
                     # print(my_p)
                     ca_key = serialization.load_pem_private_key(
                         key_file.read(), my_p.encode())
@@ -585,6 +590,11 @@ def ssl_ECDSA_key_certgen_host(args, dir='', store=True):
                     # print(e)
                     key_file.seek(0)
                     print('Passphrase incorrect, try again...')
+    cert_ca_path_file_pem = os.path.join(UPYDEV_PATH, 'ROOT_CA_cert.pem')
+    with open(cert_ca_path_file_pem, 'rb') as rootCA:
+        root_data = rootCA.read()
+    ROOT_CA_cert = x509.load_pem_x509_certificate(root_data)
+    issuer = ROOT_CA_cert.issuer
     if not args.zt:
         csr = x509.CertificateSigningRequestBuilder().subject_name(
                     subject).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
