@@ -12,6 +12,7 @@ from machine import unique_id
 
 key = None
 cert = None
+cadata = None
 listen_s = None
 client_s = None
 websslrepl = False
@@ -44,7 +45,7 @@ def setup_conn(port, accept_handler):
 
 
 def accept_conn(listen_sock):
-    global client_s, key, cert, websslrepl, ssl_auth, client_swr
+    global client_s, key, cert, websslrepl, ssl_auth, client_swr, cadata
     cl, remote_addr = listen_sock.accept()
     prev = uos.dupterm(None)
     uos.dupterm(prev)
@@ -59,7 +60,7 @@ def accept_conn(listen_sock):
             cl.setsockopt(socket.SOL_SOCKET, 20, uos.dupterm_notify)
         try:
             cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert,
-                                 cadata=cert, cert_reqs=ssl.CERT_REQUIRED)
+                                 cadata=cadata, cert_reqs=ssl.CERT_REQUIRED)
         except Exception:
             cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert)
         wss_helper.server_handshake(cl, ssl=True)
@@ -86,7 +87,7 @@ def stop():
 
 
 def start(port=8266, password=None, ssl=False, auth=False):
-    global key, cert, websslrepl, ssl_auth
+    global key, cert, websslrepl, ssl_auth, cadata
     if ssl:
         if auth:
             ssl_auth = True
@@ -99,7 +100,15 @@ def start(port=8266, password=None, ssl=False, auth=False):
                 key = keyfile.read()
             with open(_cert, 'rb') as certfile:
                 cert = certfile.read()
-        except Exception:
+            cadata = b''
+
+            if 'ROOT_CA_cert.pem' in uos.listdir():
+                with open('ROOT_CA_cert.pem', 'rb') as host:
+                    cadata += host.read()
+            if not cadata:
+                cadata = cert
+        except Exception as e:
+            print(e)
             print('No key or certificate found')
     else:
         websslrepl = False

@@ -234,3 +234,8 @@ def fileio_action(args, unkwargs, **kargs):
             if sh_args.rst:
                 dev.reset(reconnect=False)
                 time.sleep(1)
+
+    try:
+        dev.disconnect()
+    except Exception:
+        pass

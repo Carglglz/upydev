@@ -48,6 +48,12 @@ CD = dict(help="change current working directory",
           subcmd=dict(help='indicate a dir to change to', default='/',
                       metavar='dir', nargs='?'),
           options={})
+
+MV = dict(help="move/rename a file",
+          subcmd=dict(help='indicate a file to rename', default=[],
+                      metavar='file', nargs=2),
+          options={})
+
 PWD = dict(help="print current working directory",
            subcmd={},
            options={})
@@ -361,7 +367,7 @@ SD = dict(help="commands to manage an sd",
 
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
-                         "touch": TOUCH, "cd": CD, "pwd": PWD,
+                         "touch": TOUCH, "cd": CD, "mv": MV, "pwd": PWD,
                          "rm": RM, "rmdir": RMDIR, "du": DU,
                          "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT,
                          "vim": VIM, "run": RUN, "reload": RELOAD,
@@ -815,9 +821,21 @@ KG = dict(help="to generate a key pair (RSA) or key & certificate (ECDSA) for ss
                     metavar='mode',
                     choices=['rsa', 'ssl', 'wr'],
                     nargs='?'),
-          subcmd=dict(help='indicate if RSA key pair is for host',
-                      metavar='host',
+          subcmd=dict(help='- gen: generate a ECDSA key/cert (default)'
+                           '\n- rotate: To rotate CA key/cert pair old->new or'
+                           ' new->old'
+                           '\n- add: add a device cert to upydev path verify location.'
+                           '\n- export: export CA or device cert to cwd.',
+                      metavar='subcmd',
+                      # just for arg completion
+                      choices=['gen', 'add', 'export', 'rotate', 'dev', 'host', 'CA'],
+                      default='gen',
                       nargs='?'),
+          dst=dict(help='indicate a subject: {dev, host, CA}, default: dev',
+                   metavar='dest',
+                   choices=['dev', 'host', 'CA'],
+                   default='dev',
+                   nargs='?'),
           options={"-t": dict(help="device target address",
                               required=True),
                    "-p": dict(help='device password or baudrate',
@@ -855,7 +873,9 @@ KG = dict(help="to generate a key pair (RSA) or key & certificate (ECDSA) for ss
                               default=False,
                               action='store_true'),
                    "-to": dict(help='serial device name to upload to',
-                               required=False)})
+                               required=False),
+                   "-f": dict(help='cert name to add to verify locations',
+                              required=False)})
 
 RSA = dict(help="to perform operations with RSA key pair as sign, verify or "
                 "authenticate",

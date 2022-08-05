@@ -140,7 +140,7 @@ keywords_mode = ['put', 'get', 'config', 'info', 'net',
                  'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'cd', 'upip', 'uping',
                  'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
                  'kg', 'rsa', 'uconfig', 'sd', 'shl-config', 'touch', 'datetime',
-                 'uptime', 'cycles']
+                 'uptime', 'cycles', 'mv']
 
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
                 'gc', 'docs', 'udocs', 'mdocs']
@@ -276,7 +276,7 @@ GENERAL_COMMANDS = ['info', 'id', 'upysh', 'reset', 'kbi',
                     'enable_sh', 'diff', 'mkdir', 'head', 'rm', 'rmdir',
                     'pwd', 'rssi', 'ifconfig', 'upy-config', 'ctime',
                     'uconfig', 'upip', 'sd', 'reload', 'uping', 'cd', 'touch',
-                    'uptime', 'cycles']
+                    'uptime', 'cycles', 'mv']
 
 # PROTOTYPE
 PROTOTYPE_COMMANDS = ['pro', 'battery', 'pinout', 'specs',
@@ -519,9 +519,84 @@ def handle_action(args, exit=True, device_name=None):
                     args.p = baudr
             if key_dict['mode'] == 'SSL':
                 key, cert = key_dict['Files']
+                key_pem = key.replace('.der', '.pem')
+                cert_pem = cert.replace('.der', '.pem')
                 _unknown_args = [key, cert]
                 fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),
                               device=dev_name)
+
+                print(f'Removing device private key {os.path.split(key)[-1]} '
+                      f'from host...')
+                try:
+                    os.remove(key)
+                    os.remove(key_pem)
+                    old_key = os.path.split(key)[-1].replace('~', '')
+                    old_key_pem = os.path.split(key_pem)[-1].replace('~', '')
+                    if old_key in os.listdir(UPYDEV_PATH):
+                        try:
+                            os.remove(os.path.join(UPYDEV_PATH, old_key))
+                            os.remove(os.path.join(UPYDEV_PATH, old_key_pem))
+                        except Exception:
+                            pass
+                    print('Done!')
+                except Exception as e:
+                    print(e)
+                try:
+                    import shutil
+                    if os.path.split(cert_pem)[-1] in os.listdir(UPYDEV_PATH):
+                        try:
+                            os.remove(os.path.join(UPYDEV_PATH,
+                                      os.path.split(cert_pem)[-1]))
+                            os.remove(os.path.join(UPYDEV_PATH,
+                                                   os.path.split(cert)[-1]))
+                        except Exception:
+                            pass
+
+                    os.remove(cert)
+                    shutil.move(cert_pem, UPYDEV_PATH)
+                except Exception as e:
+                    print(e)
+
+            elif key_dict['mode'] == 'SSL_HOST':
+                key, cert = key_dict['Files']
+                _unknown_args = [cert]
+                fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),
+                              device=dev_name)
+                if key:
+                    try:
+                        import shutil
+                        new_key = os.path.split(key)[-1]
+                        new_cert = os.path.split(cert)[-1]
+                        if new_key in os.listdir(UPYDEV_PATH):
+                            os.rename(os.path.join(UPYDEV_PATH, new_key),
+                                      os.path.join(UPYDEV_PATH, f'~{new_key}'))
+                            os.rename(os.path.join(UPYDEV_PATH, new_cert),
+                                      os.path.join(UPYDEV_PATH, f'~{new_cert}'))
+                        shutil.move(key, UPYDEV_PATH)
+                        shutil.move(cert, UPYDEV_PATH)
+                    except Exception as e:
+                        print(e)
+            elif key_dict['mode'] == 'SSL_HOST_ROTATE':
+                key, cert = key_dict['Files']
+                _unknown_args = [cert]
+                fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),
+                              device=dev_name)
+                try:
+                    print('Rotating CA cert in device...')
+                    rot_cert = os.path.split(cert)[-1]
+                    new_cert = rot_cert[1:]
+                    dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
+                    dev.wr_cmd(f"import os;os.rename('{rot_cert}', '{new_cert}')")
+                    print('Done!')
+                    dev.reset(reconnect=False)
+                    time.sleep(1)
+                except Exception as e:
+                    print(e)
+
+                finally:
+                    from upydev.keygen import rotate_ssl_keycert
+                    rotate_ssl_keycert()
+
             elif key_dict['mode'] == 'RSA':
                 _unknown_args = key_dict['Files']
                 fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),

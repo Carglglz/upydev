@@ -34,12 +34,15 @@ class OTA:
         self.buflen = 0
         self._key = f'SSL_key{binascii.hexlify(unique_id()).decode()}.der'
         self._cert = f'SSL_certificate{binascii.hexlify(unique_id()).decode()}.der'
+        self._cadata = 'ROOT_CA_cert.pem'
         self.tls = tls
         if tls:
             with open(self._key, 'rb') as keyfile:
                 self.key = keyfile.read()
             with open(self._cert, 'rb') as certfile:
                 self.cert = certfile.read()
+            with open(self._cadata, 'rb') as cadatafile:
+                self.cadata = cadatafile.read()
         self.cli_soc = self.connect(host, port)
         self.check_sha = check_sha
         self._total_blocks = 0
@@ -53,7 +56,7 @@ class OTA:
         if self.tls:
             try:
                 cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert,
-                                          cadata=self.cert,
+                                          cadata=self.cadata,
                                           cert_reqs=ssl.CERT_REQUIRED)
             except Exception:
                 cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert)
