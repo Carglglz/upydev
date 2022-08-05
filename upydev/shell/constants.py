@@ -63,7 +63,7 @@ shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
 shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
-                  'run']
+                  'run', 'mv']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'ap', 'mem', 'install', 'touch',
                     'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
@@ -248,6 +248,11 @@ MKDIR = dict(help="make directories",
              subcmd=dict(help='indicate a dir/pattern to create', default=[],
                          metavar='dir', nargs='*'),
              options={})
+
+MV = dict(help="move/rename a file",
+          subcmd=dict(help='indicate a file to rename', default=[],
+                      metavar='file', nargs=2),
+          options={})
 
 CD = dict(help="change current working directory",
           subcmd=dict(help='indicate a dir to change to', default='/',
@@ -457,15 +462,13 @@ DATETIME = dict(help="prints device's RTC time",
                 subcmd={},
                 options={})
 
-UPTIME = dict(help=("prints device's uptime since latest boot, "
-                    "(requires uptime.py and uptime.settime()"
-                    " at boot.py/main.py)"),
+UPTIME = dict(help=("prints device's uptime since latest boot "
+                    "(requires uptime.py)"),
               subcmd={},
               options={})
 
-CYCLES = dict(help=("prints device's cycle count"
-                    "(requires cycles.py and cycles.set()"
-                    " at boot.py/main.py)"),
+CYCLES = dict(help=("prints device's cycle count "
+                    "(requires cycles.py)"),
               subcmd={},
               options={})
 
@@ -566,7 +569,7 @@ SD = dict(help="commands to manage an sd",
 
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
-                         "touch": TOUCH, "cd": CD, "pwd": PWD,
+                         "touch": TOUCH, "cd": CD, "mv": MV, "pwd": PWD,
                          "rm": RM, "rmdir": RMDIR, "du": DU,
                          "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT,
                          "vim": VIM, "run": RUN, "reload": RELOAD,

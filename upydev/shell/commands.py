@@ -950,6 +950,15 @@ class ShellCmds:
                 self.flags.prompt['p'] = self.flags.shell_prompt['s']
             return
 
+        # MV
+        if command == 'mv':
+            if not rest_args:
+                return
+            src = rest_args[0]
+            dst = rest_args[1]
+            self.dev.wr_cmd(f"import os;os.rename('{src}', '{dst}')", silent=False,
+                            follow=True)
+
         # LS
 
         if command == 'ls':
