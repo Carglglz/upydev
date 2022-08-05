@@ -1323,13 +1323,21 @@ def keygen_action(args, unkwargs, **kargs):
 
                 if 'export' in rest_args:
                     cert = "ROOT_CA_cert.pem"
+                    key = "ROOT_CA_key.pem"
                     abs_cert = os.path.join(UPYDEV_PATH, cert)
+                    abs_key = os.path.join(UPYDEV_PATH, key)
                     if os.path.exists(abs_cert):
                         with open(abs_cert, 'rb') as root_cert:
                             ex_cert = root_cert.read()
                         with open(cert, 'wb') as cwd_root_cert:
                             cwd_root_cert.write(ex_cert)
                         print('ROOT CA certificate exported to ./')
+                    if os.path.exists(abs_key):
+                        with open(abs_key, 'rb') as root_key:
+                            ex_key = root_key.read()
+                        with open(key, 'wb') as cwd_root_key:
+                            cwd_root_key.write(ex_key)
+                        print('ROOT CA key exported to ./')
                         sys.exit()
                     else:
                         print('kg ssl: ROOT_CA_cert.pem Not Found.')
@@ -1339,14 +1347,21 @@ def keygen_action(args, unkwargs, **kargs):
 
                 if 'add' in rest_args:
                     cert = "ROOT_CA_cert.pem"
+                    key = "ROOT_CA_key.pem"
                     abs_cert = os.path.join(UPYDEV_PATH, cert)
+                    abs_key = os.path.join(UPYDEV_PATH, key)
                     if not os.path.exists(abs_cert):
                         with open(cert, 'rb') as root_cert:
                             ex_cert = root_cert.read()
                         with open(abs_cert, 'wb') as cwd_root_cert:
                             cwd_root_cert.write(ex_cert)
+                        with open(key, 'rb') as root_key:
+                            ex_key = root_key.read()
+                        with open(abs_key, 'wb') as cwd_root_key:
+                            cwd_root_key.write(ex_key)
 
-                        print('ROOT CA cert added to verify locations.')
+                        print('ROOT CA key/cert added to verify locations.')
+
                         sys.exit()
 
                     else:
@@ -1358,8 +1373,12 @@ def keygen_action(args, unkwargs, **kargs):
                                 ex_cert = root_cert.read()
                             with open(abs_cert, 'wb') as cwd_root_cert:
                                 cwd_root_cert.write(ex_cert)
+                            with open(key, 'rb') as root_key:
+                                ex_key = root_key.read()
+                            with open(abs_key, 'wb') as cwd_root_key:
+                                cwd_root_key.write(ex_key)
 
-                            print('ROOT CA cert added to verify locations.')
+                            print('ROOT CA key/cert added to verify locations.')
                             sys.exit()
                         else:
                             sys.exit()
