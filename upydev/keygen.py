@@ -595,6 +595,7 @@ def ssl_ECDSA_key_certgen_host(args, dir='', store=True):
         root_data = rootCA.read()
     ROOT_CA_cert = x509.load_pem_x509_certificate(root_data)
     issuer = ROOT_CA_cert.issuer
+    subject = issuer  # allocate less RAM in device?
     if not args.zt:
         csr = x509.CertificateSigningRequestBuilder().subject_name(
                     subject).add_extension(x509.SubjectAlternativeName([x509.DNSName(u"localhost"),
@@ -638,15 +639,7 @@ def ssl_ECDSA_key_certgen_host(args, dir='', store=True):
         with open(cert_path_file_pem, 'wb') as certfile:
             certfile.write(cert.public_bytes(serialization.Encoding.PEM))
 
-        # cert_path_file_der = os.path.join(dir, f'SSL_certificate{unique_id}.der')
-        # with open(cert_path_file_der, 'wb') as certfile:
-        #     certfile.write(cert.public_bytes(serialization.Encoding.DER))
     print(f'Host {unique_id} ECDSA key & certificate generated.')
-    # if args.tfkey:
-    #     print('Transfering ECDSA host certificate to the device...')
-    #     ssl_k = key_path_file_pem
-    #     ssl_c = cert_path_file_pem
-    #     return {'ACTION': 'put', 'mode': 'SSL_HOST', 'Files': [ssl_k, ssl_c]}
 
 
 def ssl_ECDSA_key_certgen_CA(args, dir='', store=True):
