@@ -62,13 +62,16 @@ if args.wss:
 dev.wr_cmd(dev._kbi)
 unique_id = dev.wr_cmd("from machine import unique_id; "
                        "unique_id()", silent=True, rtn_resp=True)
-try:
-    unique_id = hexlify(unique_id).decode()
-except TypeError:
-    time.sleep(0.5)
-    unique_id = dev.wr_cmd("from machine import unique_id; "
-                           "unique_id()", silent=True, rtn_resp=True)
-    unique_id = hexlify(unique_id).decode()
+
+while True:
+    try:
+        unique_id = hexlify(unique_id).decode()
+        break
+    except TypeError:
+        time.sleep(0.5)
+        dev.flush()
+        unique_id = dev.wr_cmd("from machine import unique_id; "
+                               "unique_id()", silent=True, rtn_resp=True)
 
 dev_platform = dev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
 
