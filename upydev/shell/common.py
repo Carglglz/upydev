@@ -1047,28 +1047,53 @@ class CatFileIO:
 
     def shapipe(self, data, std=True, **kargs):
         if std != 'stderr' and data != '\n':
-
-            sys.stdout.write("\033[K")
-            sys.stdout.write("\033[A")
-            print(f"{self._prog}: checking filesystem... "
-                  f"{self.wheel[self._hf_index % 4]}")
-            if data.endswith('\n'):
-                data = data[:-1]
-            total_ln = len(data)
-            try:
-                hf, name, sz = data.split()
-            except Exception:
-                print(f"shapipe: data: {data}")
-                raise Exception
-                # return
-            if total_ln <= (self.columns - 2):
-                print(f"{hf} {name} {sz}", end='\r')
-            else:  # short hf
-                ixhf = int((len(hf) - ((total_ln - (self.columns - 2)) + 3)) / 2)
-                print(f"{hf[:ixhf]}...{hf[-ixhf:]} {name} {sz}", end='\r')
-            sys.stdout.flush()
-            self._shafiles.append((name, int(sz), hf))
-            self._hf_index += 1
+            if not self.dev.dev_class == 'BleDevice':
+                sys.stdout.write("\033[K")
+                sys.stdout.write("\033[A")
+                print(f"{self._prog}: checking filesystem... "
+                      f"{self.wheel[self._hf_index % 4]}")
+                if data.endswith('\n'):
+                    data = data[:-1]
+                total_ln = len(data)
+                try:
+                    hf, name, sz = data.split()
+                except Exception:
+                    print(f"shapipe: data: {data}")
+                    raise Exception
+                    # return
+                if total_ln <= (self.columns - 2):
+                    print(f"{hf} {name} {sz}", end='\r')
+                else:  # short hf
+                    ixhf = int((len(hf) - ((total_ln - (self.columns - 2)) + 3)) / 2)
+                    print(f"{hf[:ixhf]}...{hf[-ixhf:]} {name} {sz}", end='\r')
+                sys.stdout.flush()
+                self._shafiles.append((name, int(sz), hf))
+                self._hf_index += 1
+            else:
+                for ln in data.split('\n'):
+                    if ln:
+                        sys.stdout.write("\033[K")
+                        sys.stdout.write("\033[A")
+                        print(f"{self._prog}: checking filesystem... "
+                              f"{self.wheel[self._hf_index % 4]}")
+                        if ln.endswith('\n'):
+                            ln = ln[:-1]
+                        total_ln = len(ln)
+                        try:
+                            hf, name, sz = ln.split()
+                        except Exception:
+                            print(f"shapipe: data: {ln}")
+                            raise Exception
+                            # return
+                        if total_ln <= (self.columns - 2):
+                            print(f"{hf} {name} {sz}", end='\r')
+                        else:  # short hf
+                            ixhf = int(
+                                (len(hf) - ((total_ln - (self.columns - 2)) + 3)) / 2)
+                            print(f"{hf[:ixhf]}...{hf[-ixhf:]} {name} {sz}", end='\r')
+                        sys.stdout.flush()
+                        self._shafiles.append((name, int(sz), hf))
+                        self._hf_index += 1
 
 
 def get_dir_size_recursive(dir):
