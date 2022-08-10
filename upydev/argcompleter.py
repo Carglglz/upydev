@@ -828,7 +828,8 @@ KG = dict(help="to generate a key pair (RSA) or key & certificate (ECDSA) for ss
                            '\n- export: export CA or device cert to cwd.',
                       metavar='subcmd',
                       # just for arg completion
-                      choices=['gen', 'add', 'export', 'rotate', 'dev', 'host', 'CA'],
+                      choices=['gen', 'add', 'export', 'rotate', 'dev', 'host', 'CA',
+                               'status'],
                       default='gen',
                       nargs='?'),
           dst=dict(help='indicate a subject: {dev, host, CA}, default: dev',
@@ -875,7 +876,13 @@ KG = dict(help="to generate a key pair (RSA) or key & certificate (ECDSA) for ss
                    "-to": dict(help='serial device name to upload to',
                                required=False),
                    "-f": dict(help='cert name to add to verify locations',
-                              required=False)})
+                              required=False),
+                   "-a": dict(
+                       help="show all devs ssl cert status",
+                       required=False,
+                       default=False,
+                       action="store_true",
+                   ), })
 
 RSA = dict(help="to perform operations with RSA key pair as sign, verify or "
                 "authenticate",

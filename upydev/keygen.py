@@ -29,6 +29,9 @@ import tempfile
 
 rawfmt = argparse.RawTextHelpFormatter
 
+CHECK = "[\033[92m\u2714\x1b[0m]"
+XF = "[\u001b[31;1m\u2718\u001b[0m]"
+
 dict_arg_options = {
     "kg": [
         "t",
@@ -43,6 +46,7 @@ dict_arg_options = {
         "g",
         "to",
         "fre",
+        "a",
     ],
     "rsa": ["t", "zt", "p", "wss", "fre", "f"],
 }
@@ -64,7 +68,7 @@ KG = dict(
         "\n- add: add a device cert to upydev path verify location."
         "\n- export: export CA or device cert to cwd.",
         metavar="subcmd",
-        choices=["gen", "add", "export", "rotate"],
+        choices=["gen", "add", "export", "rotate", "status"],
         default="gen",
         nargs="?",
     ),
@@ -124,8 +128,15 @@ KG = dict(
             action="store_true",
         ),
         "-to": dict(help="serial device name to upload to", required=False),
-        "-f": dict(help="cert name to add to verify locations", required=False,
-                   nargs='*'),
+        "-f": dict(
+            help="cert name to add to verify locations", required=False, nargs="*"
+        ),
+        "-a": dict(
+            help="show all devs ssl cert status",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
     },
 )
 
@@ -440,13 +451,11 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
     key = ec.generate_private_key(ec.SECP256R1(), backend=default_backend())
     # key = ed25519.Ed25519PrivateKey.generate()
 
-    my_p = getpass.getpass(prompt="Passphrase: ", stream=None)
+    # my_p = getpass.getpass(prompt="Passphrase: ", stream=None)
     pem = key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.BestAvailableEncryption(
-            bytes(my_p, "utf-8")
-        ),
+        encryption_algorithm=serialization.NoEncryption(),
     )
 
     der = key.private_bytes(
@@ -478,9 +487,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
             x509.NameAttribute(NameOID.USER_ID, f"{dev_platform}@{unique_id}"),
             x509.NameAttribute(NameOID.SURNAME, cert_data["HOST_NAME"]),
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MicroPython"),
-            x509.NameAttribute(
-                NameOID.COMMON_NAME, cert_data["USER"]
-            ),
+            x509.NameAttribute(NameOID.COMMON_NAME, cert_data["USER"]),
         ]
     )
     # host_ip = ipaddress.IPv4Address(cert_data["addrs"])
@@ -583,11 +590,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
             .sign(ca_key, hashes.SHA256(), default_backend())
         )
     else:
-        dev_ip = args.zt["dev"]
-        if ":" in args.t:
-            args.t, port = args.t.split(":")
-        else:
-            port = "8833"
+
         cert = (
             x509.CertificateBuilder()
             .subject_name(csr.subject)
@@ -606,7 +609,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
                 ),
                 critical=False,
             )
-            .sign(key, hashes.SHA256(), default_backend())
+            .sign(ca_key, hashes.SHA256(), default_backend())
         )
 
     # SIGN
@@ -664,9 +667,7 @@ def ssl_ECDSA_key_certgen_host(args, dir="", store=True):
             x509.NameAttribute(NameOID.USER_ID, f"{dev_platform}@{unique_id}"),
             x509.NameAttribute(NameOID.SURNAME, "{}".format(cert_data["HOST_NAME"])),
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MicroPython"),
-            x509.NameAttribute(
-                NameOID.COMMON_NAME, cert_data["USER"]
-            ),
+            x509.NameAttribute(NameOID.COMMON_NAME, cert_data["USER"]),
         ]
     )
     host_ip = ipaddress.IPv4Address(cert_data["addrs"])
@@ -696,66 +697,41 @@ def ssl_ECDSA_key_certgen_host(args, dir="", store=True):
     ROOT_CA_cert = x509.load_pem_x509_certificate(root_data)
     issuer = ROOT_CA_cert.issuer
     subject = issuer  # allocate less RAM in device?
-    if not args.zt:
-        csr = (
-            x509.CertificateSigningRequestBuilder()
-            .subject_name(subject)
-            .add_extension(
-                x509.SubjectAlternativeName(
-                    [
-                        x509.DNSName("localhost"),
-                        x509.IPAddress(host_ip),
-                    ]
-                ),
-                critical=False,
-            )
-            .sign(key, hashes.SHA256(), default_backend())
+    # if not args.zt:
+    csr = (
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(subject)
+        .add_extension(
+            x509.SubjectAlternativeName(
+                [
+                    x509.DNSName("localhost"),
+                    x509.IPAddress(host_ip),
+                ]
+            ),
+            critical=False,
         )
+        .sign(key, hashes.SHA256(), default_backend())
+    )
 
-        cert = (
-            x509.CertificateBuilder()
-            .subject_name(csr.subject)
-            .issuer_name(issuer)
-            .public_key(csr.public_key())
-            .serial_number(x509.random_serial_number())
-            .not_valid_before(datetime.utcnow())
-            .not_valid_after(datetime.utcnow() + timedelta(days=365))
-            .add_extension(
-                x509.SubjectAlternativeName(
-                    [
-                        x509.DNSName("localhost"),
-                        x509.IPAddress(host_ip),
-                    ]
-                ),
-                critical=False,
-            )
-            .sign(ca_key, hashes.SHA256(), default_backend())
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(csr.subject)
+        .issuer_name(issuer)
+        .public_key(csr.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.utcnow())
+        .not_valid_after(datetime.utcnow() + timedelta(days=365))
+        .add_extension(
+            x509.SubjectAlternativeName(
+                [
+                    x509.DNSName("localhost"),
+                    x509.IPAddress(host_ip),
+                ]
+            ),
+            critical=False,
         )
-    else:
-        dev_ip = args.zt["dev"]
-        if ":" in args.t:
-            args.t, port = args.t.split(":")
-        else:
-            port = "8833"
-        cert = (
-            x509.CertificateBuilder()
-            .subject_name(subject)
-            .issuer_name(issuer)
-            .public_key(key.public_key())
-            .serial_number(x509.random_serial_number())
-            .not_valid_before(datetime.utcnow())
-            .not_valid_after(datetime.utcnow() + timedelta(days=365))
-            .add_extension(
-                x509.SubjectAlternativeName(
-                    [
-                        x509.DNSName("localhost"),
-                        x509.IPAddress(host_ip),
-                    ]
-                ),
-                critical=False,
-            )
-            .sign(key, hashes.SHA256(), default_backend())
-        )
+        .sign(ca_key, hashes.SHA256(), default_backend())
+    )
 
     if store:
         cert_path_file_pem = os.path.join(dir, f"HOST_cert@{unique_id}.pem")
@@ -794,53 +770,24 @@ def ssl_ECDSA_key_certgen_CA(args, dir="", store=True):
             x509.NameAttribute(NameOID.USER_ID, f"{dev_platform}@{unique_id}"),
             x509.NameAttribute(NameOID.SURNAME, "{}".format(cert_data["HOST_NAME"])),
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MicroPython"),
-            x509.NameAttribute(
-                NameOID.COMMON_NAME, cert_data["USER"]),
+            x509.NameAttribute(NameOID.COMMON_NAME, cert_data["USER"]),
         ]
     )
-    host_ip = ipaddress.IPv4Address(cert_data["addrs"])
-    # if '.local' in args.t:
-    #     args.t = socket.gethostbyname(args.t)
-    if not args.zt:
-        cert = (
-            x509.CertificateBuilder()
-            .subject_name(subject)
-            .issuer_name(issuer)
-            .public_key(key.public_key())
-            .serial_number(x509.random_serial_number())
-            .not_valid_before(datetime.utcnow())
-            .not_valid_after(datetime.utcnow() + timedelta(days=1825))
-            .add_extension(
-                x509.BasicConstraints(ca=True, path_length=None),
-                critical=True,
-            )
-            .sign(key, hashes.SHA256(), default_backend())
+
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.utcnow())
+        .not_valid_after(datetime.utcnow() + timedelta(days=1825))
+        .add_extension(
+            x509.BasicConstraints(ca=True, path_length=None),
+            critical=True,
         )
-    # else:
-    #     dev_ip = args.zt["dev"]
-    #     if ":" in args.t:
-    #         args.t, port = args.t.split(":")
-    #     else:
-    #         port = "8833"
-    #     cert = (
-    #         x509.CertificateBuilder()
-    #         .subject_name(subject)
-    #         .issuer_name(issuer)
-    #         .public_key(key.public_key())
-    #         .serial_number(x509.random_serial_number())
-    #         .not_valid_before(datetime.utcnow())
-    #         .not_valid_after(datetime.utcnow() + timedelta(days=365))
-    #         .add_extension(
-    #             x509.SubjectAlternativeName(
-    #                 [
-    #                     x509.DNSName("localhost"),
-    #                     x509.IPAddress(host_ip),
-    #                 ]
-    #             ),
-    #             critical=False,
-    #         )
-    #         .sign(key, hashes.SHA256(), default_backend())
-    #     )
+        .sign(key, hashes.SHA256(), default_backend())
+    )
 
     if store:
         cert_path_file_pem = os.path.join(dir, "ROOT_CA_cert.pem")
@@ -973,11 +920,11 @@ def get_ssl_keycert(args, host=False, CA=False, dev_name=None):
     # DEVICE (key,cert pair) --> .DER (key,cert) to device
     if not host and not CA:
         if args.tfkey:
-            ssl_dict = ssl_ECDSA_key_certgen(args, dir=tempfile.gettempdir(),
-                                             dev_name=dev_name)
+            ssl_dict = ssl_ECDSA_key_certgen(
+                args, dir=tempfile.gettempdir(), dev_name=dev_name
+            )
         else:
-            ssl_dict = ssl_ECDSA_key_certgen(args, dir=UPYDEV_PATH,
-                                             dev_name=dev_name)
+            ssl_dict = ssl_ECDSA_key_certgen(args, dir=UPYDEV_PATH, dev_name=dev_name)
     # HOST (key, cert pair) --> .PEM (cert) to device (CADATA)
     elif host:
 
@@ -995,16 +942,44 @@ def get_ssl_keycert(args, host=False, CA=False, dev_name=None):
         return ssl_dict
 
 
-def add_ssl_cert(cert):
-    # device cert
-    # detect if cert is present; ask for rotation
-    pass
+# def add_ssl_cert(cert):
+#     # device cert
+#     # detect if cert is present; ask for rotation
+#     pass
+#
+#
+# def export_ssl_cert(cert):
+#     # device cert
+#     # detect if cert is present; ask for new cert if present
+#     pass
 
 
-def export_ssl_cert(cert):
-    # device cert
-    # detect if cert is present; ask for new cert if present
-    pass
+def get_ssl_cert_status(cert):
+    with open(cert, "rb") as cert_data:
+        status_cert = cert_data.read()
+    cert_pem = x509.load_pem_x509_certificate(status_cert)
+
+    if cert_pem.not_valid_after < datetime.now():
+        print(
+            f"{os.path.split(cert)[-1]}: Not Valid {XF} @ "
+            f"{cert_pem.not_valid_after}"
+        )
+    else:
+        diff = cert_pem.not_valid_after - datetime.now()
+        diff = diff - timedelta(microseconds=diff.microseconds)
+        print(f"{os.path.split(cert)[-1]}: Valid {CHECK} " f"@ {diff} left.")
+        if diff < timedelta(days=30):
+            print(
+                "\u001b[33;1mWARNING: SSL certificate will be invalid soon\n"
+                "please generate a new one.\u001b[0m"
+            )
+
+
+def get_ssl_cert_cn(cert):
+    with open(cert, "rb") as cert_data:
+        status_cert = cert_data.read()
+    cert_pem = x509.load_pem_x509_certificate(status_cert)
+    return cert_pem.subject
 
 
 def rotate_ssl_keycert():
@@ -1450,10 +1425,30 @@ def keygen_action(args, unkwargs, **kargs):
                             with open(abs_cert, "wb") as cwd_root_cert:
                                 cwd_root_cert.write(ex_cert)
                             print(
-                                f"Device {cert} certificate added to verify locations.")
+                                f"Device {cert} certificate added to verify locations."
+                            )
                     sys.exit()
 
-                # generate
+                if "status" in rest_args:
+                    all_certs = [
+                        crt
+                        for crt in os.listdir(UPYDEV_PATH)
+                        if crt.startswith("SSL_certificate") and crt.endswith(".pem")
+                    ]
+                    for cert in all_certs:
+                        abs_cert = os.path.join(UPYDEV_PATH, cert)
+                        name = get_ssl_cert_cn(abs_cert)
+                        cn = name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0]
+                        if args.a:
+                            print(f"{cn.value:10} -> ", end="")
+                            get_ssl_cert_status(abs_cert)
+                        else:
+                            if cn.value == dev_name:
+                                print(f"{cn.value:10} -> ", end="")
+                                get_ssl_cert_status(abs_cert)
+                    sys.exit()
+
+                    # generate
                 print("Generating SSL ECDSA key, cert for : {}".format(dev_name))
                 # check if device in ZeroTier group.
                 args.zt = check_zt_group(dev_name, args)
@@ -1464,10 +1459,16 @@ def keygen_action(args, unkwargs, **kargs):
                     sys.exit()
             # Host
             elif "host" in rest_args:
-
-                # generate
                 unique_id = hexlify(os.environ["USER"].encode()).decode()[:10]
                 cert = f"HOST_cert@{unique_id}.pem"
+
+                if "status" in rest_args:
+                    print("ID: {}".format(unique_id))
+                    abs_cert = os.path.join(UPYDEV_PATH, cert)
+                    get_ssl_cert_status(abs_cert)
+                    sys.exit()
+
+                # generate
                 if cert in os.listdir(UPYDEV_PATH):
                     nk = input(
                         "Host certificate detected, " "generate new one? [y/n]: "
@@ -1490,6 +1491,13 @@ def keygen_action(args, unkwargs, **kargs):
 
             # CA
             elif "CA" in rest_args:
+
+                # status
+                if "status" in rest_args:
+                    cert = "ROOT_CA_cert.pem"
+                    abs_cert = os.path.join(UPYDEV_PATH, cert)
+                    get_ssl_cert_status(abs_cert)
+                    sys.exit()
                 # rotate CA cert in device
 
                 if "rotate" in rest_args:
@@ -1637,4 +1645,5 @@ def keygen_action(args, unkwargs, **kargs):
     #    -->: Host keypair (unique)
     #    -->: Device keypair (unique)
     #  HOST send Public Key (cert) --> to CADATA
+    #  DEVICE send Public Key (cert) --> to CADATA
     #  DEVICE send Public Key (cert) --> to CADATA
