@@ -961,13 +961,13 @@ def get_ssl_cert_status(cert):
 
     if cert_pem.not_valid_after < datetime.now():
         print(
-            f"{os.path.split(cert)[-1]}: Not Valid {XF} @ "
+            f"{os.path.basename(cert)}: Not Valid {XF} @ "
             f"{cert_pem.not_valid_after}"
         )
     else:
         diff = cert_pem.not_valid_after - datetime.now()
         diff = diff - timedelta(microseconds=diff.microseconds)
-        print(f"{os.path.split(cert)[-1]}: Valid {CHECK} " f"@ {diff} left.")
+        print(f"{os.path.basename(cert)}: Valid {CHECK} " f"@ {diff} left.")
         if diff < timedelta(days=30):
             print(
                 "\u001b[33;1mWARNING: SSL certificate will be invalid soon\n"
@@ -1041,7 +1041,7 @@ def rsa_sign(args, file, **kargs):
     print(f"Key ID: {dev.wr_cmd('pk', silent=True, rtn_resp=True)}")
     dev.wr_cmd(f"sg = pk.signfile('{_sigfile}')", silent=False, follow=True)
     sg = dev.wr_cmd("sg", silent=True, rtn_resp=True)
-    with open(f"{file.split('/')[-1]}.sign", "wb") as signfile:
+    with open(f"{os.path.basename(file)}.sign", "wb") as signfile:
         signfile.write(sg)
     dev.wr_cmd(f"import os;os.remove('{_sigfile}')")
     dev.wr_cmd("import gc;del(sg);gc.collect()")
@@ -1417,7 +1417,7 @@ def keygen_action(args, unkwargs, **kargs):
                     if unknown_args:
                         args.f += unknown_args
                     for dev_cert in args.f:
-                        cert = os.path.split(dev_cert)[-1]
+                        cert = os.path.basename(dev_cert)
                         abs_cert = os.path.join(UPYDEV_PATH, cert)
                         if os.path.exists(dev_cert):
                             with open(dev_cert, "rb") as root_cert:

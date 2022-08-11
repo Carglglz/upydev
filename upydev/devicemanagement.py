@@ -669,7 +669,7 @@ def devicemanagement_action(args, unkwargs, **kargs):
             else:
                 print(f'Device: {_dev_name} registered')
 
-        print(f'Reload {os.path.split(filename)[-1]} with "$ source {filename}" '
+        print(f'Reload {os.path.basename(filename)} with "$ source {filename}" '
               'or open a new terminal to apply the new command')
         sys.exit()
 
@@ -795,7 +795,7 @@ def devicemanagement_action(args, unkwargs, **kargs):
                     with open(f'{group_file}.config', 'w', encoding='utf-8') as group:
                         group.write(json.dumps(devices))
                     print('Upy devices group updated!')
-                    print(f"GROUP NAME: {group_file.split('/')[-1]}")
+                    print(f"GROUP NAME: {os.path.basename(group_file)}")
                     print(f'# DEVICES ADDED: {len(group_dict.keys())}')
                     for key in group_dict.keys():
                         dt = check_device_type(group_dict[key][0])
@@ -815,7 +815,7 @@ def devicemanagement_action(args, unkwargs, **kargs):
                         with open(f'{group_file}.config', 'w') as group:
                             group.write(json.dumps(devices))
                         print('Upy devices group updated!')
-                        print(f"GROUP NAME: {group_file.split('/')[-1]}")
+                        print(f"GROUP NAME: {os.path.basename(group_file)}")
                         print(f'# DEVICES REMOVED: {len(removed_devs.keys())}')
                         for key in removed_devs.keys():
                             dt = check_device_type(removed_devs[key][0])

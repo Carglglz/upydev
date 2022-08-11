@@ -91,7 +91,7 @@ class OTAServer:
                     try:
                         my_p = getpass.getpass(
                             prompt="Enter passphrase for key "
-                                   f"'{self.key.split('/')[-1]}':",
+                                   f"'{os.path.basename(self.key)}':",
                             stream=None)
                         self.context.load_cert_chain(keyfile=self.key,
                                                      certfile=self.cert,

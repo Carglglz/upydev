@@ -525,13 +525,13 @@ def handle_action(args, exit=True, device_name=None):
                 fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),
                               device=dev_name)
 
-                print(f'Removing device private key {os.path.split(key)[-1]} '
+                print(f'Removing device private key {os.path.basename(key)} '
                       f'from host...')
                 try:
                     os.remove(key)
                     os.remove(key_pem)
-                    old_key = os.path.split(key)[-1].replace('~', '')
-                    old_key_pem = os.path.split(key_pem)[-1].replace('~', '')
+                    old_key = os.path.basename(key).replace('~', '')
+                    old_key_pem = os.path.basename(key_pem).replace('~', '')
                     if old_key in os.listdir(UPYDEV_PATH):
                         try:
                             os.remove(os.path.join(UPYDEV_PATH, old_key))
@@ -543,12 +543,12 @@ def handle_action(args, exit=True, device_name=None):
                     print(e)
                 try:
                     import shutil
-                    if os.path.split(cert_pem)[-1] in os.listdir(UPYDEV_PATH):
+                    if os.path.basename(cert_pem) in os.listdir(UPYDEV_PATH):
                         try:
                             os.remove(os.path.join(UPYDEV_PATH,
-                                      os.path.split(cert_pem)[-1]))
+                                      os.path.basename(cert_pem)))
                             os.remove(os.path.join(UPYDEV_PATH,
-                                                   os.path.split(cert)[-1]))
+                                                   os.path.basename(cert)))
                         except Exception:
                             pass
 
@@ -565,8 +565,8 @@ def handle_action(args, exit=True, device_name=None):
                 if key:
                     try:
                         import shutil
-                        new_key = os.path.split(key)[-1]
-                        new_cert = os.path.split(cert)[-1]
+                        new_key = os.path.basename(key)
+                        new_cert = os.path.basename(cert)
                         if new_key in os.listdir(UPYDEV_PATH):
                             os.rename(os.path.join(UPYDEV_PATH, new_key),
                                       os.path.join(UPYDEV_PATH, f'~{new_key}'))
@@ -583,7 +583,7 @@ def handle_action(args, exit=True, device_name=None):
                               device=dev_name)
                 try:
                     print('Rotating CA cert in device...')
-                    rot_cert = os.path.split(cert)[-1]
+                    rot_cert = os.path.basename(cert)
                     new_cert = rot_cert[1:]
                     dev = Device(args.t, args.p, init=True, ssl=args.wss, auth=args.wss)
                     dev.wr_cmd(f"import os;os.rename('{rot_cert}', '{new_cert}')")
@@ -602,7 +602,7 @@ def handle_action(args, exit=True, device_name=None):
                 fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),
                               device=dev_name)
                 if args.rkey:
-                    pvkey_id = key_dict['Files'][0].split('/')[-1]
+                    pvkey_id = os.path.basename(key_dict['Files'][0])
                     print(f'Removing private key {pvkey_id} from host...')
                     try:
                         os.remove(key_dict['Files'][0])
@@ -908,11 +908,11 @@ if args.G is not None:
     try:
         group_file = args.G
         # print(group_file)
-        if '{}.config'.format(group_file) not in os.listdir() or args.g:
+        if f'{group_file}.config' not in os.listdir() or args.g:
             group_file = os.path.join(UPYDEV_PATH, args.G)
         if args.m not in KW_NOT_GROUP:
-            print('Sending command to group: {}'.format(group_file.split('/')[-1]))
-            with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+            print(f'Sending command to group: {os.path.basename(group_file)}')
+            with open(f'{group_file}.config', 'r', encoding='utf-8') as group:
                 devices = json.loads(group.read())
                 # print(devices)
             devs = devices.keys()
@@ -926,7 +926,7 @@ if args.G is not None:
                 print('')
                 print('━'*columns)
                 args.t, args.p = address_entry_point(dev, args.G)
-                print('Device Name: {}'.format(dev))
+                print(f'Device Name: {dev}')
                 dev_addr = devices[dev][0]
                 dev_pass = devices[dev][1]
                 dev_type = check_device_type(dev_addr)
@@ -935,8 +935,8 @@ if args.G is not None:
                     dev_pass = devices[dev][0]
                     dev_type = check_device_type(dev_addr)
                 _dev_name = dev
-                print('{} @ {}'.format(dev_type, dev_addr))
-                print('Sending command {} ...'.format(args.m), end='\n\n')
+                print(f'{dev_type} @ {dev_addr}')
+                print(f'Sending command {args.m} ...', end='\n\n')
                 if args.gf:
                     if args.m == 'get' or args.m == 'put':
                         if dev not in os.listdir():
@@ -974,12 +974,11 @@ if args.GP is not None:
     try:
         group_file = args.GP
         # print(group_file)
-        if '{}.config'.format(group_file) not in os.listdir() or args.g:
+        if f'{group_file}.config' not in os.listdir() or args.g:
             group_file = os.path.join(UPYDEV_PATH, args.GP)
 
-        print('Sending command in parallel to group: {}'.format(
-            group_file.split('/')[-1]))
-        with open('{}.config'.format(group_file), 'r', encoding='utf-8') as group:
+        print(f'Sending command in parallel to group: {os.path.basename(group_file)}')
+        with open(f'{group_file}.config', 'r', encoding='utf-8') as group:
             devices = json.loads(group.read())
             # print(devices)
         devs = devices.keys()
