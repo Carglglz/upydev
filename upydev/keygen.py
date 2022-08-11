@@ -207,7 +207,7 @@ for command, subcmd in KG_CMD_DICT_PARSER.items():
     if subcmd["subcmd"]:
         _subparser.add_argument("subcmd", **subcmd["subcmd"])
     for option, op_kargs in subcmd["options"].items():
-        _subparser.add_argument(option, **op_kargs)
+        _subparser.add_argument(option, f"-{option}", **op_kargs)
 
 
 def parseap(command_args):
