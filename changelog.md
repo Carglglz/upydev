@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.3] Unreleased Github Repo [develop]
 ## Fix
 - `wss_repl.py` dropped `websocket_help` dependency.
+- `upyutils/develop/upynotify.py` pwm bug, `upytuils/ble/ble_uart_peripheral.py` rxbuf bug.
+- wss WebSocketDevices now use CA-signed certificate
+  (CA key/cert generated with `$ upydev kg ssl CA`)
+- allow_abrev bug for `$ upydev kg ssl dev status -a` option (`--a` for python3.8+).
+- fix fast get/dsync shasum animation for BleDevices.
+- improve certificate info issuer/subject.
+- fix dev_platform in `net scan` for esp8266
+## Added
+- `uptime` and `cycles` utils/commands.
+- upylog file rotation, so file log size does not go over a limit size. (2KB default)
+- uptime.py and cycles.py to upyutils_dir (so it can be installed with `update_upyutils` cmd)
+- `mv` command to change file names.
+- `kg ssl CA` to generate a ROOT CA key/cert to be able to generate device's and host CA signed certificate.
+- `kg ssl host` to generate a HOST key/cert signed by ROOT CA.
+- `kg ssl dev add/export` to add or export a device certificate.
+- `kg ssl CA add/export` to add or export a ROOT CA key/cert pair.
+- `kg ssl dev/host/CA status` to check expiration date of certificates.
+-  The new CA-host-dev certificate chain of trust model allows log in to wss WebSocketDevices from multiple locations/hosts (by exporting the ROOT CA key/cert pair to a new host and add them there to generate the proper key/cert for that host)
 ## [0.4.2] - 2022-07-10
 ## Fix
 - fix lcd ~ home user expand in shl & ssl key,cert gen for zerotier devices with custom port
