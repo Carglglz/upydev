@@ -56,6 +56,8 @@ class Logger:
         return "LVL: {}".format(level)
 
     def setLevel(self, level):
+        if isinstance(level, str):
+            level = {v: k for k, v in _level_dict.items()}.get(level)
         self.level = level
 
     def _dt_format(self, number):
