@@ -76,6 +76,7 @@ while True:
 dev_platform = dev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
 
 dev.platform = dev_platform
+dev.dev_platform = dev_platform
 
 if args.nem or not args.wss:
     print('WebREPL connected')
