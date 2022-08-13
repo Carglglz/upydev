@@ -83,7 +83,6 @@ class Logger:
                 with open(self.logfile, 'wb') as flog:
                     flog.write(b'')
 
-
     def file_log_msg(self, msg):
         self.rotate_log()
         with open(self.logfile, 'ab') as flog:
