@@ -533,8 +533,13 @@ CTIME = dict(help="measure execution time of a shell command",
              options={})
 
 CONFIG = dict(help="set or check config (from *_config.py files)#",
-              desc="* needs config module\n* to set config --> [config]: "
-                   "[parameter]=[value]",
+              desc="* needs config module\n"
+                   "* to add config: $ config add [name]\n"
+                   "* to set config: $ config [name]: [parameter]=[value]"
+                   " [parameter1]=[value1] ...\n"
+                   "(string values must be double+single quoted, e.g: "
+                   "$ ... parameterA=\"'hello'\" )\n"
+                   "* to check config: $ config [name] [-y]",
               subcmd=dict(help='indicate parameter to set or check ',
                           default=[],
                           metavar='parameter',

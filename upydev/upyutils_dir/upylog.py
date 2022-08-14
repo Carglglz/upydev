@@ -48,6 +48,9 @@ class Logger:
         self._n = None
         self.rotate = rotate
         self._dt_list = [0, 1, 2, 3, 4, 5]
+        if isinstance(self.level, str):
+            self.setLevel(l_level)
+        self.logfile_level = self.level
 
     def _level_str(self, level):
         lev = _level_dict.get(level)
@@ -59,6 +62,11 @@ class Logger:
         if isinstance(level, str):
             level = {v: k for k, v in _level_dict.items()}.get(level)
         self.level = level
+
+    def setLogfileLevel(self, level):
+        if isinstance(level, str):
+            level = {v: k for k, v in _level_dict.items()}.get(level)
+        self.logfile_level = level
 
     def _dt_format(self, number):
         self._n = str(number)
@@ -82,17 +90,19 @@ class Logger:
     def rotate_log(self):
         if self.logfile in os.listdir():
             if os.stat(self.logfile)[6] > self.rotate:
-                with open(self.logfile, 'wb') as flog:
-                    flog.write(b'')
+                os.rename(self.logfile, f"{self.logfile}.1")
 
-    def file_log_msg(self, msg):
-        self.rotate_log()
-        with open(self.logfile, 'ab') as flog:
-            flog.write(msg)
-            flog.write('\n')
+    def file_log_msg(self, msg, level):
+        if level >= (self.logfile_level or _level):
+            if self.rotate:
+                self.rotate_log()
+            with open(self.logfile, 'ab') as flog:
+                flog.write(msg)
+                flog.write('\n')
 
     def file_log_exception(self, ex):
-        self.rotate_log()
+        if self.rotate:
+            self.rotate_log()
         with open(self.logfile, 'ab') as flog:
             sys.print_exception(ex, flog)
             flog.write('\n')
@@ -113,11 +123,12 @@ class Logger:
             if not args:
                 print(' '.join([msg]), file=_stream)
                 if self.log_to_file:
-                    self.file_log_msg(''.join([self.log_message_info, msg]))
+                    self.file_log_msg(''.join([self.log_message_info, msg]), level)
             else:
                 print(' '.join([msg % args]), file=_stream)
                 if self.log_to_file:
-                    self.file_log_msg(''.join([self.log_message_info, msg % args]))
+                    self.file_log_msg(''.join([self.log_message_info, msg % args]),
+                                      level)
 
     def debug(self, msg, *args):
         self.log(DEBUG, msg, *args)
@@ -147,7 +158,7 @@ def getLogger(name, log_to_file=False, rotate=_rotate):
         return _loggers[name]
     ulogger = Logger(name, l_level=_level,
                      log_to_file=log_to_file, logfile=_filename,
-                     f_time=_asciitime, l_format=_format)
+                     f_time=_asciitime, l_format=_format, rotate=rotate)
     _loggers[name] = ulogger
     return ulogger
 
