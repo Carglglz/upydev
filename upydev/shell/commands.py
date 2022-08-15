@@ -2,7 +2,8 @@ import os
 import argparse
 import shlex
 from upydev.shell.constants import (AUTHMODE_DICT,
-                                    shell_commands, custom_sh_cmd_kw, shell_message)
+                                    shell_commands, custom_sh_cmd_kw, shell_message,
+                                    CEND, MAGENTA_bold)
 from upydev.shell.common import (du, _ft_datetime, SHELL_ALIASES, ls, FileArgs,
                                  find_localip, SHELL_FUNCTIONS, print_table)
 from upydev.shell.parser import shparser
@@ -1403,10 +1404,14 @@ class ShellCmds:
                 self.flags.local_path['p'] = '~:/'
                 if not self.flags.show_local_path['s']:
                     self.flags.local_path['p'] = ''
+                    self.flags.shell_prompt['s'][-2] = ('class:branch', "")
             elif not self.flags.show_local_path['s']:
                 self.flags.local_path['p'] = ''
+                self.flags.shell_prompt['s'][-2] = ('class:branch', "")
             else:
-                self.flags.local_path['p'] = os.getcwd().split('/')[-1]+':/'
+                gitb = self.show_git_branch()
+                self.flags.local_path['p'] = f"{os.path.basename(os.getcwd())}:/"
+                self.flags.shell_prompt['s'][-2] = ('class:branch', f"{gitb}")
 
             self.flags.shell_prompt['s'][0] = ('class:userpath',
                                                self.flags.local_path['p'])
@@ -1420,6 +1425,20 @@ class ShellCmds:
             dir_names_or_pattrn = rest_args
             ls(*dir_names_or_pattrn, hidden=args.a)
             return
+
+    def show_git_branch(self):
+        try:
+            git_branch = subprocess.run(["git", "branch",
+                                         "--show-current"],
+                                        check=True,
+                                        capture_output=True)
+            if git_branch.returncode == 0:
+                return f"\ue0a0 [{git_branch.stdout.decode().strip()}] "
+            else:
+                return ""
+
+        except Exception:
+            return ""
 
     def get_rprompt(self):
 

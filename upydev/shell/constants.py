@@ -19,6 +19,7 @@ style_p = Style.from_dict({
     'pound':    'ansiblue bold',
     'host':     'ansigreen bold',
     'path':     'ansiblue bold',
+    'branch':   '#ffffff'
 })
 
 # apply shell config if exists:
@@ -35,6 +36,7 @@ shell_message = [
     ('class:host',     ''),  # 3
     ('class:colon',    ':'),
     ('class:path',     '~ '),
+    ('class:branch',   ''),
     ('class:pound',    '$ '),
 ]
 
