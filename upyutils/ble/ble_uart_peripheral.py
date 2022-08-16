@@ -4,6 +4,7 @@ import bluetooth
 from ble_advertising import advertising_payload
 import time
 from micropython import const
+import sys
 
 try:
     from localname import NAME as LOCALNAME
@@ -46,7 +47,7 @@ class BLEUART:
             _gap_name = LOCALNAME
             name = LOCALNAME
         else:
-            _gap_name = 'ESP32@{}'.format(uuid)
+            _gap_name = f"{sys.platform.upper()}@{uuid}"
         try:
             self._ble.config(gap_name=_gap_name, mtu=515, rxbuf=512)
         except Exception:

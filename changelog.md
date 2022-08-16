@@ -8,12 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Fix
 - `wss_repl.py` dropped `websocket_help` dependency.
 - `upyutils/develop/upynotify.py` pwm bug, `upytuils/ble/ble_uart_peripheral.py` rxbuf bug.
-- wss WebSocketDevices now use CA-signed certificate
-  (CA key/cert generated with `$ upydev kg ssl CA`)
+- wss WebSocketDevices now use ROOT CA-signed certificate
+  (ROOT CA key/cert generated with `$ upydev kg ssl CA`)
 - allow_abrev bug for `$ upydev kg ssl dev status -a` option (`--a` for python3.8+).
 - fix fast get/dsync shasum animation for BleDevices.
 - improve certificate info issuer/subject.
 - fix dev_platform in `net scan` for esp8266
+- now serial repl works with ``screen`` too (using ``repl -sc``) (in case ``picocom`` is not available)
 ## Added
 - `uptime` and `cycles` utils/commands.
 - upylog file rotation, so file log size does not go over a limit size. (2KB default)

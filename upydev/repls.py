@@ -8,9 +8,15 @@ import argparse
 rawfmt = argparse.RawTextHelpFormatter
 
 
-repl_options = ['t', 'p', 'wss', 'rkey']
+repl_options = ['t', 'p', 'wss', 'rkey', 'sc']
+
+ld = ("\n\nREPL type will be selected by device class:\n"
+      "- SerialDevice -> SerialREPL: uses picocom, see -sc flag.\n"
+      "- WebSocketDevice -> WebREPL/WebSecREPL.\n"
+      "- BleDevice -> BleREPL. \n")
 
 REPLS = dict(help="enter REPL",
+             desc=ld,
              subcmd={},
              options={"-t": dict(help="device target address",
                                  required=True),
@@ -23,7 +29,12 @@ REPLS = dict(help="enter REPL",
                       "-rkey": dict(help='generate new password after exit '
                                          '(WebSocketDevices)',
                                     required=False,
-                                    action='store_true')})
+                                    action='store_true'),
+                      "-sc": dict(help="use screen instead of picocom.\n"
+                                  "Use CTRL-a, k  to exit",
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
 
 REPL_CMD_DICT_PARSER = {"rpl": REPLS}
 
@@ -47,8 +58,13 @@ subrplparser_cmd = rplparser.add_subparsers(title='commands', prog='', dest='m',
                                             )
 
 for command, subcmd in REPL_CMD_DICT_PARSER.items():
+    if "desc" in subcmd.keys():
+        _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
+    else:
+        _desc = subcmd["help"]
     _subparser = subrplparser_cmd.add_parser(command, help=subcmd['help'],
-                                             description=subcmd['help'])
+                                             description=_desc,
+                                             formatter_class=rawfmt)
     if subcmd['subcmd']:
         _subparser.add_argument('subcmd', **subcmd['subcmd'])
     for option, op_kargs in subcmd['options'].items():
@@ -115,7 +131,10 @@ def wssrepl(args, device):
 
 def srepl(args, device):
     s_port = args.t
-    serial_repl_cmd_str = 'picocom -t \x02 {} -b{} -q '.format(s_port, args.p)
+    if not args.sc:
+        serial_repl_cmd_str = f"picocom -t \x02 {s_port} -b{args.p} -q "
+    else:
+        serial_repl_cmd_str = f"screen {s_port} {args.p}"
     serial_repl_cmd = shlex.split(serial_repl_cmd_str)
     try:
         subprocess.call(serial_repl_cmd)
@@ -160,7 +179,10 @@ def repl_action(args, unkwargs, **kargs):
                 wssrepl(args, dev_name)
         elif dt == 'SerialDevice':
             print('Initiating SerialREPL terminal for {} ...'.format(dev_name))
-            print('Do C-a, C-x to exit')
+            if not args.sc:
+                print('Do C-a, C-x to exit')
+            else:
+                print('Do C-a, k to exit')
             Device(args.t, args.p, init=True)
             srepl(args, dev_name)
 

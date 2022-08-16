@@ -19,8 +19,13 @@ rawfmt = argparse.RawTextHelpFormatter
 shsr_cmd_kw = ["repl", "flash"]
 
 SREPL = dict(help="enter REPL",
+             desc="By default uses picocom. Use CTRL-a, CTRL-x  to exit",
              subcmd={},
-             options={})
+             options={"-sc": dict(help="use screen instead of picocom\n"
+                                  "Use CTRL-a, k  to exit",
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
 
 JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
                 subcmd={},
@@ -185,12 +190,18 @@ class ShellSrCmds(ShellCmds):
         # To be implemented for each shell to manage special commands, e.g. fwr
         if cmd == 'repl':
             print('<-- Device {} MicroPython -->'.format(self.dev_name))
-            print('Use CTRL-a,CTRL-x to exit')
+
+            # TODO: add -s flag to use screen instead of picocom
             try:
                 self.dev.disconnect()
             except Exception:
                 pass
-            serial_repl_cmd_str = 'picocom {} -b115200'.format(topargs.p)
+            if not args.sc:
+                print('Use CTRL-a,CTRL-x to exit')
+                serial_repl_cmd_str = 'picocom {} -b115200'.format(topargs.p)
+            else:
+                print('Use CTRL-a, k  to exit')
+                serial_repl_cmd_str = 'screen {} 115200'.format(topargs.p)
             serial_repl_cmd = shlex.split(serial_repl_cmd_str)
             try:
                 subprocess.call(serial_repl_cmd)
