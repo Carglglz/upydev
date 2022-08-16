@@ -66,7 +66,8 @@ KG = dict(
         "\n- rotate: To rotate CA key/cert pair old->new or"
         " new->old"
         "\n- add: add a device cert to upydev path verify location."
-        "\n- export: export CA or device cert to cwd.",
+        "\n- export: export CA or device cert to cwd."
+        "\n- status: check datetime certificate validity.",
         metavar="subcmd",
         choices=["gen", "add", "export", "rotate", "status"],
         default="gen",

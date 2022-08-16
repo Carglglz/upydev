@@ -67,6 +67,8 @@ GET = dict(help="download files from device",
                                type=int)})
 
 DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
+             desc="* needs shasum.py in device\n"
+                  "* -d flag needs upysh.py in device or -fg flag",
              subcmd=dict(help='indicate a dir/pattern to '
                          'sync',
                          default=['.'],

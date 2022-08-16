@@ -1,6 +1,5 @@
 from upydevice import Device, check_device_type
 import sys
-from upydev.helpinfo import see_help
 import getpass
 import os
 import json
@@ -409,7 +408,6 @@ def devicemanagement_action(args, unkwargs, **kargs):
                     if dt == 'WebSocketDevice':
                         print('Target Address and Password required, see -t, -p or -sec')
                         sh_cmd(f"{args.m} -h")
-                        # see_help(command)
                         sys.exit()
                     elif dt == 'SerialDevice':
                         args.p = 115200
@@ -467,41 +465,6 @@ def devicemanagement_action(args, unkwargs, **kargs):
             print('{} {} settings saved in ZeroTier group!'.format(dt, upydev_name))
 
         sys.exit()
-
-    # UPYDEV LOOKS FOR UPYDEV_.CONFIG FILE
-    # if args.t is None:
-    #     try:
-    #         file_conf = 'upydev_.config'
-    #         if file_conf not in os.listdir() or args.g:
-    #             file_conf = os.path.join(UPYDEV_PATH, file_conf)
-    #
-    #         with open(file_conf, 'r') as config_file:
-    #             upy_conf = json.loads(config_file.read())
-    #         args.t = upy_conf.get('addr')
-    #         if not args.t:
-    #             args.t = upy_conf.get('ip')
-    #         args.p = upy_conf['passwd']
-    #         if 'name' in upy_conf:
-    #             _dev_name = upy_conf['name']
-    #         else:
-    #             _dev_name = 'upydevice'
-    #         # @ ENTRY POINT
-    #         # if args.b is not None:
-    #         #     if "@" in args.b:
-    #         #         gf, entryp = args.b.split('@')
-    #         #         args.t, args.p = address_entry_point(entryp, gf, args=args)
-    #         if vars(args)['@']:
-    #             entryp = vars(args)['@'][0]
-    #             args.t, args.p = address_entry_point(entryp, args=args)
-    #         if args.apmd:
-    #             args.t = '192.168.4.1'
-    #         if args.st:
-    #             print('Target:{}'.format(args.t))
-    #     except Exception:
-    #         print('upydev_.config file not found, please provide target and password or\
-    #          create config file with command "config"')
-    #         see_help('config')
-    #         sys.exit()
 
     # CHECK
 
@@ -854,11 +817,5 @@ def devicemanagement_action(args, unkwargs, **kargs):
             print(e)
             print('file not found, please create a group first')
             sys.exit()
-
-    # if args.m == 'see':
-    #     if args.c:
-    #         see_help(args.c)
-    #     else:
-    #         see_help(args.m)
 
     sys.exit()

@@ -3,7 +3,6 @@ import time
 import sys
 from datetime import timedelta
 from upydevice import Device, DeviceNotFound, DeviceException
-from upydev.helpinfo import see_help
 import glob
 
 
@@ -179,11 +178,9 @@ class BleFileIO:
                 self.dev.cmd("f.close()", silent=True)
         return True
 
-
 def bletool(args, dev_name):
     if not args.f and not args.fre:
         print('args -f or -fre required:')
-        see_help(args.m)
         sys.exit()
     try:
         dev = Device(args.t, args.p, init=True)
@@ -192,7 +189,6 @@ def bletool(args, dev_name):
             dev.len_buffer = 250
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
-                see_help(args.m)
                 sys.exit()
             if args.f:
                 if os.path.isdir(args.f):
@@ -327,7 +323,6 @@ def bletool(args, dev_name):
             dev.len_buffer = 512
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
-                see_help(args.m)
                 sys.exit()
             if args.f:
                 if '/' in args.f:

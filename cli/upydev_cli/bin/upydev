@@ -707,11 +707,6 @@ if args.m in help_actions and '-h' not in unknown_args:
             see_docs(args, unknown_args)
             sys.exit()
 
-# if args.m not in keywords_mode and args.m.startswith('%'):
-#     action = args.m.replace('%', '')
-#     see_help(action)
-#     sys.exit()
-
 if vars(args)['@']:
     n_devices = len(vars(args)['@'])
 else:

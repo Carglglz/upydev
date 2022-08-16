@@ -3,7 +3,6 @@ import time
 import sys
 from datetime import timedelta
 from upydevice import Device, DeviceNotFound, DeviceException
-from upydev.helpinfo import see_help
 import glob
 
 
@@ -178,7 +177,7 @@ class SerialFileIO:
 def serialtool(args, dev_name):
     if not args.f and not args.fre:
         print('args -f or -fre required:')
-        see_help(args.m)
+        #see_help(args.m)
         sys.exit()
     try:
         dev = Device(args.t, args.p, init=True)
@@ -186,7 +185,7 @@ def serialtool(args, dev_name):
         if args.m == 'put':
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
-                see_help(args.m)
+                #see_help(args.m)
                 sys.exit()
             if args.f:
                 if os.path.isdir(args.f):
@@ -318,7 +317,7 @@ def serialtool(args, dev_name):
         elif args.m == 'get':
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
-                see_help(args.m)
+                #see_help(args.m)
                 sys.exit()
             if args.f:
                 if '/' in args.f:

@@ -10,7 +10,6 @@ from upydev import websocket_helper
 from upydev import wss_helper_host
 from upydevice import Device, DeviceNotFound, DeviceException
 from upydevice.wsclient import load_custom_CA_data
-from upydev.helpinfo import see_help
 from upydev import __path__ as _CA_PATH
 import glob
 
@@ -570,12 +569,10 @@ def wstool(args, dev_name):
             dev_name = vars(args)['@']
     if not args.f and not args.fre:
         print('args -f or -fre required:')
-        see_help(args.m)
         sys.exit()
     if args.m == 'put':
         if not args.f and not args.fre:
             print('args -f or -fre required:')
-            see_help(args.m)
             sys.exit()
         if args.f:
             if os.path.isdir(args.f):
@@ -713,7 +710,6 @@ def wstool(args, dev_name):
     elif args.m == 'get':
         if not args.f and not args.fre:
             print('args -f or -fre required:')
-            see_help(args.m)
             sys.exit()
         if args.f:
             if '/' in args.f:
