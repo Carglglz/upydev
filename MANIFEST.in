@@ -1,6 +1,4 @@
 include README.md
-include upydev/esp32h.config
-include upydev/help.config
 include upydev/upyutils_dir/sync_tool.py
 include upydev/upyutils_dir/upylog.py
 include upydev/upyutils_dir/upynotify.py

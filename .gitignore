@@ -26,3 +26,4 @@ _legacy/*
 _legacy
 
 tests/_tmp_script.py
+*.config
