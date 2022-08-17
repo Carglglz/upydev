@@ -45,7 +45,7 @@ usag = """%(prog)s command [options]\n
 _help_subcmds = "%(prog)s [command] -h to see further help of any command"
 
 ld = """\n\nREPL type will be selected by device (address) class:\n\n\
-    SerialDevice -> SerialREPL (needs picocom)\n\n    WebSocketDevice -> WebREPL/\
+    SerialDevice -> SerialREPL (needs picocom or screen)\n\n    WebSocketDevice -> WebREPL/\
 WebSecREPL\n\n    BleDevice -> BleREPL"""
 
 rplparser = argparse.ArgumentParser(prog="upydev",
