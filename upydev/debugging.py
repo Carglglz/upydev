@@ -581,7 +581,7 @@ def stream_test(args, dev, mode='download'):
         dev.cmd_nb("w_stream_writer('{}', 8005, {}, {})".format(local_ip,
                                                                 args.chunk_tx*_kB,
                                                                 args.total_size*_MB),
-                   follow=True)
+                   follow=False, block_dev=False)
         conn, addr = server_socket.accept()
         soc_timeout = 1
         conn.settimeout(soc_timeout)
