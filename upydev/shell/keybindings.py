@@ -725,7 +725,8 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                 if '_tmp_script.py' in os.listdir():
                     with open('_tmp_script.py', 'r') as fbuff:
                         filebuffer = fbuff.read()
-                    dev.paste_buff(filebuffer)
+                    dev.paste_buff(f"print('')\n{filebuffer}")
+                    dev.flush_conn()
                     print('Temp Buffer loaded do CTRL-D to execute or CTRL-C to cancel')
                 # dev.wr_cmd('\x04', follow=True)
                 else:
