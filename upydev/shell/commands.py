@@ -569,6 +569,8 @@ class ShellCmds:
                                                                        'HIDDEN'))
                         print('┣{0}━╋━{1}━╋━{2}━╋━{3}━╋━{4}━╋━{5}━┫'.format(
                                         '━'*20, '━'*25, '━'*10, '━'*15, '━'*15, '━'*10))
+                        if isinstance(scan, list):
+                            scan.sort(key=lambda x: x[3], reverse=True)
                         for net in scan:
                             netscan = net
                             auth = AUTHMODE_DICT[netscan[4]]
