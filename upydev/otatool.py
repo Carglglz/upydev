@@ -66,8 +66,6 @@ class OTAServer:
             self.host_fwd = self.dev.hostname
             self.host = zt
         if tls:
-            self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
             id_bytes = self.dev.wr_cmd("from machine import unique_id; unique_id()",
                                        silent=True, rtn_resp=True)
             unique_id = hexlify(id_bytes).decode()
@@ -80,11 +78,9 @@ class OTAServer:
             with open(self.root, 'r') as root_ca:
                 self.cadata += root_ca.read()
                 self.cadata += '\n'
-            # with open(self.cert, 'rb') as cert:
-            #     self.cadata += cert.read()
-            #     self.cadata += b'\n\n'
-            with open(self.dev_cert, 'r') as dev_cert:
-                self.cadata += dev_cert.read()
+            self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH,
+                                                      cadata=self.cadata)
+            self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
             my_p = self.dev.passphrase
             if not my_p:
                 while True:
@@ -105,7 +101,7 @@ class OTAServer:
                                              certfile=self.cert,
                                              password=my_p)
             self.context.verify_mode = ssl.CERT_REQUIRED
-            self.context.load_verify_locations(cadata=self.cadata)
+            # self.context.load_verify_locations(cadata=self.cadata)
         self._fw_file = firmware
         with open(firmware, 'rb') as fwr:
             self.firmware = fwr.read()

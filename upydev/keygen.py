@@ -698,41 +698,82 @@ def ssl_ECDSA_key_certgen_host(args, dir="", store=True):
     ROOT_CA_cert = x509.load_pem_x509_certificate(root_data)
     issuer = ROOT_CA_cert.issuer
     subject = issuer  # allocate less RAM in device?
-    # if not args.zt:
-    csr = (
-        x509.CertificateSigningRequestBuilder()
-        .subject_name(subject)
-        .add_extension(
-            x509.SubjectAlternativeName(
-                [
-                    x509.DNSName("localhost"),
-                    x509.IPAddress(host_ip),
-                ]
-            ),
-            critical=False,
+    if not args.zt:
+        csr = (
+            x509.CertificateSigningRequestBuilder()
+            .subject_name(subject)
+            .add_extension(
+                x509.SubjectAlternativeName(
+                    [
+                        x509.DNSName("localhost"),
+                        x509.IPAddress(host_ip),
+                    ]
+                ),
+                critical=False,
+            )
+            .sign(key, hashes.SHA256(), default_backend())
         )
-        .sign(key, hashes.SHA256(), default_backend())
-    )
+    else:
+        if ":" in args.t:
+            args.t, port = args.t.split(":")
+        csr = (
+            x509.CertificateSigningRequestBuilder()
+            .subject_name(subject)
+            .add_extension(
+                x509.SubjectAlternativeName(
+                    [
+                        x509.DNSName("localhost"),
+                        x509.IPAddress(host_ip),
+                        x509.DNSName(f"{args.t}"),
+                    ]
+                ),
+                critical=False,
+            )
+            .sign(key, hashes.SHA256(), default_backend())
+        )
 
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(csr.subject)
-        .issuer_name(issuer)
-        .public_key(csr.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.utcnow())
-        .not_valid_after(datetime.utcnow() + timedelta(days=365))
-        .add_extension(
-            x509.SubjectAlternativeName(
-                [
-                    x509.DNSName("localhost"),
-                    x509.IPAddress(host_ip),
-                ]
-            ),
-            critical=False,
+    if not args.zt:
+
+        cert = (
+            x509.CertificateBuilder()
+            .subject_name(csr.subject)
+            .issuer_name(issuer)
+            .public_key(csr.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(datetime.utcnow())
+            .not_valid_after(datetime.utcnow() + timedelta(days=365))
+            .add_extension(
+                x509.SubjectAlternativeName(
+                    [
+                        x509.DNSName("localhost"),
+                        x509.IPAddress(host_ip),
+                    ]
+                ),
+                critical=False,
+            )
+            .sign(ca_key, hashes.SHA256(), default_backend())
         )
-        .sign(ca_key, hashes.SHA256(), default_backend())
-    )
+    else:
+        cert = (
+            x509.CertificateBuilder()
+            .subject_name(csr.subject)
+            .issuer_name(issuer)
+            .public_key(csr.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(datetime.utcnow())
+            .not_valid_after(datetime.utcnow() + timedelta(days=365))
+            .add_extension(
+                x509.SubjectAlternativeName(
+                    [
+                        x509.DNSName("localhost"),
+                        x509.IPAddress(host_ip),
+                        x509.DNSName(f"{args.t}"),
+                    ]
+                ),
+                critical=False,
+            )
+            .sign(ca_key, hashes.SHA256(), default_backend())
+        )
 
     if store:
         cert_path_file_pem = os.path.join(dir, f"HOST_cert@{unique_id}.pem")
@@ -962,8 +1003,7 @@ def get_ssl_cert_status(cert):
 
     if cert_pem.not_valid_after < datetime.now():
         print(
-            f"{os.path.basename(cert)}: Not Valid {XF} @ "
-            f"{cert_pem.not_valid_after}"
+            f"{os.path.basename(cert)}: Not Valid {XF} @ " f"{cert_pem.not_valid_after}"
         )
     else:
         diff = cert_pem.not_valid_after - datetime.now()
