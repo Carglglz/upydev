@@ -140,7 +140,7 @@ keywords_mode = ['put', 'get', 'config', 'info', 'net',
                  'mkdir', 'head', 'rm', 'rmdir', 'pwd', 'cd', 'upip', 'uping',
                  'upy-config', 'rssi', 'ctime', 'enable_sh', 'diff', 'shasum',
                  'kg', 'rsa', 'uconfig', 'sd', 'shl-config', 'touch', 'datetime',
-                 'uptime', 'cycles', 'mv']
+                 'uptime', 'cycles', 'mv', 'play']
 
 help_actions = ['help', 'h', 'dm', 'fio', 'fw', 'kg', 'rp', 'sh', 'db', 'gp',
                 'gc', 'docs', 'udocs', 'mdocs']
@@ -261,7 +261,8 @@ SHELL_REPL_ACTIONS = ['set_wss', 'jupyterc', 'shell', 'shl', 'shl-config']
 # DEBUGGING ACTIONS
 
 DEBUGGING_ACTIONS = ['ping', 'probe', 'scan',
-                     'stream_test', 'sysctl', 'log', 'pytest', 'run', 'timeit']
+                     'stream_test', 'sysctl', 'log', 'pytest', 'run', 'timeit',
+                     'play']
 
 # FILEIO ACTIONS
 

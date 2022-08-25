@@ -15,7 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - improve certificate info issuer/subject.
 - fix dev_platform in `net scan` for esp8266
 - now serial repl works with ``screen`` too (using ``repl -sc``) (in case ``picocom`` is not available)
+- fix ssl error on `stream_test` in WebSocketDevices using wss.
+- fix paste mode in serial repl missing to print first line output.
+- fix net scan bug for esp8266
+- fix dsync command help info.
+- fix uconfig (config in shell-repl) help info.
+- fix config `add_param` to allow custom `root_path`
+- update otatool.py, ota.py to use ROOT CA certificate as CA.
 ## Added
+- `play` command to run custom tasks in ansible playbook style.
 - `uptime` and `cycles` utils/commands.
 - upylog file rotation, so file log size does not go over a limit size. (2KB default)
 - uptime.py and cycles.py to upyutils_dir (so it can be installed with `update_upyutils` cmd)
@@ -25,7 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `kg ssl dev add/export` to add or export a device certificate.
 - `kg ssl CA add/export` to add or export a ROOT CA key/cert pair.
 - `kg ssl dev/host/CA status` to check expiration date of certificates.
--  The new CA-host-dev certificate chain of trust model allows log in to wss WebSocketDevices from multiple locations/hosts (by exporting the ROOT CA key/cert pair to a new host and add them there to generate the proper key/cert for that host)
+-  The new CA-host-dev certificate chain of trust model allows log in to wss WebSocketDevices from multiple locations/hosts (by exporting the ROOT CA key/cert pair to a new host and add them there to generate the proper key/cert for that host).
+- nwatchdog timer kargs.
+- net scan results are sorted by RSSI value.
+- local path in shell-repl prompt is now aware of current git branch.
 ## [0.4.2] - 2022-07-10
 ## Fix
 - fix lcd ~ home user expand in shl & ssl key,cert gen for zerotier devices with custom port

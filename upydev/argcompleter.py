@@ -5,7 +5,7 @@ UPYDEV_PATH = __path__[0]
 # SHELL_CMD_PARSER
 
 shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
-                  'run']
+                  'run', 'mv']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'ap', 'mem', 'install', 'touch',
                     'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
@@ -15,7 +15,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'config', 'fw', 'mpyx', 'sd', 'uptime', 'cycles']
+                    'diff', 'config', 'fw', 'mpyx', 'sd', 'uptime', 'cycles', 'play']
 
 LS = dict(help="list files or directories",
           subcmd=dict(help='indicate a file/dir or pattern to see', default=[],
@@ -450,6 +450,20 @@ RUN = dict(help="run a script in device, CTRL-C to stop",
                                     ' e.g. an sd card.',
                                required=False)})
 
+PLAY = dict(help="play custom tasks in ansible playbook style",
+            desc="task must be yaml file with name, hosts, tasks, name, command\n"
+                 "structure",
+            subcmd=dict(help=('indicate a task file to play.'),
+                        metavar='task'),
+            options={"-t": dict(help="device target address",
+                                required=True),
+                     "-p": dict(help='device password or baudrate',
+                                required=True),
+                     "-wss": dict(help='use WebSocket Secure',
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
+
 TIMEIT = dict(help="to measure execution time of a module/script",
               desc="source: https://github.com/peterhinch/micropython-samples"
                    "/tree/master/timed_function",
@@ -555,7 +569,7 @@ PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
 
 DB_CMD_DICT_PARSER = {"ping": PING, "probe": PROBE, "scan": SCAN, "run": RUN,
                       "timeit": TIMEIT, "stream_test": STREAM_TEST, "sysctl": SYSCTL,
-                      "log": LOG, "pytest": PYTEST}
+                      "log": LOG, "pytest": PYTEST, "play": PLAY}
 
 # DEVICE MANAGEMENT
 CONFIG = dict(help="to save device settings",

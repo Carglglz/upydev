@@ -1,6 +1,7 @@
 from upydevice import Device, check_device_type, serial_scan, net_scan
 import sys
 from upydev.devicemanagement import check_zt_group
+from upydev.playbook import play
 import os
 import json
 import upydev
@@ -22,6 +23,7 @@ dict_arg_options = {'ping': ['t', 'zt', 'p'],
                     'probe': ['t', 'p', 'G', 'gg', 'devs', 'zt'],
                     'scan': ['nt', 'sr', 'bl'],
                     'run': ['t', 'p', 'wss', 'f', 's'],
+                    'play': ['t', 'p', 'wss', 'f', 'fre'],
                     'timeit': ['t', 'p', 'wss', 'f', 's'],
                     'stream_test': ['t', 'p', 'wss', 'chunk_tx',
                                     'chunk_rx', 'total_size'],
@@ -97,6 +99,33 @@ RUN = dict(help="run a script in device, CTRL-C to stop",
                     "-s": dict(help='indicate the path of the script if in external fs'
                                     ' e.g. an sd card.',
                                required=False)})
+PLAY = dict(help="play custom tasks in ansible playbook style",
+            desc="task must be yaml file with: \n- keywords {name, hosts, tasks, "
+                 "command, command_nb, include, ignore}\nwith following structure, e.g:\n"
+                 """---
+- name: Example playbook
+  hosts: dev1, dev2
+  tasks:
+    - name: Leaving a mark
+      command: "touch upydev_was_here && ls"
+    - name: Check memory
+      command: "mem"
+    - name: Remove file
+      command: "rm upydev_was_here"
+    - name: Raw MP command
+      command: "print('hello');led.value(not led.value())"
+      command_nb: "led.on();time.sleep(1);led.off()" """,
+            subcmd=dict(help=('indicate a task file to play.'),
+                        metavar='task',
+                        nargs="*"),
+            options={"-t": dict(help="device target address",
+                                required=True),
+                     "-p": dict(help='device password or baudrate',
+                                required=True),
+                     "-wss": dict(help='use WebSocket Secure',
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
 
 TIMEIT = dict(help="to measure execution time of a module/script",
               desc="source: https://github.com/peterhinch/micropython-samples"
@@ -203,7 +232,7 @@ PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
 
 DB_CMD_DICT_PARSER = {"ping": PING, "probe": PROBE, "scan": SCAN, "run": RUN,
                       "timeit": TIMEIT, "stream_test": STREAM_TEST, "sysctl": SYSCTL,
-                      "log": LOG, "pytest": PYTEST}
+                      "log": LOG, "pytest": PYTEST, "play": PLAY}
 
 
 usag = """%(prog)s command [options]\n
@@ -1040,6 +1069,12 @@ def debugging_action(args, unkwargs, **kargs):
 
     elif command == 'run':
         run_script(args, rest_args)
+
+    elif command == 'play':
+        for uk in ['-f', '-fre']:
+            if uk in unknown_args:
+                unknown_args.remove(uk)
+        play(args, rest_args)
 
     elif command == 'timeit':
         timeit_script(args, rest_args)

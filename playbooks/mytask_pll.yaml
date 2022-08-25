@@ -1,0 +1,10 @@
+---
+- name: Example playbook
+  hosts: espdev, gkesp32, pybV1.1, oble
+  tasks:
+    - name: Raw MP Command
+      command: "import time;print('hello');led.on();time.sleep(1);led.off()"
+      include: pybV1.1
+    - name: Raw MP Command Parallel
+      command_nb: "led.on();time.sleep(2);led.off()"
+      ignore: pybV1.1

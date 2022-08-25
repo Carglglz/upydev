@@ -25,7 +25,7 @@ HELP_INFO_ARG = '''Mode/Tools:
 
 > DEBUGGING: '$ upydev db' to see help on debugging operations.
     ACTIONS: ping, probe, scan, run, timeit, stream_test,
-             sysctl, log, pytest, pytest setup
+             sysctl, log, pytest, pytest setup, play
 
 > GENERAL: do '$ upydev gc' to see General commmands help.
 

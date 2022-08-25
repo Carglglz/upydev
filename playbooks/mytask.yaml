@@ -1,0 +1,13 @@
+---
+- name: Example playbook
+  hosts: espdev, gkesp32, pybV1.1, oble
+  tasks:
+    - name: Check device filesystem
+      command: "ls"
+    - name: Check memory
+      command: "mem"
+    - name: Check info
+      command: "info && id"
+    - name: Raw MP command
+      command: "import time;print('hello');led.on();time.sleep(1);led.off()"
+      command_nb: "led.on();time.sleep(1);led.off()"
