@@ -365,6 +365,13 @@ SD = dict(help="commands to manage an sd",
                                default=21,
                                type=int)})
 
+LOAD = dict(help="run local script in device",
+            desc="load a local script in device buffer and execute it.",
+            subcmd=dict(help='indicate a file/script to load', default='',
+                        metavar='file',
+                        nargs='*'),
+            options={})
+
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "touch": TOUCH, "cd": CD, "mv": MV, "pwd": PWD,
@@ -380,7 +387,7 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
                          "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
                          "diff": DIFF, "config": CONFIG, "sd": SD, 'uptime': UPTIME,
-                         "cycles": CYCLES}
+                         "cycles": CYCLES, "load": LOAD}
 
 # DEBUGGING
 PING = dict(help="ping the device to test if device is"
@@ -449,6 +456,7 @@ RUN = dict(help="run a script in device, CTRL-C to stop",
                     "-s": dict(help='indicate the path of the script if in external fs'
                                     ' e.g. an sd card.',
                                required=False)})
+
 
 PLAY = dict(help="play custom tasks in ansible playbook style",
             desc="task must be yaml file with name, hosts, tasks, name, command\n"

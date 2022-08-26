@@ -101,7 +101,8 @@ RUN = dict(help="run a script in device, CTRL-C to stop",
                                required=False)})
 PLAY = dict(help="play custom tasks in ansible playbook style",
             desc="task must be yaml file with: \n- keywords {name, hosts, tasks, "
-                 "command, command_nb, include, ignore}\nwith following structure, e.g:\n"
+                 "command, command_nb, include, ignore, wait, load}\nwith following "
+                 "structure, e.g:\n"
                  """---
 - name: Example playbook
   hosts: dev1, dev2
@@ -114,7 +115,11 @@ PLAY = dict(help="play custom tasks in ansible playbook style",
       command: "rm upydev_was_here"
     - name: Raw MP command
       command: "print('hello');led.value(not led.value())"
-      command_nb: "led.on();time.sleep(1);led.off()" """,
+      command_nb: "led.on();time.sleep(1);led.off()"
+    - name: Test load script
+      wait: 5
+      load: sample.py
+      """,
             subcmd=dict(help=('indicate a task file to play.'),
                         metavar='task',
                         nargs="*"),

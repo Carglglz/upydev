@@ -1101,6 +1101,15 @@ class ShellCmds:
                     self.dev.wr_cmd(reload_cmd)
                     print('Done!')
 
+        # LOAD
+        if command == 'load':
+            rest_args = self.brace_exp(rest_args)
+            rest_args = nglob(*rest_args)
+            for script in rest_args:
+                self.dev.load(script)
+                time.sleep(0.5)
+            return
+
         # RELOAD
         if command == 'reload':
             if not rest_args:

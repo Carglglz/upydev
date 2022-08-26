@@ -8,8 +8,8 @@ import time
 
 UPYDEV_PATH = upydev.__path__[0]
 
-CHECK = '[\033[92m\u2714\x1b[0m]'
-XF = '[\u001b[31;1m\u2718\u001b[0m]'
+CHECK = "[\033[92m\u2714\x1b[0m]"
+XF = "[\u001b[31;1m\u2718\u001b[0m]"
 
 
 class DevConfig:
@@ -25,7 +25,7 @@ def get_tsize():
 
 
 def parse_task_file(task_file):
-    with open(task_file, 'r') as tf:
+    with open(task_file, "r") as tf:
         task_doc = tf.read()
     task = yaml.safe_load(task_doc)
     # print(task)
@@ -35,7 +35,7 @@ def parse_task_file(task_file):
 def gather_devices(devices):
     devs = []
     group_file = os.path.join(UPYDEV_PATH, "UPY_G")
-    with open(f'{group_file}.config', 'r', encoding='utf-8') as group:
+    with open(f"{group_file}.config", "r", encoding="utf-8") as group:
         all_devices = json.loads(group.read())
         # print(devices)
     for name, conf in all_devices.items():
@@ -50,13 +50,13 @@ def _play_task_file(task_file):
     play_book_name = play_book["name"]
     # PLAY
     print(f"PLAY [{play_book_name}]")
-    print("*"*get_tsize(), end='\n\n')
-    hosts = [dev.strip() for dev in play_book["hosts"].split(',')]
+    print("*" * get_tsize(), end="\n\n")
+    hosts = [dev.strip() for dev in play_book["hosts"].split(",")]
     devs = gather_devices(hosts)
 
     # TASK GATHERING FACTS #
     print("TASK [Gathering Facts]")
-    print("*"*get_tsize(), end='\n\n')
+    print("*" * get_tsize(), end="\n\n")
     connected_devs = {}
     for dev in devs:
         try:
@@ -69,16 +69,19 @@ def _play_task_file(task_file):
     shells = {}
     devgroup = DeviceGroup(connected_devs.values())
     for name, dev in connected_devs.items():
-        if dev.dev_class == 'SerialDevice':
+        if dev.dev_class == "SerialDevice":
             from upydev.shell.shserial import ShellSrCmds
+
             sh = ShellSrCmds(dev)
             shells[name] = sh
-        elif dev.dev_class == 'WebSocketDevice':
+        elif dev.dev_class == "WebSocketDevice":
             from upydev.shell.shws import ShellWsCmds
+
             sh = ShellWsCmds(dev)
             shells[name] = sh
-        elif dev.dev_class == 'BleDevice':
+        elif dev.dev_class == "BleDevice":
             from upydev.shell.shble import ShellBleCmds
+
             sh = ShellBleCmds(dev)
             shells[name] = sh
         sh.dev_name = name
@@ -89,39 +92,61 @@ def _play_task_file(task_file):
 
     for tsk in custom_tasks:
         print(f"\nTASK [{tsk['name']}]")
-        print("*"*get_tsize(), end='\n\n')
-        if 'command' in tsk.keys():
+        print("*" * get_tsize(), end="\n\n")
+        if "wait" in tsk.keys():
+            for i in range(tsk["wait"]):
+                print(f"WAIT: {tsk['wait']-i}", end="\r")
+                time.sleep(1)
+            print("WAIT: DONE")
+            print("-" * get_tsize())
+        if "load" in tsk.keys():
+            script_to_load = tsk['load']
+            if script_to_load not in os.listdir():
+                script_to_load = os.path.join(os.path.dirname(task_file),
+                                              script_to_load)
             for name, sh in shells.items():
-                if 'include' in tsk.keys():
-                    if name not in tsk['include']:
+                if "include" in tsk.keys():
+                    if name not in tsk["include"]:
                         continue
-                if 'ignore' in tsk.keys():
-                    if name in tsk['ignore']:
+                if "ignore" in tsk.keys():
+                    if name in tsk["ignore"]:
                         continue
-                print(f"[{name}]: {tsk['command']}", end='\n\n')
+                print(f"[{name}]: loading {script_to_load}", end="\n\n")
+                sh.dev.load(script_to_load)
+                print("Done!")
+                print("-" * get_tsize())
+        if "command" in tsk.keys():
+            for name, sh in shells.items():
+                if "include" in tsk.keys():
+                    if name not in tsk["include"]:
+                        continue
+                if "ignore" in tsk.keys():
+                    if name in tsk["ignore"]:
+                        continue
+                print(f"[{name}]: {tsk['command']}", end="\n\n")
                 # check if shell cmd, if not use wr_cmd
                 cmd = shlex.split(tsk["command"])
                 if cmd[0] not in sh._shkw:
                     sh.dev.wr_cmd(tsk["command"])
                 else:
                     sh.cmd(tsk["command"])
-                print("-"*get_tsize())
-        if 'command_nb' in tsk.keys():
+                print("-" * get_tsize())
+        if "command_nb" in tsk.keys():
             for name, sh in shells.items():
-                if 'include' in tsk.keys():
-                    if name not in tsk['include']:
+                if "include" in tsk.keys():
+                    if name not in tsk["include"]:
                         continue
-                if 'ignore' in tsk.keys():
-                    if name in tsk['ignore']:
+                if "ignore" in tsk.keys():
+                    if name in tsk["ignore"]:
                         continue
-                print(f"[{name}]: {tsk['command_nb']}", end='\n\n')
+                print(f"[{name}]: {tsk['command_nb']}", end="\n\n")
                 cmd = shlex.split(tsk["command_nb"])
                 if cmd[0] not in sh._shkw:
                     sh.dev.cmd_nb(tsk["command_nb"], block_dev=False)
 
-                print("-"*get_tsize())
+                print("-" * get_tsize())
 
-        print("*"*get_tsize(), end='\n\n')
+        print("*" * get_tsize(), end="\n\n")
 
     for name, dev in connected_devs.items():
         dev.disconnect()

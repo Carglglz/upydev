@@ -2,6 +2,8 @@
 - name: Example playbook
   hosts: espdev, gkesp32, pybV1.1, oble
   tasks:
+    - name: Load upysh
+      command: "import upysh"
     - name: Check device filesystem
       command: "ls"
     - name: Check memory
@@ -11,3 +13,6 @@
     - name: Raw MP command
       command: "import time;print('hello');led.on();time.sleep(1);led.off()"
       command_nb: "led.on();time.sleep(1);led.off()"
+    - name: Test load script
+      wait: 5
+      load: "sample.py"

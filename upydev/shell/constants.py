@@ -75,7 +75,8 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'config', 'fw', 'mpyx', 'sd', 'uptime', 'cycles']
+                    'diff', 'config', 'fw', 'mpyx', 'sd', 'uptime', 'cycles',
+                    'load']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -355,6 +356,12 @@ RUN = dict(help="run device's scripts",
                                default=False,
                                action='store_true'),
                     })
+LOAD = dict(help="run local script in device",
+            desc="load a local script in device buffer and execute it.",
+            subcmd=dict(help='indicate a file/script to load', default='',
+                        metavar='file',
+                        nargs='*'),
+            options={})
 
 RELOAD = dict(help="reload device's scripts",
               subcmd=dict(help='indicate a file/script to reload', default='',
@@ -589,4 +596,4 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
                          "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
                          "diff": DIFF, "config": CONFIG, "sd": SD,
-                         "uptime": UPTIME, "cycles": CYCLES}
+                         "uptime": UPTIME, "cycles": CYCLES, "load": LOAD}
