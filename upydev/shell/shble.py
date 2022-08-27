@@ -162,7 +162,10 @@ wrapper = textwrap.TextWrapper(initial_indent=" "*4,)
 
 def print_wrp(text, mg=3, f_indent=4, indent=0, wrapper=wrapper, f_indent_char='',
               r_indent_char=' ', s_indent=' '):
-    columns, rows = os.get_terminal_size(0)
+    try:
+        columns, rows = os.get_terminal_size(0)
+    except Exception:
+        columns, rows = 80, 80
     if f_indent_char != '':
         f_indent += -1
     wrapper.initial_indent = f_indent_char + r_indent_char * f_indent

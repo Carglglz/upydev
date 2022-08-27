@@ -917,7 +917,10 @@ if args.G is not None:
             current_dir = os.getcwd()
             original_args = copy.deepcopy(args)
             for dev in devs:
-                columns, rows = os.get_terminal_size(0)
+                try:
+                    columns, rows = os.get_terminal_size(0)
+                except Exception:
+                    columns, rows = 80, 80
                 single_command = []
                 print('')
                 print('━'*columns)

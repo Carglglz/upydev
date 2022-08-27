@@ -14,7 +14,11 @@ BLOCKLEN = 4096
 
 bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
-columns, rows = os.get_terminal_size(0)
+try:
+    columns, rows = os.get_terminal_size(0)
+except Exception:
+    columns, rows = 80, 80
+
 cnt_size = 65
 if columns > cnt_size:
     bar_size = int((columns - cnt_size))
@@ -164,7 +168,10 @@ class OTAServer:
             print('OTA Firmware Update Failed.')
 
     def do_ota(self):
-        columns, rows = os.get_terminal_size(0)
+        try:
+            columns, rows = os.get_terminal_size(0)
+        except Exception:
+            columns, rows = 80, 80
         cnt_size = 65
         if columns > cnt_size:
             size_bar = int((columns - cnt_size))

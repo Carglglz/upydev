@@ -14,14 +14,20 @@ class BleFileIO:
         self.dev_name = devname
         self.buff = bytearray(1024*2)
         self.bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
-        self.columns, self.rows = os.get_terminal_size(0)
+        try:
+            self.columns, self.rows = os.get_terminal_size(0)
+        except Exception:
+            self.columns, self.rows = 80, 80
         self.cnt_size = 65
         self.bar_size = int((self.columns - self.cnt_size))
         self.pb = False
         self.wheel = ['|', '/', '-', "\\"]
 
     def get_pb(self):
-        self.columns, self.rows = os.get_terminal_size(0)
+        try:
+            self.columns, self.rows = os.get_terminal_size(0)
+        except Exception:
+            self.columns, self.rows = 80, 80
         if self.columns > self.cnt_size:
             self.bar_size = int((self.columns - self.cnt_size))
             self.pb = True
@@ -177,6 +183,7 @@ class BleFileIO:
                 print('KeyboardInterrupt: put Operation Canceled')
                 self.dev.cmd("f.close()", silent=True)
         return True
+
 
 def bletool(args, dev_name):
     if not args.f and not args.fre:

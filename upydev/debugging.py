@@ -316,7 +316,10 @@ FAIL = '\u001b[31;1mF\u001b[0m'
 
 # TERMINAL SIZE
 bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
-columns, rows = os.get_terminal_size(0)
+try:
+    columns, rows = os.get_terminal_size(0)
+except Exception:
+    columns, rows = 80, 80
 cnt_size = 75
 if columns > cnt_size:
     bar_size = int((columns - cnt_size))

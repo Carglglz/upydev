@@ -29,7 +29,10 @@ WEBREPL_GET_VER = 3
 
 bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
-columns, rows = os.get_terminal_size(0)
+try:
+    columns, rows = os.get_terminal_size(0)
+except Exception:
+    columns, rows = 80, 80
 cnt_size = 65
 if columns > cnt_size:
     bar_size = int((columns - cnt_size))
@@ -149,7 +152,10 @@ def get_ver(ws):
 
 
 def put_file(ws, local_file, remote_file):
-    columns, rows = os.get_terminal_size(0)
+    try:
+        columns, rows = os.get_terminal_size(0)
+    except Exception:
+        columns, rows = 80, 80
     cnt_size = 65
     if columns > cnt_size:
         size_bar = int((columns - cnt_size))
@@ -211,7 +217,10 @@ def put_file(ws, local_file, remote_file):
 
 
 def get_file(ws, local_file, remote_file, file_size):
-    columns, rows = os.get_terminal_size(0)
+    try:
+        columns, rows = os.get_terminal_size(0)
+    except Exception:
+        columns, rows = 80, 80
     cnt_size = 65
     if columns > cnt_size:
         size_bar = int((columns - cnt_size))

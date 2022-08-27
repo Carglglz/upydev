@@ -976,7 +976,10 @@ class ShellCmds:
                     for dpatt in gpatt:
                         rest_args.append(dpatt)
             files_to_list = f"*{rest_args}"
-            term_size = tuple(os.get_terminal_size(0))
+            try:
+                term_size = tuple(os.get_terminal_size(0))
+            except Exception:
+                term_size = (80, 80)
             self.send_cmd(_CMDDICT_['LS'].format(files_to_list, term_size, args.a),
                           sh_silent=False, follow=True)
             return
