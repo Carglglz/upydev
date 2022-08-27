@@ -5,6 +5,7 @@ import json
 import yaml
 import shlex
 import time
+import multiprocessing
 
 UPYDEV_PATH = upydev.__path__[0]
 
@@ -68,6 +69,9 @@ def _play_task_file(task_file):
 
     shells = {}
     devgroup = DeviceGroup(connected_devs.values())
+    devgroup.devs = connected_devs
+    devgroup.output_queue = {
+            name: multiprocessing.Queue(maxsize=1) for name in connected_devs}
     for name, dev in connected_devs.items():
         if dev.dev_class == "SerialDevice":
             from upydev.shell.shserial import ShellSrCmds
@@ -93,12 +97,14 @@ def _play_task_file(task_file):
     for tsk in custom_tasks:
         print(f"\nTASK [{tsk['name']}]")
         print("*" * get_tsize(), end="\n\n")
+        # WAIT
         if "wait" in tsk.keys():
             for i in range(tsk["wait"]):
                 print(f"WAIT: {tsk['wait']-i}", end="\r")
                 time.sleep(1)
             print("WAIT: DONE")
             print("-" * get_tsize())
+        # LOAD
         if "load" in tsk.keys():
             script_to_load = tsk['load']
             if script_to_load not in os.listdir():
@@ -115,6 +121,58 @@ def _play_task_file(task_file):
                 sh.dev.load(script_to_load)
                 print("Done!")
                 print("-" * get_tsize())
+        # LOAD_PL
+        if "load_pl" in tsk.keys():
+            script_to_load = tsk['load_pl']
+            if script_to_load not in os.listdir():
+                script_to_load = os.path.join(os.path.dirname(task_file),
+                                              script_to_load)
+            pl_devs = [name for name in list(shells.keys())]
+            for name, sh in shells.items():
+                if "include" in tsk.keys():
+                    if name not in tsk["include"]:
+                        if name in pl_devs:
+                            pl_devs.remove(name)
+                if "ignore" in tsk.keys():
+                    if name in tsk["ignore"]:
+                        if name in pl_devs:
+                            pl_devs.remove(name)
+
+            print(f"[{', '.join(pl_devs)}]: loading {script_to_load}", end="\n\n")
+            process_devices = {name: multiprocessing.Process(
+                target=sh.dev.load, args=(script_to_load,)) for name,
+                              sh in shells.items() if name in pl_devs}
+
+            for dev in pl_devs:
+                process_devices[dev].start()
+
+            while True:
+                try:
+                    dev_proc_state = [process_devices[dev].is_alive(
+                    ) for dev in pl_devs]
+                    if all(state is False for state in dev_proc_state):
+                        time.sleep(0.1)
+                        break
+                except KeyboardInterrupt:
+                    while True:
+                        dev_proc_state = [process_devices[dev].is_alive()
+                                          for dev in pl_devs]
+                        if all(state is False for state in dev_proc_state):
+                            time.sleep(1)
+                            for dev in pl_devs:
+                                process_devices[dev].terminate()
+                            break
+            for dev in pl_devs:
+                if shells[dev].dev.dev_class in ["WebSocketDevice"]:
+                    if shells[dev].dev._uriprotocol == 'wss':
+                        shells[dev].dev.flush()
+                        shells[dev].dev.disconnect()
+                        time.sleep(0.5)
+                        shells[dev].dev.connect()
+            print("Done!")
+            print("-" * get_tsize())
+
+        # COMMAND
         if "command" in tsk.keys():
             for name, sh in shells.items():
                 if "include" in tsk.keys():
@@ -131,6 +189,7 @@ def _play_task_file(task_file):
                 else:
                     sh.cmd(tsk["command"])
                 print("-" * get_tsize())
+        # COMMAND_NB
         if "command_nb" in tsk.keys():
             for name, sh in shells.items():
                 if "include" in tsk.keys():
@@ -145,6 +204,76 @@ def _play_task_file(task_file):
                     sh.dev.cmd_nb(tsk["command_nb"], block_dev=False)
 
                 print("-" * get_tsize())
+        # COMMAND_PL
+        if "command_pl" in tsk.keys():
+            pl_devs = [name for name in list(shells.keys())]
+            for name, sh in shells.items():
+                if "include" in tsk.keys():
+                    if name not in tsk["include"]:
+                        if name in pl_devs:
+                            pl_devs.remove(name)
+                if "ignore" in tsk.keys():
+                    if name in tsk["ignore"]:
+                        if name in pl_devs:
+                            pl_devs.remove(name)
+
+            cmd = shlex.split(tsk["command_pl"])
+            if cmd[0] not in sh._shkw:
+                print(f"[{', '.join(pl_devs)}]: {tsk['command_pl']}", end="\n\n")
+                devgroup.cmd_p(tsk["command_pl"], include=pl_devs, follow=True)
+                for dev in pl_devs:
+                    if shells[dev].dev.dev_class in ["WebSocketDevice"]:
+                        if shells[dev].dev._uriprotocol == 'wss':
+                            shells[dev].dev.flush()
+                            shells[dev].dev.disconnect()
+                            time.sleep(0.5)
+                            shells[dev].dev.connect()
+            else:
+                if "pytest" in tsk['command_pl']:
+                    for dev in pl_devs:
+                        if shells[dev].dev.dev_class in ["WebSocketDevice", "BleDevice"]:
+                            shells[dev].dev.flush()
+                            shells[dev].dev.disconnect()
+
+                    time.sleep(0.5)
+
+                process_devices = {name: multiprocessing.Process(
+                    target=sh.cmd, args=(tsk["command_pl"],)) for name,
+                                  sh in shells.items() if name in pl_devs}
+
+                for dev in pl_devs:
+                    print(f"[{dev}]: {tsk['command_pl']}", end="\n\n")
+                    process_devices[dev].start()
+
+                while True:
+                    try:
+                        dev_proc_state = [process_devices[dev].is_alive(
+                        ) for dev in pl_devs]
+                        if all(state is False for state in dev_proc_state):
+                            time.sleep(0.1)
+                            break
+                    except KeyboardInterrupt:
+                        while True:
+                            dev_proc_state = [process_devices[dev].is_alive()
+                                              for dev in pl_devs]
+                            if all(state is False for state in dev_proc_state):
+                                time.sleep(1)
+                                for dev in pl_devs:
+                                    process_devices[dev].terminate()
+                                break
+
+                if "pytest" in tsk['command_pl']:
+                    for dev in pl_devs:
+                        if shells[dev].dev.dev_class in ["WebSocketDevice", "BleDevice"]:
+                            shells[dev].dev.connect()
+                else:
+                    for dev in pl_devs:
+                        if shells[dev].dev.dev_class in ["WebSocketDevice"]:
+                            if shells[dev].dev._uriprotocol == 'wss':
+                                shells[dev].dev.flush()
+                                shells[dev].dev.disconnect()
+                                time.sleep(0.5)
+                                shells[dev].dev.connect()
 
         print("*" * get_tsize(), end="\n\n")
 
