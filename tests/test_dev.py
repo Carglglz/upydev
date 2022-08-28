@@ -1,5 +1,4 @@
-from upydevice import Device
-from functools import partial
+from upydevice import Device, DeviceException
 import logging
 import sys
 import upydev
@@ -114,6 +113,9 @@ def test_dev(cmd):
         if COMMAND:
             log.info(f"Command [{COMMAND}] ")
             dev.wr_cmd(COMMAND, follow=True)
+            # Catch Device Exceptions and raise:
+            if dev._traceback.decode() in dev.response:
+                raise DeviceException(dev.response)
         if DEVICE_RESULT:
             RESULT = dev.wr_cmd(DEVICE_RESULT, silent=True, rtn_resp=True)
             RESULT_MSG = f"expected: {ASSERT_RESULT} --> result: {RESULT}"
