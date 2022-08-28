@@ -50,8 +50,8 @@ or
     esp32@ble_device:~ $
 
 
-By default advertsing and GAP name is set using device platform and unique id.
-e.g. adverstising namee ``esp32-74`` and GAP name ``ESP32@7c9ebd3d9df4``
+By default advertising and GAP name is set using device platform and unique id.
+e.g. advertising name ``esp32-74`` and GAP name ``ESP32@7c9ebd3d9df4``
 To set a custom name use ``set localname [NAME]`` in upydev or shell-repl as
 
 .. code-block:: console

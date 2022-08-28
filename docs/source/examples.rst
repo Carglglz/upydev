@@ -824,7 +824,7 @@ So running this test
   =========================================== test session starts ===========================================
   platform darwin -- Python 3.7.9, pytest-7.1.2, pluggy-1.0.0
   benchmark: 3.4.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
-  rootdir: /Users/carlosgilgonzalez/Desktop/IBM_PROJECTS/MICROPYTHON/TOOLS/upydevice_.nosync/test, configfile: pytest.ini
+  rootdir: /Users/carlosgilgonzalez/Desktop/MY_PROJECTS/MICROPYTHON/TOOLS/upydevice_.nosync/test, configfile: pytest.ini
   plugins: benchmark-3.4.1
   collected 7 items
 
@@ -905,7 +905,7 @@ Defining a test in a yaml file with the following directives:
      - **args**: To pass argument to the test function in device.
      - **result**: The command to get test result.
      - **assert**: Expected result to assert.
-     - **reload**: To reload a script in device after .e.g reload ``foo_test`` module if command is run with ``import foo_test``.
+     - **reload**: To reload a script in device so it can be run again .e.g reload ``foo_test`` module if command was ``import foo_test``.
 
 
 
@@ -964,7 +964,7 @@ Defining a test in a yaml file with the following directives:
   ===================================================== test session starts =====================================================
   platform darwin -- Python 3.7.9, pytest-7.1.2, pluggy-1.0.0
   benchmark: 3.4.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
-  rootdir: /Users/carlosgilgonzalez/Desktop/IBM_PROJECTS/MICROPYTHON/TOOLS/upydev_.nosync/tests, configfile: pytest.ini
+  rootdir: /Users/carlosgilgonzalez/Desktop/MY_PROJECTS/MICROPYTHON/TOOLS/upydev_.nosync/tests, configfile: pytest.ini
   plugins: benchmark-3.4.1
   collected 7 items
 
@@ -1085,6 +1085,18 @@ Pressing ``CTRL-e``, saving and exit, then ``CTRL-d``:
     >>>
 
 
+- Using **load** command in **shell mode**: This allows to load and execute local
+  scripts in device. This loads a local file content in device buffer and executes it.
+
+.. code-block:: console
+
+  esp32@sdev:~ $ load dummy.py
+
+  This is a dummy file for testing purpose
+
+.. tip:: Device buffer is limited so if the file is too big it may be better to upload the
+    file to the device or split the file in smaller ones.
+
 .. note:: This is also avaible in the ``shell-repl`` for WebSocketDevices and BleDevices,
           however latency will be higher due to the nature of wireless connections, e.g
           higher latency of BleDevices if using a bluetooth headset at the same time.
@@ -1176,4 +1188,52 @@ e.g. in combination with ``wpa_supplicant.py`` and ``config`` module.
 
 BleDevice
 ^^^^^^^^^
-Switch between app mode, repl/dev mode, dfu/ota mode.
+Once the device is running ``BleREPL`` with ``NUS`` profile (Nordic UART Service), it is possible
+to connect and send commands as with other devices. However due to the nature of
+Bluetooth Low Energy, the computer needs to scan first and then connect, which
+depending on the advertising period of the device, it may take bit. This is why connecting
+to the device using ``shell-repl`` mode is the best way to work. (e.g in case the device cannot
+be connected using USB/Serial i.e. no physical access.)
+Using ``config`` module it is possible to set different operation modes that will switch
+between:
+
+ - Custom ble app/profile (e.g. ``Temeperature Sensor`` Profile)
+ - Debug Mode, running ``BleREPL`` with ``NUS`` Profile.
+ - Bootloader Mode, running ``DFU`` Profile to do OTA firmware updates.
+
+
+Set mode config with, (in ``shell-repl``)
+
+.. code-block:: console
+
+    esp32@oble:~ $ config add mode
+    esp32@oble:~ $ config mode: app=True blerepl=False dfu=False
+    mode -> app=True, blerepl=False, dfu=False
+
+
+and in ``main.py``:
+
+.. code-block:: python
+
+  from mode_config import MODE
+
+  if MODE.app:
+    print('App mode')
+    import myapp
+    myapp.run()
+
+  elif MODE.blerepl:
+    print('Debug mode')
+    import ble_uart_repl
+    ble_uart_repl.start()
+
+  elif MODE.dfu:
+    print('DFU mode')
+    from otable import BLE_DFU_TARGET
+    ble_dfu = BLE_DFU_TARGET()
+
+
+.. note:: Note that while running in ``app`` or ``dfu`` mode to switch to another mode, it
+  should be done by setting ``mode`` config using ``config`` module and then rebooting the device, using a custom writable characteristic in case of ``app`` mode, and in case of ``dfu`` mode after a timeout with no connections
+  or OTA update successfully done (ideally switching to ``debug`` / ``blerepl`` mode to perform tests. After that
+  set config to ``app`` mode and reboot)

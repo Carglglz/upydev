@@ -63,7 +63,7 @@ Mode/Tools
 	> :ref:`modetools:Debugging`
 			To debug device connection, run scripts or run interactive test with pytest.
 
-			ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``stream_test``, ``sysctl``, ``log``, ``pytest setup``, ``pytest``
+			ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``stream_test``, ``sysctl``, ``log``, ``pytest setup``, ``pytest``, ``play``
 
 	> :ref:`Group Command Mode <modetools:Group Mode>`
 			To operate with a group of devices.

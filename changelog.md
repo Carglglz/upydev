@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix config `add_param` to allow custom `root_path`
 - update otatool.py, ota.py to use ROOT CA certificate as CA.
 ## Added
+- Added `test_dev.py` to run parametric tests using yaml files.
 - `play` command to run custom tasks in ansible playbook style.
 - `uptime` and `cycles` utils/commands.
 - upylog file rotation, so file log size does not go over a limit size. (2KB default)
