@@ -23,7 +23,7 @@ dict_arg_options = {'ping': ['t', 'zt', 'p'],
                     'probe': ['t', 'p', 'G', 'gg', 'devs', 'zt'],
                     'scan': ['nt', 'sr', 'bl'],
                     'run': ['t', 'p', 'wss', 'f', 's'],
-                    'play': ['t', 'p', 'wss', 'f', 'fre'],
+                    'play': ['t', 'p', 'wss', 'f', 'fre', 'devs'],
                     'timeit': ['t', 'p', 'wss', 'f', 's'],
                     'stream_test': ['t', 'p', 'wss', 'chunk_tx',
                                     'chunk_rx', 'total_size'],
@@ -133,7 +133,10 @@ PLAY = dict(help="play custom tasks in ansible playbook style",
                      "-wss": dict(help='use WebSocket Secure',
                                   required=False,
                                   default=False,
-                                  action='store_true')})
+                                  action='store_true'),
+                     "-devs": dict(help='flag for filtering devs in global group',
+                                   required=False,
+                                   nargs='*')})
 
 TIMEIT = dict(help="to measure execution time of a module/script",
               desc="source: https://github.com/peterhinch/micropython-samples"
@@ -1086,7 +1089,7 @@ def debugging_action(args, unkwargs, **kargs):
         for uk in ['-f', '-fre']:
             if uk in unknown_args:
                 unknown_args.remove(uk)
-        play(args, rest_args)
+        play(args, rest_args, dev_name)
 
     elif command == 'timeit':
         timeit_script(args, rest_args)

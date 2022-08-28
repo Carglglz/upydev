@@ -641,7 +641,7 @@ def handle_action(args, exit=True, device_name=None):
                     device=dev_name)
 
 
-KW_NOT_GROUP = ['probe', 'scan', 'mksg', 'mksg']
+KW_NOT_GROUP = ['probe', 'scan', 'mksg', 'mksg', 'play']
 
 
 #############################################

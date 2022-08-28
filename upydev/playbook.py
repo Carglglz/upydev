@@ -46,15 +46,23 @@ def gather_devices(devices):
     return devs
 
 
-def _play_task_file(task_file):
+def _play_task_file(task_file, args, dev_name):
     play_book = parse_task_file(task_file)[0]
     play_book_name = play_book["name"]
     # PLAY
     print(f"PLAY [{play_book_name}]")
     print("*" * get_tsize(), end="\n\n")
-    hosts = [dev.strip() for dev in play_book["hosts"].split(",")]
+    if "hosts" in play_book:
+        hosts = [dev.strip() for dev in play_book["hosts"].split(",")]
+    else:
+        hosts = [dev_name]
+        if hasattr(args, 'devs'):
+            if args.devs:
+                hosts = args.devs
+    print(f"HOSTS TARGET: [{', '.join(hosts)}]")
     devs = gather_devices(hosts)
-
+    print(f"HOSTS FOUND : [{', '.join([dev.name for dev in devs])}]")
+    print("*" * get_tsize(), end="\n\n")
     # TASK GATHERING FACTS #
     print("TASK [Gathering Facts]")
     print("*" * get_tsize(), end="\n\n")
@@ -174,20 +182,25 @@ def _play_task_file(task_file):
 
         # COMMAND
         if "command" in tsk.keys():
-            for name, sh in shells.items():
-                if "include" in tsk.keys():
-                    if name not in tsk["include"]:
-                        continue
-                if "ignore" in tsk.keys():
-                    if name in tsk["ignore"]:
-                        continue
-                print(f"[{name}]: {tsk['command']}", end="\n\n")
-                # check if shell cmd, if not use wr_cmd
-                cmd = shlex.split(tsk["command"])
-                if cmd[0] not in sh._shkw:
-                    sh.dev.wr_cmd(tsk["command"], follow=True)
-                else:
-                    sh.cmd(tsk["command"])
+            cmd = shlex.split(tsk["command"])
+            if not cmd[0].startswith("%"):
+                for name, sh in shells.items():
+                    if "include" in tsk.keys():
+                        if name not in tsk["include"]:
+                            continue
+                    if "ignore" in tsk.keys():
+                        if name in tsk["ignore"]:
+                            continue
+                    print(f"[{name}]: {tsk['command']}", end="\n\n")
+                    # check if shell cmd, if not use wr_cmd
+                    if cmd[0] not in sh._shkw:
+                        sh.dev.wr_cmd(tsk["command"], follow=True)
+                    else:
+                        sh.cmd(tsk["command"])
+                    print("-" * get_tsize())
+            else:
+                print(f"[local]: {tsk['command']}", end="\n\n")
+                sh.cmd(tsk["command"])
                 print("-" * get_tsize())
         # COMMAND_NB
         if "command_nb" in tsk.keys():
@@ -283,7 +296,7 @@ def _play_task_file(task_file):
     return
 
 
-def play(args, rst_args):
+def play(args, rst_args, dev_name):
     for tsk_file in args.subcmd:
-        _play_task_file(tsk_file)
+        _play_task_file(tsk_file, args, dev_name)
         time.sleep(2)
