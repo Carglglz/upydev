@@ -92,8 +92,11 @@ def test_platform():
         raise e
 
 
-def test_command(cmd):
+def test_dev(cmd):
     TEST_NAME = cmd.get('name')
+    LOAD = cmd.get('load')
+    HINT = cmd.get('hint')
+    ARGS = cmd.get('args')
     COMMAND = cmd.get('command')
     DEVICE_RESULT = cmd.get('result')
     ASSERT_RESULT = cmd.get('assert')
@@ -101,8 +104,16 @@ def test_command(cmd):
 
     try:
         log.info(f"Running [{TEST_NAME}] test...")
-        log.info(f"Command [{COMMAND}] ")
-        dev.wr_cmd(COMMAND, follow=True)
+        if LOAD:
+            log.info(f"Loading {LOAD} file...")
+            dev.load(LOAD)
+        if HINT:
+            log.info(f"Hint: {HINT}")
+        if ARGS:
+            COMMAND = f"{COMMAND}(*{ARGS})"
+        if COMMAND:
+            log.info(f"Command [{COMMAND}] ")
+            dev.wr_cmd(COMMAND, follow=True)
         if DEVICE_RESULT:
             RESULT = dev.wr_cmd(DEVICE_RESULT, silent=True, rtn_resp=True)
             RESULT_MSG = f"expected: {ASSERT_RESULT} --> result: {RESULT}"

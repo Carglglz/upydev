@@ -4,7 +4,7 @@
     result: a
     assert: 2
 
-  - name: "rest"
+  - name: "diff"
     command: "a = 1 - 1"
     result: a
     assert: 0

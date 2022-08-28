@@ -282,9 +282,16 @@ class ShellWsCmds(ShellCmds):
             if rest_args[0] == 'setup':
                 shutil.copy(os.path.join(_UPYDEVPATH[0], 'conftest.py'), '.')
                 shutil.copy(os.path.join(_UPYDEVPATH[0], 'pytest.ini'), '.')
+                shutil.copy(os.path.join(_UPYDEVPATH[0], 'test_dev.py'), '.')
                 print('pytest setup done!')
             else:
+                # print(rest_args)
                 rest_args = nglob(*rest_args)
+                yaml_files = [fl for fl in rest_args if fl.endswith('.yaml')]
+                rest_args = [fl for fl in rest_args if fl.endswith('.py')]
+                if not rest_args and yaml_files:
+                    rest_args = ['test_dev.py']
+                # print(rest_args)
                 try:
                     self.dev.disconnect()
                 except Exception:
@@ -295,6 +302,10 @@ class ShellWsCmds(ShellCmds):
                         pytest_cmd += ['--dev', self.dev_name]
                     if ukw_args:
                         pytest_cmd += ukw_args
+                    if yaml_files:
+                        if '--yf' not in pytest_cmd:
+                            pytest_cmd += ['--yf']
+                        pytest_cmd += yaml_files
                     old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
                     def preexec_function(action=old_action):

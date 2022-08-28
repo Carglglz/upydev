@@ -31,7 +31,7 @@ dict_arg_options = {'ping': ['t', 'zt', 'p'],
                     'log': ['t', 'p', 'wss', 'f', 's',
                             'daemon', 'follow', 'dslev', 'dflev',
                             'stopd'],
-                    'pytest': ['t', 'p', 'wss', 'f', 'fre']}
+                    'pytest': ['t', 'p', 'wss', 'f', 'fre', 'yf']}
 
 PING = dict(help="ping the device to test if device is"
                  " reachable, CTRL-C to stop.",
@@ -225,7 +225,7 @@ LOG = dict(help="to log the output of a script running in device",
 PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
               subcmd=dict(help='indicate a test script to run, any optional '
                                'arg is passed to pytest',
-                          default=[''],
+                          default=['test_dev.py'],
                           metavar='test',
                           nargs='*'),
               options={"-t": dict(help="device target address",
@@ -235,7 +235,9 @@ PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
                        "-wss": dict(help='use WebSocket Secure',
                                     required=False,
                                     default=False,
-                                    action='store_true')})
+                                    action='store_true'),
+                       "--yf": dict(help="yaml test file",
+                                    required=False)})
 
 
 DB_CMD_DICT_PARSER = {"ping": PING, "probe": PROBE, "scan": SCAN, "run": RUN,
@@ -792,7 +794,6 @@ def follow_daemon_log(args, script):
 
 
 def pytest(args, scripts, unkwargs, devname):
-
     test = ' '.join(scripts)
     pytest_cmd_str = 'pytest {} -s --dev {}'.format(test, devname)
     # if args.mode:
@@ -1110,12 +1111,27 @@ def debugging_action(args, unkwargs, **kargs):
         if rest_args[0] == 'setup':
             shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
             shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
-            print('pytest.ini and conftest.py saved in current working directory.')
+            shutil.copy(os.path.join(upydev.__path__[0], 'test_dev.py'), '.')
+            print('pytest setup done!')
         else:
             for uk in ['-f', '-fre']:
                 if uk in unknown_args:
                     unknown_args.remove(uk)
             print('Running pytest with Device: {}'.format(dev_name))
+            # print(args, rest_args, unknown_args)
+            if any([f.endswith('.yaml') for f in args.subcmd]):
+                if args.yf:
+                    args.yf = [args.yf] + rest_args
+                else:
+                    args.yf = rest_args
+                args.subcmd = ['test_dev.py']
+                rest_args = ['test_dev.py']
+            if args.yf:
+                if isinstance(args.yf, list):
+                    unknown_args = f"--yf {' '.join(args.yf)}".split()
+                else:
+                    unknown_args = ['--yf', args.yf] + unknown_args
+            # print(args, rest_args, unknown_args)
             pytest(args, rest_args, unknown_args, dev_name)
 
     return

@@ -1,0 +1,10 @@
+---
+  - name: "Button press"
+    hint: "Press user button"
+    load: ./dev_tests/test_interactive_button.py 
+    command: "ret = do_wait_for_push"
+    args: [10]
+    result: ret 
+    assert: True
+
+ 

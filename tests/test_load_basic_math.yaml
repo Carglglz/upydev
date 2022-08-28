@@ -1,0 +1,25 @@
+---
+  - name: "sum"
+    load: ./dev_tests/test_basic_math.py 
+    command: "a = do_sum"
+    args: [1, 1]
+    result: a
+    assert: 2
+
+  - name: "diff"
+    command: "a = do_diff"
+    args: [1, 1]
+    result: a
+    assert: 0
+
+  - name: "product"
+    command: "a = do_product"
+    args: [2, 2]
+    result: a
+    assert: 4
+
+  - name: "division"
+    command: "a = do_div"
+    args: [1, 2]
+    result: a
+    assert: 0.5
