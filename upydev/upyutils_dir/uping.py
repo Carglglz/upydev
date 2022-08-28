@@ -8,7 +8,7 @@
 # @data: bytes
 
 # ping statistics, loop mode and KeyboardInterrupt handler, + esp8266 compatible
-# copyright (c) 2020 Carglglz
+# copyright (c) 2020-2022 Carglglz
 # License: MIT
 
 
@@ -120,7 +120,8 @@ def ping(host, count=4, timeout=5000, interval=10, quiet=False, size=64,
                             # 0: ICMP_ECHO_REPLY
                             if h2.type == 0 and h2.id == h.id and (seq in seqs):
                                 t_elapsed = (utime.ticks_us()-h2.timestamp) / 1000
-                                ttl = ustruct.unpack('!B', resp_mv[8:9])[0]  # time-to-live
+                                ttl = ustruct.unpack('!B', resp_mv[8:9])[
+                                                     0]  # time-to-live
                                 n_recv += 1
                                 not quiet and print("{} bytes from {}: icmp_seq={} ttl={} time={:.3f} ms".format(
                                     len(resp), addr, seq_loop, ttl, t_elapsed))
@@ -202,7 +203,8 @@ def ping(host, count=4, timeout=5000, interval=10, quiet=False, size=64,
             print('--- {} ping statistics ---'.format(host))
             print("{} packets transmitted, {} packets received, {:.1f}% packet loss".format(
                 n_trans, n_recv, (1-(n_recv/n_trans))*100))
-            print("round-trip min/avg/max/stddev = {:.2f}/{:.2f}/{:.2f}/{:.2f} ms".format(min(time_data),sum(time_data)/len(time_data),max(time_data), stddev(time_data)))
+            print("round-trip min/avg/max/stddev = {:.2f}/{:.2f}/{:.2f}/{:.2f} ms".format(
+                min(time_data), sum(time_data)/len(time_data), max(time_data), stddev(time_data)))
         gc.collect()
         if rtn:
             return (n_trans, n_recv)
@@ -215,7 +217,8 @@ def ping(host, count=4, timeout=5000, interval=10, quiet=False, size=64,
             print('--- {} ping statistics ---'.format(host))
             print("{} packets transmitted, {} packets received, {:.1f}% packet loss".format(
                 n_trans, n_recv, (1-(n_recv/n_trans))*100))
-            print("round-trip min/avg/max/stddev = {:.2f}/{:.2f}/{:.2f}/{:.2f} ms".format(min(time_data),sum(time_data)/len(time_data),max(time_data), stddev(time_data)))
+            print("round-trip min/avg/max/stddev = {:.2f}/{:.2f}/{:.2f}/{:.2f} ms".format(
+                min(time_data), sum(time_data)/len(time_data), max(time_data), stddev(time_data)))
         if rtn:
             return (n_trans, n_recv)
     except Exception as e:

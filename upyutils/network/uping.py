@@ -8,7 +8,7 @@
 # @data: bytes
 
 # ping statistics, loop mode and KeyboardInterrupt handler, + esp8266 compatible
-# copyright (c) 2020 Carglglz
+# copyright (c) 2020-2022 Carglglz
 # License: MIT
 
 
