@@ -1,9 +1,9 @@
 ---
 - name: Example playbook
-  hosts: espdev, gkesp32, pybV1.1, oble
+  hosts: espdev, gkesp32, esp8266, oble
   tasks:
     - name: Load upysh
-      command: "import upysh"
+      command: "from upysh import ls"
     - name: Check device filesystem
       command: "ls"
     - name: Check memory
@@ -16,3 +16,5 @@
     - name: Test load script
       wait: 5
       load: "sample.py"
+    - name: Test shell 
+      command: "pytest ../tests/test_sh.py"

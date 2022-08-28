@@ -185,7 +185,7 @@ def _play_task_file(task_file):
                 # check if shell cmd, if not use wr_cmd
                 cmd = shlex.split(tsk["command"])
                 if cmd[0] not in sh._shkw:
-                    sh.dev.wr_cmd(tsk["command"])
+                    sh.dev.wr_cmd(tsk["command"], follow=True)
                 else:
                     sh.cmd(tsk["command"])
                 print("-" * get_tsize())

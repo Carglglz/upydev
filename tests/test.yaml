@@ -1,0 +1,16 @@
+---
+  - name: "toggle_led"
+    command: "import time;led.on();
+             time.sleep(1);led.off()"
+
+  - name: "run_test_code"
+    command: "import test_code"
+    result: "test_code.RESULT"
+    assert: True
+    reload: "test_code"
+
+  - name: "run_test_to_fail"
+    command: "import test_to_fail"
+    result: "test_to_fail.RESULT"
+    assert: True
+    reload: "test_to_fail"

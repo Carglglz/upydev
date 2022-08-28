@@ -52,7 +52,7 @@ usag = """%(prog)s command [options]\n
 _help_subcmds = "%(prog)s [command] -h to see further help of any command"
 
 parser = argparse.ArgumentParser(prog="upydev",
-                                 description=('general comands tools'
+                                 description=('general commands tools'
                                               + '\n\n'
                                                 + _help_subcmds),
                                  formatter_class=rawfmt,

@@ -1,6 +1,6 @@
 ---
 - name: Example playbook
-  hosts: espdev, gkesp32, pybV1.1, esp_solar
+  hosts: espdev, esp_solar, pybV1.1, gkesp32
   tasks:
     - name: Raw MP Command
       command: "import time;print('hello');led.on();time.sleep(1);led.off()"
@@ -9,3 +9,12 @@
     - name: Command Parallel
       wait: 5 
       command_pl: "print('hello1');led.on();time.sleep(2);print('hello2');led.off()"
+    - name: Check conn
+      wait: 2
+      command: "print('Hi')"
+    - name: Load Parallel 
+      wait: 5
+      load_pl: "sample.py"
+    - name: Check conn2 
+      wait: 2
+      command: "print('Hi')"

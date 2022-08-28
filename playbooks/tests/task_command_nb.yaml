@@ -1,0 +1,11 @@
+---
+- name: Command Non-blocking Playbook
+  hosts: espdev, gkesp32, pybV1.1, oble
+  tasks:
+     - name: MicroPython commands non-blocking
+       command_nb: "import time;print('foo'); time.sleep(1); print('bar')"
+     - name: LED
+       command_nb: "led.on(); time.sleep(5); led.off()"
+     - name: Check connection
+       wait: 6
+       command: "print('ping'); time.sleep(1);print('pong')"

@@ -1,0 +1,14 @@
+---
+- name: Command Parallel Playbook
+  hosts: pybV1.1, esp_solar
+  tasks:
+    - name: Load upysh
+      command_pl: "from upysh import *"
+    - name: device info and state
+      command_pl: "info && id && mem && df"
+    - name: filesystem check
+      command_pl: "ls && tree && du"
+    - name: MicroPython commands
+      command_pl: "import time;print('foo'); time.sleep(1); print('bar')"
+    - name: LED TOGGLE
+      command_pl: "led.on(); time.sleep(2); led.off()"

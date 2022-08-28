@@ -1,0 +1,9 @@
+---
+- name: Load script Playbook
+  hosts: espdev, gkesp32, pybV1.1, oble
+  tasks:
+     - name: Load script
+       load: "led_toggle.py"
+     - name: Check connection
+       wait: 3
+       command: "print('ping'); time.sleep(1);print('pong')"

@@ -1,0 +1,12 @@
+---
+- name: Command Playbook
+  hosts: espdev, gkesp32, pybV1.1, oble
+  tasks:
+    - name: Load upysh
+      command: "from upysh import *"
+    - name: device info and state
+      command: "info && id && mem && df"
+    - name: filesystem check
+      command: "ls && tree && du"
+    - name: MicroPython commands
+      command: "import time;print('foo'); time.sleep(1); print('bar')"
