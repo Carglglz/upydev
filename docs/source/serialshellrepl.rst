@@ -47,3 +47,6 @@ or
     - CTRL-s to toggle shell/repl mode
     - CTRL-x or "exit" to exit
     esp32@foo_device:~ $
+
+
+See :ref:`Serial Device development setup <examples:SerialDevice>`

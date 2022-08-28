@@ -17,6 +17,8 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 * SHELL-REPL modes: Serial, WiFi (SSL/WebREPL), BLE
 * OTA\* Firmware updates WiFi (TCP/SSL), BLE  (\* esp32 only)
 * Custom commands for debugging, testing and prototyping.
+* Custom tasks yaml files that can be played like ansible.
+* Run tests in device with pytest and parametric tests using yaml files.
 * Group mode to operate with multiple devices
 
 ------
@@ -34,36 +36,38 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 upydev will use local working directory configuration unless it does not find any or manually indicated with `-g` option.
 
 - To save configuration in working directory:
-  
+
   ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE]``, where ``[DEVICE ADDRESS]`` must be a valid :
-  
-  * **IP/HOSTNAME** 
-  
+
+  * **IP/HOSTNAME**
+
   * **SERIAL ADDRESS**
-  
+
   * **MAC ADDRESS/ UUID**
-  
+
+  > Hostname must be set in device, e.g. in esp32 default is ``esp32.local``
+  >
   > ``-p`` is set to 115200 by default, so it is not necessary unless using a different baudrate
-  
+
   > MAC address format will depend on OS system (e.g. Linux uses MAC format 'XX:XX:XX:XX:XX:XX', and macOS uses UUID format 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
-  
+
     e.g.
-  
+
   ```bash
   # WiFi
-  $ upydev config -t 192.168.1.40 -p mypass
-  
+  $ upydev config -t 192.168.1.53 -p mypass
+
   # SERIAL
   $ upydev config -t /dev/tty.usbmodem387E386731342
-  
+
   # BLE
   $ upydev config -t 9998175F-9A91-4CA2-B5EA-482AFC3453B9
   ```
-  
+
   Default device name is ``upydevice``, to set a custom name use ``-@`` flag as
 
 ```bash
- $ upydev config -t 192.168.1.40 -p mypass -@ mycustomdevice
+ $ upydev config -t 192.168.1.53 -p mypass -@ mycustomdevice
 ```
 
   To check configuration ``upydev`` or ``upydev check``
@@ -71,7 +75,7 @@ upydev will use local working directory configuration unless it does not find an
 ```bash
 $ upydev
 Device: mycustomdevice
-Address: 192.168.1.40, Device Type: WebSocketDevice
+Address: 192.168.1.53, Device Type: WebSocketDevice
 ```
 
   Or to get more information if the device is online
@@ -85,19 +89,19 @@ Firmware: MicroPython v1.19.1-285-gc4e3ed964-dirty on 2022-08-12; ESP32 module w
 ```
 
 - To save configuration globally use ``-g`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -g``
-  
+
   e.g.
 
 ```bash
-$ upydev config -t 192.168.1.40 -p mypass -g
+$ upydev config -t 192.168.1.53 -p mypass -g
 ```
 
 - To save configuration in a global group use ``-gg`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -gg -@ mydevice``
-  
+
   e.g.
 
 ```bash
-$ upydev config -t 192.168.1.40 -p mypass -gg -@ mydevice
+$ upydev config -t 192.168.1.53 -p mypass -gg -@ mydevice
 ```
 
 - [Optional]
@@ -116,7 +120,7 @@ autocompletion of args, e.g.
 ```bash
 $ mydevice
 Device: mydevice
-Address: 192.168.1.40, Device Type: WebSocketDevice
+Address: 192.168.1.53, Device Type: WebSocketDevice
 ```
 
 Or if the device is connected.
@@ -134,7 +138,7 @@ To see registered devices do:
 ```bash
 $ upydev lsdevs
 Device: mydevice
-Address: 192.168.1.40, Device Type: WebSocketDevice
+Address: 192.168.1.53, Device Type: WebSocketDevice
 ```
 
 Which adds the `lsdevs`  command to `~.profile`  too. So after reloading  again:
@@ -142,7 +146,7 @@ Which adds the `lsdevs`  command to `~.profile`  too. So after reloading  again:
 ```bash
 $ lsdevs
 Device: mydevice
-Address: 192.168.1.40, Device Type: WebSocketDevice
+Address: 192.168.1.53, Device Type: WebSocketDevice
 ```
 
 Finally to enter device shell-repl mode do:
@@ -175,13 +179,11 @@ Type "help()" for more information.
 
 - CTRL-k to see keybindings or -h to see help
 - CTRL-s to toggle shell/repl mode
-- CTRL-x or "exit" to exit mydevice shl
+- CTRL-x or "exit" to exit
 esp32@mydevice:~ $
 ```
 
 > *To enable WebSocket over TLS or wss check [WebSocket (ws) / WebSocket Secure (wss) TLS ](https://upydev.readthedocs.io/en/latest/sslwebshellrepl.html)*
-
-
 
 Once the device is configured see next section or read  [Usage documentation](https://upydev.readthedocs.io/en/latest/usage.html) to check which modes and tools are available.
 

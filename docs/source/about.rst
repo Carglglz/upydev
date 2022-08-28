@@ -27,6 +27,7 @@ Requirements (modules)
   - `pyusb <https://github.com/pyusb/pyusb>`_
   - `braceexpand <https://github.com/trendels/braceexpand>`_
   - `upydevice <https://github.com/Carglglz/upydevice>`_
+  - `pyyaml <https://github.com/yaml/pyyaml>`_
 
 Tested on
 ---------

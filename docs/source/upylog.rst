@@ -8,8 +8,7 @@ MicroPython logging module with time format (predefined) and log to file support
 
     * *level*\: same as logging, by default **upylog.INFO**
 
-        * options\: [upylog.DEBUG, upylog.INFO, upylog.WARNING, upylog.ERROR, upylog.CRITICAL]
-
+        * options\: [upylog.DEBUG, upylog.INFO, upylog.WARNING, upylog.ERROR, upylog.CRITICAL] or strings "DEBUG", "INFO"...
     * *filename*\: by default '**error.log**'
 
     * *stream*\: by default **sys.stderr**
@@ -25,11 +24,27 @@ MicroPython logging module with time format (predefined) and log to file support
     * *sd*\: default **False**; if set to *True*, 'error.log' file will be store in a mounted sd named 'sd'
 
 
+* **upylog.getLogger** (name, log_to_file=False, rotate=_rotate)
+
+    * *name*\: the name of the logger.
+
+    * *log_to_file*\: wether save log output in the log file.
+
+    * *rotate*\: max size in bytes of the log file (default 2000).
+
+    .. note::
+      When max size is reached the log file will be renamed [logfile].log.1 and continue logging to [logfile].log, which means that
+      if at all there would be two log files with max size of aprox. *rotate* bytes.
 
 .. note::
 
-    If using time format, don't forget to set the RTC, otherwise it will start to count from RTC 0.
+    If using time format, don't forget to set the RTC, otherwise it will start to count from default EPOCH.
 
+
+.. note::
+
+   By default ``Logger`` log level and file log level will be the same but both can be changed
+   with for log level ``Logger.setLevel(level)`` and file log level ``Logger.setLogfileLevel(level)``.
 
 
 *Example:*

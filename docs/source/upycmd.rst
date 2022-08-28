@@ -42,6 +42,9 @@ General Commands
         - **diff**: use git diff between device's [~file/s] and local file/s
         - **enable_sh**: upload required files so shell is fully operational
         - **uconfig**: set or check config (from *_config.py* files in device)
+        - **uptime**: shows how long the device has been running (requires ``uptime.py``)
+        - **cycles**: shows how many times the device has been rebooted (requires ``cycles.py``)
+        - **load**: run one or more local scripts in device. (accepts "\*" wildcard and brace expansions)
 
 
 SD

@@ -9,7 +9,7 @@ The REPL mode has two limitations:
 
 - To define a function/class or make a loop use the paste mode. (*CTRL-E*)
 
-  *However the original WebREPL Terminal can be accessed from shell with* ``repl`` *command*
+  *However the original WebREPL/Serial REPL can be accessed from shell with* ``repl`` *command*
 
   e.g.
 
@@ -44,70 +44,74 @@ The REPL mode has two limitations:
   [command] -h to see further help of any command
 
   optional arguments:
-  -h, --help            show this help message and exit
-  -v                    show program's version number and exit
+    -h, --help            show this help message and exit
+    -v                    show program's version number and exit
 
   commands:
-  ** use enable_sh to upload required files for filesystem cmds
+    ** use enable_sh to upload required files for filesystem cmds
 
-  {ls,head,cat,mkdir,touch,cd,pwd,rm,rmdir,du,tree,df,mem,exit,vim,run,reload,info,id,uhelp,modules,uping,rssi,net,ifconfig,ap,i2c,set,datetime,shasum,upip,timeit,update_upyutils,lcd,lsl,lpwd,ldu,docs,mdocs,ctime,enable_sh,diff,config,sd,repl,getcert,jupyterc,pytest,put,get,dsync,debugws,fw,mpyx,ota,upy-config,install}
-  ls                  list files or directories
-  head                display first lines of a file
-  cat                 concatenate and print files
-  mkdir               make directories
-  touch               create a new file
-  cd                  change current working directory
-  pwd                 print current working directory
-  rm                  remove file or pattern of files
-  rmdir               remove directories or pattern of directories
-  du                  display disk usage statistics
-  tree                list contents of directories in a tree-like format
-  df                  display free disk space
-  mem                 show ram usage info
-  exit                exit upydev shell
-  vim                 use vim to edit files
-  run                 run device's scripts
-  reload              reload device's scripts
-  info                prints device's info
-  id                  prints device's unique id
-  uhelp               prints device's help info
-  modules             prints device's frozen modules
-  uping               device send ICMP ECHO_REQUEST packets to network hosts
-  rssi                prints device's RSSI (WiFi or BLE)
-  net                 manage network station interface (STA._IF)
-  ifconfig            prints network interface configuration (STA._IF)
-  ap                  manage network acces point interface (AP._IF)
-  i2c                 manage I2C interface
-  set                 set device's configuration {rtc, hostname, localname}
-  datetime            prints device's RTC time
-  shasum              shasum SHA-256 tool
-  upip                install or manage MicroPython libs
-  timeit              measure execution time of a script/function
-  update_upyutils     update upyutils scripts
-  lcd                 change local current working directory
-  lsl                 list local files or directories
-  lpwd                print local current working directory
-  ldu                 display local disk usage statistics
-  docs                see upydev docs at https://upydev.readthedocs.io/en/latest/
-  mdocs               see MicroPython docs at docs.micropython.org
-  ctime               measure execution time of a shell command
-  enable_sh           upload required files so shell is fully operational
-  diff                use git diff between device's [~file/s] and local file/s
-  config              set or check config (from *_config.py files*)#
-  sd                  commands to manage an sd
-  repl                enter WebREPL
-  getcert             get device's certificate if available
-  jupyterc            enter jupyter console with upydevice kernel
-  pytest              run tests on device with pytest (use pytest setup first)
-  put                 upload files to device
-  get                 download files from device
-  dsync               recursively sync a folder from/to device's filesystem
-  debugws             toggle debug mode for websocket debugging
-  fw                  list or get available firmware from micropython.org
-  mpyx                freeze .py files using mpy-cross. (must be available in $PATH)
-  ota                 to flash a firmware file using OTA system
-  upy-config          enter upy-config dialog
-  install             install libraries or modules with upip to ./lib
+    {ls,head,cat,mkdir,touch,cd,mv,pwd,rm,rmdir,du,tree,df,mem,exit,vim,run,reload,info,id,uhelp,modules,uping,rssi,net,ifconfig,ap,i2c,set,datetime,shasum,upip,timeit,update_upyutils,lcd,lsl,lpwd,ldu,docs,mdocs,ctime,enable_sh,diff,config,sd,uptime,cycles,load,repl,getcert,jupyterc,pytest,put,get,dsync,debugws,fw,mpyx,ota,upy-config,install}
+      ls                  list files or directories
+      head                display first lines of a file
+      cat                 concatenate and print files
+      mkdir               make directories
+      touch               create a new file
+      cd                  change current working directory
+      mv                  move/rename a file
+      pwd                 print current working directory
+      rm                  remove file or pattern of files
+      rmdir               remove directories or pattern of directories
+      du                  display disk usage statistics
+      tree                list contents of directories in a tree-like format
+      df                  display free disk space
+      mem                 show ram usage info
+      exit                exit upydev shell
+      vim                 use vim to edit files
+      run                 run device's scripts
+      reload              reload device's scripts
+      info                prints device's info
+      id                  prints device's unique id
+      uhelp               prints device's help info
+      modules             prints device's frozen modules
+      uping               device send ICMP ECHO_REQUEST packets to network hosts
+      rssi                prints device's RSSI (WiFi or BLE)
+      net                 manage network station interface (STA._IF)
+      ifconfig            prints network interface configuration (STA._IF)
+      ap                  manage network acces point interface (AP._IF)
+      i2c                 manage I2C interface
+      set                 set device's configuration {rtc, hostname, localname}
+      datetime            prints device's RTC time
+      shasum              shasum SHA-256 tool
+      upip                install or manage MicroPython libs
+      timeit              measure execution time of a script/function
+      update_upyutils     update upyutils scripts
+      lcd                 change local current working directory
+      lsl                 list local files or directories
+      lpwd                print local current working directory
+      ldu                 display local disk usage statistics
+      docs                see upydev docs at https://upydev.readthedocs.io/en/latest/
+      mdocs               see MicroPython docs at docs.micropython.org
+      ctime               measure execution time of a shell command
+      enable_sh           upload required files so shell is fully operational
+      diff                use git diff between device's [~file/s] and local file/s
+      config              set or check config (from *_config.py files)#
+      sd                  commands to manage an sd
+      uptime              prints device's uptime since latest boot (requires uptime.py)
+      cycles              prints device's cycle count (requires cycles.py)
+      load                run local script in device
+      repl                enter WebREPL
+      getcert             get device's certificate if available
+      jupyterc            enter jupyter console with upydevice kernel
+      pytest              run tests on device with pytest (use pytest setup first)
+      put                 upload files to device
+      get                 download files from device
+      dsync               recursively sync a folder from/to device's filesystem
+      debugws             toggle debug mode for websocket debugging
+      fw                  list or get available firmware from micropython.org
+      mpyx                freeze .py files using mpy-cross. (must be available in $PATH)
+      ota                 to flash a firmware file using OTA system
+      upy-config          enter upy-config dialog
+      install             install libraries or modules with upip to ./lib
 
 
 .. note::
@@ -201,3 +205,28 @@ Some examples of these commands:
     Done!
     logout
     Connection to esp_room1 closed.
+
+
+.. note:: ``enable_sh`` command installs ``shasum.py``, ``upysh.py``, ``upysh2.py`` and
+  ``nanoglob.py`` which are necesary for filesystem related commands like ``ls``, ``dsync``,
+  ``tree``, etc.
+
+.. note:: Shell-repl mode can be suspended in background with ``CTRL-z``, to resume do ``$ fg``
+  or list background jobs with ``$ jobs``
+
+.. note::	Shell-repl mode saves command history between sessions, so using autosuggestion
+  (enabled with ``CTRL-f``) speeds up typing.
+
+
+.. note:: Commands can be concatenated with ``&&`` and there is some of support for pipes
+  ``>``, ``>>``, ``|`` and brace expansions ``{}``.
+
+
+.. note:: To toggle local path press ``shift-left``, and if the local path happens to be
+  a git repo, current branch will be displayed in prompt. If checking out to a
+  different branch, re-toggle local path to reflect the new branch.
+  e.g.
+
+  .. code-block:: console
+
+    my_project:/esp32@mydevice:~  [develop] $

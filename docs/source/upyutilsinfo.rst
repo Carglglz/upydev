@@ -18,7 +18,7 @@ Bluetooth Low Energy
 Config
 ^^^^^^
 **config**: *(__init__.py, configfuncs.py, params.py)*
-config module to easily configure/set parameters as named tuples.
+config module to easily configure/set parameters as named tuples. See :ref:`Config examples <examples:using config module>`
 
 Cryptography
 ^^^^^^^^^^^^
@@ -45,6 +45,10 @@ Develop
 **upylog.py**: a modified version of MicroPython logging module, with time format logging and log to file option (default file: 'error.log')
 
 **upynotify.py** : a module to notify events with beeps (buzzer needed) and blinks. This is useful for "physical debugging".
+
+**uptime.py**: To set and get how long the device has been running.
+
+**cycles.py**: To set and get how many times a device has been rebooted.
 
 IRQ
 ^^^
@@ -84,6 +88,8 @@ Network
 **wss_helper.py**: to enable WebSecureREPL (server and client handshakes)
 
 **wss_repl.py**: tiny wrapper of webrepl.py module to enable WebSecureREPL
+
+**nwatchdog.py**: network watchdog class to check device is connected to an AP.
 
 SD
 ^^^

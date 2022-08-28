@@ -32,6 +32,8 @@ Features
 * SHELL-REPL: Serial, WiFi (WebREPL/WebSecureREPL) and Bluetooth Low Energy
 * OTA\* Firmware updates WiFi (TCP/SSL), BLE (\*esp32 only)
 * Custom commands for debugging, testing and prototyping.
+* Custom tasks yaml files that can be played like ansible.
+* Run tests in device with pytest and parametric test using yaml files.
 * Group mode to operate with multiple devices
 
 
