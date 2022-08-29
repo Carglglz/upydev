@@ -1,10 +1,11 @@
-from upydevice import Device
-from functools import partial
+from upydevice import Device, DeviceException
 import logging
 import sys
 import upydev
 import json
 import os
+import ast
+import array
 
 
 _SSL = False
@@ -35,6 +36,30 @@ formatter = logging.Formatter(
 )
 handler.setFormatter(formatter)
 log = logging.getLogger("pytest")
+
+
+def parse_assert(in_str):
+    try:
+        output = ast.literal_eval(in_str)
+        return output
+    except Exception:
+        if 'bytearray' in in_str:
+            try:
+                output = bytearray(ast.literal_eval(
+                    in_str.strip().split('bytearray')[1]))
+                return output
+            except Exception:
+                return in_str
+        else:
+            if 'array' in in_str:
+                try:
+                    arr = ast.literal_eval(
+                        in_str.strip().split('array')[1])
+                    output = array.array(arr[0], arr[1])
+                    return output
+                except Exception:
+                    return in_str
+            return in_str
 
 # INIT DEV
 
@@ -102,6 +127,13 @@ def test_dev(cmd):
     ASSERT_RESULT = cmd.get('assert')
     RELOAD = cmd.get('reload')
 
+    # Parse assert result
+    if isinstance(ASSERT_RESULT, str):
+        try:
+            ASSERT_RESULT = parse_assert(ASSERT_RESULT)
+        except Exception:
+            pass
+
     try:
         log.info(f"Running [{TEST_NAME}] test...")
         if LOAD:
@@ -114,10 +146,13 @@ def test_dev(cmd):
         if COMMAND:
             log.info(f"Command [{COMMAND}] ")
             dev.wr_cmd(COMMAND, follow=True)
+            # Catch Device Exceptions and raise:
+            if dev._traceback.decode() in dev.response:
+                raise DeviceException(dev.response)
         if DEVICE_RESULT:
             RESULT = dev.wr_cmd(DEVICE_RESULT, silent=True, rtn_resp=True)
             RESULT_MSG = f"expected: {ASSERT_RESULT} --> result: {RESULT}"
-            assert RESULT == ASSERT_RESULT, f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
+            assert ASSERT_RESULT == RESULT, f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
             log.info(RESULT_MSG)
         if RELOAD:
             dev.cmd(
