@@ -8,9 +8,10 @@
 
   - name: "diff"
     command: "a = do_diff"
+    # params: "[10, {0..10}]" # kind of parametric generation
     args: [1, 1]
     result: a
-    assert: 0
+    assert: 0 # "{10..0}" # kind of parametric generation
 
   - name: "product"
     command: "a = do_product"

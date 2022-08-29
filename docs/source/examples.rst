@@ -909,7 +909,8 @@ Defining a test in a yaml file with the following directives:
 
 
 
-
+.. note:: **load** can be a snippet too. (see ``test_hello_world.yaml``)
+    
 
 .. code-block:: yaml
     :caption: test_load_basic_math.yaml

@@ -1,4 +1,4 @@
-from upydevice import Device, DeviceException
+from upydevice import Device
 import logging
 import sys
 import upydev
@@ -137,8 +137,14 @@ def test_dev(cmd):
     try:
         log.info(f"Running [{TEST_NAME}] test...")
         if LOAD:
-            log.info(f"Loading {LOAD} file...")
-            dev.load(LOAD)
+            # Load can be a file or a snippet in yaml file.
+            if os.path.exists(LOAD):
+                log.info(f"Loading {LOAD} file...")
+                dev.load(LOAD)
+            else:
+                log.info(f"Loading {LOAD[:10]}... snippet")
+                dev.paste_buff(LOAD)
+                dev.wr_cmd('\x04', follow=True)
         if HINT:
             log.info(f"Hint: {HINT}")
         if ARGS:
@@ -147,8 +153,7 @@ def test_dev(cmd):
             log.info(f"Command [{COMMAND}] ")
             dev.wr_cmd(COMMAND, follow=True)
             # Catch Device Exceptions and raise:
-            if dev._traceback.decode() in dev.response:
-                raise DeviceException(dev.response)
+            dev.raise_traceback()
         if DEVICE_RESULT:
             RESULT = dev.wr_cmd(DEVICE_RESULT, silent=True, rtn_resp=True)
             RESULT_MSG = f"expected: {ASSERT_RESULT} --> result: {RESULT}"
@@ -183,5 +188,4 @@ def test_disconnect():
     except Exception as e:
         do_fail(TEST_NAME)
         print("Test Result: ", end="")
-        raise e
         raise e
