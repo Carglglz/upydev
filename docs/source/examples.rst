@@ -763,6 +763,9 @@ Using `upydevice/test/ <https://github.com/Carglglz/upydevice/tree/master/test>`
 is easy to create custom tests for a device, to be run interactively, which can range
 from entire modules to single functions, e.g.
 
+.. note:: ``pytest`` and ``pytest-benchmark`` required. Install with
+          ``$ pip install pytest pytest-benchmark``
+
 Consider test ``test_blink_led`` from ``test_esp_serial.py``
 This will test led ``on()`` and ``off()`` functions:
 
@@ -903,46 +906,47 @@ Defining a test in a yaml file with the following directives:
      - **load**: To load and execute a local file in device (.e.g ``test_basic_math.py``)
      - **command**: The command to run the test in device.
      - **args**: To pass argument to the test function in device.
+     - **kwargs**: To pass keyword arguments to the test function in device.
      - **result**: The command to get test result.
      - **exp**: Expected result to assert.
      - **exp_type**: Expected type of result to assert.
      - **assert_op**: Assert operation if other than ``==``.
      - **assert_itr**: Assert elements of iterable result (``any``, or ``all``).
+     - **benchmark**: To run a benchmark of the function. (``pytest-benchmark`` plugin required)
+     - **rounds**: Rounds to run the function if doing a benchmark.
      - **reload**: To reload a script in device so it can be run again .e.g reload ``foo_test`` module if command was ``import foo_test``.
 
 
-
-.. note:: **load** can be a snippet too. (see ``test_hello_world.yaml``)
-
+.. note:: **load** can be a command too, .e.g ``import mytestlib`` although it won't return anything (only stdout).
 
 .. code-block:: yaml
     :caption: test_load_basic_math.yaml
 
     ---
       - name: "sum"
-      load: ./dev_tests/test_basic_math.py
-      command: "a = do_sum"
-      args: [1, 1]
-      result: a
-      exp: 2
+        load: ./dev_tests/test_basic_math.py
+        command: "a = do_sum"
+        args: [1, 1]
+        result: a
+        exp: 2
 
       - name: "diff"
-      command: "a = do_diff"
-      args: [1, 1]
-      result: a
-      exp: 0
+        command: "a = do_diff"
+        args: [1, 1]
+        result: a
+        exp: 0
 
       - name: "product"
-      command: "a = do_product"
-      args: [2, 2]
-      result: a
-      exp: 4
+        command: "a = do_product"
+        args: [2, 2]
+        result: a
+        exp: 4
 
       - name: "division"
-      command: "a = do_div"
-      args: [1, 2]
-      result: a
-      exp: 0.5
+        command: "a = do_div"
+        args: [1, 2]
+        result: a
+        exp: 0.5
 
 
 .. code-block:: python

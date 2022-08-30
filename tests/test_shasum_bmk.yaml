@@ -1,0 +1,4 @@
+---
+  - name: Shasum *.py files 
+    load: "import shasum"
+    benchmark: "shasum.shasum('*.py')"

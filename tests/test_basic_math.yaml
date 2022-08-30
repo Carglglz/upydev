@@ -17,8 +17,4 @@
   - name: "division"
     command: "a = 1 / 2"
     result: a
-    exp: 0.5
-
-  - name: "ZeroDivision"
-    hint: This demonstrates Device Exception
-    command: "a = 1 / 0"
+    exp: 0.5 

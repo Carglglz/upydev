@@ -6,7 +6,7 @@ import json
 import os
 import ast
 import array
-
+import time
 
 _SSL = False
 CHECK = "[\033[92m\u2714\x1b[0m]"
@@ -173,11 +173,12 @@ def test_platform():
         raise e
 
 
-def test_dev(cmd):
+def test_dev(cmd, benchmark):
     TEST_NAME = cmd.get("name")
     LOAD = cmd.get("load")
     HINT = cmd.get("hint")
     ARGS = cmd.get("args")
+    KWARGS = cmd.get("kwargs")
     COMMAND = cmd.get("command")
     DEVICE_RESULT = cmd.get("result")
     EXP_RESULT = cmd.get("exp")
@@ -185,6 +186,12 @@ def test_dev(cmd):
     ASSERT_OP = cmd.get("assert_op")
     ASSERT_ITR = cmd.get("assert_itr")
     RELOAD = cmd.get("reload")
+    BENCHMARK = cmd.get("benchmark")
+    ROUNDS = cmd.get("rounds")
+    if BENCHMARK:
+        COMMAND = BENCHMARK
+    if not ROUNDS:
+        ROUNDS = 5
 
     # Parse assert result
     if isinstance(EXP_RESULT, str):
@@ -199,6 +206,10 @@ def test_dev(cmd):
             # Load can be a file or a snippet in yaml file.
             if os.path.exists(LOAD):
                 log.info(f"Loading {LOAD} file...")
+                log.info(f"{LOAD}: {os.stat(LOAD)[6]/1000} kB")
+                if os.stat(LOAD)[6] > 500:
+                    if dev.dev_class in ["WebSocketDevice", "BleDevice"]:
+                        time.sleep(0.5)
                 dev.load(LOAD)
             else:
                 log.info(f"Loading {LOAD[:10]}... snippet")
@@ -207,47 +218,57 @@ def test_dev(cmd):
         if HINT:
             log.info(f"Hint: {HINT}")
         if ARGS:
-            COMMAND = f"{COMMAND}(*{ARGS})"
-        if COMMAND:
-            log.info(f"Command [{COMMAND}] ")
-            dev.wr_cmd(COMMAND, follow=True)
-            # Catch Device Exceptions and raise:
-            dev.raise_traceback()
-        if DEVICE_RESULT:
-            RESULT = dev.wr_cmd(DEVICE_RESULT, silent=True, rtn_resp=True)
-            if EXP_TYPE:
-                RESULT_MSG = f"expected: {EXP_TYPE} --> result: {type(RESULT)}"
-                log.info(RESULT_MSG)
-                assert isinstance(
-                    RESULT, _EXP_TYPES[EXP_TYPE]
-                ), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
-            if EXP_RESULT:
-                # ASSERT_OP
-                if not ASSERT_OP:
-                    RESULT_MSG = f"expected: {EXP_RESULT} == result: {RESULT}"
+            if COMMAND:
+                COMMAND = f"{COMMAND}(*{ARGS})"
+        if KWARGS:
+            if COMMAND.endswith(')'):
+                COMMAND = f"{COMMAND[:-1]}, **{KWARGS})"
+            else:
+                COMMAND = f"{COMMAND}(**{KWARGS})"
+        if not BENCHMARK:
+            if COMMAND:
+                log.info(f"Command [{COMMAND}] ")
+                dev.wr_cmd(COMMAND, follow=True)
+                # Catch Device Exceptions and raise:
+                dev.raise_traceback()
+            if DEVICE_RESULT is not None:
+                RESULT = dev.wr_cmd(DEVICE_RESULT, silent=True, rtn_resp=True)
+                if EXP_TYPE:
+                    RESULT_MSG = f"expected: {EXP_TYPE} --> result: {type(RESULT)}"
                     log.info(RESULT_MSG)
-                    assert (
-                        EXP_RESULT == RESULT
+                    assert isinstance(
+                        RESULT, _EXP_TYPES[EXP_TYPE]
                     ), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
-                else:
-                    if not ASSERT_ITR:
-                        assert_op(EXP_RESULT, RESULT, ASSERT_OP, log, TEST_NAME)
-                    else:
-                        RESULT_MSG = (
-                            f"expected: {EXP_RESULT} {ASSERT_OP} "
-                            f" ({ASSERT_ITR}) result: {RESULT}"
-                        )
+                if EXP_RESULT is not None:
+                    # ASSERT_OP
+                    if not ASSERT_OP:
+                        RESULT_MSG = f"expected: {EXP_RESULT} == result: {RESULT}"
                         log.info(RESULT_MSG)
-                        _result = [
-                            _assert_op(EXP_RESULT, res, ASSERT_OP) for res in RESULT
-                        ]
-                        if ASSERT_ITR == "any":
-                            assert any(
-                                _result), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
-                        if ASSERT_ITR == "all":
-                            assert all(
-                                _result), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
-
+                        assert (
+                            EXP_RESULT == RESULT
+                        ), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
+                    else:
+                        if not ASSERT_ITR:
+                            assert_op(EXP_RESULT, RESULT, ASSERT_OP, log, TEST_NAME)
+                        else:
+                            RESULT_MSG = (
+                                f"expected: {EXP_RESULT} {ASSERT_OP} "
+                                f" ({ASSERT_ITR}) result: {RESULT}"
+                            )
+                            log.info(RESULT_MSG)
+                            _result = [
+                                _assert_op(EXP_RESULT, res, ASSERT_OP) for res in RESULT
+                            ]
+                            if ASSERT_ITR == "any":
+                                assert any(
+                                    _result), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
+                            if ASSERT_ITR == "all":
+                                assert all(
+                                    _result), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
+        else:
+            log.info(f"Benchmark Command [{COMMAND}] ")
+            benchmark.pedantic(dev.wr_cmd, args=(COMMAND,), kwargs={"follow": True},
+                               rounds=ROUNDS, iterations=1)
         if RELOAD:
             dev.cmd(f"import sys,gc;del(sys.modules['{RELOAD}']);" f"gc.collect()")
         do_pass(TEST_NAME)

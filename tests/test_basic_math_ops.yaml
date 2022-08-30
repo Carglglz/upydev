@@ -23,7 +23,4 @@
     exp: 0.5
     assert_op: "<="
   
-  - name: "ZeroDivision"
-    hint: This demonstrates Device Exception
-    command: "a = 1 / 0"
-
+  

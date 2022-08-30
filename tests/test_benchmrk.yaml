@@ -1,0 +1,18 @@
+---
+  - name: Benchmark time.sleep
+    benchmark: "time.sleep"
+    args: [0.5]
+
+  - name: Pystone Benchmark
+    load: "import pystone_lowmem"
+    benchmark: "ps = pystone_lowmem.main()"
+
+    # using time_it
+  - name: Timed function setup
+    load: ./dev_tests/timed_func.py 
+  
+  - name: Timed function test 
+    load: ./dev_tests/test_timed.py 
+    benchmark: "test2"
+    args: [20000]
+    rounds: 10

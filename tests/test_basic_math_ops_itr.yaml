@@ -15,7 +15,7 @@
   - name: "product"
     command: "a = 2 * 2"
     result: "[a*i for i in range(4)]"
-    exp: 4
+    exp: 16
     assert_op: ">="
     assert_itr: "all"
 
@@ -24,8 +24,4 @@
     result: a
     exp: 0.5
     assert_op: "<="
-  
-  - name: "ZeroDivision"
-    hint: This demonstrates Device Exception
-    command: "a = 1 / 0"
-
+   
