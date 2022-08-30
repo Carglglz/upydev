@@ -904,13 +904,16 @@ Defining a test in a yaml file with the following directives:
      - **command**: The command to run the test in device.
      - **args**: To pass argument to the test function in device.
      - **result**: The command to get test result.
-     - **assert**: Expected result to assert.
+     - **exp**: Expected result to assert.
+     - **exp_type**: Expected type of result to assert.
+     - **assert_op**: Assert operation if other than ``==``.
+     - **assert_itr**: Assert elements of iterable result (``any``, or ``all``).
      - **reload**: To reload a script in device so it can be run again .e.g reload ``foo_test`` module if command was ``import foo_test``.
 
 
 
 .. note:: **load** can be a snippet too. (see ``test_hello_world.yaml``)
-    
+
 
 .. code-block:: yaml
     :caption: test_load_basic_math.yaml
@@ -921,25 +924,25 @@ Defining a test in a yaml file with the following directives:
       command: "a = do_sum"
       args: [1, 1]
       result: a
-      assert: 2
+      exp: 2
 
       - name: "diff"
       command: "a = do_diff"
       args: [1, 1]
       result: a
-      assert: 0
+      exp: 0
 
       - name: "product"
       command: "a = do_product"
       args: [2, 2]
       result: a
-      assert: 4
+      exp: 4
 
       - name: "division"
       command: "a = do_div"
       args: [1, 2]
       result: a
-      assert: 0.5
+      exp: 0.5
 
 
 .. code-block:: python

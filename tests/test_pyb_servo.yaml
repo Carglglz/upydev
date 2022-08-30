@@ -18,28 +18,28 @@
     args: (50, 1000)
     # wait for servo to get to position
     result: "time.sleep(2);s1.angle()"
-    assert: 49 # calibration angle - 1
+    exp: 49 # calibration angle - 1
 
   - name: Set servo to 10 
     command: "s1.angle"
     args: (10, 1000)
     result: "time.sleep(2);s1.angle()" 
-    assert: 9
+    exp: 9
 
   - name: Set servo to 1 
     command: "s1.angle"
     args: (1, 1000)
     result: "time.sleep(2);s1.angle()" 
-    assert: 0
+    exp: 0
 
   - name: Set servo to MAX (86) 
     command: "s1.angle"
     args: (86, 1000)
     result: "time.sleep(2);s1.angle()" 
-    assert: 85
+    exp: 85
 
   - name: Set servo to MIN (-80) 
     command: "s1.angle"
     args: (-80, 1000)
     result: "time.sleep(2);s1.angle()" 
-    assert: -79 
+    exp: -79 

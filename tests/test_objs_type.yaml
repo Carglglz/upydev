@@ -3,48 +3,59 @@
     command: "ret = 1"
     result: ret 
     exp: 1
+    exp_type: int
 
   - name: Assert float 
     command: "ret = 1.0"
     result: ret 
     assert : 1.0
+    exp_type: float
 
   - name: Assert string 
     command: "ret = 'hello'"
     result: ret
     exp: "hello"
+    exp_type: str
+
 
   - name: Assert List 
     command: "ret = [1,2,3]"
     result: ret 
     exp: [1,2,3]
+    exp_type: list
   
   - name: Assert Tuple 
     command: "ret = (1,2,3)" 
     result: ret 
     exp: (1,2,3)
+    exp_type: tuple
 
   - name: Assert Dict 
     command: "ret = {'a':1, 'b':2, 'c':3}"
     result: ret 
     exp: {'a':1, 'b':2, 'c':3}
+    exp_type: dict 
 
   - name: Assert Bytes
     command: "ret = b'hello'"
     result: ret 
     exp: b'hello'
+    exp_type: bytes 
 
   - name: Assert Bytes-x
     command: "ret = bytes(3)"
     result: ret 
     exp: b'\x00\x00\x00'
+    exp_type: bytes
 
   - name: Assert Bytearray
     command: "ret = bytearray(4)"
     result: ret 
     exp: bytearray(b'\x00\x00\x00\x00')
+    exp_type: bytearray
 
   - name: Assert Array 
     command: "import array; ret = array.array('h', [1,2,3])"
     result: ret
     exp: array('h', [1,2,3])
+    exp_type: array

@@ -5,6 +5,6 @@
     command: "ret = do_wait_for_push"
     args: [10]
     result: ret 
-    assert: True
+    exp: True
 
  

@@ -11,14 +11,14 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 
 ### Features:
 
-* Tools to allow configuration, management, communication and control of MicroPython devices.
+* Tools to allow configuration, management, communication and control of MicroPython devices
 * Command line Autocompletion
 * File IO operations (upload, download one or multiple files, recursively sync directories...)
 * SHELL-REPL modes: Serial, WiFi (SSL/WebREPL), BLE
 * OTA\* Firmware updates WiFi (TCP/SSL), BLE  (\* esp32 only)
-* Custom commands for debugging, testing and prototyping.
-* Custom tasks yaml files that can be played like ansible.
-* Run tests in device with pytest and parametric tests using yaml files.
+* Custom commands for debugging, testing and prototyping
+* Custom tasks yaml files that can be played like ansible
+* Run tests in device with pytest and parametric tests using yaml files
 * Group mode to operate with multiple devices
 
 ------

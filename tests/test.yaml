@@ -6,11 +6,11 @@
   - name: "run_test_code"
     command: "import test_code"
     result: "test_code.RESULT"
-    assert: True
+    exp: True
     reload: "test_code"
 
   - name: "run_test_to_fail"
     command: "import test_to_fail"
     result: "test_to_fail.RESULT"
-    assert: True
+    exp: True
     reload: "test_to_fail"

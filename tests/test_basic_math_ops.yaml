@@ -2,23 +2,28 @@
   - name: "sum"
     command: "a = 1 + 1"
     result: a
-    exp: 2
+    exp: 3
+    assert_op: ">"
 
   - name: "diff"
     command: "a = 1 - 1"
     result: a
-    exp: 0
+    exp: -1
+    assert_op: "<"
 
   - name: "product"
     command: "a = 2 * 2"
     result: a
     exp: 4
+    assert_op: ">="
 
   - name: "division"
     command: "a = 1 / 2"
     result: a
     exp: 0.5
-
+    assert_op: "<="
+  
   - name: "ZeroDivision"
     hint: This demonstrates Device Exception
     command: "a = 1 / 0"
+

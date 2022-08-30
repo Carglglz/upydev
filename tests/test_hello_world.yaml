@@ -4,4 +4,4 @@
                return f'{inp} World'"
     command: "ret = hello('Hello')"
     result: ret 
-    assert: "Hello World"
+    exp: "Hello World"
