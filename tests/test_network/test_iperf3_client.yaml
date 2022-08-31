@@ -7,4 +7,5 @@
     load: "import uiperf3"
     command: "uiperf3.client"
     args: [localip] 
+    reload: "uiperf3"
 

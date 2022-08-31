@@ -6,5 +6,6 @@
     ip: devip
     load: "import uiperf3"
     command: "uiperf3.server_once()"
+    reload: "uiperf3"
 
 

@@ -1131,7 +1131,7 @@ def debugging_action(args, unkwargs, **kargs):
                 rest_args = ['test_dev.py']
             if args.yf:
                 if isinstance(args.yf, list):
-                    unknown_args = f"--yf {' '.join(args.yf)}".split()
+                    unknown_args = f"--yf {' '.join(args.yf)}".split() + unknown_args
                 else:
                     unknown_args = ['--yf', args.yf] + unknown_args
             # print(args, rest_args, unknown_args)
