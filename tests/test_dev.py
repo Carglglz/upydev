@@ -7,6 +7,9 @@ import os
 import ast
 import array
 import time
+import socket
+import subprocess
+import shlex
 
 _SSL = False
 CHECK = "[\033[92m\u2714\x1b[0m]"
@@ -39,7 +42,6 @@ handler.setLevel(log_levels["info"])
 logging.basicConfig(
     level=log_levels["debug"],
     format="%(asctime)s [%(name)s] [%(threadName)s] [%(levelname)s] %(message)s",
-    # format="%(asctime)s [%(name)s] [%(process)d] [%(threadName)s] [%(levelname)s]  %(message)s",
     handlers=[handler],
 )
 formatter = logging.Formatter(
@@ -71,6 +73,17 @@ def parse_assert(in_str):
                 except Exception:
                     return in_str
             return in_str
+
+
+def get_local_ip():
+    try:
+        ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ip_soc.connect(("8.8.8.8", 1))
+        local_ip = ip_soc.getsockname()[0]
+        ip_soc.close()
+        return local_ip
+    except Exception:
+        return "0.0.0.0"
 
 
 def _assert_op(expected, result, op):
@@ -124,9 +137,9 @@ def test_devname(devname):
     global dev, log
     group_file = "UPY_G"
     # print(group_file)
-    if "{}.config".format(group_file) not in os.listdir():
-        group_file = "{}/{}".format(upydev.__path__[0], group_file)
-    with open("{}.config".format(group_file), "r", encoding="utf-8") as group:
+    if f"{group_file}.config" not in os.listdir():
+        group_file = os.path.join(upydev.__path__[0], group_file)
+    with open(f"{group_file}.config", "r", encoding="utf-8") as group:
         devices = json.loads(group.read())
         # print(devices)
     devs = devices.keys()
@@ -153,18 +166,80 @@ def test_devname(devname):
 
 
 def do_pass(test_name):
-    log.info("{} TEST: {}".format(test_name, CHECK))
+    log.info(f"{test_name} TEST: {CHECK}")
 
 
 def do_fail(test_name):
-    log.error("{} TEST: {}".format(test_name, XF))
+    log.error(f"{test_name} TEST: {XF}")
+
+
+def do_benchmark(benchmark, command, rounds):
+    benchmark.pedantic(
+        dev.wr_cmd,
+        args=(command,),
+        kwargs={"follow": True},
+        rounds=rounds,
+        iterations=1,
+    )
+
+
+def do_network(network, command, args, kwargs, ip, log):
+    test_result = None
+    cmd = None
+    mode = None
+    if network:
+        try:
+            net_tool, mode, cmd = network.split(":")
+            if "devip" in cmd:
+                cmd = cmd.replace("devip", ip)
+        except Exception:
+            net_tool, mode = network.split(":")
+
+        if net_tool == "iperf3":
+            if mode == "server":
+                _cmd = "iperf3 -s -1"
+                if cmd:
+                    _cmd = cmd
+            if mode == "client":
+                dev.cmd_nb(command, block_dev=False)
+                time.sleep(0.5)
+                _cmd = f"iperf3 -c {ip} -l 128"
+                if cmd:
+                    _cmd = cmd
+            log.info(f"Host Command: {_cmd}")
+            test_result = subprocess.Popen(shlex.split(_cmd),
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+    if command:
+        log.info(f"Command [{command}] ")
+        if mode == 'client':
+            dev.wr_cmd('', follow=True)
+        else:
+            dev.wr_cmd(command, follow=True)
+        # Catch Device Exceptions and raise:
+        dev.raise_traceback()
+
+    if test_result:
+        log.info(f"Host: {mode}")
+        test_stdout = ''.join([line.decode() for line in
+                               test_result.stdout.readlines()])
+        if not test_stdout:
+            test_stdout = ''.join([line.decode() for line in
+                                   test_result.stderr.readlines()])
+        log.info(f"\n{test_stdout}")
 
 
 def test_platform():
     TEST_NAME = "DEV PLATFORM"
     try:
         log.info(f"Running {dev.dev_class} test...")
-        log.info("DEV PLATFORM: {}".format(dev.dev_platform))
+        log.info(f"Device: {dev.dev_platform}")
+        _dev_info = (
+            "import os, sys;[os.uname().machine, os.uname().version,"
+            " sys.implementation.name]"
+        )
+        _machine, _version, _sysn = dev.wr_cmd(_dev_info, silent=True, rtn_resp=True)
+        log.info(f"Firmware: {_sysn} {_version}; {_machine}")
         do_pass(TEST_NAME)
         print("Test Result: ", end="")
     except Exception as e:
@@ -188,6 +263,17 @@ def test_dev(cmd, benchmark):
     RELOAD = cmd.get("reload")
     BENCHMARK = cmd.get("benchmark")
     ROUNDS = cmd.get("rounds")
+    NETWORK = cmd.get("network")
+    IP = cmd.get("ip")
+    if IP == "localip":
+        IP = get_local_ip()
+    if IP == "devip":
+        if dev.dev_class == "WebSocketDevice":
+            IP = dev.ip
+        else:
+            _ifconfig = "import network;network.WLAN(network.STA_IF).ifconfig()"
+            _dev_ip = dev.wr_cmd(_ifconfig, silent=True, rtn_resp=True)[0]
+            IP = _dev_ip
     if BENCHMARK:
         COMMAND = BENCHMARK
     if not ROUNDS:
@@ -203,7 +289,7 @@ def test_dev(cmd, benchmark):
     try:
         log.info(f"Running [{TEST_NAME}] test...")
         if LOAD:
-            # Load can be a file or a snippet in yaml file.
+            # Load can be a file or command in yaml file.
             if os.path.exists(LOAD):
                 log.info(f"Loading {LOAD} file...")
                 log.info(f"{LOAD}: {os.stat(LOAD)[6]/1000} kB")
@@ -219,13 +305,24 @@ def test_dev(cmd, benchmark):
             log.info(f"Hint: {HINT}")
         if ARGS:
             if COMMAND:
+                if IP:
+                    if isinstance(ARGS, str):
+                        ARGS = ARGS.replace("localip", IP)
+                        ARGS = ARGS.replace("devip", IP)
+                    elif isinstance(ARGS, list):
+                        if "localip" in ARGS:
+                            ARGS[ARGS.index("localip")] = IP
+                        if "devip" in ARGS:
+                            ARGS[ARGS.index("devip")] = IP
                 COMMAND = f"{COMMAND}(*{ARGS})"
         if KWARGS:
-            if COMMAND.endswith(')'):
+            if COMMAND.endswith(")"):
                 COMMAND = f"{COMMAND[:-1]}, **{KWARGS})"
             else:
                 COMMAND = f"{COMMAND}(**{KWARGS})"
-        if not BENCHMARK:
+        if NETWORK:
+            do_network(NETWORK, COMMAND, ARGS, KWARGS, IP, log)
+        elif not BENCHMARK:
             if COMMAND:
                 log.info(f"Command [{COMMAND}] ")
                 dev.wr_cmd(COMMAND, follow=True)
@@ -261,14 +358,15 @@ def test_dev(cmd, benchmark):
                             ]
                             if ASSERT_ITR == "any":
                                 assert any(
-                                    _result), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
+                                    _result
+                                ), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
                             if ASSERT_ITR == "all":
                                 assert all(
-                                    _result), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
+                                    _result
+                                ), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
         else:
             log.info(f"Benchmark Command [{COMMAND}] ")
-            benchmark.pedantic(dev.wr_cmd, args=(COMMAND,), kwargs={"follow": True},
-                               rounds=ROUNDS, iterations=1)
+            do_benchmark(benchmark, COMMAND, ROUNDS)
         if RELOAD:
             dev.cmd(f"import sys,gc;del(sys.modules['{RELOAD}']);" f"gc.collect()")
         do_pass(TEST_NAME)

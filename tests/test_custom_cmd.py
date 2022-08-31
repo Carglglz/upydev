@@ -65,12 +65,10 @@ log = logging.getLogger("pytest")
 def test_devname(devname):
     global dev, log
     group_file = "UPY_G"
-    # print(group_file)
     if "{}.config".format(group_file) not in os.listdir():
-        group_file = "{}/{}".format(upydev.__path__[0], group_file)
-    with open("{}.config".format(group_file), "r", encoding="utf-8") as group:
+        group_file = os.path.join(upydev.__path__[0], group_file)
+    with open(f"{group_file}.config", "r", encoding="utf-8") as group:
         devices = json.loads(group.read())
-        # print(devices)
     devs = devices.keys()
     # NAME ENTRY POINT
     if devname in devs:
