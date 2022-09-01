@@ -1,0 +1,18 @@
+---
+  - name: System Check
+    hint: "Device CPU frequency:"
+    load: ./dev_tests/get_machine_freq.py 
+    command: "freq()"
+    result: "mac_fq = freq()"
+ 
+  - name: Setup Chaos Benchmark
+    load: ./dev_tests/perf_bench/bm_chaos.py 
+
+  - name: Setup Benchmark Runner
+    load: ./dev_tests/perf_bench/benchrun.py
+
+  - name: Chaos Benchmark 
+    hint: Create chaosgame-like fractals 
+    benchmark: "bm_run"
+    args: "[mac_fq, 100]" 
+  
