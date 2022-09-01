@@ -902,7 +902,8 @@ Defining a test in a yaml file with the following directives:
 
 .. admonition:: Test Directives
 
-     - **name** : The name of the test
+     - **name**: The name of the test
+     - **hint**: Info about the test, description, context, etc.
      - **load**: To load and execute a local file in device (.e.g ``test_basic_math.py``)
      - **command**: The command to run the test in device.
      - **args**: To pass argument to the test function in device.
@@ -913,11 +914,25 @@ Defining a test in a yaml file with the following directives:
      - **assert_op**: Assert operation if other than ``==``.
      - **assert_itr**: Assert elements of iterable result (``any``, or ``all``).
      - **benchmark**: To run a benchmark of the function. (``pytest-benchmark`` plugin required)
+     - **follow**: To follow device benchmark output only (do not capture or save it).
+     - **diff**: To compute diff between device and host benchmark times (i.e. interface latency)
      - **rounds**: Rounds to run the function if doing a benchmark.
+     - **network**: To run network tests, (currently only ``iperf3:server``, ``iperf3:client``)
+     - **ip**: IP to use in network tests, (``localip``, or ``devip``)
      - **reload**: To reload a script in device so it can be run again .e.g reload ``foo_test`` module if command was ``import foo_test``.
 
 
 .. note:: **load** can be a command too, .e.g ``import mytestlib`` although it won't return anything (only stdout).
+
+.. tip:: Some directives are mutually exclusive, e.g. the 3 types of tests would be:
+
+      - **Assert** Test: using **command**, **result**, **exp** (with options like **exp_type**, **assert_op**, **assert_itr**)
+      - **Benchmark** Test: using **benchmark** with **rounds** and options like **follow** or **diff**
+      - **Network** Test: using **network**, **command**, **ip** to run network tests.
+
+    The directives that should work with any type of test are the rest (
+    **name**, **load**, **args**, **kwargs**, **hint**, **reload**
+    )
 
 .. code-block:: yaml
     :caption: test_load_basic_math.yaml

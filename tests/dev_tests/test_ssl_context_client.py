@@ -98,4 +98,7 @@ def main(tdiff=False):
     # print(ssl_sock.cipher())
     # print(ssl_sock.getpeercert(True))
     ssl_sock.close()
-    return resp
+    if not tdiff:
+        return resp
+    else:
+        return (delta/1e6) # seconds

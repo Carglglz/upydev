@@ -160,6 +160,7 @@ def test_devname(devname):
                 dev_pass = upy_conf["passwd"]
 
     dev = Device(dev_addr, dev_pass, init=True, autodetect=True)
+    dev.name = devname
 
     extra = {"dev": devname, "devp": dev.dev_platform.upper()}
     log = logging.LoggerAdapter(log, extra)
@@ -174,6 +175,20 @@ def do_fail(test_name):
 
 
 def do_benchmark(benchmark, command, rounds):
+    global dev_stats
+    dev_stats = benchmark._make_stats(1)
+    dev_stats.name = f"{dev_stats.name}:[{dev.name}]"
+    dev_stats.fullname = f"{dev_stats.fullname}:[{dev.name}]"
+    benchmark.pedantic(
+        bench_dev_func,
+        args=(command,),
+        rounds=rounds,
+        iterations=1,
+    )
+
+
+def do_benchmark_follow(benchmark, command, rounds):
+
     benchmark.pedantic(
         dev.wr_cmd,
         args=(command,),
@@ -181,6 +196,18 @@ def do_benchmark(benchmark, command, rounds):
         rounds=rounds,
         iterations=1,
     )
+
+
+def bench_dev_func(command):
+    ret = dev.wr_cmd(command, rtn_resp=True, long_string=True)
+    if isinstance(ret, str):
+        ret = ret.split()[-1]
+        try:
+            ret = ast.literal_eval(ret)
+        except Exception:
+            pass
+    if isinstance(ret, int) or isinstance(ret, float):
+        dev_stats.stats.update(ret)
 
 
 def do_network(network, command, args, kwargs, ip, log):
@@ -207,13 +234,13 @@ def do_network(network, command, args, kwargs, ip, log):
                 if cmd:
                     _cmd = cmd
             log.info(f"Host Command: {_cmd}")
-            test_result = subprocess.Popen(shlex.split(_cmd),
-                                           stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
+            test_result = subprocess.Popen(
+                shlex.split(_cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
     if command:
         log.info(f"Command [{command}] ")
-        if mode == 'client':
-            dev.wr_cmd('', follow=True)
+        if mode == "client":
+            dev.wr_cmd("", follow=True)
         else:
             dev.wr_cmd(command, follow=True)
         # Catch Device Exceptions and raise:
@@ -221,11 +248,13 @@ def do_network(network, command, args, kwargs, ip, log):
 
     if test_result:
         log.info(f"Host: {mode}")
-        test_stdout = ''.join([line.decode() for line in
-                               test_result.stdout.readlines()])
+        test_stdout = "".join(
+            [line.decode() for line in test_result.stdout.readlines()]
+        )
         if not test_stdout:
-            test_stdout = ''.join([line.decode() for line in
-                                   test_result.stderr.readlines()])
+            test_stdout = "".join(
+                [line.decode() for line in test_result.stderr.readlines()]
+            )
         log.info(f"\n{test_stdout}")
 
 
@@ -262,6 +291,8 @@ def test_dev(cmd, benchmark):
     ASSERT_ITR = cmd.get("assert_itr")
     RELOAD = cmd.get("reload")
     BENCHMARK = cmd.get("benchmark")
+    BENCH_DIFF = cmd.get("diff")
+    BENCH_FOLLOW = cmd.get("follow")
     ROUNDS = cmd.get("rounds")
     NETWORK = cmd.get("network")
     IP = cmd.get("ip")
@@ -366,7 +397,21 @@ def test_dev(cmd, benchmark):
                                 ), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
         else:
             log.info(f"Benchmark Command [{COMMAND}] ")
-            do_benchmark(benchmark, COMMAND, ROUNDS)
+
+            if not BENCH_FOLLOW:
+                if BENCH_DIFF:
+                    host_dev_diff = benchmark._make_stats(1)
+                    host_dev_diff.name = f"{host_dev_diff.name}:[diff]"
+                    host_dev_diff.fullname = f"{host_dev_diff.fullname}:[diff]"
+                do_benchmark(benchmark, COMMAND, ROUNDS)
+                if BENCH_DIFF:
+                    host_data = benchmark.stats.stats.data
+                    dev_data = dev_stats.stats.data
+                    for n, s in enumerate(dev_data):
+                        host_dev_diff.stats.update(abs(host_data[n]-s))
+            else:
+                do_benchmark_follow(benchmark, COMMAND, ROUNDS)
+
         if RELOAD:
             dev.cmd(f"import sys,gc;del(sys.modules['{RELOAD}']);" f"gc.collect()")
         do_pass(TEST_NAME)

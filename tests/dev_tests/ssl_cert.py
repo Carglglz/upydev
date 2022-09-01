@@ -70,4 +70,6 @@ def main(tdiff=False):
     s.write(b"GET / HTTP/1.0\r\n\r\n")
     resp = s.read(17)
     s.close()
-    return resp
+    if not tdiff:
+        return resp
+    return (delta/1e6)

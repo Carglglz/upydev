@@ -64,12 +64,15 @@ class Record:
 TRUE = 1
 FALSE = 0
 
-def main(loops=LOOPS):
+def main(loops=LOOPS, benchtm=False):
     benchtime, stones = pystones(loops)
     print("Pystone(%s) time for %d passes = %gms" % \
           (__version__, loops, benchtime))
     print("This machine benchmarks at %g pystones/second" % stones)
-    return stones
+    if not benchtm:
+        return stones
+    else:
+        return benchtime/1e3
 
 
 def pystones(loops=LOOPS):

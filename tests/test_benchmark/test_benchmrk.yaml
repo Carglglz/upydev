@@ -6,10 +6,12 @@
   - name: Benchmark time.sleep
     benchmark: "time.sleep"
     args: [0.5]
+    follow: True
 
   - name: Pystone Benchmark
     load: "import pystone_lowmem"
-    benchmark: "ps = pystone_lowmem.main()"
+    benchmark: "pystone_lowmem.main(benchtm=True)"
+    reload: "pystone_lowmem"
 
   - name: Assert Pystones 
     command: "stones = pystone_lowmem.main"
@@ -26,3 +28,4 @@
     benchmark: "test2"
     args: [20000]
     rounds: 10
+    follow: True
