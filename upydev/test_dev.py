@@ -259,6 +259,7 @@ def do_network(network, command, args, kwargs, ip, log):
 
 
 def test_platform():
+    global _machine, _version, _sysn
     TEST_NAME = "DEV PLATFORM"
     try:
         log.info(f"Running {dev.dev_class} test...")
@@ -397,7 +398,11 @@ def test_dev(cmd, benchmark):
                                 ), f"Test {TEST_NAME} FAILED: {RESULT_MSG}"
         else:
             log.info(f"Benchmark Command [{COMMAND}] ")
-
+            benchmark.extra_info["machine"] = _machine
+            benchmark.extra_info["version"] = _version
+            benchmark.extra_info["sysname"] = _sysn
+            benchmark.param = (f"{benchmark.param} @ {dev.dev_platform} "
+                               f"{_sysn}-{_version} {_machine}")
             if not BENCH_FOLLOW:
                 if BENCH_DIFF:
                     host_dev_diff = benchmark._make_stats(1)
@@ -408,7 +413,7 @@ def test_dev(cmd, benchmark):
                     host_data = benchmark.stats.stats.data
                     dev_data = dev_stats.stats.data
                     for n, s in enumerate(dev_data):
-                        host_dev_diff.stats.update(abs(host_data[n]-s))
+                        host_dev_diff.stats.update(abs(host_data[n] - s))
             else:
                 do_benchmark_follow(benchmark, COMMAND, ROUNDS)
 
