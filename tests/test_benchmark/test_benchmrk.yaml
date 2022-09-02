@@ -12,6 +12,8 @@
     load: "import pystone_lowmem"
     benchmark: "pystone_lowmem.main(benchtm=True)"
     reload: "pystone_lowmem"
+    bench_host: True
+    diff: True
 
   - name: Assert Pystones 
     command: "stones = pystone_lowmem.main"

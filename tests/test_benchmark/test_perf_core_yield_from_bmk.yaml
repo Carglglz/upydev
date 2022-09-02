@@ -1,0 +1,23 @@
+---
+  - name: System Check
+    hint: "Device CPU frequency:"
+    load: ./dev_tests/get_machine_freq.py 
+    command: "freq()"
+    result: "mac_fq = freq()"
+ 
+  - name: Setup Core yield from Benchmark
+    load: ./dev_tests/perf_bench/core_yield_from.py 
+
+  - name: Setup Benchmark Runner
+    load: ./dev_tests/perf_bench/benchrun.py
+
+  - name: Core yield from Benchmark 
+    hint: Test a deep set of "yield from" statements. 
+    load: "import gc; gc.collect()"
+    benchmark: "bm_run"
+    args: "[mac_fq, 100]" 
+
+  - name: Garbage Collect
+    load: "import gc, micropython"
+    command: "micropython.mem_info();gc.collect();micropython.mem_info()" 
+  

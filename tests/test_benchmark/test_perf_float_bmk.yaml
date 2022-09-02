@@ -1,0 +1,28 @@
+---
+  - name: System Check
+    reset: soft
+    hint: "Device CPU frequency:"
+    load: ./dev_tests/get_machine_freq.py 
+    command: "freq()"
+    result: "mac_fq = freq()"
+ 
+  - name: Setup Float Benchmark
+    load: ./dev_tests/perf_bench/bm_float.py 
+
+  - name: Setup Benchmark Runner
+    load: ./dev_tests/perf_bench/benchrun.py
+
+  - name: Float Benchmark 
+    hint: Artificial, floating point-heavy benchmark originally used by Factor
+    load: "import gc;gc.collect()"
+    benchmark: "bm_run"
+    args: "[mac_fq, 100]" 
+
+  - name: Garbage Collect
+    load: "import gc, micropython"
+    command: "micropython.mem_info();gc.collect();micropython.mem_info()" 
+
+  - name: Soft Reset
+    hint: This benchmark is intense memory wise, soft-reset frees all memory.
+    reset: soft
+  

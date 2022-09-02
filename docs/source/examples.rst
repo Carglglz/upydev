@@ -913,9 +913,10 @@ Defining a test in a yaml file with the following directives:
      - **exp_type**: Expected type of result to assert.
      - **assert_op**: Assert operation if other than ``==``.
      - **assert_itr**: Assert elements of iterable result (``any``, or ``all``).
-     - **benchmark**: To run a benchmark of the function. (``pytest-benchmark`` plugin required)
-     - **follow**: To follow device benchmark output only (do not capture or save it).
+     - **benchmark**: To run a benchmark of the function (device time). (``pytest-benchmark`` plugin required)
+     - **bench_host**: To capture benchmark time of device + host (total time)
      - **diff**: To compute diff between device and host benchmark times (i.e. interface latency)
+     - **follow**: To follow device benchmark output only (host+device time).
      - **rounds**: Rounds to run the function if doing a benchmark.
      - **network**: To run network tests, (currently only ``iperf3:server``, ``iperf3:client``)
      - **ip**: IP to use in network tests, (``localip``, or ``devip``)
@@ -927,7 +928,7 @@ Defining a test in a yaml file with the following directives:
 .. tip:: Some directives are mutually exclusive, e.g. the 3 types of tests would be:
 
       - **Assert** Test: using **command**, **result**, **exp** (with options like **exp_type**, **assert_op**, **assert_itr**)
-      - **Benchmark** Test: using **benchmark** with **rounds** and options like **follow** or **diff**
+      - **Benchmark** Test: using **benchmark** with **rounds** and options like **bench_host**, **diff** or **follow** 
       - **Network** Test: using **network**, **command**, **ip** to run network tests.
 
     The directives that should work with any type of test are the rest (

@@ -1,7 +1,7 @@
 ---
   - name: TLS Context Client Benchmark
     hint: (ctx.wrap_socket) Connect to micropython.org and validate server certificate
-    load: "import test_ssl_context_client"
+    load: "import gc; gc.collect();import test_ssl_context_client"
     benchmark: "test_ssl_context_client.main(True)"
     reload: "test_ssl_context_client"
 

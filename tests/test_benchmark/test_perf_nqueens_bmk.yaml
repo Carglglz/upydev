@@ -1,0 +1,23 @@
+---
+  - name: System Check
+    hint: "Device CPU frequency:"
+    load: ./dev_tests/get_machine_freq.py 
+    command: "freq()"
+    result: "mac_fq = freq()"
+ 
+  - name: Setup N-Queens Benchmark
+    load: ./dev_tests/perf_bench/bm_nqueens.py 
+
+  - name: Setup Benchmark Runner
+    load: ./dev_tests/perf_bench/benchrun.py
+
+  - name: N-Queens Benchmark 
+    hint: Simple, brute-force N-Queens solver
+    load: "import gc; gc.collect()"
+    benchmark: "bm_run"
+    args: "[mac_fq, 100]" 
+
+  - name: Garbage Collect
+    load: "import gc, micropython"
+    command: "micropython.mem_info();gc.collect();micropython.mem_info()" 
+  

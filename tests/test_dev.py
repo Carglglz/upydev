@@ -10,6 +10,7 @@ import time
 import socket
 import subprocess
 import shlex
+import serial
 
 _SSL = False
 CHECK = "[\033[92m\u2714\x1b[0m]"
@@ -174,13 +175,29 @@ def do_fail(test_name):
     log.error(f"{test_name} TEST: {XF}")
 
 
-def do_benchmark(benchmark, command, rounds):
+def do_benchmark_device(benchmark, command, rounds):
     global dev_stats
-    dev_stats = benchmark._make_stats(1)
-    dev_stats.name = f"{dev_stats.name}:[{dev.name}]"
-    dev_stats.fullname = f"{dev_stats.fullname}:[{dev.name}]"
+    dev_stats = []
+    benchmark.group = "device"
+    benchmark.name = f"{benchmark.name}:[{dev.name}@{dev.dev_platform}]"
+    benchmark.fullname = f"{benchmark.fullname}:[{dev.name}@{dev.dev_platform}]"
     benchmark.pedantic(
         bench_dev_func,
+        args=(command,),
+        rounds=rounds,
+        iterations=1,
+    )
+    benchmark.stats.stats.data = dev_stats
+
+
+def do_benchmark_with_host(benchmark, command, rounds):
+    global dev_stats_host
+    dev_stats_host = benchmark._make_stats(1)
+    dev_stats_host.group = "device"
+    dev_stats_host.name = f"{dev_stats_host.name}:[{dev.name}@{dev.dev_platform}]"
+    dev_stats_host.fullname = f"{dev_stats_host.fullname}:[{dev.name}@{dev.dev_platform}]"
+    benchmark.pedantic(
+        bench_dev_func_with_host,
         args=(command,),
         rounds=rounds,
         iterations=1,
@@ -207,7 +224,19 @@ def bench_dev_func(command):
         except Exception:
             pass
     if isinstance(ret, int) or isinstance(ret, float):
-        dev_stats.stats.update(ret)
+        dev_stats.append(ret)
+
+
+def bench_dev_func_with_host(command):
+    ret = dev.wr_cmd(command, rtn_resp=True, long_string=True)
+    if isinstance(ret, str):
+        ret = ret.split()[-1]
+        try:
+            ret = ast.literal_eval(ret)
+        except Exception:
+            pass
+    if isinstance(ret, int) or isinstance(ret, float):
+        dev_stats_host.stats.update(ret)
 
 
 def do_network(network, command, args, kwargs, ip, log):
@@ -294,7 +323,9 @@ def test_dev(cmd, benchmark):
     BENCHMARK = cmd.get("benchmark")
     BENCH_DIFF = cmd.get("diff")
     BENCH_FOLLOW = cmd.get("follow")
+    BENCH_HOST = cmd.get("bench_host")
     ROUNDS = cmd.get("rounds")
+    RESET = cmd.get("reset")
     NETWORK = cmd.get("network")
     IP = cmd.get("ip")
     if IP == "localip":
@@ -308,8 +339,12 @@ def test_dev(cmd, benchmark):
             IP = _dev_ip
     if BENCHMARK:
         COMMAND = BENCHMARK
+        if BENCH_DIFF:
+            BENCH_HOST = True
     if not ROUNDS:
         ROUNDS = 5
+        if benchmark._min_rounds != ROUNDS:
+            ROUNDS = benchmark._min_rounds
 
     # Parse assert result
     if isinstance(EXP_RESULT, str):
@@ -320,6 +355,23 @@ def test_dev(cmd, benchmark):
 
     try:
         log.info(f"Running [{TEST_NAME}] test...")
+        if RESET:
+            if RESET == 'soft':
+                dev.reset()
+            elif RESET == 'hard':
+                dev.reset(hr=True)
+            if hasattr(dev, 'read_until'):
+                if dev.dev_class == "SerialDevice":
+                    while True:
+                        try:
+                            if RESET == 'hard':
+                                dev.serial = serial.Serial(dev.serial_port,
+                                                           dev.baudrate)
+                            dev.read_until(exp=b'>>>')
+                            dev.wr_cmd('')
+                            break
+                        except Exception:
+                            pass
         if LOAD:
             # Load can be a file or command in yaml file.
             if os.path.exists(LOAD):
@@ -408,13 +460,20 @@ def test_dev(cmd, benchmark):
                     host_dev_diff = benchmark._make_stats(1)
                     host_dev_diff.name = f"{host_dev_diff.name}:[diff]"
                     host_dev_diff.fullname = f"{host_dev_diff.fullname}:[diff]"
-                do_benchmark(benchmark, COMMAND, ROUNDS)
+                    host_dev_diff.group = "diff"
+                if not BENCH_HOST:
+                    do_benchmark_device(benchmark, COMMAND, ROUNDS)
+                else:
+                    log.info("Benchmark with host interface latency")
+                    benchmark.group = "host"
+                    do_benchmark_with_host(benchmark, COMMAND, ROUNDS)
                 if BENCH_DIFF:
                     host_data = benchmark.stats.stats.data
-                    dev_data = dev_stats.stats.data
+                    dev_data = dev_stats_host.stats.data
                     for n, s in enumerate(dev_data):
                         host_dev_diff.stats.update(abs(host_data[n] - s))
             else:
+                benchmark.group = "host"
                 do_benchmark_follow(benchmark, COMMAND, ROUNDS)
 
         if RELOAD:

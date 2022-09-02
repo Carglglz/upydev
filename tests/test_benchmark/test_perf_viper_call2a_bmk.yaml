@@ -1,0 +1,23 @@
+---
+  - name: System Check
+    hint: "Device CPU frequency:"
+    load: ./dev_tests/get_machine_freq.py 
+    command: "freq()"
+    result: "mac_fq = freq()"
+ 
+  - name: Setup Viper call2a Benchmark
+    load: ./dev_tests/perf_bench/viper_call2a.py 
+
+  - name: Setup Benchmark Runner
+    load: ./dev_tests/perf_bench/benchrun.py
+
+  - name: Viper call2a Benchmark 
+    hint: This test @micropython.viper calls. 
+    load: "import gc; gc.collect()"
+    benchmark: "bm_run"
+    args: "[mac_fq, 100]" 
+
+  - name: Garbage Collect
+    load: "import gc, micropython"
+    command: "micropython.mem_info();gc.collect();micropython.mem_info()" 
+  
