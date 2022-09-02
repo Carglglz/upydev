@@ -12,7 +12,7 @@
     load: ./dev_tests/perf_bench/benchrun.py
 
   - name: Pystone Benchmark 
-    hint: Python/1.2 (corresponds to C/1.1 plus 3 Pystone fixes)
+    hint: Run 300 loops, returns time in seconds to complete a run.
     load: "import gc; gc.collect()"
     benchmark: "bm_run"
     args: "[mac_fq, 100]" 

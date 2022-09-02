@@ -7,6 +7,6 @@
     hint: Run 500 loops, returns time in seconds to complete a run.
     load: "import pystone_lowmem"
     benchmark: "pystone_lowmem.main"
-    args: [500, True]
-    reload: "pystone_lowmem" 
-  
+    unit: "pystones/s"
+    args: [500, False]
+    reload: "pystone_lowmem"  

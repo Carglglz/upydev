@@ -324,6 +324,7 @@ def test_dev(cmd, benchmark):
     BENCH_DIFF = cmd.get("diff")
     BENCH_FOLLOW = cmd.get("follow")
     BENCH_HOST = cmd.get("bench_host")
+    BENCH_UNIT = cmd.get("unit")
     ROUNDS = cmd.get("rounds")
     RESET = cmd.get("reset")
     NETWORK = cmd.get("network")
@@ -453,6 +454,7 @@ def test_dev(cmd, benchmark):
             benchmark.extra_info["machine"] = _machine
             benchmark.extra_info["version"] = _version
             benchmark.extra_info["sysname"] = _sysn
+            benchmark.extra_info["unit"] = BENCH_UNIT
             benchmark.param = (f"{benchmark.param} @ {dev.dev_platform} "
                                f"{_sysn}-{_version} {_machine}")
             if not BENCH_FOLLOW:

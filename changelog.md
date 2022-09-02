@@ -24,7 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - update otatool.py, ota.py to use ROOT CA certificate as CA.
 ## Added
 - Added `test_dev.py` to run parametric tests using yaml files.
+- Added benchmark integration with ``pytest-benchmark``
+- Added network tests with ``iperf3:uiperf3.py``
+- Added multiple tests and benchmarks using yaml files.
+- Added benchmarks from ``micropython/tests/perf_bench``
 - `play` command to run custom tasks in ansible playbook style.
+- Added example playbooks
 - `uptime` and `cycles` utils/commands.
 - upylog file rotation, so file log size does not go over a limit size. (2KB default)
 - uptime.py and cycles.py to upyutils_dir (so it can be installed with `update_upyutils` cmd)

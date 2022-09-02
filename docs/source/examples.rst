@@ -928,7 +928,7 @@ Defining a test in a yaml file with the following directives:
 .. tip:: Some directives are mutually exclusive, e.g. the 3 types of tests would be:
 
       - **Assert** Test: using **command**, **result**, **exp** (with options like **exp_type**, **assert_op**, **assert_itr**)
-      - **Benchmark** Test: using **benchmark** with **rounds** and options like **bench_host**, **diff** or **follow** 
+      - **Benchmark** Test: using **benchmark** with **rounds** and options like **bench_host**, **diff** or **follow**
       - **Network** Test: using **network**, **command**, **ip** to run network tests.
 
     The directives that should work with any type of test are the rest (
@@ -1040,6 +1040,94 @@ Defining a test in a yaml file with the following directives:
 
 	``pytest`` command will by default use ``test_dev.py`` if only yaml files indicated
 
+
+Running Benchmarks with pytes-benchmark
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+See `pytest-benchmark <https://pytest-benchmark.readthedocs.io/en/latest/index.html>`_ documentation
+
+Running ``test_benchmark/test_pystone_bmk.yaml`` benchmark with different devices
+and saving benchmark results
+
+.. code-block:: console
+
+    $ pyb pytest test_benchmark/test_pystones_bmk.yaml --benchmark-save=pyb_pystones
+    ...
+    $ gk32 pytest test_benchmark/test_pystones_bmk.yaml --benchmark-save=gk32_pystones
+    ...
+    $ sdev pytest test_benchmark/test_pystones_bmk.yaml --benchmark-save=sdev_pystones
+    ...
+    $ oble pytest test_benchmark/test_pystones_bmk.yaml --benchmark-save=oble_pystones
+    ...
+
+It is possible to compare benchmark results e.g.
+
+.. code-block:: console
+
+    $ pytest-benchmark compare "*pystone*"
+
+    --------------------------------------------------------------------------------------------------- benchmark 'device': 4 tests ---------------------------------------------------------------------------------------------------
+    Name (time in ms)                                                     Min                 Max                Mean            StdDev              Median               IQR            Outliers     OPS            Rounds  Iterations
+    -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    test_dev[Pystone Benchmark]:[gkesp32@esp32] (0002_gk32_py)       188.0000 (1.0)      197.0000 (1.0)      192.8000 (1.0)      4.0249 (4.50)     195.0000 (1.0)      6.7500 (5.40)          2;0  5.1867 (1.0)           5           1
+    test_dev[Pystone Benchmark]:[pybV1.1@pyboard] (0001_pyb_pys)     262.0000 (1.39)     264.0000 (1.34)     263.4000 (1.37)     0.8944 (1.0)      264.0000 (1.35)     1.2500 (1.0)           1;0  3.7965 (0.73)          5           1
+    test_dev[Pystone Benchmark]:[oble@esp32] (0003_oble_py)          264.0000 (1.40)     267.0000 (1.36)     265.2000 (1.38)     1.3038 (1.46)     265.0000 (1.36)     2.2500 (1.80)          1;0  3.7707 (0.73)          5           1
+    test_dev[Pystone Benchmark]:[sdev@esp32] (0004_sdev_py)          282.0000 (1.50)     292.0000 (1.48)     288.4000 (1.50)     3.9115 (4.37)     289.0000 (1.48)     4.7500 (3.80)          1;0  3.4674 (0.67)          5           1
+    -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    Legend:
+    Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+    OPS: Operations Per Second, computed as 1 / Mean
+
+
+.. code-block:: console
+
+    $ pytest-benchmark compare "*pystone*" --group-by=param
+
+    ---------- benchmark 'Pystone Benchmark @ esp32 micropython-v1.18-128-g2ea21abae-dirty on 2022-02-19 4MB/OTA BLE module with ESP32': 1 tests -----------
+    Name (time in ms)                                                Min       Max      Mean  StdDev    Median     IQR  Outliers     OPS  Rounds  Iterations
+    --------------------------------------------------------------------------------------------------------------------------------------------------------
+    test_dev[Pystone Benchmark]:[oble@esp32] (0003_oble_py)     264.0000  267.0000  265.2000  1.3038  265.0000  2.2500       1;0  3.7707       5           1
+    --------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    ------------ benchmark 'Pystone Benchmark @ esp32 micropython-v1.19.1-304-g5b7abc757-dirty on 2022-08-23 ESP32 module with ESP32': 1 tests -------------
+    Name (time in ms)                                                Min       Max      Mean  StdDev    Median     IQR  Outliers     OPS  Rounds  Iterations
+    --------------------------------------------------------------------------------------------------------------------------------------------------------
+    test_dev[Pystone Benchmark]:[sdev@esp32] (0004_sdev_py)     282.0000  292.0000  288.4000  3.9115  289.0000  4.7500       1;0  3.4674       5           1
+    --------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    -------------- benchmark 'Pystone Benchmark @ esp32 micropython-v1.19.1-321-gb9b5404bb on 2022-08-24 4MB/OTA SSL module with ESP32': 1 tests --------------
+    Name (time in ms)                                                   Min       Max      Mean  StdDev    Median     IQR  Outliers     OPS  Rounds  Iterations
+    -----------------------------------------------------------------------------------------------------------------------------------------------------------
+    test_dev[Pystone Benchmark]:[gkesp32@esp32] (0002_gk32_py)     188.0000  197.0000  192.8000  4.0249  195.0000  6.7500       2;0  5.1867       5           1
+    -----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    ----------------- benchmark 'Pystone Benchmark @ pyboard micropython-v1.19.1-217-g5234e1f1e on 2022-07-29 PYBv1.1 with STM32F405RG': 1 tests ----------------
+    Name (time in ms)                                                     Min       Max      Mean  StdDev    Median     IQR  Outliers     OPS  Rounds  Iterations
+    -------------------------------------------------------------------------------------------------------------------------------------------------------------
+    test_dev[Pystone Benchmark]:[pybV1.1@pyboard] (0001_pyb_pys)     262.0000  264.0000  263.4000  0.8944  264.0000  1.2500       1;0  3.7965       5           1
+    -------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    Legend:
+    Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+    OPS: Operations Per Second, computed as 1 / Mean
+
+
+.. code-block:: console
+
+    $ pytest-benchmark compare "*pys*" --group-by=param:cmd
+
+    benchmark "cmd={'name': 'Pystone Benchmark', 'hint': 'Run 500 loops, returns time in seconds to complete a run.', 'load': 'import pystone_lowmem', 'benchmark': 'pystone_lowmem.main(benchtm=True)', 'reload': 'pystone_lowmem'}": 4 tests
+    Name (time in ms)                                                     Min                 Max                Mean            StdDev              Median               IQR            Outliers     OPS            Rounds  Iterations
+    -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    test_dev[Pystone Benchmark]:[gkesp32@esp32] (0002_gk32_py)       188.0000 (1.0)      197.0000 (1.0)      192.8000 (1.0)      4.0249 (4.50)     195.0000 (1.0)      6.7500 (5.40)          2;0  5.1867 (1.0)           5           1
+    test_dev[Pystone Benchmark]:[pybV1.1@pyboard] (0001_pyb_pys)     262.0000 (1.39)     264.0000 (1.34)     263.4000 (1.37)     0.8944 (1.0)      264.0000 (1.35)     1.2500 (1.0)           1;0  3.7965 (0.73)          5           1
+    test_dev[Pystone Benchmark]:[oble@esp32] (0003_oble_py)          264.0000 (1.40)     267.0000 (1.36)     265.2000 (1.38)     1.3038 (1.46)     265.0000 (1.36)     2.2500 (1.80)          1;0  3.7707 (0.73)          5           1
+    test_dev[Pystone Benchmark]:[sdev@esp32] (0004_sdev_py)          282.0000 (1.50)     292.0000 (1.48)     288.4000 (1.50)     3.9115 (4.37)     289.0000 (1.48)     4.7500 (3.80)          1;0  3.4674 (0.67)          5           1
+    -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    Legend:
+    Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+    OPS: Operations Per Second, computed as 1 / Mean
 
 Device development setups
 -------------------------
