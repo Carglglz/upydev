@@ -904,6 +904,7 @@ Defining a test in a yaml file with the following directives:
 
      - **name**: The name of the test
      - **hint**: Info about the test, description, context, etc.
+     - **reset**: To reset the device (``soft`` or ``hard``) before running the test.
      - **load**: To load and execute a local file in device (.e.g ``test_basic_math.py``)
      - **command**: The command to run the test in device.
      - **args**: To pass argument to the test function in device.
@@ -918,6 +919,7 @@ Defining a test in a yaml file with the following directives:
      - **diff**: To compute diff between device and host benchmark times (i.e. interface latency)
      - **follow**: To follow device benchmark output only (host+device time).
      - **rounds**: Rounds to run the function if doing a benchmark.
+     - **unit**: To specify units if the measure is other than time in seconds. (i.e sensors)
      - **network**: To run network tests, (currently only ``iperf3:server``, ``iperf3:client``)
      - **ip**: IP to use in network tests, (``localip``, or ``devip``)
      - **reload**: To reload a script in device so it can be run again .e.g reload ``foo_test`` module if command was ``import foo_test``.
@@ -928,11 +930,11 @@ Defining a test in a yaml file with the following directives:
 .. tip:: Some directives are mutually exclusive, e.g. the 3 types of tests would be:
 
       - **Assert** Test: using **command**, **result**, **exp** (with options like **exp_type**, **assert_op**, **assert_itr**)
-      - **Benchmark** Test: using **benchmark** with **rounds** and options like **bench_host**, **diff** or **follow**
+      - **Benchmark** Test: using **benchmark** with **rounds** and options like **bench_host**, **diff**, **follow**, **unit**...
       - **Network** Test: using **network**, **command**, **ip** to run network tests.
 
     The directives that should work with any type of test are the rest (
-    **name**, **load**, **args**, **kwargs**, **hint**, **reload**
+    **name**, **load**, **args**, **kwargs**, **hint**, **reload**, **reset**
     )
 
 .. code-block:: yaml
@@ -1079,6 +1081,8 @@ It is possible to compare benchmark results e.g.
     OPS: Operations Per Second, computed as 1 / Mean
 
 
+To see device firmware use ``--group-by=param``
+
 .. code-block:: console
 
     $ pytest-benchmark compare "*pystone*" --group-by=param
@@ -1112,6 +1116,8 @@ It is possible to compare benchmark results e.g.
     OPS: Operations Per Second, computed as 1 / Mean
 
 
+To see the command/hint/context of the benchmark use ``--group-by=param:cmd``
+
 .. code-block:: console
 
     $ pytest-benchmark compare "*pys*" --group-by=param:cmd
@@ -1128,6 +1134,162 @@ It is possible to compare benchmark results e.g.
     Legend:
     Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
     OPS: Operations Per Second, computed as 1 / Mean
+
+
+It is possible to benchmark measurements other than time, i.e. to benchmark sensor measurements.
+Use ``unit`` directive in yaml file to indicate the unit or measurement and unit, e.g.
+``unit: "V"`` or ``unit: "voltage:V"``. This also can be set at the command line with
+``--unit`` option.
+
+Let's consider this example to take measurements with an ADC sensor ``ADS1115``
+
+.. code-block:: yaml
+  :caption: test_ads/test_ads_bmk.yaml
+
+  ---
+  - name: i2c_config
+    load: "from machine import I2C, Pin"
+    command: "i2c=I2C"
+    args: "[1]"
+    kwargs: "{'scl': Pin(22), 'sda': Pin(23)}"
+
+  - name: i2c_scan
+    command: "addr=i2c.scan()"
+    result: "i2c.scan()"
+    exp: [72]
+    exp_type: list
+
+  - name: ads_config
+    command: "from ads1115 import ADS1115;sensor=ADS1115(i2c,
+             addr[0], 1); sensor.set_conv(7, channel1=0)"
+
+  - name: ads_read
+    command: "mv = sensor.raw_to_v(sensor.read())"
+    result: mv
+    exp: 0
+    assert_op: "<="
+    exp_type: float
+
+  - name: ADS1115 Benchmark
+    hint: Test ADS1115 ADC sensor
+    load: "import time"
+    benchmark: "[(time.time_ns(), sensor.raw_to_v(sensor.read())) for i in range(100)]"
+    unit: "voltage:V"
+    rounds: 1
+
+
+.. code-block:: console
+
+  $ espd pytest test_ads/test_ads_bmk.yaml --benchmark-save=espd_ads1115 --benchmark-save-data
+  Running pytest with Device: espdev
+  Comparing against benchmarks from: Darwin-CPython-3.7-64bit/0022_espd_ads1115.json
+  ===================================================================================================================== test session starts =====================================================================================================================
+  platform darwin -- Python 3.7.9, pytest-7.1.2, pluggy-1.0.0
+  benchmark: 3.4.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+  rootdir: /Users/carlosgilgonzalez/Desktop/MY_PROJECTS/MICROPYTHON/TOOLS/upydev_.nosync/tests, configfile: pytest.ini
+  plugins: benchmark-3.4.1
+  collected 8 items
+
+  test_dev.py::test_devname PASSED
+  test_dev.py::test_platform
+  ------------------------------------------------------------------------------------------------------------------------ live log call ------------------------------------------------------------------------------------------------------------------------
+  23:35:13 [pytest] [espdev] [ESP32] : Running WebSocketDevice test...
+  23:35:13 [pytest] [espdev] [ESP32] : Device: esp32
+  23:35:13 [pytest] [espdev] [ESP32] : Firmware: micropython v1.19.1-304-g5b7abc757-dirty on 2022-08-23; ESP32 module with ESP32
+  23:35:13 [pytest] [espdev] [ESP32] : DEV PLATFORM TEST: [✔]
+  Test Result: PASSED
+  test_dev.py::test_dev[i2c_config]
+  ------------------------------------------------------------------------------------------------------------------------ live log call ------------------------------------------------------------------------------------------------------------------------
+  23:35:13 [pytest] [espdev] [ESP32] : Running [i2c_config] test...
+  23:35:13 [pytest] [espdev] [ESP32] : Loading from machi... snippet
+  paste mode; Ctrl-C to cancel, Ctrl-D to finish
+  === from machine import I2C, Pin
+
+
+  23:35:14 [pytest] [espdev] [ESP32] : Command [i2c=I2C(*[1], **{'scl': Pin(22), 'sda': Pin(23)})]
+  23:35:14 [pytest] [espdev] [ESP32] : i2c_config TEST: [✔]
+  Test Result: PASSED
+  test_dev.py::test_dev[i2c_scan]
+  ------------------------------------------------------------------------------------------------------------------------ live log call ------------------------------------------------------------------------------------------------------------------------
+  23:35:14 [pytest] [espdev] [ESP32] : Running [i2c_scan] test...
+  23:35:14 [pytest] [espdev] [ESP32] : Command [addr=i2c.scan()]
+  23:35:15 [pytest] [espdev] [ESP32] : expected: list --> result: <class 'list'>
+  23:35:15 [pytest] [espdev] [ESP32] : expected: [72] == result: [72]
+  23:35:15 [pytest] [espdev] [ESP32] : i2c_scan TEST: [✔]
+  Test Result: PASSED
+  test_dev.py::test_dev[ads_config]
+  ------------------------------------------------------------------------------------------------------------------------ live log call ------------------------------------------------------------------------------------------------------------------------
+  23:35:15 [pytest] [espdev] [ESP32] : Running [ads_config] test...
+  23:35:15 [pytest] [espdev] [ESP32] : Command [from ads1115 import ADS1115;sensor=ADS1115(i2c, addr[0], 1); sensor.set_conv(7, channel1=0)]
+  23:35:16 [pytest] [espdev] [ESP32] : ads_config TEST: [✔]
+  Test Result: PASSED
+  test_dev.py::test_dev[ads_read]
+  ------------------------------------------------------------------------------------------------------------------------ live log call ------------------------------------------------------------------------------------------------------------------------
+  23:35:16 [pytest] [espdev] [ESP32] : Running [ads_read] test...
+  23:35:16 [pytest] [espdev] [ESP32] : Command [mv = sensor.raw_to_v(sensor.read())]
+  23:35:17 [pytest] [espdev] [ESP32] : expected: float --> result: <class 'float'>
+  23:35:17 [pytest] [espdev] [ESP32] : expected: 0 <= result: 0.5788927
+  23:35:17 [pytest] [espdev] [ESP32] : ads_read TEST: [✔]
+  Test Result: PASSED
+  test_dev.py::test_dev[ADS1115 Benchmark]
+  ------------------------------------------------------------------------------------------------------------------------ live log call ------------------------------------------------------------------------------------------------------------------------
+  23:35:17 [pytest] [espdev] [ESP32] : Running [ADS1115 Benchmark] test...
+  23:35:17 [pytest] [espdev] [ESP32] : Loading import tim... snippet
+  paste mode; Ctrl-C to cancel, Ctrl-D to finish
+  === import time
+
+
+  23:35:18 [pytest] [espdev] [ESP32] : Hint: Test ADS1115 ADC sensor
+  23:35:18 [pytest] [espdev] [ESP32] : Benchmark Command [[(time.time_ns(), sensor.raw_to_v(sensor.read())) for i in range(100)]]
+  [(715559717849154000, 0.5791427), (715559717862555000, 0.5806427), (715559717872601000, 0.5815177), (715559717882546000, 0.5813928), (715559717892413000, 0.5820178), (715559717902349000, 0.5815177), (715559717912478000, 0.5811427), (715559717922413000, 0.5811427), (715559717932291000, 0.5812678), (715559717942212000, 0.5816427), (715559717952415000, 0.5815177), (715559717962345000, 0.5813928), (715559717972224000, 0.5813928), (715559717982118000, 0.5810177), (715559717992065000, 0.5815177), (715559718002000000, 0.5812678), (715559718011880000, 0.5811427), (715559718021805000, 0.5816427), (715559718031787000, 0.5808928), (715559718041728000, 0.5811427), (715559718051652000, 0.5815177), (715559718061669000, 0.5813928), (715559718071616000, 0.5813928), (715559718081553000, 0.5811427), (715559718091440000, 0.5811427), (715559718101334000, 0.5813928), (715559718111284000, 0.5813928), (715559718121221000, 0.5811427), (715559718131099000, 0.5808928), (715559718140997000, 0.5808928), (715559718150945000, 0.5811427), (715559718160970000, 0.5813928), (715559718170853000, 0.5817678), (715559718180773000, 0.5810177), (715559718190747000, 0.5808928), (715559718200688000, 0.5813928), (715559718210567000, 0.5807677), (715559718220463000, 0.5817678), (715559718230410000, 0.5805177), (715559718240350000, 0.5808928), (715559718250236000, 0.5810177), (715559718260293000, 0.5808928), (715559718270243000, 0.5811427), (715559718280178000, 0.5811427), (715559718290054000, 0.5811427), (715559718299951000, 0.5808928), (715559718309908000, 0.5805177), (715559718319844000, 0.5811427), (715559718329721000, 0.5806427), (715559718339619000, 0.5812678), (715559718349568000, 0.5813928), (715559718359641000, 0.5813928), (715559718370132000, 0.5813928), (715559718380101000, 0.5810177), (715559718390056000, 0.5807677), (715559718399996000, 0.5813928), (715559718409886000, 0.5810177), (715559718419775000, 0.5810177), (715559718429732000, 0.5816427), (715559718439670000, 0.5811427), (715559718449554000, 0.5808928), (715559718459455000, 0.5813928), (715559718469707000, 0.5811427), (715559718479695000, 0.5811427), (715559718489586000, 0.5815177), (715559718499520000, 0.5812678), (715559718509505000, 0.5805177), (715559718519437000, 0.5813928), (715559718529372000, 0.5808928), (715559718539332000, 0.5808928), (715559718549288000, 0.5811427), (715559718559336000, 0.5810177), (715559718569478000, 0.5807677), (715559718579373000, 0.5813928), (715559718589322000, 0.5810177), (715559718599262000, 0.5812678), (715559718609149000, 0.5806427), (715559718619041000, 0.5816427), (715559718628992000, 0.5812678), (715559718638925000, 0.5812678), (715559718648820000, 0.5812678), (715559718658717000, 0.5818928), (715559718668752000, 0.5808928), (715559718678688000, 0.5808928), (715559718688632000, 0.5807677), (715559718698531000, 0.5813928), (715559718708483000, 0.5808928), (715559718718414000, 0.5816427), (715559718728302000, 0.5808928), (715559718738192000, 0.5806427), (715559718748135000, 0.5812678), (715559718758075000, 0.5813928), (715559718768006000, 0.5807677), (715559718778015000, 0.5808928), (715559718787963000, 0.5816427), (715559718797895000, 0.5811427), (715559718807782000, 0.5812678), (715559718817676000, 0.5811427), (715559718827620000, 0.5808928), (715559718837561000, 0.5808928)]
+
+  23:35:20 [pytest] [espdev] [ESP32] : ADS1115 Benchmark TEST: [✔]
+  Test Result: PASSED
+  test_dev.py::test_disconnect
+  ------------------------------------------------------------------------------------------------------------------------ live log call ------------------------------------------------------------------------------------------------------------------------
+  23:35:20 [pytest] [espdev] [ESP32] : DEVICE DISCONNECT TEST
+  23:35:20 [pytest] [espdev] [ESP32] : DEVICE DISCONNECT TEST: [✔]
+  Test Result: PASSED
+  Saved benchmark data in: /Users/carlosgilgonzalez/Desktop/MY_PROJECTS/MICROPYTHON/TOOLS/upydev_.nosync/tests/.benchmarks/Darwin-CPython-3.7-64bit/0023_espd_ads1115.json
+
+
+
+  ------------------------------------------------------- benchmark 'device': 1 tests -------------------------------------------------------
+  Name (voltage in mV)                                Min       Max      Mean  StdDev    Median     IQR  Outliers     OPS  Rounds  Iterations
+  -------------------------------------------------------------------------------------------------------------------------------------------
+  test_dev[ADS1115 Benchmark]:[espdev@esp32]     579.1427  582.0178  581.1515  0.3732  581.1427  0.5000      23;1  1.7207     100           1
+  -------------------------------------------------------------------------------------------------------------------------------------------
+
+  Legend:
+    Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+    OPS: Operations Per Second, computed as 1 / Mean
+  ===================================================================================================================== 8 passed in 13.40s ======================================================================================================================
+
+.. tip:: **benchmark** directive accepts single value, a list of values or a list
+    of 2 values tuples, where the first value is a time value and the second is the measurement to benchmark.
+
+.. note:: To save benchmark results (i.e not only the stats) use ``--benchmark-save=[NAME] --benchmark-save-data``
+    Data will be saved in ``.benchmarks/[SYSTEM PLATFORM]/xxxx_[NAME].json``, e.g.
+
+
+.. code-block:: python
+
+  import json
+  from matplotlib import pyplot as plt
+
+  with open('.benchmarks/Darwin-CPython-3.7-64bit/0022_espd_ads1115.json', 'r') as rp:
+      report = json.load(rp.read())
+
+  data = report['benchmarks'][0]['stats']['data']
+  time_stamp = report['benchmarks'][0]['extra_info']['vtime']
+  t_vec = [(t-time_stamp[0])/1e9 for t in time_stamp] # from absolute timestamps in ns to relative time in seconds
+
+  plt.plot(t_vec, data)
+  plt.ylabel("Voltage (V)")
+  plt.xlabel("Time (s)")
+  plt.show()
+
+.. image:: img/ads1115_data_.png
 
 Device development setups
 -------------------------

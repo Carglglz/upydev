@@ -176,8 +176,9 @@ def do_fail(test_name):
 
 
 def do_benchmark_device(benchmark, command, rounds):
-    global dev_stats
+    global dev_stats, time_vec
     dev_stats = []
+    time_vec = []
     benchmark.group = "device"
     benchmark.name = f"{benchmark.name}:[{dev.name}@{dev.dev_platform}]"
     benchmark.fullname = f"{benchmark.fullname}:[{dev.name}@{dev.dev_platform}]"
@@ -225,6 +226,14 @@ def bench_dev_func(command):
             pass
     if isinstance(ret, int) or isinstance(ret, float):
         dev_stats.append(ret)
+
+    elif isinstance(ret, list):
+        for sample in ret:
+            if isinstance(sample, int) or isinstance(sample, float):
+                dev_stats.append(sample)
+            elif isinstance(sample, tuple):
+                time_vec.append(sample[0])
+                dev_stats.append(sample[1])
 
 
 def bench_dev_func_with_host(command):
@@ -465,6 +474,8 @@ def test_dev(cmd, benchmark):
                     host_dev_diff.group = "diff"
                 if not BENCH_HOST:
                     do_benchmark_device(benchmark, COMMAND, ROUNDS)
+                    if time_vec:
+                        benchmark.extra_info["vtime"] = time_vec
                 else:
                     log.info("Benchmark with host interface latency")
                     benchmark.group = "host"
