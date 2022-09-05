@@ -2,6 +2,8 @@ from upydevice import Device, check_device_type, serial_scan, net_scan
 import sys
 from upydev.devicemanagement import check_zt_group
 from upydev.playbook import play
+from upydev.shell.common import print_table
+from upydev.shell.nanoglob import glob as nglob
 import os
 import json
 import upydev
@@ -18,6 +20,8 @@ import signal
 import argparse
 rawfmt = argparse.RawTextHelpFormatter
 
+
+_playbook_dir = os.path.expanduser("~/.upydev_playbooks")
 
 dict_arg_options = {'ping': ['t', 'zt', 'p'],
                     'probe': ['t', 'p', 'G', 'gg', 'devs', 'zt'],
@@ -100,9 +104,10 @@ RUN = dict(help="run a script in device, CTRL-C to stop",
                                     ' e.g. an sd card.',
                                required=False)})
 PLAY = dict(help="play custom tasks in ansible playbook style",
-            desc="task must be yaml file with: \n- keywords {name, hosts, tasks, "
-                 "command, command_nb, command_pl, load, load_pl, include, ignore, "
-                 "wait}\nwith following structure, e.g:\n"
+            desc="task must be yaml file or command {add, rm, list} + yaml file\n"
+                 "- yaml file must follow: \n  > keywords any of {name, hosts, tasks, "
+                 "command, command_nb,\n command_pl, reset, load, load_pl, include, "
+                 "ignore, wait}\nwith following structure, e.g:\n"
                  """---
 - name: Example playbook
   hosts: dev1, dev2
@@ -1089,7 +1094,50 @@ def debugging_action(args, unkwargs, **kargs):
         for uk in ['-f', '-fre']:
             if uk in unknown_args:
                 unknown_args.remove(uk)
-        play(args, rest_args, dev_name)
+        if not args.subcmd:
+            sh_cmd("play -h")
+            sys.exit()
+
+        if args.subcmd[0] in ["add", "rm", "list"]:
+            play_action = args.subcmd[0]
+            if play_action == "add":
+                # Setup playbook dir
+                if not os.path.exists(_playbook_dir):
+                    os.mkdir(_playbook_dir)
+                tasks_to_add = [tsk for tsk in args.subcmd[1:] if tsk.endswith('.yaml')]
+                scp_to_add = [tsk for tsk in args.subcmd[1:] if tsk.endswith('.py')]
+                for tsk in tasks_to_add:
+                    shutil.copy(tsk, _playbook_dir)
+                    print(f"{tsk} added to upydev tasks.")
+                for scp in scp_to_add:
+                    shutil.copy(scp, _playbook_dir)
+                    print(f"{scp} added to upydev tasks scripts.")
+            elif play_action == "rm":
+                tasks_to_rm = [tsk for tsk in args.subcmd[1:] if "*" not in tsk]
+                _pattrn_to_rm = []
+                for tsk in args.subcmd[1:]:
+                    if "*" in tsk:
+                        pattrn = nglob(os.path.join(_playbook_dir, tsk))
+                        for patt in pattrn:
+                            _pattrn_to_rm.append(os.path.basename(patt))
+                tasks_to_rm += _pattrn_to_rm
+                for tsk in tasks_to_rm:
+                    try:
+                        if not os.path.exists(os.path.join(_playbook_dir, tsk)):
+                            os.remove(os.path.join(_playbook_dir, f"{tsk}.yaml"))
+                        else:
+                            os.remove(os.path.join(_playbook_dir, tsk))
+                        print(f"{tsk} file removed.")
+                    except Exception as e:
+                        print(e)
+            elif play_action == "list":
+                _tasks = os.listdir(_playbook_dir)
+                tasks_names = [tsk.replace('.yaml', '') for tsk in _tasks
+                               if tsk.endswith('.yaml')]
+                print_table(tasks_names)
+
+        else:
+            play(args, rest_args, dev_name)
 
     elif command == 'timeit':
         timeit_script(args, rest_args)

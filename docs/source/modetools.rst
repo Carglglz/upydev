@@ -342,8 +342,8 @@ Debugging
                         ``$ pip install pytest pytest-benchmark``
        - play:
              To play custom tasks in ansible playbook style, e.g. ``$ upydev play mytask.yaml``.
-             See :ref:`Using tasks files <examples:Using tasks files>`
-
+             See :ref:`Using tasks files <examples:Using tasks files>`. To add/remove/list tasks in upydev
+             use ``add``, ``rm``, ``list``. Tasks will be stored in ``~/.upydev_playbooks``
 
 Group Mode
 ----------

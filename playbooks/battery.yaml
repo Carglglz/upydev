@@ -1,0 +1,6 @@
+---
+  - name: Check Battery State
+    tasks:
+      - name: Battery
+        load: battery.py      
+        command: "battery" 

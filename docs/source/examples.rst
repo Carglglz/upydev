@@ -390,6 +390,7 @@ Finally add tasks using name, and the command to be run.
     - **command**: A command to be executed as in ``shell-repl`` mode or REPL command.
     - **command_nb**: A raw MicroPython command to be executed in non-blocking way.
     - **command_pl**: A command to be executed in parallel (if using multiple devices).
+    - **reset**: To reset the device before executing the task.
     - **wait**: To wait x seconds before executing the task.
     - **load**: To load a local script (in cwd or task file directory) and execute in device.
     - **load_pl**: To load a local script and execute in parallel (if using multiple devices).
@@ -751,7 +752,87 @@ It is also possible to filter which tasks to run on each device using
     -------------------------------------------------------------------------------------------------------------------------------
     *******************************************************************************************************************************
 
+.. tip:: It is possible to add these tasks and its loaded scripts so they can be run from anywhere, using ``add``, ``rm`` and ``list``.
 
+      - **add**: add a task file (``.yaml``) or script (``.py``) to upydev, e.g.
+      - **rm**: remove a task or script file from upydev.
+      - **list**: list available tasks in upydev.
+
+      *tasks files and scripts are stored in ~/.upydev_playbooks*
+
+
+Let's consider this example with ``battery.yaml`` and ``battery.py``
+
+.. code-block:: yaml
+  :caption: battery.yaml
+
+  ---
+    - name: Check Battery State
+      tasks:
+        - name: Battery
+          load: battery.py
+          command: "battery"
+
+
+.. code-block:: python
+  :caption: battery.py
+
+  from machine import ADC
+  bat = ADC(Pin(35))
+  bat.atten(ADC.ATTN_11DB)
+
+  class Battery:
+      def __init__(self, bat=bat):
+          self.bat = bat
+
+      def __repr__(self):
+          volt =((self.bat.read()*2)/4095)*3.6
+          percentage = round((volt - 3.3) / (4.23 - 3.3) * 100, 1)
+          return f"Battery Voltage : {round(volt, 2)}, V; Level:{percentage} %"
+
+  battery = Battery()
+
+
+Adding this to upydev tasks
+
+.. code-block:: console
+
+  $ upydev play add battery.*
+  battery.yaml added to upydev tasks.
+  battery.py added to upydev tasks scripts.
+  $ upydev play battery # will run battery.yaml which loads battery.py in device and get battery state
+  PLAY [Check Battery State]
+  *******************************************************************************************************************************
+
+  HOSTS TARGET: [espdev]
+  HOSTS FOUND : [espdev]
+  *******************************************************************************************************************************
+
+  TASK [Gathering Facts]
+  *******************************************************************************************************************************
+
+  ok [✔]: [espdev]
+
+  TASK [Battery]
+  *******************************************************************************************************************************
+
+  [espdev]: loading battery.py
+
+
+  Done!
+  -------------------------------------------------------------------------------------------------------------------------------
+  [espdev]: battery
+
+  Battery Voltage : 4.2, V; Level:96.8 %
+  -------------------------------------------------------------------------------------------------------------------------------
+  *******************************************************************************************************************************
+
+And after that it is possible to do:
+
+.. code-block:: console
+
+  $ upydev battery
+  Battery Voltage : 4.19, V; Level:95.9 %
 
 
 Making Test for devices with upydev/upydevice + pytest

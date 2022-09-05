@@ -8,6 +8,7 @@ import time
 import multiprocessing
 
 UPYDEV_PATH = upydev.__path__[0]
+_playbook_dir = os.path.expanduser("~/.upydev_playbooks")
 
 CHECK = "[\033[92m\u2714\x1b[0m]"
 XF = "[\u001b[31;1m\u2718\u001b[0m]"
@@ -105,6 +106,14 @@ def _play_task_file(task_file, args, dev_name):
     for tsk in custom_tasks:
         print(f"\nTASK [{tsk['name']}]")
         print("*" * get_tsize(), end="\n\n")
+        # RESET
+        if "reset" in tsk.keys():
+            for name, dev in connected_devs.items():
+                print(f"[{name}]: {tsk['reset']}", end="\n\n")
+                dev.reset()
+                print("-" * get_tsize())
+            print("RESET: DONE")
+            print("-" * get_tsize())
         # WAIT
         if "wait" in tsk.keys():
             for i in range(tsk["wait"]):
@@ -116,8 +125,9 @@ def _play_task_file(task_file, args, dev_name):
         if "load" in tsk.keys():
             script_to_load = tsk['load']
             if script_to_load not in os.listdir():
-                script_to_load = os.path.join(os.path.dirname(task_file),
-                                              script_to_load)
+                if script_to_load.endswith(".py"):
+                    script_to_load = os.path.join(os.path.dirname(task_file),
+                                                  script_to_load)
             for name, sh in shells.items():
                 if "include" in tsk.keys():
                     if name not in tsk["include"]:
@@ -126,7 +136,11 @@ def _play_task_file(task_file, args, dev_name):
                     if name in tsk["ignore"]:
                         continue
                 print(f"[{name}]: loading {script_to_load}", end="\n\n")
-                sh.dev.load(script_to_load)
+                if os.path.exists(script_to_load):
+                    sh.dev.load(script_to_load)
+                else:
+                    sh.dev.paste_buff(script_to_load)
+                    sh.dev.wr_cmd("\x04", follow=True)
                 print("Done!")
                 print("-" * get_tsize())
         # LOAD_PL
@@ -298,5 +312,7 @@ def _play_task_file(task_file, args, dev_name):
 
 def play(args, rst_args, dev_name):
     for tsk_file in args.subcmd:
+        if not tsk_file.endswith('.yaml'):
+            tsk_file = os.path.join(_playbook_dir, f"{tsk_file}.yaml")
         _play_task_file(tsk_file, args, dev_name)
         time.sleep(2)

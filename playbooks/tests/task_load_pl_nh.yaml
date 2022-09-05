@@ -1,0 +1,8 @@
+---
+- name: Load script in parallel Playbook
+  tasks:
+     - name: Load script
+       load_pl: "led_toggle.py"
+     - name: Check connection
+       wait: 3
+       command: "print('ping'); time.sleep(1);print('pong')"
