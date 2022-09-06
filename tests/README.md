@@ -3,7 +3,9 @@
 - **test_esp32/test_espx.py**: Basic test to run with esp device
 - **test_sh.py**: Tests collection of shell-repl commands
 - **test_custom_cmd.py**: Example of custom tests using dictionaries
-- **test_dev.py**: Test to run parametric test using yaml files.
+- **test_dev.py**: Test to run parametric tests and benchmarks using yaml files.
+
+*This requires pytest/pytest-benchmark*
 
 To run do e.g.
 
@@ -11,7 +13,7 @@ To run do e.g.
 $ upydev pytest test_sh.py
 ```
 
-or 
+or
 
 ```console
 $ upydev pytest test_basic/test_objs.yaml

@@ -314,5 +314,8 @@ def play(args, rst_args, dev_name):
     for tsk_file in args.subcmd:
         if not tsk_file.endswith('.yaml'):
             tsk_file = os.path.join(_playbook_dir, f"{tsk_file}.yaml")
-        _play_task_file(tsk_file, args, dev_name)
+        if os.path.exists(tsk_file):
+            _play_task_file(tsk_file, args, dev_name)
+        else:
+            print(f"play: No such task file: {tsk_file}")
         time.sleep(2)

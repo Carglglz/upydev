@@ -28,8 +28,8 @@ JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
                 options={})
 
 PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
-              subcmd=dict(help='indicate a test script to run, any optional '
-                               'arg is passed to pytest',
+              subcmd=dict(help='indicate a test script or yaml test file to run, '
+                               '\nany optional arg is passed to pytest',
                           default=[''],
                           metavar='test',
                           nargs='*'),

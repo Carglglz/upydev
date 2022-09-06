@@ -52,10 +52,14 @@ ca_cert_chain = binascii.unhexlify(
     b"44506decce005518fee94964d44eca979cb45bc073a8abb847c2"
 )
 
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+context.load_verify_locations(cadata=ca_cert_chain)
+context.load_default_certs()
+
 
 def main(tdiff=False):
 
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    # context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
     # context.verify_mode = ssl.CERT_REQUIRED # enabled by default with
     # PROTOCOL_TLS_CLIENT
@@ -70,9 +74,9 @@ def main(tdiff=False):
     # implement a external file
     # in a testd
     # context.ctx.set_ciphers('TLS-RSA-WITH-AES-256-CBC-SHA')
-    context.load_verify_locations(cadata=ca_cert_chain)
+    # context.load_verify_locations(cadata=ca_cert_chain)
 
-    context.load_default_certs()  # not implemented in MicroPython just a mock, needed
+    # context.load_default_certs()  # not implemented in MicroPython just a mock, needed
     # in CPython to load issuer CA too,
     # otherwise verification fails.
 
@@ -90,6 +94,7 @@ def main(tdiff=False):
     if tdiff:
         t0 = time.ticks_us()
     ssl_sock = context.wrap_socket(s, server_hostname="micropython.org")
+    # ssl_sock.connect(addr)
     if tdiff:
         delta = time.ticks_diff(time.ticks_us(), t0)
         print(f"HANDSHAKE Time = {delta/1000:6.3f} ms")

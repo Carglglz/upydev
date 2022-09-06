@@ -341,7 +341,8 @@ and speed up the syncing process, e.g.
 Using tasks files
 -----------------
 It is possible to create custom tasks yaml files so they can be played like in `ansible <https://github.com/ansible/ansible>`_.
-using ``play`` command, e.g. consider this task file ``mytask.yaml``:
+using ``play`` command, check some examples in `upydev/playbooks <https://github.com/Carglglz/upydev/tree/develop/playbooks>`_
+e.g. consider this task file ``mytask.yaml``:
 
 .. code-block:: yaml
 
@@ -418,13 +419,13 @@ Finally add tasks using name, and the command to be run.
 
           ---
             - name: Example playbook with no hosts indicated
-            tasks:
-            - name: Load upysh
-              command: "from upysh import ls"
-            - name: Check device filesystem
-              command: "ls"
-            - name: Check memory
-              command: "mem"
+              tasks:
+              - name: Load upysh
+                command: "from upysh import ls"
+              - name: Check device filesystem
+                command: "ls"
+              - name: Check memory
+                command: "mem"
 
 
         .. code-block:: console
@@ -445,255 +446,255 @@ To run the tasks file do:
     $ upydev play playbooks/mytask.yaml
 
     PLAY [Example playbook]
-  **********************************************************************************************************************************
+    **********************************************************************************************************************************
 
-  TASK [Gathering Facts]
-  **********************************************************************************************************************************
+    TASK [Gathering Facts]
+    **********************************************************************************************************************************
 
-  ok [✔]: [pybV1.1]
-  ok [✔]: [gkesp32]
-  ok [✔]: [espdev]
-  ok [✔]: [oble]
+    ok [✔]: [pybV1.1]
+    ok [✔]: [gkesp32]
+    ok [✔]: [espdev]
+    ok [✔]: [oble]
 
-  TASK [Load upysh]
-  **********************************************************************************************************************************
+    TASK [Load upysh]
+    **********************************************************************************************************************************
 
-  [pybV1.1]: import upysh
+    [pybV1.1]: import upysh
 
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [gkesp32]: import upysh
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [gkesp32]: import upysh
 
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [espdev]: import upysh
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [espdev]: import upysh
 
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [oble]: import upysh
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [oble]: import upysh
 
-  ----------------------------------------------------------------------------------------------------------------------------------
-  **********************************************************************************************************************************
-
-
-  TASK [Check device filesystem]
-  **********************************************************************************************************************************
-
-  [pybV1.1]: ls
-
-  _tmp_script.py                           boot.py                                  debug.log
-  debug.log.1                              DIR_TEST                                 dstest
-  dummy.py                                 hostname.py                              lib
-  log_config.py                            main.py                                  mpy_test.py
-  nemastepper.py                           new_dir                                  new_file.py
-  pospid.py                                pospid_steppr.py                         README.txt
-  root_path.py                             servo_serial.py                          settings_config.py
-  stepper.py                               test_code.py                             test_file.txt
-  test_main.py                             test_secp256k1.py                        test_to_fail.py
-  testnew.py                               udummy.py                                upy_host_pub_rsa6361726c6f73.key
-  upy_pub_rsa3c003d000247373038373333.key  upy_pv_rsa3c003d000247373038373333.key
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [gkesp32]: ls
-
-  appble.py                         base_animations.py                ble_flag.py
-  boot.py                           dummy.py                          ec-cacert.pem
-  error.log                         hostname.py                       http_client_ssl.py
-  http_server_ssl.py                http_server_ssl_ecc_pem.py        http_ssl_test.py
-  lib                               localname.py                      main.py
-  microdot.mpy                      myfile.txt                        myfile.txt.sign
-  ROOT_CA_cert.pem                  server.der                        size_config.py
-  ssl_auth.py                       SSL_cert_exp.pem                  SSL_certificate7c9ebd3d9df4.der
-  SSL_certificate7c9ebd569e5c.der   ssl_config.py                     ssl_context_rsa.py
-  ssl_ecc_auth.py                   ssl_flag.py                       SSL_key7c9ebd3d9df4.der
-  ssl_rsa_auth.py                   test_code.py                      test_ssl_context_client.py
-  test_to_fail.py                   udummy.py                         upy_host_pub_rsa6361726c6f73.key
-  upy_host_pub_rsaacde48001122.key  upy_pub_rsa7c9ebd3d9df4.key       upy_pv_rsa7c9ebd3d9df4.key
-  webrepl_cfg.py                    wpa_supplicant.config             wpa_supplicant.py
-
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [espdev]: ls
-
-  ap_.config                       appble.py                        blemode_config.py
-  boot.py                          buzzertools.py                   dummy.py
-  ec-cacert.pem                    ec-cakey.pem                     error.log
-  hello_tls_context.py             hostname.py                      lib
-  main.py                          main.py.sha256                   microdot.mpy
-  remote_wifi_.config              ROOT_CA_cert.pem                 rsa_cert.der
-  size_config.py                   src_boot.py                      src_main.py
-  SSL_cert_exp.pem                 SSL_certificate30aea4233564.der  ssl_config.py
-  SSL_key30aea4233564.der          SSL_key_exp.der                  SSL_key_exp.pem
-  test_code.py                     test_config.py                   test_ssl_context_client.py
-  test_to_fail.py                  webrepl_cfg.py                   wifi_.config
-  wpa_supplicant.config            wpa_supplicant.py
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [oble]: ls
-
-  _tmp_script.py              ble_flag.py                 boot.py                     dummy.py
-  error.log                   lib                         localname.py                main.py
-  main2.py                    nofile.py                   nofile2.py                  size_config.py
-  test_code.py                test_to_fail.py             testble.py
-  ----------------------------------------------------------------------------------------------------------------------------------
-  **********************************************************************************************************************************
+    ----------------------------------------------------------------------------------------------------------------------------------
+    **********************************************************************************************************************************
 
 
-  TASK [Check memory]
-  **********************************************************************************************************************************
+    TASK [Check device filesystem]
+    **********************************************************************************************************************************
 
-  [pybV1.1]: mem
+    [pybV1.1]: ls
 
-  Memory          Size        Used       Avail        Use%
-  RAM          102.336 kB  11.728 kB   90.608 kB    11.5 %
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [gkesp32]: mem
+    _tmp_script.py                           boot.py                                  debug.log
+    debug.log.1                              DIR_TEST                                 dstest
+    dummy.py                                 hostname.py                              lib
+    log_config.py                            main.py                                  mpy_test.py
+    nemastepper.py                           new_dir                                  new_file.py
+    pospid.py                                pospid_steppr.py                         README.txt
+    root_path.py                             servo_serial.py                          settings_config.py
+    stepper.py                               test_code.py                             test_file.txt
+    test_main.py                             test_secp256k1.py                        test_to_fail.py
+    testnew.py                               udummy.py                                upy_host_pub_rsa6361726c6f73.key
+    upy_pub_rsa3c003d000247373038373333.key  upy_pv_rsa3c003d000247373038373333.key
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [gkesp32]: ls
 
-  Memory          Size        Used       Avail        Use%
-  RAM          123.136 kB  18.576 kB   104.560 kB   15.1 %
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [espdev]: mem
+    appble.py                         base_animations.py                ble_flag.py
+    boot.py                           dummy.py                          ec-cacert.pem
+    error.log                         hostname.py                       http_client_ssl.py
+    http_server_ssl.py                http_server_ssl_ecc_pem.py        http_ssl_test.py
+    lib                               localname.py                      main.py
+    microdot.mpy                      myfile.txt                        myfile.txt.sign
+    ROOT_CA_cert.pem                  server.der                        size_config.py
+    ssl_auth.py                       SSL_cert_exp.pem                  SSL_certificate7c9ebd3d9df4.der
+    SSL_certificate7c9ebd569e5c.der   ssl_config.py                     ssl_context_rsa.py
+    ssl_ecc_auth.py                   ssl_flag.py                       SSL_key7c9ebd3d9df4.der
+    ssl_rsa_auth.py                   test_code.py                      test_ssl_context_client.py
+    test_to_fail.py                   udummy.py                         upy_host_pub_rsa6361726c6f73.key
+    upy_host_pub_rsaacde48001122.key  upy_pub_rsa7c9ebd3d9df4.key       upy_pv_rsa7c9ebd3d9df4.key
+    webrepl_cfg.py                    wpa_supplicant.config             wpa_supplicant.py
 
-  Memory          Size        Used       Avail        Use%
-  RAM          111.168 kB  52.576 kB   58.592 kB    47.3 %
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [oble]: mem
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [espdev]: ls
 
-  Memory          Size        Used       Avail        Use%
-  RAM          111.168 kB  23.120 kB   88.048 kB    20.8 %
-  ----------------------------------------------------------------------------------------------------------------------------------
-  **********************************************************************************************************************************
+    ap_.config                       appble.py                        blemode_config.py
+    boot.py                          buzzertools.py                   dummy.py
+    ec-cacert.pem                    ec-cakey.pem                     error.log
+    hello_tls_context.py             hostname.py                      lib
+    main.py                          main.py.sha256                   microdot.mpy
+    remote_wifi_.config              ROOT_CA_cert.pem                 rsa_cert.der
+    size_config.py                   src_boot.py                      src_main.py
+    SSL_cert_exp.pem                 SSL_certificate30aea4233564.der  ssl_config.py
+    SSL_key30aea4233564.der          SSL_key_exp.der                  SSL_key_exp.pem
+    test_code.py                     test_config.py                   test_ssl_context_client.py
+    test_to_fail.py                  webrepl_cfg.py                   wifi_.config
+    wpa_supplicant.config            wpa_supplicant.py
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [oble]: ls
 
-
-  TASK [Check info]
-  **********************************************************************************************************************************
-
-  [pybV1.1]: info && id
-
-  SerialDevice @ /dev/tty.usbmodem3370377430372, Type: pyboard, Class: SerialDevice
-  Firmware: MicroPython v1.19.1-217-g5234e1f1e on 2022-07-29; PYBv1.1 with STM32F405RG
-  Pyboard Virtual Comm Port in FS Mode, Manufacturer: MicroPython
-  (MAC: 3c:00:3d:00:02:47:37:30:38:37:33:33)
-  ID: 3c003d000247373038373333
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [gkesp32]: info && id
-
-  WebSocketDevice @ wss://192.168.1.66:8833, Type: esp32, Class: WebSocketDevice
-  Firmware: MicroPython v1.19.1-321-gb9b5404bb on 2022-08-24; 4MB/OTA SSL module with ESP32
-  (MAC: 7c:9e:bd:3d:9d:f4, Host Name: gkesp32, RSSI: -69 dBm)
-  ID: 7c9ebd3d9df4
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [espdev]: info && id
-
-  WebSocketDevice @ wss://192.168.1.53:8833, Type: esp32, Class: WebSocketDevice
-  Firmware: MicroPython v1.19.1-304-g5b7abc757-dirty on 2022-08-23; ESP32 module with ESP32
-  (MAC: 30:ae:a4:23:35:64, Host Name: espdev, RSSI: -49 dBm)
-  ID: 30aea4233564
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [oble]: info && id
-
-  BleDevice @ 00FEFE2D-5983-4D6C-9679-01F732CBA9D9, Type: esp32 , Class: BleDevice
-  Firmware: MicroPython v1.18-128-g2ea21abae-dirty on 2022-02-19; 4MB/OTA BLE module with ESP32
-  (MAC: ec:94:cb:54:8e:14, Local Name: oble, RSSI: -63 dBm)
-  ID: ec94cb548e14
-  ----------------------------------------------------------------------------------------------------------------------------------
-  **********************************************************************************************************************************
-
-
-  TASK [Raw MP command]
-  **********************************************************************************************************************************
-
-  [pybV1.1]: import time;print('hello');led.on();time.sleep(1);led.off()
-
-  hello
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [gkesp32]: import time;print('hello');led.on();time.sleep(1);led.off()
-
-  hello
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [espdev]: import time;print('hello');led.on();time.sleep(1);led.off()
-
-  hello
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [oble]: import time;print('hello');led.on();time.sleep(1);led.off()
-
-  hello
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [pybV1.1]: led.on();time.sleep(1);led.off()
-
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [gkesp32]: led.on();time.sleep(1);led.off()
-
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [espdev]: led.on();time.sleep(1);led.off()
-
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [oble]: led.on();time.sleep(1);led.off()
-
-  ----------------------------------------------------------------------------------------------------------------------------------
-  **********************************************************************************************************************************
+    _tmp_script.py              ble_flag.py                 boot.py                     dummy.py
+    error.log                   lib                         localname.py                main.py
+    main2.py                    nofile.py                   nofile2.py                  size_config.py
+    test_code.py                test_to_fail.py             testble.py
+    ----------------------------------------------------------------------------------------------------------------------------------
+    **********************************************************************************************************************************
 
 
-  TASK [Test load script]
-  **********************************************************************************************************************************
+    TASK [Check memory]
+    **********************************************************************************************************************************
 
-  WAIT: DONE
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [pybV1.1]: loading playbooks/sample.py
+    [pybV1.1]: mem
 
-  This is a loaded script: 0
-  This is a loaded script: 1
-  This is a loaded script: 2
-  This is a loaded script: 3
-  This is a loaded script: 4
-  This is a loaded script: 5
-  This is a loaded script: 6
-  This is a loaded script: 7
-  This is a loaded script: 8
-  This is a loaded script: 9
-  Done!
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [gkesp32]: loading playbooks/sample.py
+    Memory          Size        Used       Avail        Use%
+    RAM          102.336 kB  11.728 kB   90.608 kB    11.5 %
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [gkesp32]: mem
 
-  This is a loaded script: 0
-  This is a loaded script: 1
-  This is a loaded script: 2
-  This is a loaded script: 3
-  This is a loaded script: 4
-  This is a loaded script: 5
-  This is a loaded script: 6
-  This is a loaded script: 7
-  This is a loaded script: 8
-  This is a loaded script: 9
+    Memory          Size        Used       Avail        Use%
+    RAM          123.136 kB  18.576 kB   104.560 kB   15.1 %
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [espdev]: mem
 
-  Done!
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [espdev]: loading playbooks/sample.py
+    Memory          Size        Used       Avail        Use%
+    RAM          111.168 kB  52.576 kB   58.592 kB    47.3 %
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [oble]: mem
 
-  This is a loaded script: 0
-  This is a loaded script: 1
-  This is a loaded script: 2
-  This is a loaded script: 3
-  This is a loaded script: 4
-  This is a loaded script: 5
-  This is a loaded script: 6
-  This is a loaded script: 7
-  This is a loaded script: 8
-  This is a loaded script: 9
-
-  Done!
-  ----------------------------------------------------------------------------------------------------------------------------------
-  [oble]: loading playbooks/sample.py
+    Memory          Size        Used       Avail        Use%
+    RAM          111.168 kB  23.120 kB   88.048 kB    20.8 %
+    ----------------------------------------------------------------------------------------------------------------------------------
+    **********************************************************************************************************************************
 
 
-  This is a loaded script: 0
-  This is a loaded script: 1
-  This is a loaded script: 2
-  This is a loaded script: 3
-  This is a loaded script: 4
-  This is a loaded script: 5
-  This is a loaded script: 6
-  This is a loaded script: 7
-  This is a loaded script: 8
-  This is a loaded script: 9
+    TASK [Check info]
+    **********************************************************************************************************************************
 
-  Done!
-  ----------------------------------------------------------------------------------------------------------------------------------
-  **********************************************************************************************************************************
+    [pybV1.1]: info && id
+
+    SerialDevice @ /dev/tty.usbmodem3370377430372, Type: pyboard, Class: SerialDevice
+    Firmware: MicroPython v1.19.1-217-g5234e1f1e on 2022-07-29; PYBv1.1 with STM32F405RG
+    Pyboard Virtual Comm Port in FS Mode, Manufacturer: MicroPython
+    (MAC: 3c:00:3d:00:02:47:37:30:38:37:33:33)
+    ID: 3c003d000247373038373333
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [gkesp32]: info && id
+
+    WebSocketDevice @ wss://192.168.1.66:8833, Type: esp32, Class: WebSocketDevice
+    Firmware: MicroPython v1.19.1-321-gb9b5404bb on 2022-08-24; 4MB/OTA SSL module with ESP32
+    (MAC: 7c:9e:bd:3d:9d:f4, Host Name: gkesp32, RSSI: -69 dBm)
+    ID: 7c9ebd3d9df4
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [espdev]: info && id
+
+    WebSocketDevice @ wss://192.168.1.53:8833, Type: esp32, Class: WebSocketDevice
+    Firmware: MicroPython v1.19.1-304-g5b7abc757-dirty on 2022-08-23; ESP32 module with ESP32
+    (MAC: 30:ae:a4:23:35:64, Host Name: espdev, RSSI: -49 dBm)
+    ID: 30aea4233564
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [oble]: info && id
+
+    BleDevice @ 00FEFE2D-5983-4D6C-9679-01F732CBA9D9, Type: esp32 , Class: BleDevice
+    Firmware: MicroPython v1.18-128-g2ea21abae-dirty on 2022-02-19; 4MB/OTA BLE module with ESP32
+    (MAC: ec:94:cb:54:8e:14, Local Name: oble, RSSI: -63 dBm)
+    ID: ec94cb548e14
+    ----------------------------------------------------------------------------------------------------------------------------------
+    **********************************************************************************************************************************
+
+
+    TASK [Raw MP command]
+    **********************************************************************************************************************************
+
+    [pybV1.1]: import time;print('hello');led.on();time.sleep(1);led.off()
+
+    hello
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [gkesp32]: import time;print('hello');led.on();time.sleep(1);led.off()
+
+    hello
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [espdev]: import time;print('hello');led.on();time.sleep(1);led.off()
+
+    hello
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [oble]: import time;print('hello');led.on();time.sleep(1);led.off()
+
+    hello
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [pybV1.1]: led.on();time.sleep(1);led.off()
+
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [gkesp32]: led.on();time.sleep(1);led.off()
+
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [espdev]: led.on();time.sleep(1);led.off()
+
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [oble]: led.on();time.sleep(1);led.off()
+
+    ----------------------------------------------------------------------------------------------------------------------------------
+    **********************************************************************************************************************************
+
+
+    TASK [Test load script]
+    **********************************************************************************************************************************
+
+    WAIT: DONE
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [pybV1.1]: loading playbooks/sample.py
+
+    This is a loaded script: 0
+    This is a loaded script: 1
+    This is a loaded script: 2
+    This is a loaded script: 3
+    This is a loaded script: 4
+    This is a loaded script: 5
+    This is a loaded script: 6
+    This is a loaded script: 7
+    This is a loaded script: 8
+    This is a loaded script: 9
+    Done!
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [gkesp32]: loading playbooks/sample.py
+
+    This is a loaded script: 0
+    This is a loaded script: 1
+    This is a loaded script: 2
+    This is a loaded script: 3
+    This is a loaded script: 4
+    This is a loaded script: 5
+    This is a loaded script: 6
+    This is a loaded script: 7
+    This is a loaded script: 8
+    This is a loaded script: 9
+
+    Done!
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [espdev]: loading playbooks/sample.py
+
+    This is a loaded script: 0
+    This is a loaded script: 1
+    This is a loaded script: 2
+    This is a loaded script: 3
+    This is a loaded script: 4
+    This is a loaded script: 5
+    This is a loaded script: 6
+    This is a loaded script: 7
+    This is a loaded script: 8
+    This is a loaded script: 9
+
+    Done!
+    ----------------------------------------------------------------------------------------------------------------------------------
+    [oble]: loading playbooks/sample.py
+
+
+    This is a loaded script: 0
+    This is a loaded script: 1
+    This is a loaded script: 2
+    This is a loaded script: 3
+    This is a loaded script: 4
+    This is a loaded script: 5
+    This is a loaded script: 6
+    This is a loaded script: 7
+    This is a loaded script: 8
+    This is a loaded script: 9
+
+    Done!
+    ----------------------------------------------------------------------------------------------------------------------------------
+    **********************************************************************************************************************************
 
 It is also possible to filter which tasks to run on each device using
 ``include`` or ``ignore`` directives, e.g.
@@ -701,7 +702,7 @@ It is also possible to filter which tasks to run on each device using
 .. code-block:: yaml
   :caption: mytask_pll.yaml
 
-    ---
+  ---
     - name: Example playbook
       hosts: espdev, gkesp32, pybV1.1, oble
       tasks:

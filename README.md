@@ -18,7 +18,7 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 * OTA\* Firmware updates WiFi (TCP/SSL), BLE  (\* esp32 only)
 * Custom commands for debugging, testing and prototyping
 * Custom tasks yaml files that can be played like ansible
-* Run tests in device with pytest and parametric tests using yaml files
+* Run tests in device with pytest and parametric tests or benchmarks using yaml files
 * Group mode to operate with multiple devices
 
 ------
