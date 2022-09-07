@@ -122,13 +122,15 @@ def _assert_op(expected, result, op):
 def assert_op(expected, result, op, log, test_name):
     RESULT_MSG = f"expected: {expected} {op} result: {result}"
     FAIL_MSG = f"Test {test_name} FAILED: {RESULT_MSG}"
-    log.info(RESULT_MSG)
+
     ret = _assert_op(expected, result, op)
     if op in ["in", "is", "is not", "startswith", "endswith"]:
         RESULT_MSG = f"result: {result} {op} expected: {expected}"
         FAIL_MSG = f"Test {test_name} FAILED: {RESULT_MSG}"
+        log.info(RESULT_MSG)
         assert ret, FAIL_MSG
     else:
+        log.info(RESULT_MSG)
         assert ret, FAIL_MSG
 
     # INIT DEV
