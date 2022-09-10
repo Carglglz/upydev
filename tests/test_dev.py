@@ -277,10 +277,37 @@ def do_network(network, command, args, kwargs, ip, log):
             test_result = subprocess.Popen(
                 shlex.split(_cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
+        if net_tool == "ab":
+            dev.cmd_nb(command, block_dev=False)
+            time.sleep(0.5)
+            _cmd = f"{cmd} https://{ip}:4443/"
+            log.info(f"Host Command: {_cmd}")
+            test_result = subprocess.Popen(
+                shlex.split(_cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+
+
     if command:
         log.info(f"Command [{command}] ")
         if mode == "client":
-            dev.wr_cmd("", follow=True)
+            if net_tool == 'ab':
+                log.info('AB:')
+                while test_result.returncode is None:
+                   test_result.poll()
+                   for line in test_result.stdout.readlines():
+                       print(line.decode(), end='')
+                for line in test_result.stdout.readlines():
+                       print(line.decode(), end='')
+                if test_result.returncode == 0:
+                    print("Shutdown server now...")
+                    shutdown = f"curl https://{ip}:4443/shutdown"
+                    _done =  test_result = subprocess.Popen(
+                    shlex.split(shutdown), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+                    _done.wait()
+                dev.wr_cmd("", follow=True)
+            else:
+                dev.wr_cmd("", follow=True)
         else:
             dev.wr_cmd(command, follow=True)
         # Catch Device Exceptions and raise:
