@@ -1,7 +1,14 @@
+# Ported to MicroPython from https://github.com/jobec/rfc5424-logging-handler
+# BSD 3-Clause License
+
+# Copyright (c) 2017, Joris Beckers
+# All rights reserved.
+
 import socket
 import sys
 import machine
 import binascii
+import ssl
 
 NILVALUE = '-'
 BOM_UTF8 = b'\xef\xbb\xbf'
@@ -69,7 +76,7 @@ class RsysLogger:
 
 
     def __init__(self, addr, port=514, hostname=None, facility=LOG_USER,
-                 msg_as_utf8=True, t_offset="+00:00"):
+                 msg_as_utf8=True, t_offset="+00:00", ssl=False, ssl_params={}):
 
         self.addr = addr
         self.port = port
@@ -82,14 +89,16 @@ class RsysLogger:
         self.time_offset = t_offset
         self.framing=FRAMING_NON_TRANSPARENT
         self.connected = False
-        self.connect()
+        self.connect(ssl=ssl, ssl_params=ssl_params)
 
 
-    def connect(self):
+    def connect(self, ssl=False, ssl_params={}):
         self.sock = socket.socket()
         addr = socket.getaddrinfo(self.addr, self.port)[0][-1]
         self.sock.connect(addr)
         self.connected = True
+        if ssl:
+            self.sock = ssl.wrap_socket(self.sock, **ssl_params)
 
     def encode_priority(self, facility, priority):
         return (facility << 3) | self.priority_map.get(priority, self.LOG_WARNING)

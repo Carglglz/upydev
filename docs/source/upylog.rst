@@ -105,3 +105,23 @@ MicroPython logging module with time format (predefined) and log to file support
 Traceback (most recent call last):
   File "test_code.py", line 20, in <module>
 ZeroDivisionError: divide by zero
+
+
+.. note::
+
+	To enable remote logging with ``ursyslogger.RsysLogger`` add remote logger to log with:
+
+  .. code-block:: python
+
+    ...
+    >>> rsyslog = RsysLogger("server.local", port=514, hostname="mydevice", t_offset="+01:00")
+    >>> log.remote_logger = rsyslog
+    >>> log.info("Remote hello")
+    2022-09-15 10:06:04 [esp32@mydevice] [INFO] Remote hello
+
+  and in server e.g.
+
+  .. code-block:: console
+
+    $ tail -F mydevice.local.log
+    Sep 15 10:06:04 mydevice.local esp32@mydevice Remote hello

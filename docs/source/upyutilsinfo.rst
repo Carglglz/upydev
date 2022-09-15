@@ -50,6 +50,8 @@ Develop
 
 **cycles.py**: To set and get how many times a device has been rebooted.
 
+**ursyslogger.py**: To enable remote logging to a server using rsyslog (to be used with ``upylog.py``)
+
 IRQ
 ^^^
 

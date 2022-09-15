@@ -1129,6 +1129,42 @@ Running Benchmarks with pytes-benchmark
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 See `pytest-benchmark <https://pytest-benchmark.readthedocs.io/en/latest/index.html>`_ documentation
 
+To write a benchmark test use **benchmark** directive to indicate a function that will be
+called **rounds** times (default 5).
+Consider this example:
+
+.. code-block:: yaml
+  :caption: test_pystone_bmk.yaml
+
+    ---
+    - name: System Check
+      hint: "Device CPU frequency:"
+      command: "import machine;machine.freq()"
+
+    - name: Pystone Benchmark
+      hint: Run 500 loops, returns time in seconds to complete a run.
+      load: "import pystone_lowmem"
+      benchmark: "pystone_lowmem.main"
+      args: [500, True]
+      reload: "pystone_lowmem"
+
+Where the function ``pystone_lowmem.main(500,True)`` will perform a 500 loops run and
+return the time that it took **in seconds**.
+
+.. tip::
+
+  Use of ``time.ticks_ms``/``time.ticks_us`` and ``time.ticks_diff`` to obtain the
+  time that it takes to run any function and return time in seconds e.g.
+
+  .. code-block:: python
+
+    def benchmark_this(func, *args, **kwargs):
+      t0 = time.ticks_ms()
+      result = func(*args, **kwargs)
+      delta = time.ticks_diff(time.ticks_ms(), t0)
+      return delta/1e3 # delta/1e6 if using time.ticks_us
+
+
 Running ``test_benchmark/test_pystone_bmk.yaml`` benchmark with different devices
 and saving benchmark results
 
