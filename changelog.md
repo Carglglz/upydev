@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix config `add_param` to allow custom `root_path`
 - update otatool.py, ota.py to use ROOT CA certificate as CA.
 ## Added
+- Added `ursyslogger.py` to `upyutils/develop` to enable remote logging with rsyslog as endpoint.
 - Added `test_dev.py` to run parametric tests using yaml files.
 - Added benchmark integration with ``pytest-benchmark``
 - Added network tests with ``iperf3:uiperf3.py``
@@ -40,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `kg ssl CA add/export` to add or export a ROOT CA key/cert pair.
 - `kg ssl dev/host/CA status` to check expiration date of certificates.
 -  The new CA-host-dev certificate chain of trust model allows log in to wss WebSocketDevices from multiple locations/hosts (by exporting the ROOT CA key/cert pair to a new host and add them there to generate the proper key/cert for that host).
-- nwatchdog timer kargs.
+- nwatchdog timer kwargs.
 - net scan results are sorted by RSSI value.
 - local path in shell-repl prompt is now aware of current git branch.
 ## [0.4.2] - 2022-07-10

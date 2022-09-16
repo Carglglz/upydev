@@ -16,6 +16,6 @@
       wait: 5
       load: "sample.py"
     - name: Test shell 
-      command: "pytest ../tests/test_dev.py --yf ../tests/test_basic_math.yaml"
+      command: "pytest ../tests/test_dev.py --yf ../tests/test_basic/test_basic_math.yaml"
     - name: Local command 
       command: "%ls"
