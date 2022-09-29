@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.3] Unreleased Github Repo [develop]
+## [0.4.4] Unreleased Github Repo [develop]
+## [0.4.3] - 2022-09-29
 ## Fix
 - `wss_repl.py` dropped `websocket_help` dependency.
 - `upyutils/develop/upynotify.py` pwm bug, `upytuils/ble/ble_uart_peripheral.py` rxbuf bug.
