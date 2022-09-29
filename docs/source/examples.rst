@@ -1391,21 +1391,32 @@ Let's consider this example to take measurements with an ADC sensor ``ADS1115``
 
 
 .. code-block:: python
+  :caption: plot.py
 
   import json
   from matplotlib import pyplot as plt
+  import sys
 
-  with open('.benchmarks/Darwin-CPython-3.7-64bit/0022_espd_ads1115.json', 'r') as rp:
-      report = json.load(rp.read())
+  file = sys.argv[1]
+
+  with open(file, 'r') as rp:
+      report = json.load(rp)
 
   data = report['benchmarks'][0]['stats']['data']
   time_stamp = report['benchmarks'][0]['extra_info']['vtime']
-  t_vec = [(t-time_stamp[0])/1e9 for t in time_stamp] # from absolute timestamps in ns to relative time in seconds
+  # from absolute timestamps in ns to relative time in seconds
+  t_vec = [(t-time_stamp[0])/1e9 for t in time_stamp]
 
   plt.plot(t_vec, data)
-  plt.ylabel("Voltage (V)")
-  plt.xlabel("Time (s)")
+  plt.ylabel("Voltage ($V$)")
+  plt.xlabel("Time ($s$)")
   plt.show()
+
+
+.. code-block:: console
+
+  $ ./plot.py .benchmarks/Darwin-CPython-3.7-64bit/0023_espd_ads1115.json
+
 
 .. image:: img/ads1115_data_.png
 
@@ -1578,12 +1589,35 @@ e.g. in combination with ``wpa_supplicant.py`` and ``config`` module.
   else:
     # set AP
 
+Module ``ursyslogger.py`` allows to forward logging messages to a remote host
+using `rsyslog <https://github.com/rsyslog/rsyslog>`_ . Configure rsyslog in remote server
+to enable remote logging using TCP, see `remote logging with rsyslog <https://www.makeuseof.com/set-up-linux-remote-logging-using-rsyslog/>`_.
+
+Then add ``RsysLogger`` to ``log``.
+
+.. code-block:: python
+
+  ...
+  >>> from ursyslogger import RsysLogger
+  >>> rsyslog = RsysLogger("server.local", port=514, hostname="mydevice", t_offset="+01:00")
+  >>> log.remote_logger = rsyslog
+  >>> log.info("Remote hello")
+  2022-09-15 10:06:04 [esp32@mydevice] [INFO] Remote hello
+
+Then check in remote server e.g.
+
+.. code-block:: console
+
+  $ tail -F mydevice.local.log
+  Sep 15 10:06:04 mydevice.local esp32@mydevice Remote hello
+
+
 BleDevice
 ^^^^^^^^^
 Once the device is running ``BleREPL`` with ``NUS`` profile (Nordic UART Service), it is possible
 to connect and send commands as with other devices. However due to the nature of
 Bluetooth Low Energy, the computer needs to scan first and then connect, which
-depending on the advertising period of the device, it may take bit. This is why connecting
+depending on the advertising period of the device, it may take a bit. This is why connecting
 to the device using ``shell-repl`` mode is the best way to work. (e.g in case the device cannot
 be connected using USB/Serial i.e. no physical access.)
 Using ``config`` module it is possible to set different operation modes that will switch
