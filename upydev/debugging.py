@@ -1,6 +1,9 @@
 from upydevice import Device, check_device_type, serial_scan, net_scan
 import sys
 from upydev.devicemanagement import check_zt_group
+from upydev.playbook import play
+from upydev.shell.common import print_table
+from upydev.shell.nanoglob import glob as nglob
 import os
 import json
 import upydev
@@ -18,10 +21,13 @@ import argparse
 rawfmt = argparse.RawTextHelpFormatter
 
 
+_playbook_dir = os.path.expanduser("~/.upydev_playbooks")
+
 dict_arg_options = {'ping': ['t', 'zt', 'p'],
                     'probe': ['t', 'p', 'G', 'gg', 'devs', 'zt'],
                     'scan': ['nt', 'sr', 'bl'],
                     'run': ['t', 'p', 'wss', 'f', 's'],
+                    'play': ['t', 'p', 'wss', 'f', 'fre', 'devs'],
                     'timeit': ['t', 'p', 'wss', 'f', 's'],
                     'stream_test': ['t', 'p', 'wss', 'chunk_tx',
                                     'chunk_rx', 'total_size'],
@@ -29,7 +35,7 @@ dict_arg_options = {'ping': ['t', 'zt', 'p'],
                     'log': ['t', 'p', 'wss', 'f', 's',
                             'daemon', 'follow', 'dslev', 'dflev',
                             'stopd'],
-                    'pytest': ['t', 'p', 'wss', 'f', 'fre']}
+                    'pytest': ['t', 'p', 'wss', 'f', 'fre', 'yf']}
 
 PING = dict(help="ping the device to test if device is"
                  " reachable, CTRL-C to stop.",
@@ -97,6 +103,45 @@ RUN = dict(help="run a script in device, CTRL-C to stop",
                     "-s": dict(help='indicate the path of the script if in external fs'
                                     ' e.g. an sd card.',
                                required=False)})
+PLAY = dict(help="play custom tasks in ansible playbook style",
+            desc="task must be yaml file or command {add, rm, list} + yaml file\n"
+                 "- yaml file must follow: \n  > keywords any of {name, hosts, tasks, "
+                 "command, command_nb,\n command_pl, reset, load, load_pl, include, "
+                 "ignore, wait}\nwith following structure, e.g:\n"
+                 """---
+- name: Example playbook
+  hosts: dev1, dev2
+  tasks:
+    - name: Leaving a mark
+      command: "touch upydev_was_here && ls"
+    - name: Check memory
+      command: "mem"
+    - name: Remove file
+      command: "rm upydev_was_here"
+    - name: Raw MP command
+      command: "print('hello');led.value(not led.value())"
+      command_nb: "led.on();time.sleep(1);led.off()"
+    - name: Test load script
+      wait: 5
+      load: sample.py
+    - name: Test test_sh.py parallel
+      wait: 5
+      command_pl: "pytest ../tests/test_sh.py"
+      """,
+            subcmd=dict(help=('indicate a task file to play.'),
+                        metavar='task',
+                        nargs="*"),
+            options={"-t": dict(help="device target address",
+                                required=True),
+                     "-p": dict(help='device password or baudrate',
+                                required=True),
+                     "-wss": dict(help='use WebSocket Secure',
+                                  required=False,
+                                  default=False,
+                                  action='store_true'),
+                     "-devs": dict(help='flag for filtering devs in global group',
+                                   required=False,
+                                   nargs='*')})
 
 TIMEIT = dict(help="to measure execution time of a module/script",
               desc="source: https://github.com/peterhinch/micropython-samples"
@@ -153,7 +198,7 @@ SYSCTL = dict(help="to start/stop a script without following the output",
 
 LOG = dict(help="to log the output of a script running in device",
            desc="log levels (sys.stdout and file), run modes (normal, daemon) are"
-                "available through following options",
+                " available through following options",
            subcmd=dict(help=('indicate a script to run and log'),
                        metavar='script'),
            options={"-t": dict(help="device target address",
@@ -186,9 +231,9 @@ LOG = dict(help="to log the output of a script running in device",
                                default=False)})
 
 PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
-              subcmd=dict(help='indicate a test script to run, any optional '
-                               'arg is passed to pytest',
-                          default=[''],
+              subcmd=dict(help='indicate a test script or yaml test file to run, '
+                               '\nany optional arg is passed to pytest',
+                          default=['test_dev.py'],
                           metavar='test',
                           nargs='*'),
               options={"-t": dict(help="device target address",
@@ -198,12 +243,14 @@ PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
                        "-wss": dict(help='use WebSocket Secure',
                                     required=False,
                                     default=False,
-                                    action='store_true')})
+                                    action='store_true'),
+                       "--yf": dict(help="yaml test file",
+                                    required=False)})
 
 
 DB_CMD_DICT_PARSER = {"ping": PING, "probe": PROBE, "scan": SCAN, "run": RUN,
                       "timeit": TIMEIT, "stream_test": STREAM_TEST, "sysctl": SYSCTL,
-                      "log": LOG, "pytest": PYTEST}
+                      "log": LOG, "pytest": PYTEST, "play": PLAY}
 
 
 usag = """%(prog)s command [options]\n
@@ -282,7 +329,10 @@ FAIL = '\u001b[31;1mF\u001b[0m'
 
 # TERMINAL SIZE
 bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
-columns, rows = os.get_terminal_size(0)
+try:
+    columns, rows = os.get_terminal_size(0)
+except Exception:
+    columns, rows = 80, 80
 cnt_size = 75
 if columns > cnt_size:
     bar_size = int((columns - cnt_size))
@@ -581,7 +631,7 @@ def stream_test(args, dev, mode='download'):
         dev.cmd_nb("w_stream_writer('{}', 8005, {}, {})".format(local_ip,
                                                                 args.chunk_tx*_kB,
                                                                 args.total_size*_MB),
-                   follow=True)
+                   follow=False, block_dev=False)
         conn, addr = server_socket.accept()
         soc_timeout = 1
         conn.settimeout(soc_timeout)
@@ -752,7 +802,6 @@ def follow_daemon_log(args, script):
 
 
 def pytest(args, scripts, unkwargs, devname):
-
     test = ' '.join(scripts)
     pytest_cmd_str = 'pytest {} -s --dev {}'.format(test, devname)
     # if args.mode:
@@ -1041,6 +1090,55 @@ def debugging_action(args, unkwargs, **kargs):
     elif command == 'run':
         run_script(args, rest_args)
 
+    elif command == 'play':
+        for uk in ['-f', '-fre']:
+            if uk in unknown_args:
+                unknown_args.remove(uk)
+        if not args.subcmd:
+            sh_cmd("play -h")
+            sys.exit()
+
+        if args.subcmd[0] in ["add", "rm", "list"]:
+            play_action = args.subcmd[0]
+            if play_action == "add":
+                # Setup playbook dir
+                if not os.path.exists(_playbook_dir):
+                    os.mkdir(_playbook_dir)
+                tasks_to_add = [tsk for tsk in args.subcmd[1:] if tsk.endswith('.yaml')]
+                scp_to_add = [tsk for tsk in args.subcmd[1:] if tsk.endswith('.py')]
+                for tsk in tasks_to_add:
+                    shutil.copy(tsk, _playbook_dir)
+                    print(f"{tsk} added to upydev tasks.")
+                for scp in scp_to_add:
+                    shutil.copy(scp, _playbook_dir)
+                    print(f"{scp} added to upydev tasks scripts.")
+            elif play_action == "rm":
+                tasks_to_rm = [tsk for tsk in args.subcmd[1:] if "*" not in tsk]
+                _pattrn_to_rm = []
+                for tsk in args.subcmd[1:]:
+                    if "*" in tsk:
+                        pattrn = nglob(os.path.join(_playbook_dir, tsk))
+                        for patt in pattrn:
+                            _pattrn_to_rm.append(os.path.basename(patt))
+                tasks_to_rm += _pattrn_to_rm
+                for tsk in tasks_to_rm:
+                    try:
+                        if not os.path.exists(os.path.join(_playbook_dir, tsk)):
+                            os.remove(os.path.join(_playbook_dir, f"{tsk}.yaml"))
+                        else:
+                            os.remove(os.path.join(_playbook_dir, tsk))
+                        print(f"{tsk} file removed.")
+                    except Exception as e:
+                        print(e)
+            elif play_action == "list":
+                _tasks = os.listdir(_playbook_dir)
+                tasks_names = [tsk.replace('.yaml', '') for tsk in _tasks
+                               if tsk.endswith('.yaml')]
+                print_table(tasks_names)
+
+        else:
+            play(args, rest_args, dev_name)
+
     elif command == 'timeit':
         timeit_script(args, rest_args)
 
@@ -1064,12 +1162,27 @@ def debugging_action(args, unkwargs, **kargs):
         if rest_args[0] == 'setup':
             shutil.copy(os.path.join(upydev.__path__[0], 'conftest.py'), '.')
             shutil.copy(os.path.join(upydev.__path__[0], 'pytest.ini'), '.')
-            print('pytest.ini and conftest.py saved in current working directory.')
+            shutil.copy(os.path.join(upydev.__path__[0], 'test_dev.py'), '.')
+            print('pytest setup done!')
         else:
             for uk in ['-f', '-fre']:
                 if uk in unknown_args:
                     unknown_args.remove(uk)
             print('Running pytest with Device: {}'.format(dev_name))
+            # print(args, rest_args, unknown_args)
+            if any([f.endswith('.yaml') for f in args.subcmd]):
+                if args.yf:
+                    args.yf = [args.yf] + rest_args
+                else:
+                    args.yf = rest_args
+                args.subcmd = ['test_dev.py']
+                rest_args = ['test_dev.py']
+            if args.yf:
+                if isinstance(args.yf, list):
+                    unknown_args = f"--yf {' '.join(args.yf)}".split() + unknown_args
+                else:
+                    unknown_args = ['--yf', args.yf] + unknown_args
+            # print(args, rest_args, unknown_args)
             pytest(args, rest_args, unknown_args, dev_name)
 
     return

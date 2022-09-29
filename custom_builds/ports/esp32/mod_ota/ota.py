@@ -26,7 +26,7 @@ BLOCKLEN = const(4096)  # data bytes in a flash block
 
 
 class OTA:
-    def __init__(self, host, port, check_sha, tls=False):
+    def __init__(self, host, port, check_sha, tls=False, log=None):
         self.part = Partition(Partition.RUNNING).get_next_update()
         self.sha = hashlib.sha256()
         self.block = 0
@@ -34,12 +34,16 @@ class OTA:
         self.buflen = 0
         self._key = f'SSL_key{binascii.hexlify(unique_id()).decode()}.der'
         self._cert = f'SSL_certificate{binascii.hexlify(unique_id()).decode()}.der'
+        self._cadata = 'ROOT_CA_cert.pem'
         self.tls = tls
+        self.log = log
         if tls:
             with open(self._key, 'rb') as keyfile:
                 self.key = keyfile.read()
             with open(self._cert, 'rb') as certfile:
                 self.cert = certfile.read()
+            with open(self._cadata, 'rb') as cadatafile:
+                self.cadata = cadatafile.read()
         self.cli_soc = self.connect(host, port)
         self.check_sha = check_sha
         self._total_blocks = 0
@@ -53,11 +57,12 @@ class OTA:
         if self.tls:
             try:
                 cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert,
-                                          ca_certs=self.cert,
+                                          cadata=self.cadata,
                                           cert_reqs=ssl.CERT_REQUIRED)
-            except Exception:
-                cli_soc = ssl.wrap_socket(cli_soc, key=self.key, cert=self.cert)
-            # assert self.cert == cli_soc.getpeercert(True), "Peer Certificate Invalid"
+            except Exception as e:
+                if self.log:
+                    self.log.exception(e, "SSL ERROR")
+                raise e
         return cli_soc
 
     # handle processes one message with a chunk of data in msg. The sequence number seq needs

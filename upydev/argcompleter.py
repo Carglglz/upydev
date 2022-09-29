@@ -5,7 +5,7 @@ UPYDEV_PATH = __path__[0]
 # SHELL_CMD_PARSER
 
 shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
-                  'run']
+                  'run', 'mv']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'ap', 'mem', 'install', 'touch',
                     'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
@@ -15,7 +15,7 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'config', 'fw', 'mpyx', 'sd']
+                    'diff', 'config', 'fw', 'mpyx', 'sd', 'uptime', 'cycles', 'play']
 
 LS = dict(help="list files or directories",
           subcmd=dict(help='indicate a file/dir or pattern to see', default=[],
@@ -48,6 +48,12 @@ CD = dict(help="change current working directory",
           subcmd=dict(help='indicate a dir to change to', default='/',
                       metavar='dir', nargs='?'),
           options={})
+
+MV = dict(help="move/rename a file",
+          subcmd=dict(help='indicate a file to rename', default=[],
+                      metavar='file', nargs=2),
+          options={})
+
 PWD = dict(help="print current working directory",
            subcmd={},
            options={})
@@ -252,6 +258,18 @@ DATETIME = dict(help="prints device's RTC time",
                 subcmd={},
                 options={})
 
+UPTIME = dict(help=("prints device's uptime since latest boot, "
+                    "(requires uptime.py and uptime.settime()"
+                    " at boot.py/main.py)"),
+              subcmd={},
+              options={})
+
+CYCLES = dict(help=("prints device's cycle count"
+                    "(requires cycles.py and cycles.set()"
+                    " at boot.py/main.py)"),
+              subcmd={},
+              options={})
+
 SHASUM = dict(help="shasum SHA-256 tool",
               subcmd=dict(help='Get the hash of a file or check a shasum file',
                           default=[],
@@ -347,9 +365,16 @@ SD = dict(help="commands to manage an sd",
                                default=21,
                                type=int)})
 
+LOAD = dict(help="run local script in device",
+            desc="load a local script in device buffer and execute it.",
+            subcmd=dict(help='indicate a file/script to load', default='',
+                        metavar='file',
+                        nargs='*'),
+            options={})
+
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
-                         "touch": TOUCH, "cd": CD, "pwd": PWD,
+                         "touch": TOUCH, "cd": CD, "mv": MV, "pwd": PWD,
                          "rm": RM, "rmdir": RMDIR, "du": DU,
                          "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT,
                          "vim": VIM, "run": RUN, "reload": RELOAD,
@@ -361,7 +386,8 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "lcd": LCD,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
                          "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
-                         "diff": DIFF, "config": CONFIG, "sd": SD}
+                         "diff": DIFF, "config": CONFIG, "sd": SD, 'uptime': UPTIME,
+                         "cycles": CYCLES, "load": LOAD}
 
 # DEBUGGING
 PING = dict(help="ping the device to test if device is"
@@ -430,6 +456,22 @@ RUN = dict(help="run a script in device, CTRL-C to stop",
                     "-s": dict(help='indicate the path of the script if in external fs'
                                     ' e.g. an sd card.',
                                required=False)})
+
+
+PLAY = dict(help="play custom tasks in ansible playbook style",
+            desc="task must be yaml file with name, hosts, tasks, name, command\n"
+                 "structure",
+            subcmd=dict(help=('indicate a task file to play.'),
+                        metavar='task',
+                        choices=["add", "rm", "list"]),
+            options={"-t": dict(help="device target address",
+                                required=True),
+                     "-p": dict(help='device password or baudrate',
+                                required=True),
+                     "-wss": dict(help='use WebSocket Secure',
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
 
 TIMEIT = dict(help="to measure execution time of a module/script",
               desc="source: https://github.com/peterhinch/micropython-samples"
@@ -536,7 +578,7 @@ PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
 
 DB_CMD_DICT_PARSER = {"ping": PING, "probe": PROBE, "scan": SCAN, "run": RUN,
                       "timeit": TIMEIT, "stream_test": STREAM_TEST, "sysctl": SYSCTL,
-                      "log": LOG, "pytest": PYTEST}
+                      "log": LOG, "pytest": PYTEST, "play": PLAY}
 
 # DEVICE MANAGEMENT
 CONFIG = dict(help="to save device settings",
@@ -802,9 +844,22 @@ KG = dict(help="to generate a key pair (RSA) or key & certificate (ECDSA) for ss
                     metavar='mode',
                     choices=['rsa', 'ssl', 'wr'],
                     nargs='?'),
-          subcmd=dict(help='indicate if RSA key pair is for host',
-                      metavar='host',
+          subcmd=dict(help='- gen: generate a ECDSA key/cert (default)'
+                           '\n- rotate: To rotate CA key/cert pair old->new or'
+                           ' new->old'
+                           '\n- add: add a device cert to upydev path verify location.'
+                           '\n- export: export CA or device cert to cwd.',
+                      metavar='subcmd',
+                      # just for arg completion
+                      choices=['gen', 'add', 'export', 'rotate', 'dev', 'host', 'CA',
+                               'status'],
+                      default='gen',
                       nargs='?'),
+          dst=dict(help='indicate a subject: {dev, host, CA}, default: dev',
+                   metavar='dest',
+                   choices=['dev', 'host', 'CA'],
+                   default='dev',
+                   nargs='?'),
           options={"-t": dict(help="device target address",
                               required=True),
                    "-p": dict(help='device password or baudrate',
@@ -842,7 +897,15 @@ KG = dict(help="to generate a key pair (RSA) or key & certificate (ECDSA) for ss
                               default=False,
                               action='store_true'),
                    "-to": dict(help='serial device name to upload to',
-                               required=False)})
+                               required=False),
+                   "-f": dict(help='cert name to add to verify locations',
+                              required=False),
+                   "-a": dict(
+                       help="show all devs ssl cert status",
+                       required=False,
+                       default=False,
+                       action="store_true",
+                   ), })
 
 RSA = dict(help="to perform operations with RSA key pair as sign, verify or "
                 "authenticate",

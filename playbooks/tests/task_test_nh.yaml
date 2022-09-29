@@ -1,0 +1,8 @@
+---
+- name: Test Playbook
+  tasks:
+     - name: Run Shell Tests
+       command: "pytest ../../tests/test_sh.py"
+     - name: Check connection
+       wait: 3
+       command: "print('ping'); time.sleep(1);print('pong')"

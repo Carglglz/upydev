@@ -1,0 +1,33 @@
+---
+  - name: System Check
+    hint: "Device CPU frequency:"
+    command: "import machine;machine.freq()"
+
+  - name: Benchmark time.sleep
+    benchmark: "time.sleep"
+    args: [0.5]
+    follow: True
+
+  - name: Pystone Benchmark
+    load: "import pystone_lowmem"
+    benchmark: "pystone_lowmem.main(benchtm=True)"
+    reload: "pystone_lowmem"
+    bench_host: True
+    diff: True
+
+  - name: Assert Pystones 
+    command: "stones = pystone_lowmem.main"
+    args: [1000] # LOOPS
+    result: stones # PYSTONES
+    exp: 2000
+    assert_op: "<="
+    # using timeit
+  - name: Timed function setup
+    load: ./dev_tests/timed_func.py 
+  
+  - name: Timed function test 
+    load: ./dev_tests/test_timed.py 
+    benchmark: "test2"
+    args: [20000]
+    rounds: 10
+    follow: True

@@ -4,7 +4,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.3] Unreleased Github Repo [develop]
+## [0.4.4] Unreleased Github Repo [develop]
+## [0.4.3] - 2022-09-29
+## Fix
+- `wss_repl.py` dropped `websocket_help` dependency.
+- `upyutils/develop/upynotify.py` pwm bug, `upytuils/ble/ble_uart_peripheral.py` rxbuf bug.
+- wss WebSocketDevices now use ROOT CA-signed certificate
+  (ROOT CA key/cert generated with `$ upydev kg ssl CA`)
+- allow_abrev bug for `$ upydev kg ssl dev status -a` option (`--a` for python3.8+).
+- fix fast get/dsync shasum animation for BleDevices.
+- improve certificate info issuer/subject.
+- fix dev_platform in `net scan` for esp8266
+- now serial repl works with ``screen`` too (using ``repl -sc``) (in case ``picocom`` is not available)
+- fix ssl error on `stream_test` in WebSocketDevices using wss.
+- fix paste mode in serial repl missing to print first line output.
+- fix net scan bug for esp8266
+- fix dsync command help info.
+- fix uconfig (config in shell-repl) help info.
+- fix config `add_param` to allow custom `root_path`
+- update otatool.py, ota.py to use ROOT CA certificate as CA.
+## Added
+- Added `ursyslogger.py` to `upyutils/develop` to enable remote logging with rsyslog as endpoint.
+- Added `test_dev.py` to run parametric tests using yaml files.
+- Added benchmark integration with ``pytest-benchmark``
+- Added network tests with ``iperf3:uiperf3.py``
+- Added multiple tests and benchmarks using yaml files.
+- Added benchmarks from ``micropython/tests/perf_bench``
+- `play` command to run custom tasks in ansible playbook style.
+- Added example playbooks
+- `uptime` and `cycles` utils/commands.
+- upylog file rotation, so file log size does not go over a limit size. (2KB default)
+- uptime.py and cycles.py to upyutils_dir (so it can be installed with `update_upyutils` cmd)
+- `mv` command to change file names.
+- `kg ssl CA` to generate a ROOT CA key/cert to be able to generate device's and host CA signed certificate.
+- `kg ssl host` to generate a HOST key/cert signed by ROOT CA.
+- `kg ssl dev add/export` to add or export a device certificate.
+- `kg ssl CA add/export` to add or export a ROOT CA key/cert pair.
+- `kg ssl dev/host/CA status` to check expiration date of certificates.
+-  The new CA-host-dev certificate chain of trust model allows log in to wss WebSocketDevices from multiple locations/hosts (by exporting the ROOT CA key/cert pair to a new host and add them there to generate the proper key/cert for that host).
+- nwatchdog timer kwargs.
+- net scan results are sorted by RSSI value.
+- local path in shell-repl prompt is now aware of current git branch.
 ## [0.4.2] - 2022-07-10
 ## Fix
 - fix lcd ~ home user expand in shl & ssl key,cert gen for zerotier devices with custom port

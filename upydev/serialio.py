@@ -3,7 +3,6 @@ import time
 import sys
 from datetime import timedelta
 from upydevice import Device, DeviceNotFound, DeviceException
-from upydev.helpinfo import see_help
 import glob
 
 
@@ -15,14 +14,20 @@ class SerialFileIO:
         self.dev_name = devname
         self.buff = bytearray(1024*2)
         self.bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
-        self.columns, self.rows = os.get_terminal_size(0)
+        try:
+            self.columns, self.rows = os.get_terminal_size(0)
+        except Exception:
+            self.columns, self.rows = 80, 80
         self.cnt_size = 65
         self.bar_size = int((self.columns - self.cnt_size))
         self.pb = False
         self.wheel = ['|', '/', '-', "\\"]
 
     def get_pb(self):
-        self.columns, self.rows = os.get_terminal_size(0)
+        try:
+            self.columns, self.rows = os.get_terminal_size(0)
+        except Exception:
+            self.columns, self.rows = 80, 80
         if self.columns > self.cnt_size:
             self.bar_size = int((self.columns - self.cnt_size))
             self.pb = True
@@ -178,7 +183,7 @@ class SerialFileIO:
 def serialtool(args, dev_name):
     if not args.f and not args.fre:
         print('args -f or -fre required:')
-        see_help(args.m)
+        #see_help(args.m)
         sys.exit()
     try:
         dev = Device(args.t, args.p, init=True)
@@ -186,7 +191,7 @@ def serialtool(args, dev_name):
         if args.m == 'put':
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
-                see_help(args.m)
+                #see_help(args.m)
                 sys.exit()
             if args.f:
                 if os.path.isdir(args.f):
@@ -318,7 +323,7 @@ def serialtool(args, dev_name):
         elif args.m == 'get':
             if not args.f and not args.fre:
                 print('args -f or -fre required:')
-                see_help(args.m)
+                #see_help(args.m)
                 sys.exit()
             if args.f:
                 if '/' in args.f:

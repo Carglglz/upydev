@@ -14,7 +14,11 @@ BLOCKLEN = 4096
 
 bloc_progress = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
-columns, rows = os.get_terminal_size(0)
+try:
+    columns, rows = os.get_terminal_size(0)
+except Exception:
+    columns, rows = 80, 80
+
 cnt_size = 65
 if columns > cnt_size:
     bar_size = int((columns - cnt_size))
@@ -66,20 +70,28 @@ class OTAServer:
             self.host_fwd = self.dev.hostname
             self.host = zt
         if tls:
-            self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
             id_bytes = self.dev.wr_cmd("from machine import unique_id; unique_id()",
                                        silent=True, rtn_resp=True)
-            dev_id = hexlify(id_bytes).decode()
-            self.key = os.path.join(_PATH[0], f'SSL_key{dev_id}.pem')
-            self.cert = os.path.join(_PATH[0], f'SSL_certificate{dev_id}.pem')
+            unique_id = hexlify(id_bytes).decode()
+            host_id = hexlify(os.environ['USER'].encode()).decode()[:10]
+            self.key = os.path.join(_PATH[0], f'HOST_key@{host_id}.pem')
+            self.cert = os.path.join(_PATH[0], f'HOST_cert@{host_id}.pem')
+            self.root = os.path.join(_PATH[0], 'ROOT_CA_cert.pem')
+            self.dev_cert = os.path.join(_PATH[0], f'SSL_certificate{unique_id}.pem')
+            self.cadata = ''
+            with open(self.root, 'r') as root_ca:
+                self.cadata += root_ca.read()
+                self.cadata += '\n'
+            self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH,
+                                                      cadata=self.cadata)
+            self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
             my_p = self.dev.passphrase
             if not my_p:
                 while True:
                     try:
                         my_p = getpass.getpass(
                             prompt="Enter passphrase for key "
-                                   f"'{self.key.split('/')[-1]}':",
+                                   f"'{os.path.basename(self.key)}':",
                             stream=None)
                         self.context.load_cert_chain(keyfile=self.key,
                                                      certfile=self.cert,
@@ -93,7 +105,7 @@ class OTAServer:
                                              certfile=self.cert,
                                              password=my_p)
             self.context.verify_mode = ssl.CERT_REQUIRED
-            self.context.load_verify_locations(cafile=self.cert)
+            # self.context.load_verify_locations(cadata=self.cadata)
         self._fw_file = firmware
         with open(firmware, 'rb') as fwr:
             self.firmware = fwr.read()
@@ -156,7 +168,10 @@ class OTAServer:
             print('OTA Firmware Update Failed.')
 
     def do_ota(self):
-        columns, rows = os.get_terminal_size(0)
+        try:
+            columns, rows = os.get_terminal_size(0)
+        except Exception:
+            columns, rows = 80, 80
         cnt_size = 65
         if columns > cnt_size:
             size_bar = int((columns - cnt_size))

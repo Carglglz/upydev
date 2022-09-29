@@ -1,0 +1,50 @@
+---
+  - name: Assert int 
+    command: "ret = 1"
+    result: ret 
+    exp: 1
+
+  - name: Assert float 
+    command: "ret = 1.0"
+    result: ret 
+    assert : 1.0
+
+  - name: Assert string 
+    command: "ret = 'hello'"
+    result: ret
+    exp: "hello"
+
+  - name: Assert List 
+    command: "ret = [1,2,3]"
+    result: ret 
+    exp: [1,2,3]
+  
+  - name: Assert Tuple 
+    command: "ret = (1,2,3)" 
+    result: ret 
+    exp: (1,2,3)
+
+  - name: Assert Dict 
+    command: "ret = {'a':1, 'b':2, 'c':3}"
+    result: ret 
+    exp: {'a':1, 'b':2, 'c':3}
+
+  - name: Assert Bytes
+    command: "ret = b'hello'"
+    result: ret 
+    exp: b'hello'
+
+  - name: Assert Bytes-x
+    command: "ret = bytes(3)"
+    result: ret 
+    exp: b'\x00\x00\x00'
+
+  - name: Assert Bytearray
+    command: "ret = bytearray(4)"
+    result: ret 
+    exp: bytearray(b'\x00\x00\x00\x00')
+
+  - name: Assert Array 
+    command: "import array; ret = array.array('h', [1,2,3])"
+    result: ret
+    exp: array('h', [1,2,3])

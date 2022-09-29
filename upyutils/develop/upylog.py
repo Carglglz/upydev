@@ -1,6 +1,7 @@
 import sys
 from micropython import const
 import time
+import os
 
 
 CRITICAL = const(50)
@@ -27,10 +28,14 @@ _filename = 'error.log'
 _format = _format_dict["LVL_MSG"]
 _asciitime = False
 _sdlog = False
+_rotate = 2000
 
+# Enable rsyslog logging
 
 class Logger:
-    def __init__(self, name, l_level=_level, log_to_file=False, logfile=_filename, f_time=False, l_format=_format):
+    def __init__(self, name, l_level=_level, log_to_file=False,
+                 logfile=_filename, f_time=False, l_format=_format,
+                 rotate=_rotate):
         self.name = name
         self.level = l_level
         self.logfile = logfile
@@ -42,7 +47,12 @@ class Logger:
         self._t_now = None
         self.date_time = None
         self._n = None
+        self.rotate = rotate
         self._dt_list = [0, 1, 2, 3, 4, 5]
+        if isinstance(self.level, str):
+            self.setLevel(l_level)
+        self.logfile_level = self.level
+        self.remote_logger = None
 
     def _level_str(self, level):
         lev = _level_dict.get(level)
@@ -51,7 +61,14 @@ class Logger:
         return "LVL: {}".format(level)
 
     def setLevel(self, level):
+        if isinstance(level, str):
+            level = {v: k for k, v in _level_dict.items()}.get(level)
         self.level = level
+
+    def setLogfileLevel(self, level):
+        if isinstance(level, str):
+            level = {v: k for k, v in _level_dict.items()}.get(level)
+        self.logfile_level = level
 
     def _dt_format(self, number):
         self._n = str(number)
@@ -72,12 +89,22 @@ class Logger:
     def isEnabledFor(self, level):
         return level >= (self.level or _level)
 
-    def file_log_msg(self, msg):
-        with open(self.logfile, 'ab') as flog:
-            flog.write(msg)
-            flog.write('\n')
+    def rotate_log(self):
+        if self.logfile in os.listdir():
+            if os.stat(self.logfile)[6] > self.rotate:
+                os.rename(self.logfile, f"{self.logfile}.1")
+
+    def file_log_msg(self, msg, level):
+        if level >= (self.logfile_level or _level):
+            if self.rotate:
+                self.rotate_log()
+            with open(self.logfile, 'ab') as flog:
+                flog.write(msg)
+                flog.write('\n')
 
     def file_log_exception(self, ex):
+        if self.rotate:
+            self.rotate_log()
         with open(self.logfile, 'ab') as flog:
             sys.print_exception(ex, flog)
             flog.write('\n')
@@ -98,11 +125,21 @@ class Logger:
             if not args:
                 print(' '.join([msg]), file=_stream)
                 if self.log_to_file:
-                    self.file_log_msg(''.join([self.log_message_info, msg]))
+                    self.file_log_msg(''.join([self.log_message_info, msg]), level)
+
+                if self.remote_logger:
+                    self.remote_logger.log_msg(msg, self._level_str(level),
+                                               self.date_time, self.name)
             else:
                 print(' '.join([msg % args]), file=_stream)
                 if self.log_to_file:
-                    self.file_log_msg(''.join([self.log_message_info, msg % args]))
+                    self.file_log_msg(''.join([self.log_message_info, msg % args]),
+                                      level)
+                if self.remote_logger:
+                        self.remote_logger.log_msg(' '.join([msg % args]), self._level_str(level),
+                                               self.date_time, self.name)
+
+
 
     def debug(self, msg, *args):
         self.log(DEBUG, msg, *args)
@@ -126,13 +163,13 @@ class Logger:
             self.file_log_exception(e)
 
 
-def getLogger(name, log_to_file=False):
+def getLogger(name, log_to_file=False, rotate=_rotate):
     global _level, _stream, _filename, _format, _format_dict, _asciitime, _sdlog
     if name in _loggers:
         return _loggers[name]
     ulogger = Logger(name, l_level=_level,
                      log_to_file=log_to_file, logfile=_filename,
-                     f_time=_asciitime, l_format=_format)
+                     f_time=_asciitime, l_format=_format, rotate=rotate)
     _loggers[name] = ulogger
     return ulogger
 

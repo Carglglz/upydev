@@ -1,0 +1,20 @@
+---
+  - name: "sum"
+    command: "a = 1 + 1"
+    result: a
+    exp: 2
+
+  - name: "diff"
+    command: "a = 1 - 1"
+    result: a
+    exp: 0
+
+  - name: "product"
+    command: "a = 2 * 2"
+    result: a
+    exp: 4
+
+  - name: "division"
+    command: "a = 1 / 2"
+    result: a
+    exp: 0.5 

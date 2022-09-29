@@ -1,0 +1,23 @@
+---
+  - name: System Check
+    hint: "Device CPU frequency:"
+    load: ./dev_tests/get_machine_freq.py 
+    command: "freq()"
+    result: "mac_fq = freq()"
+ 
+  - name: Setup Pi Digits Benchmark
+    load: ./dev_tests/perf_bench/bm_pidigits.py 
+
+  - name: Setup Benchmark Runner
+    load: ./dev_tests/perf_bench/benchrun.py
+
+  - name: Pi Digits Benchmark 
+    hint: Calculating some of the digits of π. This benchmark stresses big integer arithmetic.
+    load: "import gc; gc.collect()"
+    benchmark: "bm_run"
+    args: "[mac_fq, 100]" 
+
+  - name: Garbage Collect
+    load: "import gc, micropython"
+    command: "micropython.mem_info();gc.collect();micropython.mem_info()" 
+  

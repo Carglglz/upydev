@@ -1,0 +1,4 @@
+---
+   - name: "ZeroDivision"
+     hint: This demonstrates Device Exception
+     command: "a = 1 / 0"

@@ -2,7 +2,8 @@ import os
 import argparse
 import shlex
 from upydev.shell.constants import (AUTHMODE_DICT,
-                                    shell_commands, custom_sh_cmd_kw, shell_message)
+                                    shell_commands, custom_sh_cmd_kw, shell_message,
+                                    CEND, MAGENTA_bold)
 from upydev.shell.common import (du, _ft_datetime, SHELL_ALIASES, ls, FileArgs,
                                  find_localip, SHELL_FUNCTIONS, print_table)
 from upydev.shell.parser import shparser
@@ -568,6 +569,8 @@ class ShellCmds:
                                                                        'HIDDEN'))
                         print('┣{0}━╋━{1}━╋━{2}━╋━{3}━╋━{4}━╋━{5}━┫'.format(
                                         '━'*20, '━'*25, '━'*10, '━'*15, '━'*15, '━'*10))
+                        if isinstance(scan, list):
+                            scan.sort(key=lambda x: x[3], reverse=True)
                         for net in scan:
                             netscan = net
                             auth = AUTHMODE_DICT[netscan[4]]
@@ -780,6 +783,15 @@ class ShellCmds:
             resp = self.send_cmd("import time;tnow=time.localtime();tnow[:6]")
             print("{}-{}-{}T{}:{}:{}".format(*_ft_datetime(resp)))
 
+        # UPTIME
+        if command == 'uptime':
+            resp = self.send_cmd("import uptime;uptime.uptime()")
+            print(resp)
+
+        # CYCLES
+        if command == 'cycles':
+            self.dev.wr_cmd("import cycles;cycles.get()", follow=True)
+
         # CONFIG
         if command == 'config':
             if not rest_args:
@@ -941,6 +953,15 @@ class ShellCmds:
                 self.flags.prompt['p'] = self.flags.shell_prompt['s']
             return
 
+        # MV
+        if command == 'mv':
+            if not rest_args:
+                return
+            src = rest_args[0]
+            dst = rest_args[1]
+            self.dev.wr_cmd(f"import os;os.rename('{src}', '{dst}')", silent=False,
+                            follow=True)
+
         # LS
 
         if command == 'ls':
@@ -955,7 +976,10 @@ class ShellCmds:
                     for dpatt in gpatt:
                         rest_args.append(dpatt)
             files_to_list = f"*{rest_args}"
-            term_size = tuple(os.get_terminal_size(0))
+            try:
+                term_size = tuple(os.get_terminal_size(0))
+            except Exception:
+                term_size = (80, 80)
             self.send_cmd(_CMDDICT_['LS'].format(files_to_list, term_size, args.a),
                           sh_silent=False, follow=True)
             return
@@ -1079,6 +1103,15 @@ class ShellCmds:
                                   f"gc.collect()")
                     self.dev.wr_cmd(reload_cmd)
                     print('Done!')
+
+        # LOAD
+        if command == 'load':
+            rest_args = self.brace_exp(rest_args)
+            rest_args = nglob(*rest_args)
+            for script in rest_args:
+                self.dev.load(script)
+                time.sleep(0.5)
+            return
 
         # RELOAD
         if command == 'reload':
@@ -1385,10 +1418,14 @@ class ShellCmds:
                 self.flags.local_path['p'] = '~:/'
                 if not self.flags.show_local_path['s']:
                     self.flags.local_path['p'] = ''
+                    self.flags.shell_prompt['s'][-2] = ('class:branch', "")
             elif not self.flags.show_local_path['s']:
                 self.flags.local_path['p'] = ''
+                self.flags.shell_prompt['s'][-2] = ('class:branch', "")
             else:
-                self.flags.local_path['p'] = os.getcwd().split('/')[-1]+':/'
+                gitb = self.show_git_branch()
+                self.flags.local_path['p'] = f"{os.path.basename(os.getcwd())}:/"
+                self.flags.shell_prompt['s'][-2] = ('class:branch', f"{gitb}")
 
             self.flags.shell_prompt['s'][0] = ('class:userpath',
                                                self.flags.local_path['p'])
@@ -1402,6 +1439,20 @@ class ShellCmds:
             dir_names_or_pattrn = rest_args
             ls(*dir_names_or_pattrn, hidden=args.a)
             return
+
+    def show_git_branch(self):
+        try:
+            git_branch = subprocess.run(["git", "branch",
+                                         "--show-current"],
+                                        check=True,
+                                        capture_output=True)
+            if git_branch.returncode == 0:
+                return f"\ue0a0 [{git_branch.stdout.decode().strip()}] "
+            else:
+                return ""
+
+        except Exception:
+            return ""
 
     def get_rprompt(self):
 

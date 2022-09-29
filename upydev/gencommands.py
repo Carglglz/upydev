@@ -18,7 +18,14 @@ RESET = dict(help="reset device",
                                   action='store_true')})
 
 CONFIG = dict(help="set or check config (from *_config.py files)#",
-              desc="to set config --> [config]: [parameter]=[value]",
+              desc="* needs config module\n"
+                   "* to add config: $ upydev uconfig add [name]\n"
+                   "* to set config: $ upydev uconfig [name]: [parameter]=[value]"
+                   " [parameter1]=[value1] ...\n"
+                   "(string values must be double+single quoted, e.g: "
+                   "$ ... parameterA=\"'hello'\" )\n"
+                   "* to check config: $ upydev uconfig [name] [-y]",
+
               subcmd=dict(help='indicate parameter to set or check ',
                           default=[],
                           metavar='parameter',
@@ -45,7 +52,7 @@ usag = """%(prog)s command [options]\n
 _help_subcmds = "%(prog)s [command] -h to see further help of any command"
 
 parser = argparse.ArgumentParser(prog="upydev",
-                                 description=('general comands tools'
+                                 description=('general commands tools'
                                               + '\n\n'
                                                 + _help_subcmds),
                                  formatter_class=rawfmt,

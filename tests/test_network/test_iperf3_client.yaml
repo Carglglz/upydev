@@ -1,0 +1,11 @@
+---
+  - name: Client Connection performance (iperf3)
+    hint: "\n- Server: iperf3 must be installed and available in $PATH at computer side\n-
+    Client: uiperf3.py must be available in device"
+    network: "iperf3:server"
+    ip: localip
+    load: "import uiperf3"
+    command: "uiperf3.client"
+    args: [localip] 
+    reload: "uiperf3"
+

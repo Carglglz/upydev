@@ -13,8 +13,8 @@ def readme():
 
 
 setup(name='upydev',
-      version='0.4.2',
-      description='Command line tool for wired/wireless MicroPython devices',
+      version='0.4.3',
+      description='Command line tool for MicroPython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',
       url='http://github.com/Carglglz/upydev',
@@ -50,6 +50,6 @@ setup(name='upydev',
       install_requires=['websocket-client>=1.2.3', 'argcomplete>=2.0.0',
                         'esptool', 'prompt_toolkit', 'python-nmap',
                         'netifaces', 'requests', 'cryptography', 'Pygments',
-                        'pyusb', 'packaging', 'upydevice>=0.3.5',
+                        'pyusb', 'packaging', 'upydevice>=0.3.8',
                         'jupyter_micropython_upydevice>=0.0.7',
-                        'braceexpand'])
+                        'braceexpand', 'pyyaml'])

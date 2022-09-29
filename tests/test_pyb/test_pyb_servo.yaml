@@ -1,0 +1,45 @@
+---
+  - name: Setup Servo
+    command: "from pyb import Servo;import time"
+
+  - name: Create Servo
+    command: "s1 = Servo"
+    args: (1,)
+
+  - name: Calibrate Servo
+    command: "s1.calibration"
+    args: (640, 2420, 1500, 2470, 2200)
+    result: "s1.calibration()"
+    assert : (640, 2420, 1500, 2470, 2200)
+
+
+  - name: Set servo to 50
+    command: "s1.angle"
+    args: (50, 1000)
+    # wait for servo to get to position
+    result: "time.sleep(2);s1.angle()"
+    exp: 49 # calibration angle - 1
+
+  - name: Set servo to 10 
+    command: "s1.angle"
+    args: (10, 1000)
+    result: "time.sleep(2);s1.angle()" 
+    exp: 9
+
+  - name: Set servo to 1 
+    command: "s1.angle"
+    args: (1, 1000)
+    result: "time.sleep(2);s1.angle()" 
+    exp: 0
+
+  - name: Set servo to MAX (86) 
+    command: "s1.angle"
+    args: (86, 1000)
+    result: "time.sleep(2);s1.angle()" 
+    exp: 85
+
+  - name: Set servo to MIN (-80) 
+    command: "s1.angle"
+    args: (-80, 1000)
+    result: "time.sleep(2);s1.angle()" 
+    exp: -79 

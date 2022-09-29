@@ -32,8 +32,8 @@ JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
                 options={})
 
 PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
-              subcmd=dict(help='indicate a test script to run, any optional '
-                               'arg is passed to pytest',
+              subcmd=dict(help='indicate a test script or yaml test file to run, '
+                               '\nany optional arg is passed to pytest',
                           default=[''],
                           metavar='test',
                           nargs='*'),
@@ -68,6 +68,9 @@ GET = dict(help="download files from device",
                                 action='store_false')})
 
 DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
+             desc="* needs shasum.py in device\n"
+                  "* -d flag needs upysh.py in device or -fg flag\n"
+                  "* -rf flag needs upysh2.py in device if syncing from host to device",
              subcmd=dict(help='indicate a dir/pattern to '
                          'sync',
                          default=['.'],
@@ -159,7 +162,10 @@ wrapper = textwrap.TextWrapper(initial_indent=" "*4,)
 
 def print_wrp(text, mg=3, f_indent=4, indent=0, wrapper=wrapper, f_indent_char='',
               r_indent_char=' ', s_indent=' '):
-    columns, rows = os.get_terminal_size(0)
+    try:
+        columns, rows = os.get_terminal_size(0)
+    except Exception:
+        columns, rows = 80, 80
     if f_indent_char != '':
         f_indent += -1
     wrapper.initial_indent = f_indent_char + r_indent_char * f_indent
@@ -317,9 +323,16 @@ class ShellBleCmds(ShellCmds):
             if rest_args[0] == 'setup':
                 shutil.copy(os.path.join(_UPYDEVPATH[0], 'conftest.py'), '.')
                 shutil.copy(os.path.join(_UPYDEVPATH[0], 'pytest.ini'), '.')
+                shutil.copy(os.path.join(_UPYDEVPATH[0], 'test_dev.py'), '.')
                 print('pytest setup done!')
             else:
+                # print(rest_args)
                 rest_args = nglob(*rest_args)
+                yaml_files = [fl for fl in rest_args if fl.endswith('.yaml')]
+                rest_args = [fl for fl in rest_args if fl.endswith('.py')]
+                if not rest_args and yaml_files:
+                    rest_args = ['test_dev.py']
+                # print(rest_args)
                 try:
                     self.dev.disconnect()
                 except Exception:
@@ -330,6 +343,10 @@ class ShellBleCmds(ShellCmds):
                         pytest_cmd += ['--dev', self.dev_name]
                     if ukw_args:
                         pytest_cmd += ukw_args
+                    if yaml_files:
+                        if '--yf' not in pytest_cmd:
+                            pytest_cmd += ['--yf']
+                        pytest_cmd += yaml_files
                     old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
                     def preexec_function(action=old_action):

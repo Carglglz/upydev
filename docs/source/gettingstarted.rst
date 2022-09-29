@@ -28,7 +28,7 @@ Requirement
        to the device. These scripts can be found in `upyutils <https://github.com/Carglglz/upydev/tree/master/upyutils>`_ directory and they come from `micropython examples <https://github.com/micropython/micropython/tree/master/examples/bluetooth>`_.
        Finally to enable it add the following to ``main.py``:
 
-       .. code-block:: console
+       .. code-block:: python
 
           import ble_uart_repl
           ble_uart_repl.start()
@@ -65,14 +65,22 @@ Upydev will use local working directory configuration unless it does not find an
 
 - To save configuration in working directory:
 
-``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE]``, where ``ADDRESS`` must be a valid **IP** [#]_ , **SERIAL ADDRESS** [#]_, or **MAC ADDRESS/ UUID** [#]_
+``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE]``
+
+where ``ADDRESS`` must be a valid :
+
+  * **IP / HOSTNAME** [#]_ ,
+
+  * **SERIAL ADDRESS** [#]_,
+
+  * **MAC ADDRESS/ UUID** [#]_
 
   e.g.
 
   .. code-block:: console
 
     # WiFi
-    $ upydev config -t 192.168.1.40 -p mypass
+    $ upydev config -t 192.168.1.53 -p mypass
 
     # SERIAL
     $ upydev config -t /dev/tty.usbmodem387E386731342
@@ -81,7 +89,7 @@ Upydev will use local working directory configuration unless it does not find an
     $ upydev config -t 9998175F-9A91-4CA2-B5EA-482AFC3453B9
 
 
-.. [#] IP can be a valid dhcp_hostname e.g. `esp_dev.local`
+.. [#] IP can be a valid dhcp_hostname e.g. ``esp_dev.local`` (must be set with e.g. ``nic.config(hostname="esp_dev")``)
 .. [#] ``-p`` is set to 115200 by default, so it is not necessary unless using a different baudrate
 .. [#] It will depend on OS system (e.g. Linux uses MAC format 'XX:XX:XX:XX:XX:XX', and macOS uses UUID format 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
 
@@ -90,7 +98,7 @@ Default device name is ``upydevice``, to set a custom name use ``-@`` flag as
 
   .. code-block:: console
 
-    $ upydev config -t 192.168.1.40 -p mypass -@ mycustomdevice
+    $ upydev config -t 192.168.1.53 -p mypass -@ mycustomdevice
 
 
 To check configuration ``upydev`` or ``upydev check``
@@ -99,7 +107,7 @@ To check configuration ``upydev`` or ``upydev check``
 
     $ upydev
     Device: mycustomdevice
-    Address: 192.168.1.40, Device Type: WebSocketDevice
+    Address: 192.168.1.53, Device Type: WebSocketDevice
 
 Or to get more information if the device is online
 
@@ -107,9 +115,9 @@ Or to get more information if the device is online
 
     $ upydev -i
     Device: mycustomdevice
-    WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
-    Firmware: MicroPython v1.13-221-gc8b055717 on 2020-12-05; ESP32 module with ESP32
-    (MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+    WebSocketDevice @ ws://192.168.1.53:8266, Type: esp32, Class: WebSocketDevice
+    Firmware: MicroPython v1.19.1-285-gc4e3ed964-dirty on 2022-08-12; ESP32 module with ESP32
+    (MAC: 30:ae:a4:23:35:64, RSSI: -45 dBm)
 
 
 - To save configuration globally use ``-g`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -g``
@@ -118,7 +126,7 @@ Or to get more information if the device is online
 
   .. code-block:: console
 
-    $ upydev config -t 192.168.1.40 -p mypass -g
+    $ upydev config -t 192.168.1.53 -p mypass -g
 
 
 - To save configuration in a global group use ``-gg`` flag: ``$ upydev config -t [DEVICE ADDRESS] -p [PASSWORD/BAUDRATE] -gg -@ mydevice``
@@ -127,13 +135,13 @@ Or to get more information if the device is online
 
   .. code-block:: console
 
-    $ upydev config -t 192.168.1.40 -p mypass -gg -@ mydevice
+    $ upydev config -t 192.168.1.53 -p mypass -gg -@ mydevice
 
 
 
 - [Optional]
 
-Finally use `register` command to register a device as a shell function.
+Use `register` command to register a device as a shell function.
 This defines the function in ``~/.bashrc`` or ``~/.profile``
 
 
@@ -159,19 +167,76 @@ This defines the function in ``~/.bashrc`` or ``~/.profile``
 
     $ mydevice
     Device: mydevice
-    Address: 192.168.1.40, Device Type: WebSocketDevice
+    Address: 192.168.1.53, Device Type: WebSocketDevice
 
-Or if the device is connected.
+Or if the device is connected. [#]_
 
   .. code-block:: console
 
     $ mydevice -i
     Device: mydevice
-    WebSocketDevice @ ws://192.168.1.40:8266, Type: esp32, Class: WebSocketDevice
-    Firmware: MicroPython v1.17-290-g802ef271b-dirty on 2022-01-04; ESP32 module with ESP32
-    (MAC: 80:7d:3a:80:9b:30, RSSI: -48 dBm)
+    WebSocketDevice @ ws://192.168.1.53:8266, Type: esp32, Class: WebSocketDevice
+    Firmware: MicroPython v1.19.1-285-gc4e3ed964-dirty on 2022-08-12; ESP32 module with ESP32
+    (MAC: 30:ae:a4:23:35:64, Host Name: mydevice, RSSI: -45 dBm)
+
+.. [#] Check this using ``ping`` or ``probe``, e.g.
+
+  .. code-block:: console
+
+    $ mydevice ping
+    PING mydevice.local (192.168.1.53): 56 data bytes
+    64 bytes from 192.168.1.53: icmp_seq=0 ttl=255 time=5.303 ms
+    64 bytes from 192.168.1.53: icmp_seq=1 ttl=255 time=218.701 ms
+    64 bytes from 192.168.1.53: icmp_seq=2 ttl=255 time=39.224 ms
+    64 bytes from 192.168.1.53: icmp_seq=3 ttl=255 time=62.249 ms
+    ^C
+    --- mydevice.local ping statistics ---
+    4 packets transmitted, 4 packets received, 0.0% packet loss
+    round-trip min/avg/max/stddev = 5.303/81.369/218.701/81.835 ms
+
+    $ mydevice probe
+    Reaching mydevice...
+    mydevice    -> WebSocketDevice @ mydevice.local -> OK [✔]
 
 
+Finally to enter device shell-repl mode do:
+
+.. code-block:: console
+
+    $ upydev shl@mydevice
+    shell-repl @ mydevice
+    WebREPL connected
+    WARNING: ENCRYPTION DISABLED IN THIS MODE
+
+    MicroPython v1.19.1-285-gc4e3ed964-dirty on 2022-08-12; ESP32 module with ESP32
+    Type help() for more information.
+
+    - CTRL-k to see keybindings or -h to see help
+    - CTRL-s to toggle shell/repl mode
+    - CTRL-x or "exit" to exit
+    esp32@mydevice:~ $
+
+
+or if the device is registered
+
+.. code-block:: console
+
+  $ mydevice shl
+  shell-repl @ mydevice
+  WebSecREPL with TLSv1.2 connected
+  TLSv1.2 @ ECDHE-ECDSA-AES128-CCM8 - 128 bits Encryption
+
+  MicroPython v1.19.1-285-gc4e3ed964-dirty on 2022-08-12; ESP32 module with ESP32
+  Type help() for more information.
+
+  - CTRL-k to see keybindings or -h to see help
+  - CTRL-s to toggle shell/repl mode
+  - CTRL-x or "exit" to exit
+  esp32@mydevice:~ $
+
+.. note::
+
+  To enable WebSocket over TLS or wss check :doc:`sslwebshellrepl`
 
 Once the device is configured see :doc:`usage` documentation to check which modes and tools are available.
 

@@ -30,10 +30,11 @@ class NOTIFYER:
             self.tim = Timer(timer)
 
     def buzz_beep(self, beep_on_time, n_times, beep_off_time, fq, led=True):
-        self.buzz.freq(fq)
+
         if led:
             for i in range(n_times):
                 self.buzz.init()
+                self.buzz.freq(fq)
                 self.led.on()
                 time.sleep_ms(beep_on_time)
                 self.buzz.deinit()
@@ -42,6 +43,7 @@ class NOTIFYER:
         else:
             for i in range(n_times):
                 self.buzz.init()
+                self.buzz.freq(fq)
                 time.sleep_ms(beep_on_time)
                 self.buzz.deinit()
                 time.sleep_ms(beep_off_time)

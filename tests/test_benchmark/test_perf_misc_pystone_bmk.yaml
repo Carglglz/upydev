@@ -1,0 +1,23 @@
+---
+  - name: System Check
+    hint: "Device CPU frequency:"
+    load: ./dev_tests/get_machine_freq.py 
+    command: "freq()"
+    result: "mac_fq = freq()"
+ 
+  - name: Setup Pystone Benchmark
+    load: ./dev_tests/perf_bench/misc_pystone.py 
+
+  - name: Setup Benchmark Runner
+    load: ./dev_tests/perf_bench/benchrun.py
+
+  - name: Pystone Benchmark 
+    hint: Run 300 loops, returns time in seconds to complete a run.
+    load: "import gc; gc.collect()"
+    benchmark: "bm_run"
+    args: "[mac_fq, 100]" 
+
+  - name: Garbage Collect
+    load: "import gc, micropython"
+    command: "micropython.mem_info();gc.collect();micropython.mem_info()" 
+  

@@ -84,8 +84,8 @@ class BLEUARTStream(io.IOBase):
 
 def start():
     global uart
-    bname = '{}-{}'.format(platform, ''.join([hexlify(unique_id()
-                                                      ).decode()[0], hexlify(unique_id()).decode()[-1]]))
+    bname = (f"{platform}-{hexlify(unique_id()).decode()[0]}"
+             + f"{hexlify(unique_id()).decode()[-1]}")
     ble = bluetooth.BLE()
     uart = BLEUART(ble, name=bname, uuid=hexlify(unique_id()).decode())
     stream = BLEUARTStream(uart)

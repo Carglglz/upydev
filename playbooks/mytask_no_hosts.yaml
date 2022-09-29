@@ -1,0 +1,21 @@
+---
+- name: Example playbook with no hosts indicated
+  tasks:
+    - name: Load upysh
+      command: "from upysh import ls"
+    - name: Check device filesystem
+      command: "ls"
+    - name: Check memory
+      command: "mem"
+    - name: Check info
+      command: "info && id"
+    - name: Raw MP command
+      command: "import time;print('hello');led.on();time.sleep(1);led.off()"
+      command_nb: "led.on();time.sleep(1);led.off()"
+    - name: Test load script
+      wait: 5
+      load: "sample.py"
+    - name: Test shell 
+      command: "pytest ../tests/test_dev.py --yf ../tests/test_basic/test_basic_math.yaml"
+    - name: Local command 
+      command: "%ls"

@@ -54,7 +54,9 @@ GET = dict(help="download files from device",
                                type=int)})
 
 DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
-             desc="* needs shasum.py in device",
+             desc="* needs shasum.py in device\n"
+                  "* -d flag needs upysh.py in device or -fg flag\n"
+                  "* -rf flag needs upysh2.py in device if syncing from host to device",
              subcmd=dict(help='indicate a dir/pattern to '
                          'sync',
                          default=['.'],
@@ -234,3 +236,8 @@ def fileio_action(args, unkwargs, **kargs):
             if sh_args.rst:
                 dev.reset(reconnect=False)
                 time.sleep(1)
+
+    try:
+        dev.disconnect()
+    except Exception:
+        pass

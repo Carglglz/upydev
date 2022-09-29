@@ -30,6 +30,20 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
         SHELL_CMD_DICT_PARSER.update(kwdict)
         # SHELL_CMD_DICT_PARSER
 
+    def show_git_branch():
+        try:
+            git_branch = subprocess.run(["git", "branch",
+                                         "--show-current"],
+                                        check=True,
+                                        capture_output=True)
+            if git_branch.returncode == 0:
+                return f"\ue0a0 [{git_branch.stdout.decode().strip()}] "
+            else:
+                return ""
+
+        except Exception:
+            return ""
+
     def _printpath():
         if flags.local_path['p'] == '':
             g_p = [val[1] for val in flags.prompt['p'][1:5]]
@@ -711,7 +725,8 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                 if '_tmp_script.py' in os.listdir():
                     with open('_tmp_script.py', 'r') as fbuff:
                         filebuffer = fbuff.read()
-                    dev.paste_buff(filebuffer)
+                    dev.paste_buff(f"print('')\n{filebuffer}")
+                    dev.flush_conn()
                     print('Temp Buffer loaded do CTRL-D to execute or CTRL-C to cancel')
                 # dev.wr_cmd('\x04', follow=True)
                 else:
@@ -894,15 +909,18 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
 
                 # SET ROOT USER PATH:
                 flags.shell_prompt['s'][0] = ('class:userpath', flags.local_path['p'])
+                flags.shell_prompt['s'][-2] = ('class:branch', "")
                 flags.prompt['p'] = flags.shell_prompt['s']
             else:
                 flags.show_local_path['s'] = True
-                flags.local_path['p'] = os.getcwd().split('/')[-1]+':/'
+                flags.local_path['p'] = f"{os.path.basename(os.getcwd())}:/"
                 if os.getcwd() == os.environ['HOME']:
                     flags.local_path['p'] = '~:/'
 
                 # SET ROOT USER PATH:
+                git_branch = show_git_branch()
                 flags.shell_prompt['s'][0] = ('class:userpath', flags.local_path['p'])
+                flags.shell_prompt['s'][-2] = ('class:branch', git_branch)
                 flags.prompt['p'] = flags.shell_prompt['s']
 #
 # # @kb.add('c-u')

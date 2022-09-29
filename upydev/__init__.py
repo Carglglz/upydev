@@ -6,4 +6,4 @@
 from .websocket_helper import *
 name = 'upydev'
 # include upydev/upydev_.config
-version = '0.4.2'
+version = '0.4.3'

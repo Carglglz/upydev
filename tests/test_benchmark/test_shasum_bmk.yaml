@@ -1,0 +1,4 @@
+---
+  - name: Shasum *.py files 
+    load: "import shasum;import time"
+    benchmark: "t0=time.ticks_us();shasum.shasum('*.py', debug=False);delta = time.ticks_diff(time.ticks_us(), t0);print(delta/1e6)"

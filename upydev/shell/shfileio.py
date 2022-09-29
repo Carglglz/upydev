@@ -462,11 +462,14 @@ class ShDsyncIO:
                     if isdir:
                         print('dsync: checking filesystem...')
                         ff = self.fastfileio
+                        shapipe = ff.shapipe
+                        if self.dev.dev_class == 'BleDevice':
+                            shapipe = ff.shapipe_ble
                         ff.init_sha()
                         dev_hashlist = self.dev.wr_cmd(dev_hash_cmd, follow=True,
                                                        rtn_resp=True,
                                                        long_string=True,
-                                                       pipe=ff.shapipe)
+                                                       pipe=shapipe)
                         dev_hashlist = ff._shafiles
                         # SEPARATE
                         if dev_hashlist:
@@ -695,10 +698,13 @@ class ShDsyncIO:
             print('dsync: checking filesystem...')
             ff = self.fastfileio
             ff.init_sha()
+            shapipe = ff.shapipe
+            if self.dev.dev_class == 'BleDevice':
+                shapipe = ff.shapipe_ble
             dev_hashlist = self.dev.wr_cmd(dev_hash_cmd, follow=True,
                                            rtn_resp=True,
                                            long_string=True,
-                                           pipe=ff.shapipe)
+                                           pipe=shapipe)
             dev_hashlist = ff._shafiles
             # SEPARATE
             if dev_hashlist:

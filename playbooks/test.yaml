@@ -1,0 +1,6 @@
+---
+- name: Example Test playbook
+  hosts: espdev, gkesp32, esp8266, oble
+  tasks:
+    - name: Test shell 
+      command: "pytest ../tests/test_sh.py"

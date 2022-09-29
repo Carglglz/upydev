@@ -1,0 +1,7 @@
+---
+  - name: Hello World
+    load: "def hello(inp):
+               return f'{inp} World'"
+    command: "ret = hello('Hello')"
+    result: ret 
+    exp: "Hello World"

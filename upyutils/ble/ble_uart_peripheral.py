@@ -4,6 +4,7 @@ import bluetooth
 from ble_advertising import advertising_payload
 import time
 from micropython import const
+import sys
 
 try:
     from localname import NAME as LOCALNAME
@@ -31,7 +32,7 @@ _FILEIO_CONTROL_AND_PACKET_CHAR = (
 
 _DEVICE_FILEIO_SERVICE = (
     _DEVICE_FILEIO_SERV_UUID,
-    (_FILEIO_CONTROL_AND_PACKET_CHAR),
+    (_FILEIO_CONTROL_AND_PACKET_CHAR,),
 )
 
 # org.bluetooth.characteristic.gap.appearance.xml
@@ -46,8 +47,12 @@ class BLEUART:
             _gap_name = LOCALNAME
             name = LOCALNAME
         else:
-            _gap_name = 'ESP32@{}'.format(uuid)
-        self._ble.config(gap_name=_gap_name, mtu=515, rxbuf=512)
+            _gap_name = f"{sys.platform.upper()}@{uuid}"
+        try:
+            self._ble.config(gap_name=_gap_name, mtu=515, rxbuf=512)
+        except Exception:
+            # MICROPY_PY_BLUETOOTH_USE_SYNC_EVENTS
+            self._ble.config(gap_name=_gap_name, mtu=515)
         self._ble.irq(self._irq)
         ((self._tx_handle, self._rx_handle,), (self._fileio_handle,)
          ) = self._ble.gatts_register_services((_UART_SERVICE, _DEVICE_FILEIO_SERVICE))

@@ -109,14 +109,25 @@ File IO operations
 
       - dsync:
           To recursively sync a folder/files/pattern from/to device filesystem.
+          See :ref:`dsync examples <examples:using dsync command>`
 
+        .. note::
+            ``dsync`` needs ``shasum.py`` in device, and if using ``-d`` flag
+            it needs ``upysh.py`` in device or use ``-fg`` flag. Also ``-rf`` flag
+            needs ``upysh2.py`` in device. Use ``dsync -h`` to see help about flag options.
+
+            ``dsync`` expects current working directory ``./`` to be at the same level of
+            device filesystem current working directory, e.g. root ``/`` directory as
+            default.
+            so to sync host cwd ``./`` use: ``$ upydev dsync``
+            or to sync device cwd into host cwd use: ``$ upydev dsync -d``.
       - install:
-          Install libs to '/lib' path with upip.
+          Install libs to ``/lib`` path with upip.
 
       - update_upyutils:
           To update the latest versions of *sync_tool.py, nanoglob.py, shasum.py,
           upylog.py, upynotify.py, upysecrets.py, upysh2.py, uping.py, time_it.py,
-          wss_repl.py and wss_helper.py.*
+          uptime.py, cycles.py, wss_repl.py and wss_helper.py.*
 
 
 Firmware
@@ -179,13 +190,57 @@ Keygen
         ``$ upydev kg wr``, ``$ upydev keygen wr``
 
     - kg ssl:
-        To generate ECDSA key and a self-signed certificate to enable SSL sockets
-        This needs a passphrase, that will be required every time the key is loaded.
-        Use ``-tfkey`` to upload this key to the device
-        (use only if connected directly by USB, the AP of the device or a
-        "secure" wifi e.g. local/home).
-        Use ``-to [serial devname]`` flag with ``-tfkey`` to transfer keys by USB/Serial.
-        ``$ upydev kg ssl``
+        .. note::
+          See :doc:`sslwebshellrepl` to check how to use these commands properly
+
+      - dev (default):
+          - gen (default):
+            So ``$ upydev kg ssl # same as $ upydev kg ssl dev gen``.
+            To generate ECDSA key and certificate to enable SSL sockets
+            This needs a ROOT CA key first, generated with ``$ upydev kg ssl CA``.
+            Use ``-tfkey`` to upload this key to the device
+            (use only if connected directly by USB, the AP of the device or a
+            "secure" wifi e.g. local/home).
+            Use ``-to [serial devname]`` flag with ``-tfkey`` to transfer keys by USB/Serial.
+            ``$ upydev kg ssl``
+
+          - export:
+            To export a device certificate to current working directory (cwd)
+
+          - add:
+            To add a device certificate from cwd to upydev verify locations path
+
+          - status:
+            To check datetime validity of a device certificate.
+
+      - CA:
+         - gen (default):
+           So ``$ upydev kg ssl CA # same as $ upydev kg ssl CA gen``.
+           To generate ECDSA ROOT CA key and certificate to enable SSL sockets
+           This needs a password, which will be required to generate and sign device/host certificates.
+           Use ``-tfkey`` to upload this ROOT CA cert to the device
+           (use only if connected directly by USB, the AP of the device or a
+           "secure" wifi e.g. local/home).
+           Use ``-to [serial devname]`` flag with ``-tfkey`` to transfer keys by USB/Serial.
+
+         - export:
+           To export a ROOT CA key/cert to current working directory (cwd)
+
+         - add:
+           To add a ROOT CA key/cert from cwd to upydev verify locations path
+
+         - status:
+           To check datetime validity of a ROOT CA certificate.
+
+      - host:
+          - gen (default):
+            So ``$ upydev kg ssl host # same as $ upydev kg ssl host gen``.
+            To generate a HOST ECDSA key and certificate to enable SSL sockets
+            This needs a ROOT CA key first, generated with ``$ upydev kg ssl CA``.
+            This is needed so the device can authenticate the client (host).
+
+          - status:
+            To check datetime validity of the HOST certificate.
 
 
 REPL
@@ -230,7 +285,7 @@ Debugging
 ---------
 
 
-    ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``stream_test``, ``sysctl``, ``log``, ``pytest setup``, ``pytest``
+    ACTIONS: ``ping``, ``probe``, ``scan``, ``run``, ``timeit``, ``stream_test``, ``sysctl``, ``log``, ``pytest setup``, ``pytest``, ``play``
 
        - ping:
               pings the target to see if it is reachable, CTRL-C to stop
@@ -281,8 +336,14 @@ Debugging
 
        - pytest:
               To run upydevice test with pytest, do ``$ upydev pytest setup`` first.
-              e.g. ``$ upydev pytest mydevicetest.py``
+              e.g. ``$ upydev pytest mydevicetest.py``. See :ref:`Making Test for devices <examples:Making Test for devices with upydev/upydevice + pytest>`
 
+              .. note:: ``pytest`` and ``pytest-benchmark`` required. Install with
+                        ``$ pip install pytest pytest-benchmark``
+       - play:
+             To play custom tasks in ansible playbook style, e.g. ``$ upydev play mytask.yaml``.
+             See :ref:`Using tasks files <examples:Using tasks files>`. To add/remove/list tasks in upydev
+             use ``add``, ``rm``, ``list``. Tasks will be stored in ``~/.upydev_playbooks``
 
 Group Mode
 ----------

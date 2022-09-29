@@ -19,16 +19,21 @@ rawfmt = argparse.RawTextHelpFormatter
 shsr_cmd_kw = ["repl", "flash"]
 
 SREPL = dict(help="enter REPL",
+             desc="By default uses picocom. Use CTRL-a, CTRL-x  to exit",
              subcmd={},
-             options={})
+             options={"-sc": dict(help="use screen instead of picocom\n"
+                                  "Use CTRL-a, k  to exit",
+                                  required=False,
+                                  default=False,
+                                  action='store_true')})
 
 JUPYTERC = dict(help="enter jupyter console with upydevice kernel",
                 subcmd={},
                 options={})
 
 PYTEST = dict(help="run tests on device with pytest (use pytest setup first)",
-              subcmd=dict(help='indicate a test script to run, any optional '
-                               'arg is passed to pytest',
+              subcmd=dict(help='indicate a test script or yaml test file to run, '
+                               '\nany optional arg is passed to pytest',
                           default=[''],
                           metavar='test',
                           nargs='*'),
@@ -66,6 +71,9 @@ GET = dict(help="download files from device",
                                type=int)})
 
 DSYNC = dict(help="recursively sync a folder from/to device's filesystem",
+             desc="* needs shasum.py in device\n"
+                  "* -d flag needs upysh.py in device or -fg flag\n"
+                  "* -rf flag needs upysh2.py in device if syncing from host to device",
              subcmd=dict(help='indicate a dir/pattern to '
                          'sync',
                          default=['.'],
@@ -183,12 +191,18 @@ class ShellSrCmds(ShellCmds):
         # To be implemented for each shell to manage special commands, e.g. fwr
         if cmd == 'repl':
             print('<-- Device {} MicroPython -->'.format(self.dev_name))
-            print('Use CTRL-a,CTRL-x to exit')
+
+            # TODO: add -s flag to use screen instead of picocom
             try:
                 self.dev.disconnect()
             except Exception:
                 pass
-            serial_repl_cmd_str = 'picocom {} -b115200'.format(topargs.p)
+            if not args.sc:
+                print('Use CTRL-a,CTRL-x to exit')
+                serial_repl_cmd_str = 'picocom {} -b115200'.format(topargs.p)
+            else:
+                print('Use CTRL-a, k  to exit')
+                serial_repl_cmd_str = 'screen {} 115200'.format(topargs.p)
             serial_repl_cmd = shlex.split(serial_repl_cmd_str)
             try:
                 subprocess.call(serial_repl_cmd)
@@ -240,9 +254,16 @@ class ShellSrCmds(ShellCmds):
             if rest_args[0] == 'setup':
                 shutil.copy(os.path.join(_UPYDEVPATH[0], 'conftest.py'), '.')
                 shutil.copy(os.path.join(_UPYDEVPATH[0], 'pytest.ini'), '.')
+                shutil.copy(os.path.join(_UPYDEVPATH[0], 'test_dev.py'), '.')
                 print('pytest setup done!')
             else:
+                # print(rest_args)
                 rest_args = nglob(*rest_args)
+                yaml_files = [fl for fl in rest_args if fl.endswith('.yaml')]
+                rest_args = [fl for fl in rest_args if fl.endswith('.py')]
+                if not rest_args and yaml_files:
+                    rest_args = ['test_dev.py']
+                # print(rest_args)
                 try:
                     self.dev.disconnect()
                 except Exception:
@@ -253,6 +274,11 @@ class ShellSrCmds(ShellCmds):
                         pytest_cmd += ['--dev', self.dev_name]
                     if ukw_args:
                         pytest_cmd += ukw_args
+                    if yaml_files:
+                        if '--yf' not in pytest_cmd:
+                            pytest_cmd += ['--yf']
+                        pytest_cmd += yaml_files
+                    # print(pytest_cmd)
                     old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
                     def preexec_function(action=old_action):

@@ -1,7 +1,4 @@
 import upydev
-import json
-import os
-import textwrap
 import webbrowser
 
 UPYDEV_PATH = upydev.__path__[0]
@@ -28,7 +25,7 @@ HELP_INFO_ARG = '''Mode/Tools:
 
 > DEBUGGING: '$ upydev db' to see help on debugging operations.
     ACTIONS: ping, probe, scan, run, timeit, stream_test,
-             sysctl, log, pytest, pytest setup
+             sysctl, log, pytest, pytest setup, play
 
 > GENERAL: do '$ upydev gc' to see General commmands help.
 
@@ -36,7 +33,6 @@ HELP_INFO_ARG = '''Mode/Tools:
     OPTIONS: -G, -GP
 
 > HELP: '$ upydev h' or '$ upydev help' to see help (without optional args)
-        '$ upydev -h' or '$ upydev --help' to see full help info.
 
         - To see help about a any ACTION/COMMAND
           $ upydev COMMAND -h
@@ -44,20 +40,6 @@ HELP_INFO_ARG = '''Mode/Tools:
     ACTIONS: help, h, dm, fio, fw, kg, rp, sh, db, gp, gc, docs,
              udocs, mdocs.
 '''
-
-
-def see_help(cmd):
-    help_file = os.path.join(UPYDEV_PATH, 'help.config')
-    with open(help_file, 'r') as helpref:
-        help_dict = json.loads(helpref.read())
-    columns, rows = os.get_terminal_size(0)
-    if cmd is not None:
-        if cmd in help_dict:
-            print('\n'.join(textwrap.wrap(help_dict[cmd], columns-3)))
-        else:
-            print('Help info not available for "{}" command'.format(cmd))
-    else:
-        pass
 
 
 def see_docs(args, unkwargs):
@@ -69,7 +51,8 @@ def see_docs(args, unkwargs):
         docs_url = "upydevice.readthedocs.io"
     if unkwargs:
         key_word = unkwargs[0]
-        search = f'https://{docs_url}/en/latest/search.html?q={key_word}&check_keywords=yes&area=default'
+        search = (f"https://{docs_url}/en/latest/search.html?q={key_word}&"
+                  f"check_keywords=yes&area=default")
         webbrowser.open(search)
     else:
         webbrowser.open(f'https://{docs_url}/en/latest/')

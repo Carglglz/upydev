@@ -19,6 +19,7 @@ style_p = Style.from_dict({
     'pound':    'ansiblue bold',
     'host':     'ansigreen bold',
     'path':     'ansiblue bold',
+    'branch':   '#ffffff'
 })
 
 # apply shell config if exists:
@@ -35,6 +36,7 @@ shell_message = [
     ('class:host',     ''),  # 3
     ('class:colon',    ':'),
     ('class:path',     '~ '),
+    ('class:branch',   ''),
     ('class:pound',    '$ '),
 ]
 
@@ -63,7 +65,7 @@ shell_mode_run = {'R': False}
 script_is_running = {'R': False, 'script': 'test_code'}
 shell_prompt = {'s': shell_message}
 shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
-                  'run']
+                  'run', 'mv']
 custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'ap', 'mem', 'install', 'touch',
                     'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
@@ -73,7 +75,8 @@ custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
                     'upy-config', 'jupyterc', 'pytest', 'rssi',
                     'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
                     'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'config', 'fw', 'mpyx', 'sd']
+                    'diff', 'config', 'fw', 'mpyx', 'sd', 'uptime', 'cycles',
+                    'load']
 
 CRED = '\033[91;1m'
 CGREEN = '\33[32;1m'
@@ -249,6 +252,11 @@ MKDIR = dict(help="make directories",
                          metavar='dir', nargs='*'),
              options={})
 
+MV = dict(help="move/rename a file",
+          subcmd=dict(help='indicate a file to rename', default=[],
+                      metavar='file', nargs=2),
+          options={})
+
 CD = dict(help="change current working directory",
           subcmd=dict(help='indicate a dir to change to', default='/',
                       metavar='dir', nargs='?'),
@@ -348,6 +356,12 @@ RUN = dict(help="run device's scripts",
                                default=False,
                                action='store_true'),
                     })
+LOAD = dict(help="run local script in device",
+            desc="load a local script in device buffer and execute it.",
+            subcmd=dict(help='indicate a file/script to load', default='',
+                        metavar='file',
+                        nargs='*'),
+            options={})
 
 RELOAD = dict(help="reload device's scripts",
               subcmd=dict(help='indicate a file/script to reload', default='',
@@ -457,6 +471,16 @@ DATETIME = dict(help="prints device's RTC time",
                 subcmd={},
                 options={})
 
+UPTIME = dict(help=("prints device's uptime since latest boot "
+                    "(requires uptime.py)"),
+              subcmd={},
+              options={})
+
+CYCLES = dict(help=("prints device's cycle count "
+                    "(requires cycles.py)"),
+              subcmd={},
+              options={})
+
 SHASUM = dict(help="shasum SHA-256 tool",
               subcmd=dict(help='Get the hash of a file or check a shasum file',
                           default=[],
@@ -518,8 +542,13 @@ CTIME = dict(help="measure execution time of a shell command",
              options={})
 
 CONFIG = dict(help="set or check config (from *_config.py files)#",
-              desc="* needs config module\n* to set config --> [config]: "
-                   "[parameter]=[value]",
+              desc="* needs config module\n"
+                   "* to add config: $ config add [name]\n"
+                   "* to set config: $ config [name]: [parameter]=[value]"
+                   " [parameter1]=[value1] ...\n"
+                   "(string values must be double+single quoted, e.g: "
+                   "$ ... parameterA=\"'hello'\" )\n"
+                   "* to check config: $ config [name] [-y]",
               subcmd=dict(help='indicate parameter to set or check ',
                           default=[],
                           metavar='parameter',
@@ -554,7 +583,7 @@ SD = dict(help="commands to manage an sd",
 
 
 SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
-                         "touch": TOUCH, "cd": CD, "pwd": PWD,
+                         "touch": TOUCH, "cd": CD, "mv": MV, "pwd": PWD,
                          "rm": RM, "rmdir": RMDIR, "du": DU,
                          "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT,
                          "vim": VIM, "run": RUN, "reload": RELOAD,
@@ -566,4 +595,5 @@ SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
                          "lcd": LCD,
                          "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
                          "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
-                         "diff": DIFF, "config": CONFIG, "sd": SD}
+                         "diff": DIFF, "config": CONFIG, "sd": SD,
+                         "uptime": UPTIME, "cycles": CYCLES, "load": LOAD}
