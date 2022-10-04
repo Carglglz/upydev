@@ -13,7 +13,7 @@ def readme():
 
 
 setup(name='upydev',
-      version='0.4.3',
+      version='0.4.4',
       description='Command line tool for MicroPython devices',
       long_description=readme(),
       long_description_content_type='text/markdown',

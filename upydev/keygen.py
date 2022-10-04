@@ -448,53 +448,72 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
     unique_id = hexlify(id_bytes).decode()
     print("ID: {}".format(unique_id))
     dev_platform = dev.dev_platform
-    dev.disconnect()
-    key = ec.generate_private_key(ec.SECP256R1(), backend=default_backend())
-    # key = ed25519.Ed25519PrivateKey.generate()
+    _SELF_KP_CSR = False
+    mods = dev.cmd("help('modules')", silent=True, rtn_resp=True)
+    _ssl_mods = ['mbedtls', 'x509']
+    if all([mod in mods for mod in _ssl_mods]):
+        _SELF_KP_CSR = True
+    if not _SELF_KP_CSR:
+        dev.disconnect()
+        key = ec.generate_private_key(ec.SECP256R1(), backend=default_backend())
+        # key = ed25519.Ed25519PrivateKey.generate()
 
-    # my_p = getpass.getpass(prompt="Passphrase: ", stream=None)
-    pem = key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
+        # my_p = getpass.getpass(prompt="Passphrase: ", stream=None)
+        pem = key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
 
-    der = key.private_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
+        der = key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+    else:
+        dev.cmd("from ecdsa import ECKeyp")
+        print("Generating ECDSA key pair..", end='\r')
+        dev.cmd("pk = ECKeyp()")
+        dev.cmd(f"pk.export(private='SSL_key{unique_id}.der')")
+        dev.cmd(f"pk.export(private='SSL_key{unique_id}.pem')")
+        print("Done                       ")
+        # pem = der = dev.cmd("pk.pkey", silent=True, rtn_resp=True)
 
     if store:
-        new_key_pem = f"SSL_key{unique_id}.pem"
-        new_key_der = f"SSL_key{unique_id}.der"
-        # if new_key_pem in os.listdir(dir):
-        #     new_key_pem = f'~{new_key_pem}'
-        #     new_key_der = f'~{new_key_der}'
+        if not _SELF_KP_CSR:
+            new_key_pem = f"SSL_key{unique_id}.pem"
+            new_key_der = f"SSL_key{unique_id}.der"
+            # if new_key_pem in os.listdir(dir):
+            #     new_key_pem = f'~{new_key_pem}'
+            #     new_key_der = f'~{new_key_der}'
 
-        key_path_file_pem = os.path.join(dir, new_key_pem)
-        with open(key_path_file_pem, "wb") as keyfile:
-            keyfile.write(pem)
+            key_path_file_pem = os.path.join(dir, new_key_pem)
+            with open(key_path_file_pem, "wb") as keyfile:
+                keyfile.write(pem)
 
-        key_path_file_der = os.path.join(dir, new_key_der)
-        with open(key_path_file_der, "wb") as keyfile:
-            keyfile.write(der)
+            key_path_file_der = os.path.join(dir, new_key_der)
+            with open(key_path_file_der, "wb") as keyfile:
+                keyfile.write(der)
     cert_data = get_cert_data()
     if dev_name:
         cert_data["USER"] = dev_name
         cert_data["HOST_NAME"] = args.t
-    subject = issuer = x509.Name(
-        [
-            x509.NameAttribute(NameOID.USER_ID, f"{dev_platform}@{unique_id}"),
-            x509.NameAttribute(NameOID.SURNAME, cert_data["HOST_NAME"]),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MicroPython"),
-            x509.NameAttribute(NameOID.COMMON_NAME, cert_data["USER"]),
-        ]
-    )
+    if not _SELF_KP_CSR:
+        subject = issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.USER_ID, f"{dev_platform}@{unique_id}"),
+                x509.NameAttribute(NameOID.SURNAME, cert_data["HOST_NAME"]),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MicroPython"),
+                x509.NameAttribute(NameOID.COMMON_NAME, cert_data["USER"]),
+            ]
+        )
+    else:
+        subject = f"SN={cert_data['HOST_NAME']},O=MicroPython,CN={cert_data['USER']}"
     # host_ip = ipaddress.IPv4Address(cert_data["addrs"])
     # if '.local' in args.t:
     #     args.t = socket.gethostbyname(args.t)
-    ca_key = key
+    if not _SELF_KP_CSR:
+        ca_key = key
     # host_id = hexlify(os.environ['USER'].encode()).decode()[:10]
     key_path_file_pem = os.path.join(UPYDEV_PATH, "ROOT_CA_key.pem")
     key_path_rot_file_pem = os.path.join(UPYDEV_PATH, "~ROOT_CA_key.pem")
@@ -532,42 +551,52 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
                     print("Passphrase incorrect, try again...")
 
     issuer = ROOT_CA_cert.issuer
-    if not args.zt:
-        csr = (
-            x509.CertificateSigningRequestBuilder()
-            .subject_name(subject)
-            .add_extension(
-                x509.SubjectAlternativeName(
-                    [
-                        x509.DNSName("wss://{}:8833".format(args.t)),
-                        x509.DNSName("wss://192.168.4.1:8833"),
-                    ]
-                ),
-                critical=False,
+    if not _SELF_KP_CSR:
+        if not args.zt:
+            csr = (
+                x509.CertificateSigningRequestBuilder()
+                .subject_name(subject)
+                .add_extension(
+                    x509.SubjectAlternativeName(
+                        [
+                            x509.DNSName("wss://{}:8833".format(args.t)),
+                            x509.DNSName("wss://192.168.4.1:8833"),
+                        ]
+                    ),
+                    critical=False,
+                )
+                .sign(key, hashes.SHA256(), default_backend())
             )
-            .sign(key, hashes.SHA256(), default_backend())
-        )
-    else:
-        dev_ip = args.zt["dev"]
-        if ":" in args.t:
-            args.t, port = args.t.split(":")
         else:
-            port = "8833"
-        csr = (
-            x509.CertificateSigningRequestBuilder()
-            .subject_name(subject)
-            .add_extension(
-                x509.SubjectAlternativeName(
-                    [
-                        x509.DNSName(f"wss://{args.t}:{port}"),
-                        x509.DNSName("wss://192.168.4.1:8833"),
-                        x509.DNSName(f"wss://{dev_ip}:8833"),
-                    ]
-                ),
-                critical=False,
+            dev_ip = args.zt["dev"]
+            if ":" in args.t:
+                args.t, port = args.t.split(":")
+            else:
+                port = "8833"
+            csr = (
+                x509.CertificateSigningRequestBuilder()
+                .subject_name(subject)
+                .add_extension(
+                    x509.SubjectAlternativeName(
+                        [
+                            x509.DNSName(f"wss://{args.t}:{port}"),
+                            x509.DNSName("wss://192.168.4.1:8833"),
+                            x509.DNSName(f"wss://{dev_ip}:8833"),
+                        ]
+                    ),
+                    critical=False,
+                )
+                .sign(key, hashes.SHA256(), default_backend())
             )
-            .sign(key, hashes.SHA256(), default_backend())
-        )
+    else:
+        print("Generating CSR...", end='\r')
+        dev.cmd("import x509")
+        dev.cmd(f"subject = '{subject}'")
+        _csr = dev.cmd("x509.gen_csr(subject, pk.pkey)", silent=True, rtn_resp=True)
+        csr = x509.load_pem_x509_csr(_csr)
+        print("Done             ")
+        dev.disconnect()
+
     # SIGN
 
     if not args.zt:
@@ -627,7 +656,10 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
     print(f"Device {unique_id} ECDSA key & certificate generated.")
     if args.tfkey:
         print("Transfering ECDSA key and certificate to the device...")
-        ssl_k = key_path_file_der
+        if not _SELF_KP_CSR:
+            ssl_k = key_path_file_der
+        else:
+            ssl_k = None
         ssl_c = cert_path_file_der
         return {"ACTION": "put", "mode": "SSL", "Files": [ssl_k, ssl_c]}
 

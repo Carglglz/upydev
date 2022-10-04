@@ -520,28 +520,32 @@ def handle_action(args, exit=True, device_name=None):
                     args.p = baudr
             if key_dict['mode'] == 'SSL':
                 key, cert = key_dict['Files']
-                key_pem = key.replace('.der', '.pem')
+                if key:
+                    key_pem = key.replace('.der', '.pem')
                 cert_pem = cert.replace('.der', '.pem')
-                _unknown_args = [key, cert]
+                if key:
+                    _unknown_args = [key, cert]
+                else:
+                    _unknown_args = [cert]
                 fileio_action(args, _unknown_args, command_line=' '.join(sys.argv[1:]),
                               device=dev_name)
-
-                print(f'Removing device private key {os.path.basename(key)} '
-                      f'from host...')
-                try:
-                    os.remove(key)
-                    os.remove(key_pem)
-                    old_key = os.path.basename(key).replace('~', '')
-                    old_key_pem = os.path.basename(key_pem).replace('~', '')
-                    if old_key in os.listdir(UPYDEV_PATH):
-                        try:
-                            os.remove(os.path.join(UPYDEV_PATH, old_key))
-                            os.remove(os.path.join(UPYDEV_PATH, old_key_pem))
-                        except Exception:
-                            pass
-                    print('Done!')
-                except Exception as e:
-                    print(e)
+                if key:
+                    print(f'Removing device private key {os.path.basename(key)} '
+                          f'from host...')
+                    try:
+                        os.remove(key)
+                        os.remove(key_pem)
+                        old_key = os.path.basename(key).replace('~', '')
+                        old_key_pem = os.path.basename(key_pem).replace('~', '')
+                        if old_key in os.listdir(UPYDEV_PATH):
+                            try:
+                                os.remove(os.path.join(UPYDEV_PATH, old_key))
+                                os.remove(os.path.join(UPYDEV_PATH, old_key_pem))
+                            except Exception:
+                                pass
+                        print('Done!')
+                    except Exception as e:
+                        print(e)
                 try:
                     import shutil
                     if os.path.basename(cert_pem) in os.listdir(UPYDEV_PATH):
