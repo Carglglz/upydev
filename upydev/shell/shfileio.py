@@ -1,3 +1,4 @@
+from ast import arg
 from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydevice import DeviceException, DeviceNotFound
 from upydev.shell.common import tree, print_size
@@ -303,6 +304,8 @@ class ShDsyncIO:
                 tree[new_path] = 0
         return tree
 
+
+
     def fileop(self, cmd, args, rest_args):
         if cmd == 'put':
             # fileio.put_files(_file_to_edit, dest_file, ppath=True)
@@ -355,7 +358,7 @@ class ShDsyncIO:
             return
 
         if cmd == 'get':
-            file_tree = self.read_file_tree()
+            file_match = []
             if args.d:
                 _rest_args = [[('*/' * i) + patt for i in range(args.d)] for patt in
                               rest_args]
@@ -379,18 +382,25 @@ class ShDsyncIO:
                 except Exception:
                     return
             print('get: searching files...')
-            file_match = []
-            for patt in rest_args:
-                if '*' not in patt: # not pattern searching
-                    for f in file_tree:
-                        if f != patt: continue
-                        file_match.append((file_tree[f],f))
-                else:               # pattern searching
-                    pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
-                    for f in file_tree:
-                        if not pattrn.match(file): continue
-                        file_match.append((file_tree[f],f))
-
+            if args.fg:
+                file_match = self.dev.cmd(f"from nanoglob import glob; "
+                                      f"glob(*{rest_args}, size=True)",
+                                      silent=True,
+                                      rtn_resp=True)
+            else:
+                file_tree = self.read_file_tree()
+                file_match = []
+                for patt in rest_args:
+                    if '*' not in patt: # not pattern searching
+                        for f in file_tree:
+                            if f != patt: continue
+                            file_match.append((file_tree[f],f))
+                    else:               # pattern searching
+                        pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
+                        for f in file_tree:
+                            if not pattrn.match(file): continue
+                            file_match.append((file_tree[f],f))
+            
             if file_match:
                 if args.dir:
                     print(f'Downloading files @ {self.dev_name}:/{args.dir}: \n')
