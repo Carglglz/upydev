@@ -398,7 +398,7 @@ class ShDsyncIO:
                     else:               # pattern searching
                         pattrn = re.compile(patt.replace('.', r'\.').replace('*', '.*') + '$')
                         for f in file_tree:
-                            if not pattrn.match(file): continue
+                            if not pattrn.match(f): continue
                             file_match.append((file_tree[f],f))
             
             if file_match:
