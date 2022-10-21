@@ -1,4 +1,3 @@
-from ast import arg
 from upydev.shell.nanoglob import glob as nglob, _get_path_depth
 from upydevice import DeviceException, DeviceNotFound
 from upydev.shell.common import tree, print_size
