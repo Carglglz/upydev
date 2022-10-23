@@ -7,7 +7,7 @@ The REPL mode has two limitations:
 
 - It is not listening actively for output (This means that if a timer/hardware interrupt callback print something it will not appear in the repl).
 
-- To define a function/class or make a loop use the paste mode. (*CTRL-E*)
+- To define a function/class or make a loop (i.e. multiline statements) use the paste mode. (*CTRL-E*)
 
   *However the original WebREPL/Serial REPL can be accessed from shell with* ``repl`` *command*
 
