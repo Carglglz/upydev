@@ -1,0 +1,6 @@
+
+---
+- name: Blink 
+  tasks:
+    - name: Load Blink
+      load_pl: blink.py 

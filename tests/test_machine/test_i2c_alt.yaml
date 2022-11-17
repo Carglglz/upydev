@@ -1,0 +1,17 @@
+---
+  - name: i2c_config
+    load: "from machine import I2C, Pin"
+    command: "i2c=I2C"
+    args: "[1]"
+    kwargs: "{'scl': Pin(22), 'sda': Pin(21)}"
+
+  - name: i2c_scan
+    command: "i2c.scan()"
+    result: "_"
+    exp_type: list
+
+  - name: i2c_scan_len 
+    result: "len(_)"
+    exp: 1
+    assert_op: "<="
+
