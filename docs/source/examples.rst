@@ -1497,6 +1497,19 @@ Pressing ``CTRL-e``, saving and exit, then ``CTRL-d``:
 
   This is a dummy file for testing purpose
 
+- Adding custom keybinding to vim to load current file.
+
+  Add the following lines to ``~/.vimrc``
+  
+.. code-block:: console
+
+  " Execute current file in device
+  nnoremap <C-f> :!upydev load <C-r>=expand('%:r')<cr>.py <CR>
+
+E.g map CTRL-f to load current file content in device buffer and execute it.
+(must save the file first with ``:w``)
+
+
 .. tip:: Device buffer is limited so if the file is too big it may be better to upload the
     file to the device or split the file in smaller ones.
 
