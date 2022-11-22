@@ -28,3 +28,4 @@ _legacy
 tests/_tmp_script.py
 tests/.benchmarks
 *.config
+*.swp
