@@ -1,0 +1,6 @@
+[submodule "custom_builds/user_c_modules/mpy-mbedtls"]
+	path = custom_builds/user_c_modules/mpy-mbedtls
+	url = https://github.com/Carglglz/mpy-mbedtls.git
+[submodule "custom_builds/mpy-libs/mpy-wpa_supplicant"]
+	path = custom_builds/mpy-libs/mpy-wpa_supplicant
+	url = git@github.com:Carglglz/mpy-wpa_supplicant.git
