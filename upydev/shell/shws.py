@@ -402,7 +402,7 @@ class ShellWsCmds(ShellCmds):
 
         if cmd == 'install':
             print(f'Installing {rest_args} in {self.dev_name}:./lib ...')
-            self.dev.wr_cmd(f"import upip;upip.install('{rest_args}');True",
+            self.dev.wr_cmd(f"import mip;mip.install('{rest_args}');True",
                             follow=True)
             # if 'Error' not in self.dev.response:
             #     print(self.dev.response.replace('(\x02ng', 'Installing').replace('True\n', ''),
