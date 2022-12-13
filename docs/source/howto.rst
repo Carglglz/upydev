@@ -330,43 +330,6 @@ e.g.
 IDE INTEGRATION with PLATFORMIO TERMINAL
 ----------------------------------------
 
-ATOM
-^^^^
-
-  To do this go to `Atom Settings --> Packages -->` Then search for `platformio-ide-terminal` and click on `Settings`. Here go to `Custom Texts` section: (There are up to 8 "custom texts" or commands that can be customised) These custom text will be pasted an executed in the Terminal when called. And this can be done with keybindings or key-shortcuts. For example:
-
-  - **To automate upload the current file:**
-
-    In `Custom text 1`  write:  `upydev put -f $F`
-
-  - **To automate run the current file:**
-
-    In `Custom text 2`  write:  `upydev run -f $F`
-
-  - **To automate open the wrepl:**
-
-    In `Custom text 3`  write:  `upydev wrepl`
-
-  - **To automate diagnose:**
-
-    In `Custom text 4`  write:  `upydev diagnose`
-
-
-
-  Now configure the Keybindings, to do this go to `Settings --> Keybindings --> your keymap file`
-
-  Then in `keymap.cson` add: (This is an example, the key combination can be changed)
-
-  .. code-block:: console
-
-    'atom-workspace atom-text-editor:not([mini])':
-    'ctrl-shift-d': 'platformio-ide-terminal:insert-custom-text-4'
-    'ctrl-cmd-u': 'platformio-ide-terminal:insert-custom-text-1'
-    'ctrl-cmd-x': 'platformio-ide-terminal:insert-custom-text-2'
-    'ctrl-cmd-w': 'platformio-ide-terminal:insert-custom-text-3'
-
-
-  Save the file and now when pressing these key combinations should paste the command and run it in the Terminal.
 
 Visual Studio Code
 ^^^^^^^^^^^^^^^^^^^

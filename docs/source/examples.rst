@@ -1420,6 +1420,92 @@ Let's consider this example to take measurements with an ADC sensor ``ADS1115``
 
 .. image:: img/ads1115_data_.png
 
+
+Vim Integration
+----------------
+Here are some keybindings and commands to make it easier work with vim + upydev that 
+can be added to `~/.vimrc`.
+
+These commands and keybindings make it pretty easy to iterate and run/upload 
+current file or blocks of code in device.
+
+.. code-block:: console
+   
+   " Terminal
+   set shell=bash\ -l " make it use bash with .profile/.bash_rc 
+   
+   " UPYDEV
+   
+   " Upload current file to device
+   command U !upydev put %:.
+   
+   " Upl <device> :Upload current file to <device>
+   command! -nargs=1 Upl !upydev put %:. -@ <q-args>
+   
+   " Keybinding to upload current file to device
+   noremap <C-i> :U<CR><CR>
+
+   " Open terminal at bottom and open shell-repl  
+   command Shl :bo term++rows=15 ++close upydev shl
+
+   " Open terminal at bottom and open jupyter console with upydevice kernel
+   command Jpy :bo term++rows=15 ++close upydev jupyterc
+
+   " Command to run upydev pytest with current file 
+   command Upyt !upydev pytest %:.
+
+   " Keybinding to run Upyt command
+   nnoremap <Leader>t :Upyt <CR>
+
+   " Command to show upydev global group 
+   command SG :bo term++rows=15 upydev gg
+   
+   " Sh <device> command to open a termial at the bottom with shell-repl @ <device>
+   command! -nargs=1 Sh :bo term++rows=15 ++close upydev shl -@ <q-args>
+   
+   "St <device> :Set upydev global device config.
+   command! -nargs=1 St !upydev set -g -@ <q-args>
+
+   " Keybinding to execute current file in device 
+   nnoremap <C-f> :!upydev load <C-r>=expand('%:.')<cr> <CR>
+
+   " Execute current line on an open terminal REPL 
+   command ExecOnTerm :call term_list()[0]->term_sendkeys(getline('.') .. "\<CR>")
+   nnoremap <leader>e :ExecOnTerm <CR><CR>
+
+   " Execute current file on an open terminal shell-rep
+   command LoadOnTerm :call term_list()[0]->term_sendkeys("load " .. expand('%:.') .."\<CR>")
+   nnoremap <leader>l :LoadOnTerm <CR><CR>
+
+   " Upload current file to device using an open terminal shell-repl
+   command PutOnTerm :call term_list()[0]->term_sendkeys("put " .. expand('%:.') .."\<CR>")
+   nnoremap <leader>u :PutOnTerm <CR><CR>
+
+   " Run pytest of current file using an open terminal shell-repl
+   command TestOnTerm :call term_list()[0]->term_sendkeys("pytest " .. expand('%:.') .."\<CR>")
+   nnoremap <leader>y :TestOnTerm <CR><CR>
+
+   " Execute current line selection in an open terminal REPL
+   command ExecBuffOnTerm :call term_list()[0]->term_sendkeys(join(getline(1,'$'), "\<cr>").."\<CR>")
+   nnoremap <leader>r :ExecBuffOnTerm <CR><CR>
+
+
+Here are some commands/keybindings to integrate MicroPython (unix)
+
+.. code-block:: console
+    
+    " MICROPYTHON
+    
+    " Command to run current file in MicroPython
+    command Mr !micropython %:.
+    
+    " Same as before but stay at the REPL after executing the file.
+    command Mi !micropython -i %:.
+
+    " Open a terminal MicroPython REPL at the bottom
+    command Upy :bo term++rows=15 ++close micropython
+
+
 Device development setups
 -------------------------
 
