@@ -71,15 +71,16 @@ __exec_task = asyncio.create_task(__code())
                 try:
                     micropython.kbd_intr(3)
                     try:
-                        _last_cmd = code.replace("; ", ";").split(";")[-1]
-                        if len(code.replace("; ", ";").split(";")) > 1:
-                            _plast_cmd = code.replace("; ", ";").split(";")[-2]
+                        _last_cmd = code.split(";")[-1].strip()
+                        if len(code.split(";")) > 1:
+                            _plast_cmd = code.split(";")[-2].strip()
                         else:
                             _plast_cmd = _last_cmd
                         _last_cmd_gc = _last_cmd == "gc.collect()"
-                        for _cmd in code.replace("; ", ";").split(";"):
+                        for _cmd in code.split(";"):
+                            _cmd = _cmd.strip()
                             if "import" in _cmd:
-                                exec(_cmd,g)
+                                exec(_cmd, g)
                             else:
                                 if _cmd == _last_cmd:
                                     return eval(_cmd, g)
