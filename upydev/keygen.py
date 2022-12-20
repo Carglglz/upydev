@@ -450,7 +450,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
     dev_platform = dev.dev_platform
     _SELF_KP_CSR = False
     mods = dev.cmd("help('modules')", silent=True, rtn_resp=True)
-    _ssl_mods = ['mbedtls', 'x509']
+    _ssl_mods = ["mbedtls", "x509"]
     if all([mod in mods for mod in _ssl_mods]):
         _SELF_KP_CSR = True
     if not _SELF_KP_CSR:
@@ -472,7 +472,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
         )
     else:
         dev.cmd("from ecdsa import ECKeyp")
-        print("Generating ECDSA key pair..", end='\r')
+        print("Generating ECDSA key pair..", end="\r")
         dev.cmd("pk = ECKeyp()")
         dev.cmd(f"pk.export(private='SSL_key{unique_id}.der')")
         dev.cmd(f"pk.export(private='SSL_key{unique_id}.pem')")
@@ -561,6 +561,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
                         [
                             x509.DNSName("wss://{}:8833".format(args.t)),
                             x509.DNSName("wss://192.168.4.1:8833"),
+                            x509.DNSName(f"{args.t}"),
                         ]
                     ),
                     critical=False,
@@ -582,6 +583,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
                             x509.DNSName(f"wss://{args.t}:{port}"),
                             x509.DNSName("wss://192.168.4.1:8833"),
                             x509.DNSName(f"wss://{dev_ip}:8833"),
+                            x509.DNSName(f"{args.t}"),
                         ]
                     ),
                     critical=False,
@@ -589,7 +591,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
                 .sign(key, hashes.SHA256(), default_backend())
             )
     else:
-        print("Generating CSR...", end='\r')
+        print("Generating CSR...", end="\r")
         dev.cmd("import x509")
         dev.cmd(f"subject = '{subject}'")
         _csr = dev.cmd("x509.gen_csr(subject, pk.pkey)", silent=True, rtn_resp=True)
@@ -613,6 +615,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
                     [
                         x509.DNSName(f"wss://{args.t}:8833"),
                         x509.DNSName("wss://192.168.4.1:8833"),
+                        x509.DNSName(f"{args.t}"),
                     ]
                 ),
                 critical=False,
@@ -635,6 +638,7 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
                         x509.DNSName(f"wss://{args.t}:{port}"),
                         x509.DNSName("wss://192.168.4.1:8833"),
                         x509.DNSName(f"wss://{dev_ip}:8833"),
+                        x509.DNSName(f"{args.t}"),
                     ]
                 ),
                 critical=False,
