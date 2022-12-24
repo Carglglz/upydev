@@ -9,7 +9,7 @@ _AIOCTL_GROUP = None
 def create_task(coro, *args, **kwargs):
     if "name" not in kwargs:
         task = asyncio.create_task(coro(*args, **kwargs))
-        name = task.__name__
+        name = coro.__name__
     else:
         name = kwargs.pop("name")
         task = asyncio.create_task(coro(*args, **kwargs))
@@ -28,13 +28,15 @@ class Taskctl:
 class TaskGroup:
     def __init__(self, tasks=[]):
         self.tasks = {task.name: task for task in tasks}
+        self.cnt = 0
 
     def add_task(self, task):
         if task.name not in self.tasks:
             self.tasks[task.name] = task
+            self.cnt = 0
         else:
-            cnt = list(self.tasks.keys()).count(task.name)
-            new_name = f"{task.name}_{cnt}"
+            self.cnt += 1
+            new_name = f"{task.name}_{self.cnt}"
             task.name = new_name
             self.tasks[task.name] = task
 
