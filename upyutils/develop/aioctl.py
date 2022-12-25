@@ -29,6 +29,7 @@ class TaskGroup:
     def __init__(self, tasks=[]):
         self.tasks = {task.name: task for task in tasks}
         self.cnt = 0
+        self.results = {}
 
     def add_task(self, task):
         if task.name not in self.tasks:
@@ -75,9 +76,18 @@ def delete(*args):
 def status(name):
     global _AIOCTL_GROUP
     if _AIOCTL_GROUP.tasks[name].task.done():
-        return "done"
+        _AIOCTL_GROUP.results[name] = _AIOCTL_GROUP.tasks[name].task.data
+        return f"done --> result: { _AIOCTL_GROUP.tasks[name].task.data}"
     else:
         return "running"
+
+
+def result(name):
+    global _AIOCTL_GROUP
+    if _AIOCTL_GROUP.tasks[name].task.done():
+        return _AIOCTL_GROUP.tasks[name].task.data.value
+    else:
+        return
 
 
 def status_all():
@@ -108,6 +118,9 @@ def stop(name):
     try:
         if not _AIOCTL_GROUP.tasks[name].task.done():
             _AIOCTL_GROUP.tasks[name].task.cancel()
+
+        _AIOCTL_GROUP.results[name] = _AIOCTL_GROUP.tasks[name].task.data
+
     except asyncio.CancelledError:
         pass
     except RuntimeError as e:
