@@ -73,19 +73,26 @@ def delete(*args):
             _AIOCTL_GROUP.tasks.pop(name)
 
 
-def status(name):
+def status(name=None):
     global _AIOCTL_GROUP
-    if _AIOCTL_GROUP.tasks[name].task.done():
-        _AIOCTL_GROUP.results[name] = _AIOCTL_GROUP.tasks[name].task.data
-        return f"done --> result: { _AIOCTL_GROUP.tasks[name].task.data}"
+    if not name:
+        return status_all()
+    if name in _AIOCTL_GROUP.tasks:
+        if _AIOCTL_GROUP.tasks[name].task.done():
+            _AIOCTL_GROUP.results[name] = _AIOCTL_GROUP.tasks[name].task.data
+            return f"done --> result: { _AIOCTL_GROUP.tasks[name].task.data}"
+        else:
+            return "running"
     else:
-        return "running"
+        print(f"Task {name} not found in {list(_AIOCTL_GROUP.tasks.keys())}")
 
 
 def result(name):
     global _AIOCTL_GROUP
-    if _AIOCTL_GROUP.tasks[name].task.done():
-        return _AIOCTL_GROUP.tasks[name].task.data.value
+
+    if name in _AIOCTL_GROUP.tasks:
+        if _AIOCTL_GROUP.tasks[name].task.done():
+            return _AIOCTL_GROUP.tasks[name].task.data.value
     else:
         return
 
@@ -116,10 +123,13 @@ def start(name):
 def stop(name):
     global _AIOCTL_GROUP
     try:
-        if not _AIOCTL_GROUP.tasks[name].task.done():
-            _AIOCTL_GROUP.tasks[name].task.cancel()
+        if name in _AIOCTL_GROUP.tasks:
+            if not _AIOCTL_GROUP.tasks[name].task.done():
+                _AIOCTL_GROUP.tasks[name].task.cancel()
 
-        _AIOCTL_GROUP.results[name] = _AIOCTL_GROUP.tasks[name].task.data
+            _AIOCTL_GROUP.results[name] = _AIOCTL_GROUP.tasks[name].task.data
+        else:
+            print(f"Task {name} not found in {list(_AIOCTL_GROUP.tasks.keys())}")
 
     except asyncio.CancelledError:
         pass
