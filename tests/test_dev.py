@@ -198,7 +198,9 @@ def do_benchmark_with_host(benchmark, command, rounds):
     dev_stats_host = benchmark._make_stats(1)
     dev_stats_host.group = "device"
     dev_stats_host.name = f"{dev_stats_host.name}:[{dev.name}@{dev.dev_platform}]"
-    dev_stats_host.fullname = f"{dev_stats_host.fullname}:[{dev.name}@{dev.dev_platform}]"
+    dev_stats_host.fullname = (
+        f"{dev_stats_host.fullname}:[{dev.name}@{dev.dev_platform}]"
+    )
     benchmark.pedantic(
         bench_dev_func_with_host,
         args=(command,),
@@ -286,24 +288,25 @@ def do_network(network, command, args, kwargs, ip, log):
                 shlex.split(_cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
 
-
     if command:
         log.info(f"Command [{command}] ")
         if mode == "client":
-            if net_tool == 'ab':
-                log.info('AB:')
+            if net_tool == "ab":
+                log.info("AB:")
                 while test_result.returncode is None:
-                   test_result.poll()
-                   for line in test_result.stdout.readlines():
-                       print(line.decode(), end='')
+                    test_result.poll()
+                    for line in test_result.stdout.readlines():
+                        print(line.decode(), end="")
                 for line in test_result.stdout.readlines():
-                       print(line.decode(), end='')
+                    print(line.decode(), end="")
                 if test_result.returncode == 0:
                     print("Shutdown server now...")
                     shutdown = f"curl https://{ip}:4443/shutdown"
-                    _done =  test_result = subprocess.Popen(
-                    shlex.split(shutdown), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                )
+                    _done = test_result = subprocess.Popen(
+                        shlex.split(shutdown),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
                     _done.wait()
                 dev.wr_cmd("", follow=True)
             else:
@@ -395,19 +398,20 @@ def test_dev(cmd, benchmark):
     try:
         log.info(f"Running [{TEST_NAME}] test...")
         if RESET:
-            if RESET == 'soft':
+            if RESET == "soft":
                 dev.reset()
-            elif RESET == 'hard':
+            elif RESET == "hard":
                 dev.reset(hr=True)
-            if hasattr(dev, 'read_until'):
+            if hasattr(dev, "read_until"):
                 if dev.dev_class == "SerialDevice":
                     while True:
                         try:
-                            if RESET == 'hard':
-                                dev.serial = serial.Serial(dev.serial_port,
-                                                           dev.baudrate)
-                            dev.read_until(exp=b'>>>')
-                            dev.wr_cmd('')
+                            if RESET == "hard":
+                                dev.serial = serial.Serial(
+                                    dev.serial_port, dev.baudrate
+                                )
+                            dev.read_until(exp=b">>>")
+                            dev.wr_cmd("")
                             break
                         except Exception:
                             pass
@@ -493,8 +497,10 @@ def test_dev(cmd, benchmark):
             benchmark.extra_info["version"] = _version
             benchmark.extra_info["sysname"] = _sysn
             benchmark.extra_info["unit"] = BENCH_UNIT
-            benchmark.param = (f"{benchmark.param} @ {dev.dev_platform} "
-                               f"{_sysn}-{_version} {_machine}")
+            benchmark.param = (
+                f"{benchmark.param} @ {dev.dev_platform} "
+                f"{_sysn}-{_version} {_machine}"
+            )
             if not BENCH_FOLLOW:
                 if BENCH_DIFF:
                     host_dev_diff = benchmark._make_stats(1)

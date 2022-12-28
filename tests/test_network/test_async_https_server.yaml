@@ -1,0 +1,10 @@
+--- 
+  - name: Apache HTTPS Benchmark (ab)
+    hint: "\n- Client: ab must be installed and available in $PATH at computer side\n- 
+    Server: test_async_https.py, microdot.py, microdot_asyncio.py, aioctl.py, aiorepl.py must be available in device"
+    network: "ab:client:ab -n 2 -c 2 -v 2"
+    ip: "gkesp32.local" # change to match your own device IP/hostname
+    command: "import test_async_https"
+    reload: "test_async_https"
+
+
