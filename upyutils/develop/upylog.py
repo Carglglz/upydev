@@ -58,6 +58,7 @@ class Logger:
         if isinstance(self.level, str):
             self.setLevel(l_level)
         self.logfile_level = self.level
+        self.remote_logger = None
 
     def _level_str(self, level):
         lev = _level_dict.get(level)
@@ -136,6 +137,11 @@ class Logger:
                     print(" ".join([msg]), file=_stream)
                 if self.log_to_file:
                     self.file_log_msg("".join([self.log_message_info, msg]), level)
+
+                if self.remote_logger:
+                    self.remote_logger.log_msg(
+                        msg, self._level_str(level), self.date_time, self.name
+                    )
             else:
                 if hasattr(_stream, "_max_size"):
                     _stream.write(" ".join([msg % args]) + "\n")
@@ -144,6 +150,14 @@ class Logger:
                 if self.log_to_file:
                     self.file_log_msg(
                         "".join([self.log_message_info, msg % args]), level
+                    )
+
+                if self.remote_logger:
+                    self.remote_logger.log_msg(
+                        " ".join([msg % args]),
+                        self._level_str(level),
+                        self.date_time,
+                        self.name,
                     )
 
     def debug(self, msg, *args):

@@ -331,7 +331,7 @@ class Microdot(BaseMicrodot):
                 # wait a bit and try again
                 await asyncio.sleep(0.1)
 
-    def run(self, host="0.0.0.0", port=5000, debug=False, ssl=None, tasks=[]):
+    def run(self, host="0.0.0.0", port=5000, debug=False, ssl=None, tasks=[], log=None):
         """Start the web server. This function does not normally return, as
         the server enters an endless listening loop. The :func:`shutdown`
         function provides a method for terminating the server gracefully.
@@ -362,6 +362,7 @@ class Microdot(BaseMicrodot):
 
             app.run(debug=True)
         """
+        self.log = log
         asyncio.run(
             self.start_server(host=host, port=port, debug=debug, ssl=ssl, tasks=tasks)
         )
@@ -399,11 +400,20 @@ class Microdot(BaseMicrodot):
             else:
                 raise
         if self.debug and req:  # pragma: no cover
-            print(
-                "{method} {path} {status_code}".format(
-                    method=req.method, path=req.path, status_code=res.status_code
+            if self.log:
+
+                self.log.info(
+                    "[server] {method} {path} {status_code}".format(
+                        method=req.method, path=req.path, status_code=res.status_code
+                    )
                 )
-            )
+            else:
+
+                print(
+                    "{method} {path} {status_code}".format(
+                        method=req.method, path=req.path, status_code=res.status_code
+                    )
+                )
 
     async def dispatch_request(self, req):
         # print("Dispatching request now...")
