@@ -24,18 +24,24 @@ _format_dict = {"LVL_MSG": "[{}] [{}] ", "TIME_LVL_MSG": "{} [{}] [{}] "}
 _stream = sys.stderr
 _level = INFO
 _loggers = {}
-_filename = 'error.log'
+_filename = "error.log"
 _format = _format_dict["LVL_MSG"]
 _asciitime = False
 _sdlog = False
 _rotate = 2000
 
-# Enable rsyslog logging
 
 class Logger:
-    def __init__(self, name, l_level=_level, log_to_file=False,
-                 logfile=_filename, f_time=False, l_format=_format,
-                 rotate=_rotate):
+    def __init__(
+        self,
+        name,
+        l_level=_level,
+        log_to_file=False,
+        logfile=_filename,
+        f_time=False,
+        l_format=_format,
+        rotate=_rotate,
+    ):
         self.name = name
         self.level = l_level
         self.logfile = logfile
@@ -52,7 +58,6 @@ class Logger:
         if isinstance(self.level, str):
             self.setLevel(l_level)
         self.logfile_level = self.level
-        self.remote_logger = None
 
     def _level_str(self, level):
         lev = _level_dict.get(level)
@@ -79,11 +84,11 @@ class Logger:
             return self._n
 
     def _ft_datetime(self, t_now):
-        return([self._dt_format(t_now[i]) for i in self._dt_list])
+        return [self._dt_format(t_now[i]) for i in self._dt_list]
 
     def get_datetime(self):
         self.t_now = time.localtime()
-        self.date_time = '{}-{}-{} {}:{}:{}'.format(*self._ft_datetime(self.t_now))
+        self.date_time = "{}-{}-{} {}:{}:{}".format(*self._ft_datetime(self.t_now))
         return self.date_time
 
     def isEnabledFor(self, level):
@@ -98,48 +103,48 @@ class Logger:
         if level >= (self.logfile_level or _level):
             if self.rotate:
                 self.rotate_log()
-            with open(self.logfile, 'ab') as flog:
+            with open(self.logfile, "ab") as flog:
                 flog.write(msg)
-                flog.write('\n')
+                flog.write("\n")
 
     def file_log_exception(self, ex):
         if self.rotate:
             self.rotate_log()
-        with open(self.logfile, 'ab') as flog:
+        with open(self.logfile, "ab") as flog:
             sys.print_exception(ex, flog)
-            flog.write('\n')
+            flog.write("\n")
 
     def log(self, level, msg, *args):
         if level >= (self.level or _level):
             if self.f_time:
                 self.get_datetime()
-                self.log_message_info = self.l_format.format(self.date_time,
-                                                             self.name,
-                                                             self._level_str(level),
-                                                             )
+                self.log_message_info = self.l_format.format(
+                    self.date_time,
+                    self.name,
+                    self._level_str(level),
+                )
             else:
-                self.log_message_info = self.l_format.format(self.name,
-                                                             self._level_str(level),
-                                                             )
+                self.log_message_info = self.l_format.format(
+                    self.name,
+                    self._level_str(level),
+                )
             _stream.write(self.log_message_info)
             if not args:
-                print(' '.join([msg]), file=_stream)
+                if hasattr(_stream, "_max_size"):
+                    _stream.write(" ".join([msg]) + "\n")
+                else:
+                    print(" ".join([msg]), file=_stream)
                 if self.log_to_file:
-                    self.file_log_msg(''.join([self.log_message_info, msg]), level)
-
-                if self.remote_logger:
-                    self.remote_logger.log_msg(msg, self._level_str(level),
-                                               self.date_time, self.name)
+                    self.file_log_msg("".join([self.log_message_info, msg]), level)
             else:
-                print(' '.join([msg % args]), file=_stream)
+                if hasattr(_stream, "_max_size"):
+                    _stream.write(" ".join([msg % args]) + "\n")
+                else:
+                    print(" ".join([msg % args]), file=_stream)
                 if self.log_to_file:
-                    self.file_log_msg(''.join([self.log_message_info, msg % args]),
-                                      level)
-                if self.remote_logger:
-                        self.remote_logger.log_msg(' '.join([msg % args]), self._level_str(level),
-                                               self.date_time, self.name)
-
-
+                    self.file_log_msg(
+                        "".join([self.log_message_info, msg % args]), level
+                    )
 
     def debug(self, msg, *args):
         self.log(DEBUG, msg, *args)
@@ -167,9 +172,15 @@ def getLogger(name, log_to_file=False, rotate=_rotate):
     global _level, _stream, _filename, _format, _format_dict, _asciitime, _sdlog
     if name in _loggers:
         return _loggers[name]
-    ulogger = Logger(name, l_level=_level,
-                     log_to_file=log_to_file, logfile=_filename,
-                     f_time=_asciitime, l_format=_format, rotate=rotate)
+    ulogger = Logger(
+        name,
+        l_level=_level,
+        log_to_file=log_to_file,
+        logfile=_filename,
+        f_time=_asciitime,
+        l_format=_format,
+        rotate=rotate,
+    )
     _loggers[name] = ulogger
     return ulogger
 
@@ -191,10 +202,14 @@ def basicConfig(level=INFO, filename=_filename, stream=None, format=None, sd=Fal
         _filename = filename
     if format is not None:
         if format not in _format_dict.keys():
-            print('Not supported format; Supported format are : {}'.format(_format_dict.keys()))
+            print(
+                "Not supported format; Supported format are : {}".format(
+                    _format_dict.keys()
+                )
+            )
         else:
             _format = _format_dict[format]
-            if format == 'TIME_LVL_MSG':
+            if format == "TIME_LVL_MSG":
                 _asciitime = True
     if sd:
         _sdlog = True
