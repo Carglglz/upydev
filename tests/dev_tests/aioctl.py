@@ -1,9 +1,10 @@
 # sysctl for async tasks
 
 import uasyncio as asyncio
-
+import sys
 
 _AIOCTL_GROUP = None
+_AIOCTL_LOG = None
 
 
 def create_task(coro, *args, **kwargs):
@@ -47,6 +48,11 @@ def set_group(taskgroup):
     _AIOCTL_GROUP = taskgroup
 
 
+def set_log(log):
+    global _AIOCTL_LOG
+    _AIOCTL_LOG = log
+
+
 def group():
     global _AIOCTL_GROUP
     return _AIOCTL_GROUP
@@ -73,16 +79,32 @@ def delete(*args):
             _AIOCTL_GROUP.tasks.pop(name)
 
 
-def status(name=None):
-    global _AIOCTL_GROUP
+def status(name=None, log=True):
+    global _AIOCTL_GROUP, _AIOCTL_LOG
     if not name:
-        return status_all()
+        return status_all(log=log)
     if name in _AIOCTL_GROUP.tasks:
         if _AIOCTL_GROUP.tasks[name].task.done():
             _AIOCTL_GROUP.results[name] = _AIOCTL_GROUP.tasks[name].task.data
-            return f"done --> result: { _AIOCTL_GROUP.tasks[name].task.data}"
+            status = "done"
+            data = _AIOCTL_GROUP.results[name]
+            if issubclass(data.value.__class__, Exception):
+                status = "\u001b[31;1mERROR\u001b[0m"
+                data = (
+                    f"\u001b[31;1m{data.value.__class__.__name__}\u001b[0m:"
+                    + f" {data.value.value}"
+                )
+
+            print(f"{name}: status: {status} --> result: " + f"{data}")
+            if log and _AIOCTL_LOG:
+                _AIOCTL_LOG.cat(grep=name)
+                print("<" + "-" * 80 + ">")
         else:
-            return "running"
+
+            print(f"{name}: status: \033[92mrunning\x1b[0m")
+            if log and _AIOCTL_LOG:
+                _AIOCTL_LOG.cat(grep=name)
+                print("<" + "-" * 80 + ">")
     else:
         print(f"Task {name} not found in {list(_AIOCTL_GROUP.tasks.keys())}")
 
@@ -97,10 +119,10 @@ def result(name):
         return
 
 
-def status_all():
+def status_all(log=True):
     global _AIOCTL_GROUP
     for name in _AIOCTL_GROUP.tasks.keys():
-        print(f"{name}: {status(name)}")
+        status(name, log=log)
 
 
 def start(name):
@@ -120,8 +142,10 @@ def start(name):
         return False
 
 
-def stop(name):
+def stop(name=None):
     global _AIOCTL_GROUP
+    if not name:
+        return stop_all()
     try:
         if name in _AIOCTL_GROUP.tasks:
             if not _AIOCTL_GROUP.tasks[name].task.done():
@@ -144,3 +168,25 @@ def stop_all():
     for name in _AIOCTL_GROUP.tasks.keys():
         stop(name)
     return True
+
+
+async def follow(grep="", wait=0.05):
+    global _AIOCTL_LOG
+
+    if _AIOCTL_LOG:
+        return await _AIOCTL_LOG.follow(grep=grep, wait=wait)
+
+
+def traceback(name=None):
+    if not name:
+        traceback_all()
+    _tb = result(name)
+    if issubclass(_tb.__class__, Exception):
+        print(f"{name}: Traceback")
+        sys.print_exception(_tb)
+
+
+def traceback_all():
+    global _AIOCTL_GROUP
+    for name in _AIOCTL_GROUP.tasks.keys():
+        traceback(name)
