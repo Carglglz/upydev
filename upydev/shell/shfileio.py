@@ -11,6 +11,8 @@ import re
 import sys
 import hashlib
 import binascii
+import subprocess
+import shlex
 
 
 def fname(cnt, name):
@@ -18,6 +20,40 @@ def fname(cnt, name):
         return f"{cnt} {name}"
     else:
         return f"{cnt} {name}s"
+
+
+def unpack_path(path):
+    create_path = []
+    fpath = path
+    while os.path.split(fpath)[0] != ".":
+        fpath = os.path.split(fpath)[0]
+        create_path.append(fpath)
+    create_path.reverse()
+    return create_path
+
+
+def get_git_files(gitflag):
+
+    cm_A_files = []
+    cm_M_files = []
+    cm_D_files = []
+    gitflag = gitflag.replace("./", "")
+    local_remote = gitflag.split("@")[-1]
+    cmd_cms_ahead = shlex.split(f"git rev-list --left-right --count " f"{local_remote}")
+    cm_ahead = subprocess.check_output(cmd_cms_ahead).decode().split("\t")[0]
+    if int(cm_ahead) > 0:
+
+        cmd_cm_files = shlex.split(f"git log -{cm_ahead} --name-status --oneline")
+        files_to_cm_sync = subprocess.check_output(cmd_cm_files).decode()
+        for cmf in files_to_cm_sync.splitlines():
+            if "\t" in cmf:
+                if cmf[0] == "A":
+                    cm_A_files.append("./" + cmf.split("\t")[-1])
+                if cmf[0] == "M":
+                    cm_M_files.append("./" + cmf.split("\t")[-1])
+                if cmf[0] == "D":
+                    cm_D_files.append("./" + cmf.split("\t")[-1])
+    return cm_A_files, cm_M_files, cm_D_files
 
 
 class ShDsyncIO:
@@ -458,6 +494,10 @@ class ShDsyncIO:
     def fsync(self, args, rest_args):
         if not args.d:
             # HOST TO DEVICE
+
+            # git flag $git@remote/branch
+            git_flag = False
+
             if rest_args == ["."] or rest_args == ["*"]:  # CWD
                 rest_args = ["*"]
                 top_dir = "."
@@ -470,6 +510,36 @@ class ShDsyncIO:
                     for top_dir in rest_args
                 ]
                 top_dir = rest_args
+
+                if rest_args[0].startswith("./git@"):
+                    # get n-commits ahead
+                    git_flag = str(rest_args[0])
+                    rest_args = ["*"]
+                    top_dir = "."  # TODO: switch to root git dir
+                    mod_files = get_git_files(git_flag)
+                    if not any(mod_files):
+                        print(f"Everything up-to-date ({self.dev_name})")
+                        return
+
+                    git_dirs_to_make = []
+                    git_dirs_to_delete = []
+                    git_a_files = mod_files[0]
+                    git_m_files = mod_files[1]
+                    git_d_files = mod_files[2]
+                    for gfile in git_a_files:
+                        git_dirs_to_make += unpack_path(gfile)
+
+                    git_dirs_to_make = list(set(git_dirs_to_make))
+
+                    for gdfile in git_d_files:
+                        git_dirs_to_delete += unpack_path(gdfile)
+
+                    git_dirs_to_delete = list(set(git_dirs_to_delete))
+
+                    # print(f"A/M: {git_a_files + git_m_files}")
+                    # print(f"D: {git_d_files}")
+                    # print(f"A dirs: {git_dirs_to_make}")
+                    # print(f"D dirs: {git_dirs_to_delete}")
 
             if args.n:
                 self.stash.update(path=top_dir)
@@ -570,6 +640,10 @@ class ShDsyncIO:
             # print(dev_dir_match)
             if args.i:
                 dirs_to_make = self.re_filt(args.i, dirs_to_make)
+            if git_flag:
+                dirs_to_make = [
+                    _dir for _dir in dirs_to_make if _dir in git_dirs_to_make
+                ]
             if dirs_to_make:
                 print(f"dsync: making new dirs ({len(dirs_to_make)}):")
                 for ndir in dirs_to_make:
@@ -597,6 +671,11 @@ class ShDsyncIO:
                 dirs_to_delete = [
                     ddir for ddir in dev_dir_match if ddir not in dir_match
                 ]
+
+                if git_flag:
+                    dirs_to_delete = [
+                        ddir for ddir in dirs_to_delete if ddir in git_dirs_to_delete
+                    ]
                 # filter and get only root dirs to avoid trying
                 # to delete dirs that were already deleted
                 dirs_to_delete = [
@@ -604,6 +683,7 @@ class ShDsyncIO:
                     for dir in dirs_to_delete
                     if dir.rsplit("/", 1)[0] not in dirs_to_delete
                 ]
+
                 if args.i:
                     dirs_to_delete = self.re_filt(args.i, dirs_to_delete)
                 if dirs_to_delete:
@@ -655,6 +735,13 @@ class ShDsyncIO:
             # print(dev_files)
 
             if files_to_sync:
+                if git_flag:
+                    files_to_sync = [
+                        (sz, name)
+                        for sz, name in files_to_sync
+                        if name in git_a_files + git_m_files + git_d_files
+                    ]
+
                 _new_files = [
                     (sz, name)
                     for sz, name in files_to_sync
@@ -665,10 +752,17 @@ class ShDsyncIO:
                     for sz, name in files_to_sync
                     if name in [dname for dname, sz, fh in dev_files]
                 ]
+                if git_flag:
+                    _new_files = [nf for nf in _new_files if nf[1] in git_a_files]
                 if _new_files:
                     print(f"dsync: syncing new files ({len(_new_files)}):")
                     for sz, name in _new_files:
                         print_size(name, sz)
+
+                if git_flag:
+                    _modified_files = [
+                        mf for mf in _modified_files if mf[1] in git_m_files
+                    ]
                 if _modified_files:
                     print(f"dsync: syncing modified files ({len(_modified_files)}):")
                     for sz, name in _modified_files:
@@ -691,6 +785,10 @@ class ShDsyncIO:
                 files_to_delete = [
                     dfile[0] for dfile in dev_files if dfile[0] not in _local_files
                 ]
+                if git_flag:
+                    files_to_delete = [
+                        df for df in files_to_delete if df in git_d_files
+                    ]
                 # filter and get only files to avoid trying
                 # to delete files whose parent tree was already deleted
                 files_to_delete = [
