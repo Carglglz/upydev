@@ -5,97 +5,135 @@ from upydev import __path__ as _UPYDEVPATH
 import os
 import json
 
-SHELL_CONFIG = '.upydev_shl_.config'
+SHELL_CONFIG = ".upydev_shl_.config"
 
 # Prompt Style
-style_p = Style.from_dict({
-    # User input (default text).
-
-    # Prompt.
-    'userpath': 'ansimagenta bold',
-    'username': 'ansigreen bold',
-    'at':       'ansigreen bold',
-    'colon':    '#ffffff',
-    'pound':    'ansiblue bold',
-    'host':     'ansigreen bold',
-    'path':     'ansiblue bold',
-    'branch':   '#ffffff'
-})
+style_p = Style.from_dict(
+    {
+        # User input (default text).
+        # Prompt.
+        "userpath": "ansimagenta bold",
+        "username": "ansigreen bold",
+        "at": "ansigreen bold",
+        "colon": "#ffffff",
+        "pound": "ansiblue bold",
+        "host": "ansigreen bold",
+        "path": "ansiblue bold",
+        "branch": "#ffffff",
+    }
+)
 
 # apply shell config if exists:
 if SHELL_CONFIG in os.listdir(_UPYDEVPATH[0]):
-    with open(os.path.join(_UPYDEVPATH[0], SHELL_CONFIG), 'r') as shconf:
+    with open(os.path.join(_UPYDEVPATH[0], SHELL_CONFIG), "r") as shconf:
         config_dict = json.loads(shconf.read())
     style_p = Style.from_dict(config_dict)
 
 # Prompt format
 shell_message = [
-    ('class:userpath',    ''),
-    ('class:username', ''),  # 1
-    ('class:at',       '@'),
-    ('class:host',     ''),  # 3
-    ('class:colon',    ':'),
-    ('class:path',     '~ '),
-    ('class:branch',   ''),
-    ('class:pound',    '$ '),
+    ("class:userpath", ""),
+    ("class:username", ""),  # 1
+    ("class:at", "@"),
+    ("class:host", ""),  # 3
+    ("class:colon", ":"),
+    ("class:path", "~ "),
+    ("class:branch", ""),
+    ("class:pound", "$ "),
 ]
 
-d_prompt = '>>> '
+d_prompt = ">>> "
 
 # KEYBINDINGS
 kb = KeyBindings()
 SHELL_ALIASES = []
-mem_show_rp = {'show': False, 'call': False, 'used': '?',
-               'free': '?', 'percent': 0}
-dev_path = {'p': ' '}
-local_path = {'p': ''}
-show_local_path = {'s': False}
-status_encryp_msg = {'S': False, 'Toggle': True}
-exit_flag = {'exit': False}
-encrypted_flag = {'sec': True}
-prompt = {'p': '>>> '}
-paste_flag = {'p': False}
-paste_buffer = {'B': []}
-reset_flag = {'R': False}
-autosuggest = {'A': False}
-shell_mode = {'S': False}
-frozen_modules = {'FM': [], 'SUB': []}
-edit_mode = {'E': False, 'File': ''}
-shell_mode_run = {'R': False}
-script_is_running = {'R': False, 'script': 'test_code'}
-shell_prompt = {'s': shell_message}
-shell_commands = ['cd', 'mkdir', 'cat', 'head', 'rm', 'rmdir', 'pwd',
-                  'run', 'mv']
-custom_sh_cmd_kw = ['df', 'datetime', 'ifconfig', 'net',
-                    'ap', 'mem', 'install', 'touch',
-                    'exit', 'lpwd', 'lsl', 'lcd', 'put', 'get', 'ls',
-                    'set', 'tree', 'dsync', 'reload', 'docs',
-                    'du', 'ldu', 'upip', 'uping',
-                    'timeit', 'i2c',
-                    'upy-config', 'jupyterc', 'pytest', 'rssi',
-                    'info', 'id', 'uhelp', 'modules', 'shasum', 'vim',
-                    'update_upyutils', 'mdocs', 'ctime', 'enable_sh',
-                    'diff', 'config', 'fw', 'mpyx', 'sd', 'uptime', 'cycles',
-                    'load']
+mem_show_rp = {"show": False, "call": False, "used": "?", "free": "?", "percent": 0}
+dev_path = {"p": " "}
+local_path = {"p": ""}
+show_local_path = {"s": False}
+status_encryp_msg = {"S": False, "Toggle": True}
+exit_flag = {"exit": False}
+encrypted_flag = {"sec": True}
+prompt = {"p": ">>> "}
+paste_flag = {"p": False}
+paste_buffer = {"B": []}
+reset_flag = {"R": False}
+autosuggest = {"A": False}
+shell_mode = {"S": False}
+frozen_modules = {"FM": [], "SUB": []}
+edit_mode = {"E": False, "File": ""}
+shell_mode_run = {"R": False}
+script_is_running = {"R": False, "script": "test_code"}
+shell_prompt = {"s": shell_message}
+shell_commands = ["cd", "mkdir", "cat", "head", "rm", "rmdir", "pwd", "run", "mv"]
+custom_sh_cmd_kw = [
+    "df",
+    "datetime",
+    "ifconfig",
+    "net",
+    "ap",
+    "mem",
+    "install",
+    "touch",
+    "exit",
+    "lpwd",
+    "lsl",
+    "lcd",
+    "put",
+    "get",
+    "ls",
+    "set",
+    "tree",
+    "dsync",
+    "reload",
+    "docs",
+    "du",
+    "ldu",
+    "upip",
+    "uping",
+    "timeit",
+    "i2c",
+    "upy-config",
+    "jupyterc",
+    "pytest",
+    "rssi",
+    "info",
+    "id",
+    "uhelp",
+    "modules",
+    "shasum",
+    "vim",
+    "update_upyutils",
+    "mdocs",
+    "ctime",
+    "enable_sh",
+    "diff",
+    "config",
+    "fw",
+    "mpyx",
+    "sd",
+    "uptime",
+    "cycles",
+    "load",
+    "aioctl",
+]
 
-CRED = '\033[91;1m'
-CGREEN = '\33[32;1m'
-CEND = '\033[0m'
-YELLOW = '\u001b[33m'
-BCYAN = '\u001b[36;1m'
-ABLUE_bold = '\u001b[34;1m'
-MAGENTA_bold = '\u001b[35;1m'
-WHITE_ = '\u001b[37m'
+CRED = "\033[91;1m"
+CGREEN = "\33[32;1m"
+CEND = "\033[0m"
+YELLOW = "\u001b[33m"
+BCYAN = "\u001b[36;1m"
+ABLUE_bold = "\u001b[34;1m"
+MAGENTA_bold = "\u001b[35;1m"
+WHITE_ = "\u001b[37m"
 LIGHT_GRAY = "\033[0;37m"
 DARK_GRAY = "\033[1;30m"
-CHECK = '[\033[92m\u2714\x1b[0m]'
-XF = '[\u001b[31;1m\u2718\u001b[0m]'
-PYGM_SYNTAX = list(get_all_styles()) + ['one_dark']
-batstyle = {'style': 'monokai'}
-AUTHMODE_DICT = {0: 'NONE', 1: 'WEP', 2: 'WPA PSK', 3: 'WPA2 PSK',
-                    4: 'WPA/WAP2 PSK'}
+CHECK = "[\033[92m\u2714\x1b[0m]"
+XF = "[\u001b[31;1m\u2718\u001b[0m]"
+PYGM_SYNTAX = list(get_all_styles()) + ["one_dark"]
+batstyle = {"style": "monokai"}
+AUTHMODE_DICT = {0: "NONE", 1: "WEP", 2: "WPA PSK", 3: "WPA2 PSK", 4: "WPA/WAP2 PSK"}
 
-git_diff_files = {'diff': [], 'commit': '', 'n_commits': 0}
+git_diff_files = {"diff": [], "commit": "", "n_commits": 0}
 
 
 # KEYBINDINGS INFO
@@ -225,375 +263,590 @@ shell_commands_info = """
     Commands that start with %% or not registered will be forwarded to local shell.
 """
 # dict {cmd:{'help':'command_help', 'subcommand':{'help':'subh', 'choices':[]}}...}
-LS = dict(help="list files or directories",
-          subcmd=dict(help='indicate a file/dir or pattern to see', default=[],
-                      metavar='file/dir/pattern', nargs='*'),
-          options={"-a": dict(help='list hidden files', required=False,
-                              default=False,
-                              action='store_true'),
-                   "-d": dict(help='depth level', required=False,
-                              default=0,
-                              type=int)})
-HEAD = dict(help="display first lines of a file",
-            subcmd=dict(help='indicate a file or pattern to see', default=[],
-                        metavar='file/pattern', nargs='*'),
-            options={"-n": dict(help='number of lines to print', required=False,
-                                default=10,
-                                type=int)})
-CAT = dict(help="concatenate and print files",
-           subcmd=dict(help='indicate a file or pattern to see', default=[],
-                       metavar='file/pattern', nargs='*'),
-           options={"-d": dict(help='depth level', required=False,
-                               default=0,
-                               type=int)})
+LS = dict(
+    help="list files or directories",
+    subcmd=dict(
+        help="indicate a file/dir or pattern to see",
+        default=[],
+        metavar="file/dir/pattern",
+        nargs="*",
+    ),
+    options={
+        "-a": dict(
+            help="list hidden files", required=False, default=False, action="store_true"
+        ),
+        "-d": dict(help="depth level", required=False, default=0, type=int),
+    },
+)
+HEAD = dict(
+    help="display first lines of a file",
+    subcmd=dict(
+        help="indicate a file or pattern to see",
+        default=[],
+        metavar="file/pattern",
+        nargs="*",
+    ),
+    options={
+        "-n": dict(
+            help="number of lines to print", required=False, default=10, type=int
+        )
+    },
+)
+CAT = dict(
+    help="concatenate and print files",
+    subcmd=dict(
+        help="indicate a file or pattern to see",
+        default=[],
+        metavar="file/pattern",
+        nargs="*",
+    ),
+    options={"-d": dict(help="depth level", required=False, default=0, type=int)},
+)
 
-MKDIR = dict(help="make directories",
-             subcmd=dict(help='indicate a dir/pattern to create', default=[],
-                         metavar='dir', nargs='*'),
-             options={})
+MKDIR = dict(
+    help="make directories",
+    subcmd=dict(
+        help="indicate a dir/pattern to create", default=[], metavar="dir", nargs="*"
+    ),
+    options={},
+)
 
-MV = dict(help="move/rename a file",
-          subcmd=dict(help='indicate a file to rename', default=[],
-                      metavar='file', nargs=2),
-          options={})
+MV = dict(
+    help="move/rename a file",
+    subcmd=dict(help="indicate a file to rename", default=[], metavar="file", nargs=2),
+    options={},
+)
 
-CD = dict(help="change current working directory",
-          subcmd=dict(help='indicate a dir to change to', default='/',
-                      metavar='dir', nargs='?'),
-          options={})
-PWD = dict(help="print current working directory",
-           subcmd={},
-           options={})
-RM = dict(help="remove file or pattern of files",
-          subcmd=dict(help='indicate a file/pattern to remove', default=[],
-                      metavar='file/dir/pattern', nargs='+'),
-          options={"-rf": dict(help='remove recursive force a dir or file',
-                               required=False,
-                               default=False,
-                               action='store_true'),
-                   "-d": dict(help='depth level search', required=False,
-                              default=0,
-                              type=int),
-                   "-dd": dict(help='filter for directories only', required=False,
-                               default=False,
-                               action='store_true')})
-RMDIR = dict(help="remove directories or pattern of directories",
-             subcmd=dict(help='indicate a dir/pattern to remove', default=[],
-                         metavar='dir', nargs='+'),
-             options={"-d": dict(help='depth level search', required=False,
-                                 default=0,
-                                 type=int)})
+CD = dict(
+    help="change current working directory",
+    subcmd=dict(
+        help="indicate a dir to change to", default="/", metavar="dir", nargs="?"
+    ),
+    options={},
+)
+PWD = dict(help="print current working directory", subcmd={}, options={})
+RM = dict(
+    help="remove file or pattern of files",
+    subcmd=dict(
+        help="indicate a file/pattern to remove",
+        default=[],
+        metavar="file/dir/pattern",
+        nargs="+",
+    ),
+    options={
+        "-rf": dict(
+            help="remove recursive force a dir or file",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-d": dict(help="depth level search", required=False, default=0, type=int),
+        "-dd": dict(
+            help="filter for directories only",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+    },
+)
+RMDIR = dict(
+    help="remove directories or pattern of directories",
+    subcmd=dict(
+        help="indicate a dir/pattern to remove", default=[], metavar="dir", nargs="+"
+    ),
+    options={
+        "-d": dict(help="depth level search", required=False, default=0, type=int)
+    },
+)
 
-DU = dict(help="display disk usage statistics",
-          subcmd=dict(help='indicate a dir to see usage', default='',
-                      metavar='dir', nargs='?'),
-          options={"-d": dict(help='depth level', required=False,
-                              default=0,
-                              type=int),
-                   "-p": dict(help='pattern to match', required=False,
-                              default=[],
-                              nargs='*')})
-TREE = dict(help="list contents of directories in a tree-like format",
-            subcmd=dict(help='indicate a dir to see', default='',
-                        metavar='dir', nargs='?'),
-            options={"-a": dict(help='list hidden files', required=False,
-                                default=False,
-                                action='store_true')})
-DF = dict(help="display free disk space",
-          subcmd={},
-          options={})
+DU = dict(
+    help="display disk usage statistics",
+    subcmd=dict(
+        help="indicate a dir to see usage", default="", metavar="dir", nargs="?"
+    ),
+    options={
+        "-d": dict(help="depth level", required=False, default=0, type=int),
+        "-p": dict(help="pattern to match", required=False, default=[], nargs="*"),
+    },
+)
+TREE = dict(
+    help="list contents of directories in a tree-like format",
+    subcmd=dict(help="indicate a dir to see", default="", metavar="dir", nargs="?"),
+    options={
+        "-a": dict(
+            help="list hidden files", required=False, default=False, action="store_true"
+        )
+    },
+)
+DF = dict(help="display free disk space", subcmd={}, options={})
 
-MEM = dict(help="show ram usage info",
-           subcmd=dict(help='{info , dump}; default: info',
-                       default='info',
-                       metavar='action', choices=['info', 'dump'], nargs='?'),
-           options={})
+MEM = dict(
+    help="show ram usage info",
+    subcmd=dict(
+        help="{info , dump}; default: info",
+        default="info",
+        metavar="action",
+        choices=["info", "dump"],
+        nargs="?",
+    ),
+    options={},
+)
 
-EXIT = dict(help="exit upydev shell",
-            subcmd={},
-            options={"-r": dict(help='soft-reset after exit', required=False,
-                                default=False,
-                                action='store_true'),
-                     "-hr": dict(help='hard-reset after exit', required=False,
-                                 default=False,
-                                 action='store_true')})
-VIM = dict(help="use vim to edit files",
-           subcmd=dict(help='indicate a file to edit', default='',
-                       metavar='file', nargs='?'),
-           options={"-rm": dict(help='remove local copy after upload', required=False,
-                                default=False,
-                                action='store_true'),
-                    "-e": dict(help='execute script after upload', required=False,
-                               default=False,
-                               action='store_true'),
-                    "-r": dict(help='reload script so it can run again',
-                               required=False,
-                               default=False,
-                               action='store_true'),
-                    "-o": dict(help='override local copy if present',
-                               required=False,
-                               default=False,
-                               action='store_true'),
-                    "-d": dict(help=('use vim diff between device and local files'
-                                     ', if same file name device file is ~file'),
-                               required=False,
-                               default=[],
-                               nargs='+')})
+EXIT = dict(
+    help="exit upydev shell",
+    subcmd={},
+    options={
+        "-r": dict(
+            help="soft-reset after exit",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-hr": dict(
+            help="hard-reset after exit",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+    },
+)
+VIM = dict(
+    help="use vim to edit files",
+    subcmd=dict(help="indicate a file to edit", default="", metavar="file", nargs="?"),
+    options={
+        "-rm": dict(
+            help="remove local copy after upload",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-e": dict(
+            help="execute script after upload",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-r": dict(
+            help="reload script so it can run again",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-o": dict(
+            help="override local copy if present",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-d": dict(
+            help=(
+                "use vim diff between device and local files"
+                ", if same file name device file is ~file"
+            ),
+            required=False,
+            default=[],
+            nargs="+",
+        ),
+    },
+)
 
-DIFF = dict(help=("use git diff between device's [~file/s] and local file/s"),
-            subcmd=dict(help='indicate files to compare or pattern', default=['*', '*'],
-                        metavar='fileA fileB', nargs='+'),
-            options={"-s": dict(help='switch file comparison',
-                                required=False,
-                                default=False,
-                                action='store_true')})
+DIFF = dict(
+    help=("use git diff between device's [~file/s] and local file/s"),
+    subcmd=dict(
+        help="indicate files to compare or pattern",
+        default=["*", "*"],
+        metavar="fileA fileB",
+        nargs="+",
+    ),
+    options={
+        "-s": dict(
+            help="switch file comparison",
+            required=False,
+            default=False,
+            action="store_true",
+        )
+    },
+)
 
-RUN = dict(help="run device's scripts",
-           subcmd=dict(help='indicate a file/script to run', default='',
-                       metavar='file'),
-           options={"-r": dict(help='reload script so it can run again',
-                               required=False,
-                               default=False,
-                               action='store_true'),
-                    })
-LOAD = dict(help="run local script in device",
-            desc="load a local script in device buffer and execute it.",
-            subcmd=dict(help='indicate a file/script to load', default='',
-                        metavar='file',
-                        nargs='*'),
-            options={})
+RUN = dict(
+    help="run device's scripts",
+    subcmd=dict(help="indicate a file/script to run", default="", metavar="file"),
+    options={
+        "-r": dict(
+            help="reload script so it can run again",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+    },
+)
+LOAD = dict(
+    help="run local script in device",
+    desc="load a local script in device buffer and execute it.",
+    subcmd=dict(
+        help="indicate a file/script to load", default="", metavar="file", nargs="*"
+    ),
+    options={},
+)
 
-RELOAD = dict(help="reload device's scripts",
-              subcmd=dict(help='indicate a file/script to reload', default='',
-                          metavar='file', nargs=1),
-              options={})
+RELOAD = dict(
+    help="reload device's scripts",
+    subcmd=dict(
+        help="indicate a file/script to reload", default="", metavar="file", nargs=1
+    ),
+    options={},
+)
 
-LCD = dict(help="change local current working directory",
-           subcmd=dict(help='indicate a dir to change to', default='',
-                       metavar='dir', nargs='?'),
-           options={})
+LCD = dict(
+    help="change local current working directory",
+    subcmd=dict(
+        help="indicate a dir to change to", default="", metavar="dir", nargs="?"
+    ),
+    options={},
+)
 
-LSL = dict(help="list local files or directories",
-           subcmd=dict(help='indicate a file/dir or pattern to see', default=[],
-                       metavar='file/dir/pattern', nargs='*'),
-           options={"-a": dict(help='list hidden files', required=False,
-                               default=False,
-                               action='store_true')})
-LPWD = dict(help="print local current working directory",
-            subcmd={},
-            options={})
+LSL = dict(
+    help="list local files or directories",
+    subcmd=dict(
+        help="indicate a file/dir or pattern to see",
+        default=[],
+        metavar="file/dir/pattern",
+        nargs="*",
+    ),
+    options={
+        "-a": dict(
+            help="list hidden files", required=False, default=False, action="store_true"
+        )
+    },
+)
+LPWD = dict(help="print local current working directory", subcmd={}, options={})
 
-LDU = dict(help="display local disk usage statistics",
-           subcmd=dict(help='indicate a dir to see usage', default='',
-                       metavar='dir', nargs='?'),
-           options={"-d": dict(help='depth level', required=False,
-                               default=0,
-                               type=int)})
-INFO = dict(help="prints device's info",
-            subcmd={},
-            options={})
+LDU = dict(
+    help="display local disk usage statistics",
+    subcmd=dict(
+        help="indicate a dir to see usage", default="", metavar="dir", nargs="?"
+    ),
+    options={"-d": dict(help="depth level", required=False, default=0, type=int)},
+)
+INFO = dict(help="prints device's info", subcmd={}, options={})
 
-ID = dict(help="prints device's unique id",
-          subcmd={},
-          options={})
+ID = dict(help="prints device's unique id", subcmd={}, options={})
 
-UHELP = dict(help="prints device's help info",
-             subcmd={},
-             options={})
+UHELP = dict(help="prints device's help info", subcmd={}, options={})
 
-MODULES = dict(help="prints device's frozen modules",
-               subcmd={},
-               options={})
+MODULES = dict(help="prints device's frozen modules", subcmd={}, options={})
 
-UPING = dict(help="device send ICMP ECHO_REQUEST packets to network hosts",
-             subcmd=dict(help='indicate an IP address to ping; default: host IP',
-                         default='host',
-                         metavar='IP', nargs='?'),
-             options={})
+UPING = dict(
+    help="device send ICMP ECHO_REQUEST packets to network hosts",
+    subcmd=dict(
+        help="indicate an IP address to ping; default: host IP",
+        default="host",
+        metavar="IP",
+        nargs="?",
+    ),
+    options={},
+)
 
-RSSI = dict(help="prints device's RSSI (WiFi or BLE)",
-            subcmd={},
-            options={})
+RSSI = dict(help="prints device's RSSI (WiFi or BLE)", subcmd={}, options={})
 
-NET = dict(help="manage network station interface (STA._IF)",
-           desc="enable/disable station inteface, config and connect to or scan APs",
-           subcmd=dict(help='{status, on, off, config, scan}; default: status',
-                       default='status',
-                       metavar='command',
-                       choices=['status', 'on', 'off', 'config', 'scan'],
-                       nargs='?'),
-           options={"-wp": dict(help='ssid, password for config command',
-                                required=False,
-                                nargs=2)})
-IFCONFIG = dict(help="prints network interface configuration (STA._IF)",
-                subcmd={},
-                options={"-t": dict(help='print info in table format',
-                                    required=False,
-                                    default=False,
-                                    action='store_true')})
+NET = dict(
+    help="manage network station interface (STA._IF)",
+    desc="enable/disable station inteface, config and connect to or scan APs",
+    subcmd=dict(
+        help="{status, on, off, config, scan}; default: status",
+        default="status",
+        metavar="command",
+        choices=["status", "on", "off", "config", "scan"],
+        nargs="?",
+    ),
+    options={
+        "-wp": dict(help="ssid, password for config command", required=False, nargs=2)
+    },
+)
+IFCONFIG = dict(
+    help="prints network interface configuration (STA._IF)",
+    subcmd={},
+    options={
+        "-t": dict(
+            help="print info in table format",
+            required=False,
+            default=False,
+            action="store_true",
+        )
+    },
+)
 
-AP = dict(help="manage network acces point interface (AP._IF)",
-          desc="enable/disable ap inteface, config an AP or scan connected clients",
-          subcmd=dict(help='{status, on, off, scan, config}; default: status',
-                      default='status',
-                      metavar='command',
-                      choices=['status', 'on', 'off', 'config', 'scan'],
-                      nargs='?'),
-          options={"-ap": dict(help='ssid, password for config command',
-                               required=False,
-                               nargs=2),
-                   "-t": dict(help='print info in table format',
-                              required=False,
-                              default=False,
-                              action='store_true')})
+AP = dict(
+    help="manage network acces point interface (AP._IF)",
+    desc="enable/disable ap inteface, config an AP or scan connected clients",
+    subcmd=dict(
+        help="{status, on, off, scan, config}; default: status",
+        default="status",
+        metavar="command",
+        choices=["status", "on", "off", "config", "scan"],
+        nargs="?",
+    ),
+    options={
+        "-ap": dict(help="ssid, password for config command", required=False, nargs=2),
+        "-t": dict(
+            help="print info in table format",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+    },
+)
 
-I2C = dict(help="manage I2C interface",
-           subcmd=dict(help='{config, scan}; default: config',
-                       default='config',
-                       metavar='action',
-                       choices=['config', 'scan'],
-                       nargs='?'),
-           options={"-i2c": dict(help='[scl] [sda] for config command',
-                                 required=False,
-                                 default=[22, 23],
-                                 nargs=2)})
+I2C = dict(
+    help="manage I2C interface",
+    subcmd=dict(
+        help="{config, scan}; default: config",
+        default="config",
+        metavar="action",
+        choices=["config", "scan"],
+        nargs="?",
+    ),
+    options={
+        "-i2c": dict(
+            help="[scl] [sda] for config command",
+            required=False,
+            default=[22, 23],
+            nargs=2,
+        )
+    },
+)
 
-SET = dict(help="set device's configuration {rtc, hostname, localname}",
-           subcmd=dict(help=('set parameter configuration {rtc localtime, rtc ntptime,'
-                             ' hostname, localname}; default: rtc localtime'),
-                       default=['rtc'],
-                       metavar='parameter', nargs='+'),
-           options={"-utc": dict(help='[utc] for "set ntptime" '
-                                 'command', required=False, type=int)},
-           alt_ops=['rtc', 'localtime', 'ntptime', 'hostname', 'localname'])
+SET = dict(
+    help="set device's configuration {rtc, hostname, localname}",
+    subcmd=dict(
+        help=(
+            "set parameter configuration {rtc localtime, rtc ntptime,"
+            " hostname, localname}; default: rtc localtime"
+        ),
+        default=["rtc"],
+        metavar="parameter",
+        nargs="+",
+    ),
+    options={
+        "-utc": dict(
+            help='[utc] for "set ntptime" ' "command", required=False, type=int
+        )
+    },
+    alt_ops=["rtc", "localtime", "ntptime", "hostname", "localname"],
+)
 
-DATETIME = dict(help="prints device's RTC time",
-                subcmd={},
-                options={})
+DATETIME = dict(help="prints device's RTC time", subcmd={}, options={})
 
-UPTIME = dict(help=("prints device's uptime since latest boot "
-                    "(requires uptime.py)"),
-              subcmd={},
-              options={})
+UPTIME = dict(
+    help=("prints device's uptime since latest boot " "(requires uptime.py)"),
+    subcmd={},
+    options={},
+)
 
-CYCLES = dict(help=("prints device's cycle count "
-                    "(requires cycles.py)"),
-              subcmd={},
-              options={})
+CYCLES = dict(
+    help=("prints device's cycle count " "(requires cycles.py)"), subcmd={}, options={}
+)
 
-SHASUM = dict(help="shasum SHA-256 tool",
-              subcmd=dict(help='Get the hash of a file or check a shasum file',
-                          default=[],
-                          metavar='file/pattern',
-                          nargs='*'),
-              options={"-c": dict(help='check a shasum file',
-                                  required=False,
-                                  default='')})
-TOUCH = dict(help="create a new file",
-             subcmd=dict(help='indicate a new file/pattern to create',
-                         default=[],
-                         metavar='file/pattern',
-                         nargs='*'),
-             options={})
+SHASUM = dict(
+    help="shasum SHA-256 tool",
+    subcmd=dict(
+        help="Get the hash of a file or check a shasum file",
+        default=[],
+        metavar="file/pattern",
+        nargs="*",
+    ),
+    options={"-c": dict(help="check a shasum file", required=False, default="")},
+)
+TOUCH = dict(
+    help="create a new file",
+    subcmd=dict(
+        help="indicate a new file/pattern to create",
+        default=[],
+        metavar="file/pattern",
+        nargs="*",
+    ),
+    options={},
+)
 
-UPIP = dict(help="install or manage MicroPython libs",
-            subcmd=dict(help='indicate a lib/module to {install, info, find}',
-                        default=[],
-                        metavar='file/pattern',
-                        nargs='*'),
-            options={},
-            alt_ops=['install', 'info', 'find'])
+UPIP = dict(
+    help="install or manage MicroPython libs",
+    subcmd=dict(
+        help="indicate a lib/module to {install, info, find}",
+        default=[],
+        metavar="file/pattern",
+        nargs="*",
+    ),
+    options={},
+    alt_ops=["install", "info", "find"],
+)
 
-TIMEIT = dict(help="measure execution time of a script/function",
-              subcmd=dict(help='indicate a script/function to measure',
-                          default=[],
-                          metavar='script/function',
-                          nargs='*'),
-              options={})
+TIMEIT = dict(
+    help="measure execution time of a script/function",
+    subcmd=dict(
+        help="indicate a script/function to measure",
+        default=[],
+        metavar="script/function",
+        nargs="*",
+    ),
+    options={},
+)
 
-UPDATE_UPYUTILS = dict(help="update upyutils scripts",
-                       subcmd=dict(help=("filter to match one/multiple "
-                                         "upyutils; default: all"),
-                                   default=['*'],
-                                   nargs='*',
-                                   metavar='name/pattern'),
-                       options={},
-                       alt_ops=os.listdir(os.path.join(_UPYDEVPATH[0],
-                                                       'upyutils_dir')))
-ENABLE_SHELL = dict(help="upload required files so shell is fully operational",
-                    subcmd={},
-                    options={})
+UPDATE_UPYUTILS = dict(
+    help="update upyutils scripts",
+    subcmd=dict(
+        help=("filter to match one/multiple " "upyutils; default: all"),
+        default=["*"],
+        nargs="*",
+        metavar="name/pattern",
+    ),
+    options={},
+    alt_ops=os.listdir(os.path.join(_UPYDEVPATH[0], "upyutils_dir")),
+)
+ENABLE_SHELL = dict(
+    help="upload required files so shell is fully operational", subcmd={}, options={}
+)
 
-DOCS = dict(help="see upydev docs at https://upydev.readthedocs.io/en/latest/",
-            subcmd=dict(help='indicate a keyword to search',
-                        metavar='keyword', nargs='?'),
-            options={})
+DOCS = dict(
+    help="see upydev docs at https://upydev.readthedocs.io/en/latest/",
+    subcmd=dict(help="indicate a keyword to search", metavar="keyword", nargs="?"),
+    options={},
+)
 
-MDOCS = dict(help="see MicroPython docs at docs.micropython.org",
-             subcmd=dict(help='indicate a keyword to search',
-                         metavar='keyword', nargs='?'),
-             options={})
+MDOCS = dict(
+    help="see MicroPython docs at docs.micropython.org",
+    subcmd=dict(help="indicate a keyword to search", metavar="keyword", nargs="?"),
+    options={},
+)
 
-CTIME = dict(help="measure execution time of a shell command",
-             subcmd=dict(help='indicate a command to measure',
-                         default='info',
-                         choices=shell_commands+custom_sh_cmd_kw,
-                         metavar='command'),
-             options={})
+CTIME = dict(
+    help="measure execution time of a shell command",
+    subcmd=dict(
+        help="indicate a command to measure",
+        default="info",
+        choices=shell_commands + custom_sh_cmd_kw,
+        metavar="command",
+    ),
+    options={},
+)
 
-CONFIG = dict(help="set or check config (from *_config.py files)#",
-              desc="* needs config module\n"
-                   "* to add config: $ config add [name]\n"
-                   "* to set config: $ config [name]: [parameter]=[value]"
-                   " [parameter1]=[value1] ...\n"
-                   "(string values must be double+single quoted, e.g: "
-                   "$ ... parameterA=\"'hello'\" )\n"
-                   "* to check config: $ config [name] [-y]",
-              subcmd=dict(help='indicate parameter to set or check ',
-                          default=[],
-                          metavar='parameter',
-                          nargs='*'),
-              options={"-y": dict(help='print config in YAML format',
-                                  required=False,
-                                  default=False,
-                                  action='store_true')})
+CONFIG = dict(
+    help="set or check config (from *_config.py files)#",
+    desc="* needs config module\n"
+    "* to add config: $ config add [name]\n"
+    "* to set config: $ config [name]: [parameter]=[value]"
+    " [parameter1]=[value1] ...\n"
+    "(string values must be double+single quoted, e.g: "
+    "$ ... parameterA=\"'hello'\" )\n"
+    "* to check config: $ config [name] [-y]",
+    subcmd=dict(
+        help="indicate parameter to set or check ",
+        default=[],
+        metavar="parameter",
+        nargs="*",
+    ),
+    options={
+        "-y": dict(
+            help="print config in YAML format",
+            required=False,
+            default=False,
+            action="store_true",
+        )
+    },
+)
 
-SD = dict(help="commands to manage an sd",
-          desc='enable an sd module, mount/unmount an sd or auto mount/unmount sd\n\n'
-               '* auto command needs SD_AM.py in device',
-          subcmd=dict(help='actions to mount/unmount sd : {enable, init, deinit, auto}',
-                      default='enable',
-                      choices=['enable', 'init', 'deinit', 'auto'],
-                      metavar='command'),
-          options={"-po": dict(help='pin of LDO 3.3V regulator to enable',
-                               default=15,
-                               type=int),
-                   "-sck": dict(help='sck pin for sd SPI',
-                                default=5,
-                                type=int),
-                   "-mosi": dict(help='mosi pin for sd SPI',
-                                 default=18,
-                                 type=int),
-                   "-miso": dict(help='miso pin for sd SPI',
-                                 default=19,
-                                 type=int),
-                   "-cs": dict(help='cs pin for sd SPI',
-                               default=21,
-                               type=int)})
+SD = dict(
+    help="commands to manage an sd",
+    desc="enable an sd module, mount/unmount an sd or auto mount/unmount sd\n\n"
+    "* auto command needs SD_AM.py in device",
+    subcmd=dict(
+        help="actions to mount/unmount sd : {enable, init, deinit, auto}",
+        default="enable",
+        choices=["enable", "init", "deinit", "auto"],
+        metavar="command",
+    ),
+    options={
+        "-po": dict(help="pin of LDO 3.3V regulator to enable", default=15, type=int),
+        "-sck": dict(help="sck pin for sd SPI", default=5, type=int),
+        "-mosi": dict(help="mosi pin for sd SPI", default=18, type=int),
+        "-miso": dict(help="miso pin for sd SPI", default=19, type=int),
+        "-cs": dict(help="cs pin for sd SPI", default=21, type=int),
+    },
+)
 
 
-SHELL_CMD_DICT_PARSER = {"ls": LS, "head": HEAD, "cat": CAT, "mkdir": MKDIR,
-                         "touch": TOUCH, "cd": CD, "mv": MV, "pwd": PWD,
-                         "rm": RM, "rmdir": RMDIR, "du": DU,
-                         "tree": TREE, "df": DF, "mem": MEM, "exit": EXIT,
-                         "vim": VIM, "run": RUN, "reload": RELOAD,
-                         "info": INFO, "id": ID, "uhelp": UHELP, "modules": MODULES,
-                         "uping": UPING, "rssi": RSSI, "net": NET, "ifconfig": IFCONFIG,
-                         "ap": AP, "i2c": I2C, "set": SET, "datetime": DATETIME,
-                         "shasum": SHASUM, "upip": UPIP, "timeit": TIMEIT,
-                         "update_upyutils": UPDATE_UPYUTILS,
-                         "lcd": LCD,
-                         "lsl": LSL, "lpwd": LPWD, "ldu": LDU, "docs": DOCS,
-                         "mdocs": MDOCS, "ctime": CTIME, "enable_sh": ENABLE_SHELL,
-                         "diff": DIFF, "config": CONFIG, "sd": SD,
-                         "uptime": UPTIME, "cycles": CYCLES, "load": LOAD}
+AIOCTL = dict(
+    help="manage async tasks in aiorepl",
+    desc="add/delete, start/stop or get status of asynchronous tasks\n"
+    "running in the event loop\n\n"
+    "* needs aiorepl.py, aioctl.py and aiolog.py in device",
+    subcmd=dict(
+        help="actions: {status, add, delete, start, stop, result, traceback,"
+        " follow}",
+        default="status",
+        metavar="command",
+        nargs="*",
+    ),
+    options={},
+    alt_ops=[
+        "status",
+        "add",
+        "delete",
+        "start",
+        "stop",
+        "result",
+        "traceback",
+        "follow",
+    ],
+)
+
+SHELL_CMD_DICT_PARSER = {
+    "ls": LS,
+    "head": HEAD,
+    "cat": CAT,
+    "mkdir": MKDIR,
+    "touch": TOUCH,
+    "cd": CD,
+    "mv": MV,
+    "pwd": PWD,
+    "rm": RM,
+    "rmdir": RMDIR,
+    "du": DU,
+    "tree": TREE,
+    "df": DF,
+    "mem": MEM,
+    "exit": EXIT,
+    "vim": VIM,
+    "run": RUN,
+    "reload": RELOAD,
+    "info": INFO,
+    "id": ID,
+    "uhelp": UHELP,
+    "modules": MODULES,
+    "uping": UPING,
+    "rssi": RSSI,
+    "net": NET,
+    "ifconfig": IFCONFIG,
+    "ap": AP,
+    "i2c": I2C,
+    "set": SET,
+    "datetime": DATETIME,
+    "shasum": SHASUM,
+    "upip": UPIP,
+    "timeit": TIMEIT,
+    "update_upyutils": UPDATE_UPYUTILS,
+    "lcd": LCD,
+    "lsl": LSL,
+    "lpwd": LPWD,
+    "ldu": LDU,
+    "docs": DOCS,
+    "mdocs": MDOCS,
+    "ctime": CTIME,
+    "enable_sh": ENABLE_SHELL,
+    "diff": DIFF,
+    "config": CONFIG,
+    "sd": SD,
+    "uptime": UPTIME,
+    "cycles": CYCLES,
+    "load": LOAD,
+    "aioctl": AIOCTL,
+}
