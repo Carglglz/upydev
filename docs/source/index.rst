@@ -68,11 +68,22 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
   upynotify
 
 .. toctree::
-  :caption: HOW TO:
+  :caption: Develop:
+  :name: developtoc
+
+  develop 
+
+.. toctree::
+  :caption: How-To:
   :name: howtotoc
 
   howto
 
+.. toctree::
+  :caption: Examples:
+  :name: examplestoc
+
+  examples
 
 .. toctree::
   :caption: ABOUT:
@@ -80,8 +91,3 @@ connection agnostic (Serial, WiFi and Bluetooth Low Energy).
 
   about
 
-.. toctree::
-  :caption: Examples:
-  :name: examplestoc
-
-  examples

@@ -1,5 +1,5 @@
-HOWTO
-=====
+How-To
+======
 
 DEBUG
 -----
