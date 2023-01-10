@@ -1,0 +1,41 @@
+---
+  - name: "start event loop"
+    load: "import example_aioctl_task"
+
+
+  - name: "load asyncio"
+    command: "import uasyncio as asyncio"
+    
+  - name: "async sleep"
+    command: "await asyncio.sleep"
+    args: [5]
+
+  - name: "status"
+    command: "import aioctl;aioctl.status()"
+
+  - name: "async sleep"
+    command: "await asyncio.sleep"
+    args: [10]
+
+  - name: "status"
+    command: "import aioctl;aioctl.status()"
+
+  - name: "async sleep"
+    command: "await asyncio.sleep"
+    args: [10]
+
+  - name: "status"
+    command: "import aioctl;aioctl.status()"
+
+  - name: "async sleep"
+    command: "await asyncio.sleep"
+    args: [10]
+
+  - name: "status"
+    command: "import aioctl;aioctl.status()"
+
+  - name: "stop"
+    command: "aioctl.stop()"
+
+  - name: "reset hard"
+    reset: "hard"

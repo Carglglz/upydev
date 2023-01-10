@@ -45,6 +45,8 @@ General Commands
         - **uptime**: shows how long the device has been running (requires ``uptime.py``)
         - **cycles**: shows how many times the device has been rebooted (requires ``cycles.py``)
         - **load**: run one or more local scripts in device. (accepts "\*" wildcard and brace expansions)
+        - **aioctl**: manage async tasks in aiorepl. (requires ``aiorepl.py``,
+          ``aioctl.py`` and ``aiolog.py``)
 
 
 SD

@@ -52,6 +52,16 @@ Develop
 
 **ursyslogger.py**: To enable remote logging to a server using rsyslog (to be used with ``upylog.py``)
 
+**aioctl.py**: To manage async tasks while event loop is running. (requires
+``aiorepl.py``, and ``aiolog.py``). It can add, delete, start, stop, get task
+status, result, traceback and follow if logging to aiolog.
+
+**aiorepl.py**: To run an async REPL, source from ``micropython-lib`` see
+`aiorepl <https://github.com/micropython/micropython-lib/tree/master/micropython/aiorepl>`_.
+
+**aiolog.py**: To async log and see tasks output without interfere with REPL
+prompt.
+
 IRQ
 ^^^
 
