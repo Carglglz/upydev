@@ -836,3 +836,203 @@ And after that it is possible to do:
   Battery Voltage : 4.19, V; Level:95.9 %
 
 
+ 
+
+Using aioctl
+---------------------
+First check the example at `aiorepl <https://github.com/micropython/micropython-lib/tree/master/micropython/aiorepl>`_
+to see how it works.
+
+Once the concept of ``aiorepl`` is understood, using ``aioctl`` will allow to manage
+async tasks more easily and interactively from the REPL. 
+The list of features of ``aioctl`` includes:
+
+    * Add tasks to the event loop
+    * Get status of all/individual tasks (running, done, error)
+    * Stop/Start tasks
+    * Get results of tasks once they are done
+    * Get the traceback of tasks that stopped with error
+    * Follow task output if task is logging to ``aiolog``
+
+Consider this example for a pyboard:
+
+.. code-block:: python
+    
+    import pyb
+    import aiorepl
+    import uasyncio as asyncio
+    import aioctl
+    from aiolog import streamlog
+    import upylog
+
+    upylog.basicConfig(level="INFO", format="TIME_LVL_MSG", stream=streamlog)
+    log = upylog.getLogger("pyb")
+
+
+    state = 20
+    aioctl.set_log(streamlog)
+
+    tasks = []
+
+    async def task_led(n, t, alog=log):
+        try:
+            i = 10 - n
+            while state:
+                await asyncio.sleep_ms(t)
+                pyb.LED(n).toggle()
+                await asyncio.sleep_ms(50)
+                pyb.LED(n).toggle()
+                alog.info(f"[task_led_{n}] toggled LED {n}")
+                if n > 3:
+                    i = round(i / (i - 1))
+            pyb.LED(n).off()
+            return random.random()
+        except asyncio.CancelledError: # allow to stop the task
+            pyb.LED(n).off()
+            return random.random()
+        except Exception as e: # catch any other exception and return it
+            alog.error(
+                f"[task_led_{n}]" + f" {e.__class__.__name__}: {e.errno}",
+            )
+            pyb.LED(n).off()
+            return e
+
+    async def main():
+        print("starting tasks...")
+
+        # start other program tasks.
+
+        aioctl.add(task_led, 1, 5500, name="task_led_1")
+        aioctl.add(task_led, 2, 5400, name="task_led_2")
+        aioctl.add(task_led, 3, 5300, name="task_led_3")
+        aioctl.add(task_led, 4, 5200, name="task_led_4")
+        # start the aiorepl task.
+        aioctl.add(aiorepl.task, name="repl", prompt=">>> ")
+
+        await asyncio.gather(*aioctl.tasks())
+
+    asyncio.run(main())
+
+
+
+Where ``task_led`` is an async task, which will toggle the ``n`` led 
+every ``t`` seconds and log it to ``aiolog``, with the special case of
+led 4 which will raise ``ZeroDivisionError`` after a few rounds.
+Finally when the task is done, it will return a random number (0-1).
+
+Adding tasks to ``aioctl`` is done with ``aioctl.add``, and in this example 5
+tasks are added, the first 4, one for each led and the last one is the ``aiorepl.task``
+
+Finally an example session of this example running:
+
+First, checking current status:
+
+.. code-block:: sh
+
+   starting tasks...
+   Starting asyncio REPL...
+   >>> import aioctl
+   >>> aioctl.status()
+   task_led_1: status: running
+   <-------------------------------------------------------------------------------->
+   repl: status: running
+   <-------------------------------------------------------------------------------->
+   task_led_3: status: running
+   <-------------------------------------------------------------------------------->
+   task_led_4: status: running
+   <-------------------------------------------------------------------------------->
+   task_led_2: status: running
+   <-------------------------------------------------------------------------------->
+   >>> aioctl.status()
+   task_led_1: status: running
+   2015-01-03 04:00:38 [pyb] [INFO] [task_led_1] toggled LED 1
+   <-------------------------------------------------------------------------------->
+   repl: status: running
+   <-------------------------------------------------------------------------------->
+   task_led_3: status: running
+   2015-01-03 04:00:38 [pyb] [INFO] [task_led_3] toggled LED 3
+   <-------------------------------------------------------------------------------->
+   task_led_4: status: running
+   2015-01-03 04:00:37 [pyb] [INFO] [task_led_4] toggled LED 4
+   <-------------------------------------------------------------------------------->
+   task_led_2: status: running
+   2015-01-03 04:00:38 [pyb] [INFO] [task_led_2] toggled LED 2
+   <-------------------------------------------------------------------------------->
+   >>> aioctl.status()
+   task_led_1: status: running
+   2015-01-03 04:00:38 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-03 04:00:43 [pyb] [INFO] [task_led_1] toggled LED 1
+   <-------------------------------------------------------------------------------->
+   repl: status: running
+   <-------------------------------------------------------------------------------->
+   task_led_3: status: running
+   2015-01-03 04:00:38 [pyb] [INFO] [task_led_3] toggled LED 3
+   2015-01-03 04:00:43 [pyb] [INFO] [task_led_3] toggled LED 3
+   <-------------------------------------------------------------------------------->
+   task_led_4: status: ERROR --> result: ZeroDivisionError: divide by zero
+   2015-01-03 04:00:37 [pyb] [INFO] [task_led_4] toggled LED 4
+   2015-01-03 04:00:43 [pyb] [INFO] [task_led_4] toggled LED 4
+   2015-01-03 04:00:43 [pyb] [ERROR] [task_led_4] ZeroDivisionError: divide by zero
+   <-------------------------------------------------------------------------------->
+   task_led_2: status: running
+   2015-01-03 04:00:38 [pyb] [INFO] [task_led_2] toggled LED 2
+   2015-01-03 04:00:43 [pyb] [INFO] [task_led_2] toggled LED 2
+   <-------------------------------------------------------------------------------->
+
+Where after a few toggles ``task_led_4`` raises the expected error.
+
+Then stop, get result and start again ``task_led_1``
+
+.. code-block:: sh
+
+   >>> aioctl.stop("task_led_1")
+   True
+   >>> aioctl.status("task_led_1")
+   task_led_1: status: done --> result: 0.1283668
+   2015-01-03 04:02:23 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-03 04:02:29 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-03 04:02:34 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-03 04:02:40 [pyb] [INFO] [task_led_1] toggled LED 1
+   <-------------------------------------------------------------------------------->
+   >>> aioctl.result("task_led_1")
+   0.1283668
+   >>> aioctl.start("task_led_1")
+   True
+   >>> aioctl.status("task_led_1")
+   task_led_1: status: running
+   <-------------------------------------------------------------------------------->
+   >>> aioctl.status("task_led_1")
+   task_led_1: status: running
+   2015-01-03 04:05:31 [pyb] [INFO] [task_led_1] toggled LED 1
+   <-------------------------------------------------------------------------------->
+
+Finally check ``task_led_4`` status, result, and traceback
+
+.. code-block:: sh
+
+   >>> aioctl.status("task_led_4")
+   task_led_4: status: ERROR --> result: ZeroDivisionError: divide by zero
+   <-------------------------------------------------------------------------------->
+   >>> aioctl.result("task_led_4")
+   ZeroDivisionError('divide by zero',)
+   >>> aioctl.traceback("task_led_4")
+   task_led_4: Traceback
+   Traceback (most recent call last):
+     File "main.py", line 63, in task_led
+   ZeroDivisionError: divide by zero
+
+.. note::
+
+    Note that ``aiolog``'s ``streamlog`` is a ring buffer of size n bytes << RAM size, 
+    in this case 1KB is used, so when the buffer gets full, 
+    it will rotate automatically, flushing any older entries.
+
+
+Another example of ``aioctl`` which is probably more useful, 
+is running an async web server .i.e ``microdot``, alongside with ``aiorepl`` and ``webrepl``. 
+This allows to remotely debug the web server, as well as updating 
+the files that are being served without stopping the server.
+Check a version of this in ``upydev/tests/dev_tests`` .i.e 
+``micdrodo_asyncio.py`` and  ``test_async_https.py``
+
+
