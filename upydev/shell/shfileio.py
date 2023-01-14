@@ -32,6 +32,13 @@ def unpack_path(path):
     return create_path
 
 
+def get_git_rootdir():
+    cmd_root_dir = shlex.split("git rev-parse --show-toplevel")
+    root_dir = subprocess.check_output(cmd_root_dir).decode().strip()
+    if os.path.exists(root_dir):
+        return root_dir
+
+
 def get_git_files(gitflag):
 
     cm_A_files = []
@@ -503,8 +510,6 @@ class ShDsyncIO:
                 top_dir = "."
 
             else:
-                # top_dir = rest_args[0]
-                # rest_args[0] = f"./{top_dir}"
                 rest_args = [
                     f"./{top_dir}" if not top_dir.startswith("./") else top_dir
                     for top_dir in rest_args
@@ -515,7 +520,10 @@ class ShDsyncIO:
                     # get n-commits ahead
                     git_flag = str(rest_args[0])
                     rest_args = ["*"]
-                    top_dir = "."  # TODO: switch to root git dir
+                    root_dir = get_git_rootdir()
+                    if not root_dir:
+                        return
+                    os.chdir(root_dir)
                     mod_files = get_git_files(git_flag)
                     if not any(mod_files):
                         print(f"Everything up-to-date ({self.dev_name})")
