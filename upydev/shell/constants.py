@@ -202,7 +202,7 @@ shell_commands_info = """
         - apconfig: to see access POINT (AP) interface configuration (IP, SUBNET, GATEAWAY, DNS)
         - apconfig_t: to see access POINT (AP) interface configuration in table format
                      (SSID, BSSID, CHANNEL, AUTH, IP, SUBNET, GATEAWAY, DNS)
-        - install: to install a library into the device with upip.
+        - install: to install a library into the device with mip or upip.
         - touch  : to create a new file (e.g. touch test.txt)
         - edit   : to edit a file (e.g. edit my_script.py)
         - get    : to get a file from the device (also allows "*" wildcard, 'cwd' or multiple files)

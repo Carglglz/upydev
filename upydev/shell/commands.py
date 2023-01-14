@@ -1251,7 +1251,7 @@ class ShellCmds:
                 sbcmd, _rest_args = rest_args[0], rest_args[1:]
                 if sbcmd == "install":
                     if not _rest_args:
-                        print("indicate a library to install with upip")
+                        print("indicate a library to install with mip or upip")
                     else:
                         for lib in _rest_args:
                             self.sh_cmd(f"install {lib}")
