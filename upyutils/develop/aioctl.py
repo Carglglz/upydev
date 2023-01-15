@@ -7,6 +7,36 @@ _AIOCTL_GROUP = None
 _AIOCTL_LOG = None
 
 
+def aiotask(f):
+    async def _task(*args, **kwargs):
+        on_error = kwargs.get("on_error")
+        on_stop = kwargs.get("on_stop")
+        _id = kwargs.get("id")
+        if on_error:
+            kwargs.pop("on_error")
+        if on_stop:
+            kwargs.pop("on_stop")
+        if _id:
+            kwargs.pop("id")
+        try:
+            result = await f(*args, **kwargs)
+            return result
+        except asyncio.CancelledError:
+            if callable(on_stop):
+                return on_stop()
+            return on_stop
+
+        except Exception as e:
+            log = kwargs.get("log")
+            if log:
+                log.error(f"[{_id}]" + f" {e.__class__.__name__}: {e.errno}")
+            if callable(on_error):
+                return on_error(e)
+            return e
+
+    return _task
+
+
 def create_task(coro, *args, **kwargs):
     if "name" not in kwargs:
         task = asyncio.create_task(coro(*args, **kwargs))

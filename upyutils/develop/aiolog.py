@@ -1,10 +1,6 @@
-# TODO: create a StringIO --> log handler, passed to global log will log to this
-# stream instead of sys.stdout/stderr, then in aioctl status read and grep for
-# task name (seek(0), read() | grep task_name)
 import io
 import re
 import uasyncio as asyncio
-import time
 
 
 class AioStream(io.StringIO):
