@@ -1036,3 +1036,146 @@ Check a version of this in ``upydev/tests/dev_tests`` .i.e
 ``micdrodo_asyncio.py`` and  ``test_async_https.py``
 
 
+``aioctl`` can be used as command from ``shell-repl`` or as ``upy command`` from upydev CLI.
+.i.e 
+
+.. code-block:: sh
+
+   $ upydev aioctl -h
+   usage:  aioctl [-h] [command [command ...]]
+   manage async tasks in aiorepl
+
+   add/delete, start/stop or get status of asynchronous tasks
+   running in the event loop
+
+   + needs aiorepl.py, aioctl.py and aiolog.py in device
+
+   positional arguments:
+     command     actions: {status, add, delete, start, stop, result, traceback, follow}
+
+   optional arguments:
+     -h, --help  show this help message and exit
+
+
+So for example if there is a few devices running asyncio event loops with aiorepl and aioctl tasks .i.e
+``@aioctl.aiotask``, it is possible to check their status with 
+
+.. code-block:: sh 
+
+   $ upydev aioctl status -@ gkesp32 pybV1.1
+   Sending command to group: UPY_G
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Device Name: gkesp32
+   WebSocketDevice @ gkesp32.local
+   Sending command aioctl ...
+
+   repl: status: running
+   2023-01-13 04:53:19 [esp32@gkesp32] [INFO] [server] GET /webrepl 200
+   2023-01-15 01:30:01 [esp32@gkesp32] [INFO] [server] GET /webrepl 200
+   <-------------------------------------------------------------------------------->
+   server: status: running
+   2023-01-12 04:39:57 [esp32@gkesp32] [INFO] [server] GET / 200
+   2023-01-13 04:52:56 [esp32@gkesp32] [INFO] [server] GET / 200
+   2023-01-13 04:53:19 [esp32@gkesp32] [INFO] [server] GET /webrepl 200
+   2023-01-15 01:29:23 [esp32@gkesp32] [INFO] [server] GET / 200
+   2023-01-15 01:30:01 [esp32@gkesp32] [INFO] [server] GET /webrepl 200
+   2023-01-15 20:22:01 [esp32@gkesp32] [INFO] [server] GET / 200
+   2023-01-15 20:24:02 [esp32@gkesp32] [INFO] [server] GET /static/logo.png 200
+   <-------------------------------------------------------------------------------->
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Device Name: pybV1.1
+   SerialDevice @ /dev/tty.usbmodem3370377430372
+   Sending command aioctl ...
+
+   task_led_1: status: running
+   2015-01-01 04:04:31 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-01 04:04:37 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-01 04:04:42 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-01 04:04:48 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-01 04:04:53 [pyb] [INFO] [task_led_1] toggled LED 1
+   2015-01-01 04:04:59 [pyb] [INFO] [task_led_1] toggled LED 1
+   <-------------------------------------------------------------------------------->
+   repl: status: running
+   <-------------------------------------------------------------------------------->
+   task_led_3: status: running
+   2015-01-01 04:04:31 [pyb] [INFO] [task_led_3] toggled LED 3
+   2015-01-01 04:04:36 [pyb] [INFO] [task_led_3] toggled LED 3
+   2015-01-01 04:04:42 [pyb] [INFO] [task_led_3] toggled LED 3
+   2015-01-01 04:04:47 [pyb] [INFO] [task_led_3] toggled LED 3
+   2015-01-01 04:04:52 [pyb] [INFO] [task_led_3] toggled LED 3
+   2015-01-01 04:04:58 [pyb] [INFO] [task_led_3] toggled LED 3
+   2015-01-01 04:05:03 [pyb] [INFO] [task_led_3] toggled LED 3
+   <-------------------------------------------------------------------------------->
+   task_led_4: status: ERROR --> result: ZeroDivisionError: divide by zero
+   2015-01-01 04:04:31 [pyb] [INFO] [task_led_4] toggled LED 4
+   2015-01-01 04:04:36 [pyb] [INFO] [task_led_4] toggled LED 4
+   2015-01-01 04:04:36 [pyb] [ERROR] [task_led_4] ZeroDivisionError: divide by zero
+   <-------------------------------------------------------------------------------->
+   task_led_2: status: running
+   2015-01-01 04:04:31 [pyb] [INFO] [task_led_2] toggled LED 2
+   2015-01-01 04:04:36 [pyb] [INFO] [task_led_2] toggled LED 2
+   2015-01-01 04:04:42 [pyb] [INFO] [task_led_2] toggled LED 2
+   2015-01-01 04:04:47 [pyb] [INFO] [task_led_2] toggled LED 2
+   2015-01-01 04:04:53 [pyb] [INFO] [task_led_2] toggled LED 2
+   2015-01-01 04:04:58 [pyb] [INFO] [task_led_2] toggled LED 2
+   2015-01-01 04:05:04 [pyb] [INFO] [task_led_2] toggled LED 2
+   <-------------------------------------------------------------------------------->
+
+
+
+Or they can be followed using ``aioctl follow`` in combination with the command parallel group mode .i.e ``-ggp``
+
+.. code-block:: sh 
+
+   $ upydev aioctl follow -@ gkesp32 pybV1.1 -ggp 
+   Sending command in parallel to group: UPY_G
+   2023-01-16 00:04:45 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:04:45 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:04:46 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:04:50 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:04:51 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:04:51 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:04:55 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:04:56 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:04:57 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:01 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:04:58 [esp32@gkesp32] [INFO] [server] GET /static/logo.png 200
+   2023-01-16 00:05:02 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:02 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:06 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:07 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:11 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:13 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:14 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:17 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:18 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:19 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:22 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:24 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:25 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:28 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:29 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:30 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:28 [esp32@gkesp32] [INFO] [server] GET /static/ 404
+   2023-01-16 00:05:33 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:34 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:36 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:38 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:40 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:41 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:44 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:45 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:42 [esp32@gkesp32] [INFO] [server] GET / 200
+   2023-01-16 00:05:47 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:49 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:51 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:52 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:05:54 [pyb] [INFO] [task_led_3] toggled LED 3
+   2023-01-16 00:05:56 [pyb] [INFO] [task_led_2] toggled LED 2
+   2023-01-16 00:05:58 [pyb] [INFO] [task_led_1] toggled LED 1
+   2023-01-16 00:06:00 [pyb] [INFO] [task_led_3] toggled LED 3
+   ^C
+
+

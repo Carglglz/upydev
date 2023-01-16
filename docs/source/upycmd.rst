@@ -41,12 +41,12 @@ General Commands
         - **sd**: commands to manage an sd
         - **diff**: use git diff between device's [~file/s] and local file/s
         - **enable_sh**: upload required files so shell is fully operational
-        - **uconfig**: set or check config (from *_config.py* files in device)
+        - **uconfig**: set or check config (from *_config.py* files in device) see :ref:`examples:Using Config module`
         - **uptime**: shows how long the device has been running (requires ``uptime.py``)
         - **cycles**: shows how many times the device has been rebooted (requires ``cycles.py``)
         - **load**: run one or more local scripts in device. (accepts "\*" wildcard and brace expansions)
         - **aioctl**: manage async tasks in aiorepl. (requires ``aiorepl.py``,
-          ``aioctl.py`` and ``aiolog.py``)
+          ``aioctl.py`` and ``aiolog.py``) see :ref:`examples:Using aioctl`
 
 
 SD

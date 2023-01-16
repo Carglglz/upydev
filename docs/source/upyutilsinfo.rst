@@ -42,9 +42,9 @@ Develop
 
 **time_it.py**: a script to measure execution time of other scripts, implemented from, `@peterhinch <https://github.com/peterhinch>`_  `timed_fuction <https://github.com/peterhinch/micropython-samples/tree/master/timed_function>`_
 
-**upylog.py**: a modified version of MicroPython logging module, with time format logging and log to file option (default file: 'error.log')
+**upylog.py**: a modified version of MicroPython logging module, with time format logging and log to file option (default file: 'error.log'), see :ref:`upylog <upylog:Upylog>`
 
-**upynotify.py** : a module to notify events with beeps (buzzer needed) and blinks. This is useful for "physical debugging".
+**upynotify.py** : a module to notify events with beeps (buzzer needed) and blinks. This is useful for "physical debugging", see :ref:`upynotify <upynotify:Upynotify>`
 
 **uptime.py**: To set and get how long the device has been running.
 

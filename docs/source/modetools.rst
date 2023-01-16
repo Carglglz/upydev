@@ -336,7 +336,7 @@ Debugging
 
        - pytest:
               To run upydevice test with pytest, do ``$ upydev pytest setup`` first.
-              e.g. ``$ upydev pytest mydevicetest.py``. See :ref:`Making Test for devices <examples:Making Test for devices with upydev/upydevice + pytest>`
+              e.g. ``$ upydev pytest mydevicetest.py``. See :ref:`Making Test for devices <develop:Making Test for devices with upydev/upydevice + pytest>`
 
               .. note:: ``pytest`` and ``pytest-benchmark`` required. Install with
                         ``$ pip install pytest pytest-benchmark``

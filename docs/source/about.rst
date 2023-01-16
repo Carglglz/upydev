@@ -58,8 +58,4 @@ DEVELOPER TOOLS
 *Under* `Upyutils <https://github.com/Carglglz/upydev/tree/master/upyutils>`_
 *folder*
 
-:ref:`upylog:Upylog`
-MicroPython logging module with time format (predefined) and log to file support.
-
-:ref:`upynotify:Upynotify`
-MicroPython module with NOTIFYER class to notify events with beeps (needs buzzer) and blinks.
+See :ref:`upyutilsinfo:Develop`
