@@ -1004,7 +1004,8 @@ In `upyutils/network <https://github.com/Carglglz/upydev/tree/master/upyutils/ne
 there are some modules that may be of help when developing devices that needs to be
 connected and mantain a reliable connection.
 
-Using ``wpa_supplicant.py`` module allows to the define a configuration file
+Using ``wpa_supplicant.py`` module (check
+`mpy-wpa_supplicant <https://github.com/Carglglz/mpy-wpa_supplicant>`_) allows to the define a configuration file
 ``wpa_supplicant.config`` with known AP networks ssid:passwords and its function
 e.g.
 

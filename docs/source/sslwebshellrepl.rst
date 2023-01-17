@@ -5,7 +5,7 @@ To enable WebREPL see
 `WebREPL: a prompt over-wifi <http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#webrepl-a-prompt-over-wifi>`_
 and `WebREPL: web-browser interactive prompt <http://docs.micropython.org/en/latest/esp32/quickref.html#webrepl-web-browser-interactive-prompt>`_
 
-See :ref:`WebSocketDevice development setup <examples:WebSocketDevice>`  
+See :ref:`WebSocketDevice development setup <develop:WebSocketDevice>`  
 
 Steps to enable WebSecureREPL mode
 ----------------------------------
@@ -65,6 +65,14 @@ Steps to enable WebSecureREPL mode
 
    This will ask for the ROOT CA key passphrase to be able to sign device certificate.
 
+.. note::
+
+    It is possible to generate device key and CSR (Certificate Signing Request) in device itself
+    using `mpy-mbedtls <https://github.com/Carglglz/mpy-mbedtls>`_. Upydev will check if ``mbedtls``
+    and ``x509`` modules are available and use them to generate the key and sign the CSR. Then this 
+    CSR is sent to host computer and used to generate the device certificate signed by the ROOT CA key.
+    Finally the signed certificate is transferred to the device.
+  
 At this point there should be in the host verify locations path ``upydev.\__path__``:
   - ROOT CA key/cert pair
   - HOST key/cert pair
