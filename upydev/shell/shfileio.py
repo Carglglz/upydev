@@ -60,6 +60,10 @@ def get_git_files(gitflag):
                     cm_M_files.append("./" + cmf.split("\t")[-1])
                 if cmf[0] == "D":
                     cm_D_files.append("./" + cmf.split("\t")[-1])
+                if cmf[0] == "R":
+                    _, r_remove, r_add = cmf.split("\t")
+                    cm_A_files.append("./" + r_add)
+                    cm_D_files.append("./" + r_remove)
     return cm_A_files, cm_M_files, cm_D_files
 
 
