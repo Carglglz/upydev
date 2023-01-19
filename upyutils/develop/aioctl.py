@@ -220,3 +220,14 @@ def traceback_all():
     global _AIOCTL_GROUP
     for name in _AIOCTL_GROUP.tasks.keys():
         traceback(name)
+
+
+def run():
+    global _AIOCTL_GROUP
+
+    async def _main():
+        for name in _AIOCTL_GROUP.tasks.keys():
+            start(name)
+        await asyncio.gather(*tasks())
+
+    asyncio.run(_main())
