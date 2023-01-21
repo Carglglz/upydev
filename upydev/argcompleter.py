@@ -593,6 +593,7 @@ AIOCTL = dict(
             "result",
             "traceback",
             "follow",
+            "run",
         ],
         nargs="*",
     ),
