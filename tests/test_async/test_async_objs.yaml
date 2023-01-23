@@ -1,0 +1,9 @@
+---
+  - name: Assert objs load
+    load: ./dev_tests/async_obj_test.py
+    command: "objs = aioctl.result_all(True)"
+    result: objs
+    exp_type: dict 
+
+  - name: Reset aioctl group
+    command: "aioctl._AIOCTL_GROUP = None"

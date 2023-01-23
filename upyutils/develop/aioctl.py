@@ -38,12 +38,11 @@ def aiotask(f):
 
 
 def create_task(coro, *args, **kwargs):
-    if "name" not in kwargs:
-        task = asyncio.create_task(coro(*args, **kwargs))
-        name = coro.__name__
-    else:
-        name = kwargs.pop("name")
-        task = asyncio.create_task(coro(*args, **kwargs))
+    name = kwargs.get("name", coro.__name__)
+    if "name" in kwargs:
+        kwargs.pop("name")
+
+    task = asyncio.create_task(coro(*args, **kwargs))
     return Taskctl(coro, task, name, args, kwargs)
 
 
@@ -139,14 +138,25 @@ def status(name=None, log=True):
         print(f"Task {name} not found in {list(_AIOCTL_GROUP.tasks.keys())}")
 
 
-def result(name):
+def result(name=None):
     global _AIOCTL_GROUP
+    if not name:
+        return result_all()
 
     if name in _AIOCTL_GROUP.tasks:
         if _AIOCTL_GROUP.tasks[name].task.done():
             return _AIOCTL_GROUP.tasks[name].task.data.value
     else:
         return
+
+
+def result_all(as_dict=False):
+    global _AIOCTL_GROUP
+    if not as_dict:
+        for name in _AIOCTL_GROUP.tasks.keys():
+            print(f"{name} --> {result(name)}")
+    else:
+        return {name: result(name) for name in _AIOCTL_GROUP.tasks.keys()}
 
 
 def status_all(log=True):
@@ -209,7 +219,7 @@ async def follow(grep="", wait=0.05):
 
 def traceback(name=None):
     if not name:
-        traceback_all()
+        return traceback_all()
     _tb = result(name)
     if issubclass(_tb.__class__, Exception):
         print(f"{name}: Traceback")

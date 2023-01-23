@@ -106,7 +106,7 @@ __exec_task = asyncio.create_task(__code())
 
 
 # REPL task. Invoke this with an optional mutable globals dict.
-async def task(g=None, prompt="--> "):
+async def task(g=None, prompt="--> ", shutdown_on_exit=True, exit_cb=None):
     print("Starting asyncio REPL...")
     if g is None:
         g = __import__("__main__").__dict__
@@ -172,7 +172,11 @@ async def task(g=None, prompt="--> "):
                         # Ctrl-D
                         sys.stdout.write("\n")
                         # Shutdown asyncio.
-                        asyncio.new_event_loop()
+                        if shutdown_on_exit:
+                            asyncio.new_event_loop()
+                        if exit_cb:
+                            if callable(exit_cb):
+                                exit_cb()
                         return
                     elif c == 0x1B:
                         # Start of escape sequence.
