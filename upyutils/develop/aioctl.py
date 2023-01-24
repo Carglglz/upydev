@@ -241,3 +241,12 @@ def run():
         await asyncio.gather(*tasks())
 
     asyncio.run(_main())
+
+
+def reset(group=True, log=False):
+    global _AIOCTL_GROUP, _AIOCTL_LOG
+
+    if group:
+        _AIOCTL_GROUP = None
+    if log:
+        _AIOCTL_LOG = None

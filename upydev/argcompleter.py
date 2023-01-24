@@ -581,7 +581,7 @@ AIOCTL = dict(
     "* needs aiorepl.py, aioctl.py and aiolog.py in device",
     subcmd=dict(
         help="actions: {status, add, delete, start, stop, result, traceback,"
-        " follow}",
+        " follow, reset}",
         default="status",
         metavar="command",
         choices=[
@@ -594,6 +594,7 @@ AIOCTL = dict(
             "traceback",
             "follow",
             "run",
+            "reset",
         ],
         nargs="*",
     ),
