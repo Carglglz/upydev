@@ -40,6 +40,7 @@ import time
 import signal
 import subprocess
 import webbrowser
+import yaml
 
 # SHELL COMMAND PARSER
 rawfmt = argparse.RawTextHelpFormatter
@@ -1682,11 +1683,12 @@ class ShellCmds:
                 ]:
                     if rest_args[0] == "config":
                         rest_args[0] = "get_config"
-                    self.send_cmd(
+                    _serv_conf = self.dev.wr_cmd(
                         f"import aioservice;aioservice.{rest_args[0]}()",
-                        sh_silent=False,
-                        follow=True,
+                        silent=True,
+                        rtn_resp=True,
                     )
+                    print(yaml.dump(_serv_conf))
                     return
                 else:
                     self.send_cmd(
@@ -1736,12 +1738,25 @@ class ShellCmds:
                             follow=True,
                         )
                 else:
-                    _rest_args = ", ".join(_rest_args)
-                    self.send_cmd(
-                        f"import aioservice;aioservice.{sbcmd}({_rest_args})",
-                        sh_silent=False,
-                        follow=True,
-                    )
+                    # config
+                    if len(_rest_args) == 1:
+                        sbcmd = "get_config"
+                        _rest_args = f"'{_rest_args[0]}'"
+
+                        _serv_conf = self.dev.wr_cmd(
+                            f"import aioservice;aioservice.{sbcmd}({_rest_args})",
+                            silent=True,
+                            rtn_resp=True,
+                        )
+
+                        print(yaml.dump(_serv_conf))
+                    else:
+                        _rest_args = ", ".join(_rest_args)
+                        self.send_cmd(
+                            f"import aioservice;aioservice.{sbcmd}({_rest_args})",
+                            sh_silent=False,
+                            follow=True,
+                        )
                 return
         # EXIT
         if command == "exit":
