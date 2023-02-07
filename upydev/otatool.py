@@ -7,6 +7,7 @@ import sys
 from datetime import timedelta
 import select
 import ssl
+from threading import Thread
 import getpass
 from upydev import __path__ as _PATH
 
@@ -28,19 +29,25 @@ else:
     pb = False
 
 
-def do_pg_bar(index, wheel, nb_of_total, speed, time_e, loop_l,
-              percentage, ett, size_bar=bar_size):
+def do_pg_bar(
+    index, wheel, nb_of_total, speed, time_e, loop_l, percentage, ett, size_bar=bar_size
+):
     l_bloc = bloc_progress[loop_l]
     if index == size_bar:
         l_bloc = "█"
     sys.stdout.write("\033[K")
-    print('▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s'.format("█" * index + l_bloc + " "*((size_bar+1) - len("█" * index + l_bloc)),
-                                                                wheel[index % 4],
-                                                                int((percentage)*100),
-                                                                nb_of_total, speed,
-                                                                str(timedelta(seconds=time_e)).split(
-                                                                    '.')[0][2:],
-                                                                str(timedelta(seconds=ett)).split('.')[0][2:]), end='\r')
+    print(
+        "▏{}▏{:>2}{:>5} % | {} | {:>5} kB/s | {}/{} s".format(
+            "█" * index + l_bloc + " " * ((size_bar + 1) - len("█" * index + l_bloc)),
+            wheel[index % 4],
+            int((percentage) * 100),
+            nb_of_total,
+            speed,
+            str(timedelta(seconds=time_e)).split(".")[0][2:],
+            str(timedelta(seconds=ett)).split(".")[0][2:],
+        ),
+        end="\r",
+    )
     sys.stdout.flush()
 
 
@@ -49,7 +56,17 @@ class OTAServer:
     OTA Server Class
     """
 
-    def __init__(self, dev, port, firmware, buff=BLOCKLEN, tls=False, zt=False):
+    def __init__(
+        self,
+        dev,
+        port,
+        firmware,
+        buff=BLOCKLEN,
+        tls=False,
+        zt=False,
+        _async=False,
+        bg=False,
+    ):
 
         try:
             self.host = self.find_localip()
@@ -66,58 +83,63 @@ class OTAServer:
         self.addr_client = None
         self._use_tls = tls
         self.host_fwd = None
+        self._async = _async
+        self._bg = bg
         if zt:
             self.host_fwd = self.dev.hostname
             self.host = zt
         if tls:
-            id_bytes = self.dev.wr_cmd("from machine import unique_id; unique_id()",
-                                       silent=True, rtn_resp=True)
-            unique_id = hexlify(id_bytes).decode()
-            host_id = hexlify(os.environ['USER'].encode()).decode()[:10]
-            self.key = os.path.join(_PATH[0], f'HOST_key@{host_id}.pem')
-            self.cert = os.path.join(_PATH[0], f'HOST_cert@{host_id}.pem')
-            self.root = os.path.join(_PATH[0], 'ROOT_CA_cert.pem')
-            self.dev_cert = os.path.join(_PATH[0], f'SSL_certificate{unique_id}.pem')
-            self.cadata = ''
-            with open(self.root, 'r') as root_ca:
+            # id_bytes = self.dev.wr_cmd(
+            #     "from machine import unique_id; unique_id()", silent=True, rtn_resp=True
+            # )
+            # unique_id = hexlify(id_bytes).decode()
+            host_id = hexlify(os.environ["USER"].encode()).decode()[:10]
+            self.key = os.path.join(_PATH[0], f"HOST_key@{host_id}.pem")
+            self.cert = os.path.join(_PATH[0], f"HOST_cert@{host_id}.pem")
+            self.root = os.path.join(_PATH[0], "ROOT_CA_cert.pem")
+            # self.dev_cert = os.path.join(_PATH[0], f"SSL_certificate{unique_id}.pem")
+            self.cadata = ""
+            with open(self.root, "r") as root_ca:
                 self.cadata += root_ca.read()
-                self.cadata += '\n'
-            self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH,
-                                                      cadata=self.cadata)
-            self.context.set_ciphers('ECDHE-ECDSA-AES128-CCM8')
+                self.cadata += "\n"
+            self.context = ssl.create_default_context(
+                ssl.Purpose.CLIENT_AUTH, cadata=self.cadata
+            )
+            self.context.set_ciphers("ECDHE-ECDSA-AES128-CCM8")
             my_p = self.dev.passphrase
             if not my_p:
                 while True:
                     try:
                         my_p = getpass.getpass(
                             prompt="Enter passphrase for key "
-                                   f"'{os.path.basename(self.key)}':",
-                            stream=None)
-                        self.context.load_cert_chain(keyfile=self.key,
-                                                     certfile=self.cert,
-                                                     password=my_p)
+                            f"'{os.path.basename(self.key)}':",
+                            stream=None,
+                        )
+                        self.context.load_cert_chain(
+                            keyfile=self.key, certfile=self.cert, password=my_p
+                        )
                         break
                     except ssl.SSLError:
                         # print(e)
-                        print('Passphrase incorrect, try again...')
+                        print("Passphrase incorrect, try again...")
             else:
-                self.context.load_cert_chain(keyfile=self.key,
-                                             certfile=self.cert,
-                                             password=my_p)
+                self.context.load_cert_chain(
+                    keyfile=self.key, certfile=self.cert, password=my_p
+                )
             self.context.verify_mode = ssl.CERT_REQUIRED
             # self.context.load_verify_locations(cadata=self.cadata)
         self._fw_file = firmware
-        with open(firmware, 'rb') as fwr:
+        with open(firmware, "rb") as fwr:
             self.firmware = fwr.read()
         self.sz = len(self.firmware)
         self._n_blocks = (self.sz // BLOCKLEN) + 1
         hf = hashlib.sha256(self.firmware)
-        hf.update(b'\xff'*((self._n_blocks*BLOCKLEN)-self.sz))
+        hf.update(b"\xff" * ((self._n_blocks * BLOCKLEN) - self.sz))
         self.check_sha = hexlify(hf.digest()).decode()
 
     def find_localip(self):
         ip_soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        ip_soc.connect(('8.8.8.8', 1))
+        ip_soc.connect(("8.8.8.8", 1))
         local_ip = ip_soc.getsockname()[0]
         ip_soc.close()
         return local_ip
@@ -130,42 +152,91 @@ class OTAServer:
             except Exception:
                 self.port += 2
         self.serv_soc.listen(1)
-        print('OTA Server listening...')
+        print("OTA Server listening...")
         if self._use_tls:
-            print('OTA TLS enabled...')
-        self.dev.wr_cmd('from ota import OTA')
+            print("OTA TLS enabled...")
+        if not self._async:
+            self.dev.wr_cmd("from ota import OTA")
+        else:
+            self.dev.wr_cmd("import aioservice;aota = aioservice.service('as_ota')")
         host = self.host
         if self.host_fwd:
             host = self.host_fwd
-        self.dev.cmd_nb(f'mOTA = OTA("{host}","{self.port}", "{self.check_sha}", '
-                        f'{self._use_tls})',
-                        block_dev=False)
+        if not self._async:
+            self.dev.cmd_nb(
+                f'mOTA = OTA("{host}","{self.port}", "{self.check_sha}", '
+                f"{self._use_tls})",
+                block_dev=False,
+            )
+        else:
+            self.dev.wr_cmd(
+                f"aota.start_ota('{host}', {self.port}, '{self.check_sha}', "
+                f"blocks={self._n_blocks}, bg={self._bg})"
+            )
         self.conn, self.addr_client = self.serv_soc.accept()
-        print('Connection received...')
+        print("Connection received...")
         if self._use_tls:
             self.conn = self.context.wrap_socket(self.conn, server_side=True)
-            print('Connection TLS enabled...')
+            print("Connection TLS enabled...")
         # print(self.addr_client)
         self.conn.settimeout(2)
-        print('Starting OTA Firmware update...')
+        print("Starting OTA Firmware update...")
         print()
-        self.dev.cmd_nb(f'mOTA.do_ota({self._n_blocks},True)', block_dev=False)
-        self.do_ota()
-        print('Checking Firmware...')
+        if not self._async:
+            self.dev.cmd_nb(f"mOTA.do_ota({self._n_blocks},True)", block_dev=False)
+        if not self._bg:
+            self.do_ota()
+        else:
+            # multiprocessing.Process(target=self.do_ota)
+            _th = Thread(target=self.do_ota)
+            _th.daemon = True
+            _th.start()
+            print("Doing OTA in the background...")
+            return _th
+
+        print("Checking Firmware...")
         self.dev.flush()
         ota_ok = False
         try:
-            ota_ok = self.dev.wr_cmd('mOTA.check_ota(True)', rtn_resp=True, silent=True)
+            if not self._async:
+                ota_ok = self.dev.wr_cmd(
+                    "mOTA.check_ota(True)", rtn_resp=True, silent=True
+                )
+            else:
+                ota_ok = self.dev.wr_cmd("aota._OK", rtn_resp=True, silent=True)
 
         except Exception as e:
             print(e)
         if ota_ok:
-            if self.dev.wr_cmd('mOTA._OK', rtn_resp=True, silent=True):
-                print('OTA Firmware Updated Succesfully!')
+            if not self._async:
+                if self.dev.wr_cmd("mOTA._OK", rtn_resp=True, silent=True):
+                    print("OTA Firmware Updated Succesfully!")
+                else:
+                    print("OTA Firmware Update Failed.")
             else:
-                print('OTA Firmware Update Failed.')
+                if self.dev.wr_cmd("aota._OK", rtn_resp=True, silent=True):
+                    print("OTA Firmware Updated Succesfully!")
+                else:
+                    print("OTA Firmware Update Failed.")
         else:
-            print('OTA Firmware Update Failed.')
+            if self._async:
+                ota_completed = self.dev.wr_cmd(
+                    "aota._ota_complete", rtn_resp=True, silent=True
+                )
+                while not ota_completed:
+                    time.sleep(1)
+                    print("Waiting for OTA check...", end="\r")
+                    ota_completed = self.dev.wr_cmd(
+                        "aota._ota_complete", rtn_resp=True, silent=True
+                    )
+
+                if self.dev.wr_cmd("aota._OK", rtn_resp=True, silent=True):
+                    print("OTA Firmware Updated Succesfully!")
+                else:
+                    print("OTA Firmware Update Failed.")
+                return
+
+            print("OTA Firmware Update Failed.")
 
     def do_ota(self):
         try:
@@ -179,9 +250,10 @@ class OTAServer:
         else:
             size_bar = 1
             pb = False
-        wheel = ['|', '/', '-', "\\"]
+        wheel = ["|", "/", "-", "\\"]
         sz = len(self.firmware)
-        print(f"{self._fw_file}  [{sz / 1000:.2f} kB]")
+        if not self._bg:
+            print(f"{self._fw_file}  [{sz / 1000:.2f} kB]")
         put_soc = [self.conn]
         cnt = 0
         t_start = time.time()
@@ -189,35 +261,47 @@ class OTAServer:
             self.buff = f.read(BLOCKLEN)
             while True:
                 try:
-                    readable, writable, exceptional = select.select(put_soc,
-                                                                    put_soc,
-                                                                    put_soc)
+                    readable, writable, exceptional = select.select(
+                        put_soc, put_soc, put_soc
+                    )
                     # self.buff = f.read(1024)  # 1 KB
                     # print(len(chunk))
                     if len(writable) == 1:
-                        if self.buff != b'':
+                        if self.buff != b"":
                             # in python use 'i'
                             cnt += len(self.buff)
                             if len(self.buff) < BLOCKLEN:  # fill last block
                                 for i in range(BLOCKLEN - len(self.buff)):
-                                    self.buff += b'\xff'  # erased flash is ff
+                                    self.buff += b"\xff"  # erased flash is ff
                             self.conn.sendall(self.buff)
-                            loop_index_f = (cnt/sz)*size_bar
+                            loop_index_f = (cnt / sz) * size_bar
                             loop_index = int(loop_index_f)
-                            loop_index_l = int(round(loop_index_f-loop_index, 1)*6)
+                            loop_index_l = int(round(loop_index_f - loop_index, 1) * 6)
                             nb_of_total = "{:.2f}/{:.2f} kB".format(
-                                cnt/(1000), sz/(1000))
+                                cnt / (1000), sz / (1000)
+                            )
                             percentage = cnt / sz
                             t_elapsed = time.time() - t_start
-                            t_speed = "{:^2.2f}".format((cnt/(1000))/t_elapsed)
+                            t_speed = "{:^2.2f}".format((cnt / (1000)) / t_elapsed)
                             ett = sz / (cnt / t_elapsed)
-                            if pb:
-                                do_pg_bar(loop_index, wheel, nb_of_total, t_speed,
-                                          t_elapsed, loop_index_l, percentage, ett,
-                                          size_bar)
-                            else:
-                                sys.stdout.write("Sent %d of %d bytes\r" % (cnt, sz))
-                                sys.stdout.flush()
+                            if not self._bg:
+                                if pb:
+                                    do_pg_bar(
+                                        loop_index,
+                                        wheel,
+                                        nb_of_total,
+                                        t_speed,
+                                        t_elapsed,
+                                        loop_index_l,
+                                        percentage,
+                                        ett,
+                                        size_bar,
+                                    )
+                                else:
+                                    sys.stdout.write(
+                                        "Sent %d of %d bytes\r" % (cnt, sz)
+                                    )
+                                    sys.stdout.flush()
                             self.buff = f.read(BLOCKLEN)
                             # chunk = def_chunk
                             # final_file += chunk
@@ -228,6 +312,6 @@ class OTAServer:
                     # print(e)
                     time.sleep(0.02)
                     pass
-
-        print('\n')
-        print()
+        if not self._bg:
+            print("\n")
+            print()

@@ -261,7 +261,6 @@ class ShellCmds:
             print(e)
 
     def sh_cmd(self, cmd_inp):
-
         # debug command:
         if cmd_inp.startswith("!"):
             args = self.parseap(shlex.split(cmd_inp[1:]))
@@ -616,7 +615,6 @@ class ShellCmds:
         # NET: STATION INTERFACE (STA_IF)
 
         if command == "net":
-
             if rest_args == "status":
                 netstat = self.send_cmd(_CMDDICT_["NET_STAT"], raise_devexcept=True)
                 if netstat:
@@ -729,7 +727,6 @@ class ShellCmds:
 
         # AP (ACCES POINT INTERFACE (AP_IF))
         if command == "ap":
-
             if rest_args == "status":
                 apconfig = self.send_cmd(_CMDDICT_["APSTAT"], raise_devexcept=True)
                 if not args.t:
@@ -1626,7 +1623,6 @@ class ShellCmds:
 
             elif len(rest_args) == 1:
                 if rest_args[0] == "follow":
-
                     self.send_cmd(
                         f"await aioctl.{rest_args[0]}()",
                         sh_silent=False,
@@ -1662,6 +1658,91 @@ class ShellCmds:
                     )
             return
 
+        # AIOSERVICE
+
+        if command == "aioservice":
+            # print(rest_args)
+            if rest_args == "status":
+                self.send_cmd(
+                    "import aioservice;aioservice.status()",
+                    sh_silent=False,
+                    follow=True,
+                )
+                return
+
+            elif len(rest_args) == 1:
+                if rest_args[0] in [
+                    "status",
+                    "list",
+                    "enable",
+                    "disable",
+                    "config",
+                    "load",
+                    "traceback",
+                ]:
+                    if rest_args[0] == "config":
+                        rest_args[0] = "get_config"
+                    self.send_cmd(
+                        f"import aioservice;aioservice.{rest_args[0]}()",
+                        sh_silent=False,
+                        follow=True,
+                    )
+                    return
+                else:
+                    self.send_cmd(
+                        f"import aioservice;aioservice.call('{rest_args[0]}')",
+                        sh_silent=False,
+                        follow=True,
+                    )
+                    return
+
+            else:
+                sbcmd, _rest_args = rest_args[0], rest_args[1:]
+                if sbcmd != "config":
+                    if sbcmd == "install":
+                        fileargs = FileArgs()
+                        print("Installing services to ./aioservices/services ...")
+                        fileargs.fre = _rest_args
+                        if self.dev.dev_class == "SerialDevice":
+                            from upydev.serialio import SerialFileIO
+
+                            if self.dev.dev_platform == "pyboard":
+                                fileargs.s = "/flash/aioservices/services"
+                            else:
+                                fileargs.s = "/aioservices/services"
+                            fileio = SerialFileIO(self.dev, devname=self.dev_name)
+                            fileio.put_files(fileargs, self.dev_name)
+                        elif self.dev.dev_class == "WebSocketDevice":
+                            from upydev.wsio import WebSocketFileIO
+
+                            fileargs.wss = self.dev._uriprotocol == "wss"
+                            fileargs.s = "/aioservices/services"
+                            fileio = WebSocketFileIO(
+                                self.dev, args=fileargs, devname=self.dev_name
+                            )
+                            fileio.put_files(fileargs, self.dev_name)
+                        elif self.dev.dev_class == "BleDevice":
+                            from upydev.bleio import BleFileIO
+
+                            fileargs.s = "/aioservices/services"
+                            fileio = BleFileIO(self.dev, devname=self.dev_name)
+                            fileio.put_files(fileargs, self.dev_name)
+                        return
+
+                    else:
+                        self.send_cmd(
+                            f"import aioservice;aioservice.{sbcmd}('{_rest_args[0]}')",
+                            sh_silent=False,
+                            follow=True,
+                        )
+                else:
+                    _rest_args = ", ".join(_rest_args)
+                    self.send_cmd(
+                        f"import aioservice;aioservice.{sbcmd}({_rest_args})",
+                        sh_silent=False,
+                        follow=True,
+                    )
+                return
         # EXIT
         if command == "exit":
             if args.r:
@@ -1743,7 +1824,6 @@ class ShellCmds:
             return ""
 
     def get_rprompt(self):
-
         if self.flags.mem_show_rp["call"]:
             RAM = self.send_cmd(
                 _CMDDICT_["MEM"], raise_devexcept=True, capture_output=True

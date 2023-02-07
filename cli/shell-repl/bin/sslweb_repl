@@ -15,29 +15,35 @@ from prompt_toolkit import PromptSession
 from upydev.shell.shws import ShellWsCmds, shws_cmd_kw, SHELLWS_CMD_DICT_PARSER
 from upydev.shell.keybindings import ShellKeyBindings
 
-_SHELL_HISTORY = os.path.expanduser('~/.upydev_shl_history')
+_SHELL_HISTORY = os.path.expanduser("~/.upydev_shl_history")
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", help='host password', required=True)
-parser.add_argument("-v", help='verbose mode',
-                    default=False, action='store_true')
-parser.add_argument("-t", help='host direction', required=True)
-parser.add_argument("-ping", help='Test if device is reachable first',
-                    required=False, action='store_true')
+parser.add_argument("-p", help="host password", required=True)
+parser.add_argument("-v", help="verbose mode", default=False, action="store_true")
+parser.add_argument("-t", help="host direction", required=True)
 parser.add_argument(
-    "-dev", help='device name, default unique_id', required=False)
-parser.add_argument("-r", help='reset on exit',
-                    default=False, action='store_true')
-parser.add_argument("-nem",
-                    help='No encryption mode, this bypass handshake and does not '
-                         'allow encryption afterwards',
-                    default=False, action='store_true')
-parser.add_argument("-wss",
-                    help='Use WebSocket Secure to do initial handshake, '
-                         'this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
-                    default=False, action='store_true')
-parser.add_argument("-zt", help='zerotier bridge; [HOST/FWD-HOST]',
-                    default=None)
+    "-ping",
+    help="Test if device is reachable first",
+    required=False,
+    action="store_true",
+)
+parser.add_argument("-dev", help="device name, default unique_id", required=False)
+parser.add_argument("-r", help="reset on exit", default=False, action="store_true")
+parser.add_argument(
+    "-nem",
+    help="No encryption mode, this bypass handshake and does not "
+    "allow encryption afterwards",
+    default=False,
+    action="store_true",
+)
+parser.add_argument(
+    "-wss",
+    help="Use WebSocket Secure to do initial handshake, "
+    'this needs WebSecureREPL enabled "wss_repl.start(ssl=True)"',
+    default=False,
+    action="store_true",
+)
+parser.add_argument("-zt", help="zerotier bridge; [HOST/FWD-HOST]", default=None)
 
 args = parser.parse_args()
 
@@ -57,11 +63,12 @@ if not dev.connected:
     sys.exit()
 
 if args.wss:
-    print(f'WebSecREPL with {dev.ws.sock.version()} connected')
-    print('{1} @ {0} - {2} bits Encryption'.format(*dev.ws.sock.cipher()))
+    print(f"WebSecREPL with {dev.ws.sock.version()} connected")
+    print("{1} @ {0} - {2} bits Encryption".format(*dev.ws.sock.cipher()))
 dev.wr_cmd(dev._kbi)
-unique_id = dev.wr_cmd("from machine import unique_id; "
-                       "unique_id()", silent=True, rtn_resp=True)
+unique_id = dev.wr_cmd(
+    "from machine import unique_id; " "unique_id()", silent=True, rtn_resp=True
+)
 
 while True:
     try:
@@ -70,8 +77,9 @@ while True:
     except TypeError:
         time.sleep(0.5)
         dev.flush()
-        unique_id = dev.wr_cmd("from machine import unique_id; "
-                               "unique_id()", silent=True, rtn_resp=True)
+        unique_id = dev.wr_cmd(
+            "from machine import unique_id; " "unique_id()", silent=True, rtn_resp=True
+        )
 
 dev_platform = dev.wr_cmd("import sys; sys.platform", silent=True, rtn_resp=True)
 
@@ -79,15 +87,17 @@ dev.platform = dev_platform
 dev.dev_platform = dev_platform
 
 if args.nem or not args.wss:
-    print('WebREPL connected')
-    print('\033[91;1m' + 'WARNING: ENCRYPTION DISABLED IN THIS MODE' + '\033[0m')
+    print("WebREPL connected")
+    print("\033[91;1m" + "WARNING: ENCRYPTION DISABLED IN THIS MODE" + "\033[0m")
 
 dev.banner()
 dev.output = None
 
-print('- CTRL-k to see keybindings or -h to see help\n'
-      '- CTRL-s to toggle shell/repl mode\n'
-      '- CTRL-x or "exit" to exit')
+print(
+    "- CTRL-k to see keybindings or -h to see help\n"
+    "- CTRL-s to toggle shell/repl mode\n"
+    '- CTRL-x or "exit" to exit'
+)
 
 
 # PROMT SESSION CONFIGURATION
@@ -100,24 +110,27 @@ host_name = unique_id
 if args.dev is not None:
     host_name = args.dev
 
-shell_message[1] = ('class:username', dev_platform)
-shell_message[3] = ('class:host', host_name)
+shell_message[1] = ("class:username", dev_platform)
+shell_message[3] = ("class:host", host_name)
 
 # kb = KeyBindings()
 # START IN SHELL MODE
-if _SHELL_FLAGS.shell_mode['S']:
-    _SHELL_FLAGS.prompt['p'] = d_prompt
-    _SHELL_FLAGS.shell_mode['S'] = False
+if _SHELL_FLAGS.shell_mode["S"]:
+    _SHELL_FLAGS.prompt["p"] = d_prompt
+    _SHELL_FLAGS.shell_mode["S"] = False
 else:
-    _SHELL_FLAGS.prompt['p'] = _SHELL_FLAGS.shell_prompt['s']
-    _SHELL_FLAGS.shell_mode['S'] = True
+    _SHELL_FLAGS.prompt["p"] = _SHELL_FLAGS.shell_prompt["s"]
+    _SHELL_FLAGS.shell_mode["S"] = True
 
-    dev.wr_cmd('import gc;import os;from upysh import *;from nanoglob import glob'
-               ';gc.collect()', silent=True)
+    dev.wr_cmd(
+        "import gc;import os;from upysh import *;from nanoglob import glob"
+        ";gc.collect()",
+        silent=True,
+    )
     # dev.close_wconn()
     dev.wr_cmd("help('modules')", silent=True, long_string=True)
     # dev.open_wconn()
-    _SHELL_FLAGS.frozen_modules['FM'] = dev.output.split()[:-6]
+    _SHELL_FLAGS.frozen_modules["FM"] = dev.output.split()[:-6]
 
     dev.output = None
 
@@ -130,24 +143,24 @@ kb = ShellKeyBindings(_SHELL_FLAGS, dev, sh, shws_cmd_kw, SHELLWS_CMD_DICT_PARSE
 
 @Condition
 def autosuggest_is_on():
-    return _SHELL_FLAGS.autosuggest['A']
+    return _SHELL_FLAGS.autosuggest["A"]
 
 
 def check_prompt():
-    return _SHELL_FLAGS.prompt['p']
+    return _SHELL_FLAGS.prompt["p"]
 
 
 # COMMAND HISTORY
-if _SHELL_HISTORY.rsplit('/', 1)[-1] not in os.listdir(os.path.expanduser('~')):
-    with open(_SHELL_HISTORY, 'w') as shl_hist:
+if _SHELL_HISTORY.rsplit("/", 1)[-1] not in os.listdir(os.path.expanduser("~")):
+    with open(_SHELL_HISTORY, "w") as shl_hist:
         pass
 # ROTATE HISTORY FILE
-with open(_SHELL_HISTORY, 'r+') as shl_hist:
+with open(_SHELL_HISTORY, "r+") as shl_hist:
     lines = shl_hist.readlines()
     if len(lines) > 3 * (100):
         shl_hist.seek(0)
-        shl_hist.write(''.join(lines[3:]))
-        shl_hist.truncate(len(''.join(lines[3:])))
+        shl_hist.write("".join(lines[3:]))
+        shl_hist.truncate(len("".join(lines[3:])))
 
 
 session_p = PromptSession(enable_suspend=True, history=FileHistory(_SHELL_HISTORY))
@@ -157,25 +170,28 @@ repl = True
 while repl:
     try:
         dev.output = None
-        if _SHELL_FLAGS.exit['exit']:
+        if _SHELL_FLAGS.exit["exit"]:
             break
         else:
-            do_autsugg = ConditionalAutoSuggest(AutoSuggestFromHistory(),
-                                                autosuggest_is_on)
-            inp = session_p.prompt(check_prompt,
-                                   auto_suggest=do_autsugg,
-                                   key_bindings=kb,
-                                   style=style_p,
-                                   refresh_interval=0.2,
-                                   rprompt=sh.get_rprompt)
+            do_autsugg = ConditionalAutoSuggest(
+                AutoSuggestFromHistory(), autosuggest_is_on
+            )
+            inp = session_p.prompt(
+                check_prompt,
+                auto_suggest=do_autsugg,
+                key_bindings=kb,
+                style=style_p,
+                refresh_interval=0.2,
+                rprompt=sh.get_rprompt,
+            )
 
-            if inp is not None and inp != '' and not _SHELL_FLAGS.paste['p']:
+            if inp is not None and inp != "" and not _SHELL_FLAGS.paste["p"]:
                 # HERE IN SHELL MODE PROCESS INPUT BEFORE SENDING # shlex.split
-                if _SHELL_FLAGS.shell_mode['S']:  # SHELL
+                if _SHELL_FLAGS.shell_mode["S"]:  # SHELL
                     sh.cmd(inp)
                 else:  # REPL
                     dev.wr_cmd(inp, follow=True)
-                if inp != '':  # PASTE BUFFER
+                if inp != "":  # PASTE BUFFER
                     pass
                     # paste_buffer['B'].append(inp)
     except Exception as e:
@@ -192,8 +208,8 @@ while repl:
 # sys.exit()
 # EXIT MESSAGE
 dev.disconnect()
-print('logout')
+print("logout")
 if host_name != unique_id:
-    print('Connection to {} closed.'.format(host_name))
+    print("Connection to {} closed.".format(host_name))
 else:
-    print('Connection to {} closed.'.format(args.t))
+    print("Connection to {} closed.".format(args.t))

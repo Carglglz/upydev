@@ -174,6 +174,18 @@ OTA = dict(
         "-sec": dict(
             help="to enable OTA TLS", required=False, default=False, action="store_true"
         ),
+        "-aio": dict(
+            help="to enable async OTA",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-bg": dict(
+            help="to enable async OTA in background",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
         "-zt": dict(help="zerotierone host IP", required=False, default=False),
     },
 )

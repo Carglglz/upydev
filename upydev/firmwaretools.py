@@ -21,7 +21,7 @@ dict_arg_options = {
     "mpyx": ["f", "fre"],
     "fwr": ["t", "p", "wss", "b", "n", "md"],
     "flash": ["t", "p", "f", "i"],
-    "ota": ["t", "p", "wss", "f", "sec", "i"],
+    "ota": ["t", "p", "wss", "f", "sec", "i", "aio"],
 }
 
 MPYX = dict(
@@ -80,6 +80,12 @@ OTA = dict(
         "-i": dict(
             help="to check wether device platform and " "firmware file name match",
             required=False,
+            action="store_true",
+        ),
+        "-aio": dict(
+            help="to enable async OTA",
+            required=False,
+            default=False,
             action="store_true",
         ),
         "-sec": dict(
@@ -705,7 +711,12 @@ def firmwaretools_action(args, unkwargs, **kargs):
                         print("Device not reachable, connect the device and try again.")
                         sys.exit()
                 OTA_server = OTAServer(
-                    dev, port=8014, firmware=fwfile, tls=args.sec, zt=args.zt
+                    dev,
+                    port=8014,
+                    firmware=fwfile,
+                    tls=args.sec,
+                    zt=args.zt,
+                    _async=args.aio,
                 )
                 OTA_server.start_ota()
                 # print('Rebooting device...')
