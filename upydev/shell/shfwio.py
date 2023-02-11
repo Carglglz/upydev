@@ -135,7 +135,6 @@ class ShfwIO:
                     if rest_args[1] == "latest":
                         if not args.b:  # Autodetect
                             try:
-
                                 args.b = dev_p
                                 if dev_p == "pyboard":
                                     machine = self.dev.wr_cmd(
@@ -428,7 +427,7 @@ class ShfwIO:
     def mpycross(self, args, rest_args):
         rest_args = nglob(*rest_args)
         for file in rest_args:
-            print("Frozing {} to bytecode with mpy-cross".format(file))
+            print("Freezing {} to bytecode with mpy-cross".format(file))
             mpy_cmd_str = "mpy-cross {}".format(file)
             mpy_cmd = shlex.split(mpy_cmd_str)
             try:
@@ -447,7 +446,6 @@ class ShfwIO:
     # OTA
 
     def ota(self, args, fwfile):
-
         if self.dev.dev_class not in ["WebSocketDevice", "BleDevice"]:
             print(f"OTA not available, {self.dev_name} is NOT a OTA capable device")
             return
@@ -481,7 +479,6 @@ class ShfwIO:
                     return
 
             if self.dev.dev_class == "WebSocketDevice":
-
                 OTA_server = OTAServer(
                     self.dev,
                     port=8014,
