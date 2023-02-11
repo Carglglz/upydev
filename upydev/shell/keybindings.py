@@ -783,14 +783,13 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
     def paste_mode(event):
         "ENTER PASTE VIM MODE"
         if not flags.shell_mode["S"]:
-            flags.paste["p"] = True
-
             buff_text = event.app.current_buffer.document.text
             if buff_text:
                 event.app.current_buffer.reset()
                 event.app.current_buffer.insert_text(buff_text, move_cursor=True)
                 return
 
+            flags.paste["p"] = True
             event.app.current_buffer.reset()
             # event.app.current_buffer.insert_text('import')
 
