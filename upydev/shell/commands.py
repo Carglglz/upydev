@@ -1630,11 +1630,27 @@ class ShellCmds:
                         follow=True,
                     )
                 else:
-                    self.send_cmd(
-                        f"import aioctl;aioctl.{rest_args[0]}()",
-                        sh_silent=False,
-                        follow=True,
-                    )
+                    if rest_args[0] not in [
+                        "status",
+                        "start",
+                        "stop",
+                        "traceback",
+                        "result",
+                        "reset",
+                        "debug",
+                        "log",
+                    ]:
+                        self.send_cmd(
+                            f"import aioctl;aioctl.status('{rest_args[0]}')",
+                            sh_silent=False,
+                            follow=True,
+                        )
+                    else:
+                        self.send_cmd(
+                            f"import aioctl;aioctl.{rest_args[0]}()",
+                            sh_silent=False,
+                            follow=True,
+                        )
             else:
                 sbcmd, _rest_args = rest_args[0], rest_args[1:]
                 if sbcmd != "add":
@@ -1683,12 +1699,18 @@ class ShellCmds:
                 ]:
                     if rest_args[0] == "config":
                         rest_args[0] = "get_config"
-                    _serv_conf = self.dev.wr_cmd(
-                        f"import aioservice;aioservice.{rest_args[0]}()",
-                        silent=True,
-                        rtn_resp=True,
-                    )
-                    print(yaml.dump(_serv_conf))
+                        _serv_conf = self.dev.wr_cmd(
+                            f"import aioservice;aioservice.{rest_args[0]}()",
+                            silent=True,
+                            rtn_resp=True,
+                        )
+                        print(yaml.dump(_serv_conf))
+                    else:
+                        self.send_cmd(
+                            f"import aioservice;aioservice.{rest_args[0]}()",
+                            sh_silent=False,
+                            follow=True,
+                        )
                     return
                 else:
                     self.send_cmd(
@@ -1730,6 +1752,17 @@ class ShellCmds:
                             fileio = BleFileIO(self.dev, devname=self.dev_name)
                             fileio.put_files(fileargs, self.dev_name)
                         return
+                    elif sbcmd in ["enable", "disable", "load", "traceback"]:
+                        _opts = ""
+                        if sbcmd == "load":
+                            _opts = ", config=True"
+                        for _srv in _rest_args:
+                            self.send_cmd(
+                                "import "
+                                f"aioservice;aioservice.{sbcmd}('{_srv}'{_opts})",
+                                sh_silent=False,
+                                follow=True,
+                            )
 
                     else:
                         self.send_cmd(
@@ -1737,6 +1770,7 @@ class ShellCmds:
                             sh_silent=False,
                             follow=True,
                         )
+                    return
                 else:
                     # config
                     if len(_rest_args) == 1:

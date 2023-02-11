@@ -596,11 +596,40 @@ AIOCTL = dict(
             "run",
             "reset",
             "debug",
+            "log",
         ],
         nargs="*",
     ),
     options={},
 )
+
+
+AIOSERVICE = dict(
+    help="manage async services in aiorepl",
+    desc="enable/disable/config/load or get status of asynchronous services\n"
+    "running in the event loop\n\n"
+    "* needs aiorepl.py, aioctl.py, aiolog.py and aioservice.py in device",
+    subcmd=dict(
+        help="actions: {status, list, enable, disable, config, load, traceback,"
+        " install}",
+        default="status",
+        metavar="command",
+        nargs="*",
+    ),
+    options={},
+    alt_ops=[
+        "status",
+        "list",
+        "enable",
+        "disable",
+        "config",
+        "load",
+        "traceback",
+        "install",
+    ],
+)
+
+
 SHELL_CMD_DICT_PARSER = {
     "ls": LS,
     "head": HEAD,
@@ -651,6 +680,7 @@ SHELL_CMD_DICT_PARSER = {
     "cycles": CYCLES,
     "load": LOAD,
     "aioctl": AIOCTL,
+    "aioservice": AIOSERVICE,
 }
 
 # DEBUGGING
