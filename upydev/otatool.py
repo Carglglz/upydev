@@ -67,7 +67,6 @@ class OTAServer:
         _async=False,
         bg=False,
     ):
-
         try:
             self.host = self.find_localip()
             # print(self.host)
@@ -256,6 +255,14 @@ class OTAServer:
             print(f"{self._fw_file}  [{sz / 1000:.2f} kB]")
         put_soc = [self.conn]
         cnt = 0
+        if self._async:
+            while True:
+                readable, writable, exceptional = select.select(
+                    put_soc, put_soc, put_soc
+                )
+                if len(readable) == 1:
+                    assert self.conn.recv(2) == b"OK"
+                    break
         t_start = time.time()
         with open(self._fw_file, "rb") as f:
             self.buff = f.read(BLOCKLEN)
@@ -312,6 +319,16 @@ class OTAServer:
                     # print(e)
                     time.sleep(0.02)
                     pass
+        if self._async:
+            while True:
+                readable, writable, exceptional = select.select(
+                    put_soc, put_soc, put_soc
+                )
+                if len(readable) == 1:
+                    assert self.conn.recv(2) == b"OK"
+                    self.conn.close()
+                    break
+
         if not self._bg:
             print("\n")
             print()
