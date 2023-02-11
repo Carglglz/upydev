@@ -406,7 +406,6 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                 ).split(" ")[-1]
             if isinstance(buff_text, str):
                 if "." in buff_text and not flags.shell_mode["S"]:
-
                     root_text = ".".join(buff_text.split(".")[:-1])
                     rest = buff_text.split(".")[-1]
                     if rest != "":
@@ -557,7 +556,6 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                         if len(result) > 1:
                             comm_part = os.path.commonprefix(result)
                             if comm_part == buff_text:
-
                                 # print('>>> {}'.format(buff_text))  # globals
                                 def pprint_result():
                                     print(">>> {}".format(buff_text))  # globals
@@ -786,6 +784,13 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
         "ENTER PASTE VIM MODE"
         if not flags.shell_mode["S"]:
             flags.paste["p"] = True
+
+            buff_text = event.app.current_buffer.document.text
+            if buff_text:
+                event.app.current_buffer.reset()
+                event.app.current_buffer.insert_text(buff_text, move_cursor=True)
+                return
+
             event.app.current_buffer.reset()
             # event.app.current_buffer.insert_text('import')
 
@@ -815,7 +820,9 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
 
             run_in_terminal(cmd_paste_vim)
         else:
-            pass
+            buff_text = event.app.current_buffer.document.text
+            event.app.current_buffer.reset()
+            event.app.current_buffer.insert_text(buff_text, move_cursor=True)
 
     #
     #
