@@ -1695,6 +1695,7 @@ class ShellCmds:
                     "disable",
                     "config",
                     "load",
+                    "unload",
                     "traceback",
                 ]:
                     if rest_args[0] == "config":
@@ -1752,7 +1753,7 @@ class ShellCmds:
                             fileio = BleFileIO(self.dev, devname=self.dev_name)
                             fileio.put_files(fileargs, self.dev_name)
                         return
-                    elif sbcmd in ["enable", "disable", "load", "traceback"]:
+                    elif sbcmd in ["enable", "disable", "load", "unload", "traceback"]:
                         _opts = ""
                         if sbcmd == "load":
                             _opts = ", config=True"

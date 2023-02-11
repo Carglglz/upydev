@@ -811,7 +811,7 @@ AIOSERVICE = dict(
     "running in the event loop\n\n"
     "* needs aiorepl.py, aioctl.py, aiolog.py and aioservice.py in device",
     subcmd=dict(
-        help="actions: {status, list, enable, disable, config, load, traceback,"
+        help="actions: {status, list, enable, disable, config, load, unload, traceback,"
         " install}",
         default="status",
         metavar="command",
@@ -825,6 +825,7 @@ AIOSERVICE = dict(
         "disable",
         "config",
         "load",
+        "unload",
         "traceback",
         "install",
     ],
