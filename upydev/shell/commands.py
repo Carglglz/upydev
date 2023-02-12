@@ -1786,6 +1786,7 @@ class ShellCmds:
 
                         print(yaml.dump(_serv_conf))
                     else:
+                        _rest_args[0] = f"'{_rest_args[0]}'"
                         _rest_args = ", ".join(_rest_args)
                         self.send_cmd(
                             f"import aioservice;aioservice.{sbcmd}({_rest_args})",
