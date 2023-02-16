@@ -90,6 +90,30 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
             )
             print(color_p)
 
+    def _autocomplete_tasks(cmd, buff_text, result):
+        # print(result)
+        if result != []:
+            if len(result) == 1 and result[-1] == buff_text.split()[-1]:
+                # print("here")
+                pass
+            else:
+                return []
+        task_patt = buff_text.split()[-1]
+        # print("task_patt", task_patt)
+        _tasks = dev.wr_cmd(
+            "import aioctl; list(aioctl.group().tasks.keys())",
+            silent=True,
+            rtn_resp=True,
+        )
+        if task_patt and task_patt not in result:
+            m_tasks = [task for task in _tasks if task.startswith(task_patt)]
+        else:
+            m_tasks = _tasks
+        # print(m_tasks)
+        if cmd == "aioservice":
+            m_tasks = [task.split(".")[0] for task in m_tasks]
+        return m_tasks
+
     def _autocomplete_config(buff_text):
         is_config = buff_text.split()[0] == "config"
         param_patt = ""
@@ -945,9 +969,14 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                                     ]
                                 else:
                                     result = []
-
-                        # print(result)
+                            if cmd in ["aioctl", "aioservice"]:
+                                result += _autocomplete_tasks(cmd, buff_text, result)
                         buff_text = buff_text.split()[-1]
+
+                        if cmd in ["aioctl", "aioservice"] and buff_text == result[0]:
+                            buff_text = ""
+                            result = result[1:]
+
                     else:
                         cmd = buff_text.split()[0]
                         ch = []
@@ -963,7 +992,9 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                             result = ch
                         else:
                             result = []
+
                         buff_text = ""
+                        # print(result)
                 if len(result) > 1:
                     if is_config:
                         buff_text = _buff_text.split()[-1]
@@ -981,7 +1012,7 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                             last_cmd = event.app.current_buffer.document.text
                             _printpath_cmd(last_cmd)
 
-                            print_table(result)
+                            print_table(result, autowide=True)
 
                         run_in_terminal(pprint_result)
                     else:
