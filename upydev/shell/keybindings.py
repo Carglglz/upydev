@@ -973,9 +973,11 @@ def ShellKeyBindings(_flags, _dev, _shell, spc_cmds=[], kwdict=None):
                                 result += _autocomplete_tasks(cmd, buff_text, result)
                         buff_text = buff_text.split()[-1]
 
-                        if cmd in ["aioctl", "aioservice"] and buff_text == result[0]:
-                            buff_text = ""
-                            result = result[1:]
+                        if cmd in ["aioctl", "aioservice"]:
+                            if len(result) > 1:
+                                if buff_text == result[0]:
+                                    buff_text = ""
+                                    result = result[1:]
 
                     else:
                         cmd = buff_text.split()[0]
