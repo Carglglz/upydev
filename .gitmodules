@@ -4,3 +4,6 @@
 [submodule "custom_builds/mpy-libs/mpy-wpa_supplicant"]
 	path = custom_builds/mpy-libs/mpy-wpa_supplicant
 	url = https://github.com/Carglglz/mpy-wpa_supplicant.git
+[submodule "upyutils/develop/aiotools"]
+	path = upyutils/develop/aiotools
+	url = git@github.com:Carglglz/mpy-aiotools.git
