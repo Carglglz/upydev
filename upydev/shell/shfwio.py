@@ -455,10 +455,10 @@ class ShfwIO:
             with open(fwfile, "rb") as fw:
                 fw.read(MICROPYTHON_BIN_OFFSET)
                 app = fw.read()
-            with open(f"ota-{fwfile}", "wb") as fw_app:
+            with open(f"{self.dev_name}-ota-{fwfile}", "wb") as fw_app:
                 fw_app.write(app)
 
-            fwfile = f"ota-{fwfile}"
+            fwfile = f"{self.dev_name}-ota-{fwfile}"
             if args.i:
                 if not self.dev.dev_platform:
                     dev_p = self.dev.wr_cmd(
