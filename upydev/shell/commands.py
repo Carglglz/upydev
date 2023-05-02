@@ -1619,7 +1619,9 @@ class ShellCmds:
             # print(rest_args)
             if rest_args == "status":
                 self.send_cmd(
-                    "import aioctl;aioctl.status()", sh_silent=False, follow=True
+                    f"import aioctl;aioctl.status(log={args.l})",
+                    sh_silent=False,
+                    follow=True,
                 )
 
             elif len(rest_args) == 1:
@@ -1641,7 +1643,8 @@ class ShellCmds:
                         "log",
                     ]:
                         self.send_cmd(
-                            f"import aioctl;aioctl.status('{rest_args[0]}')",
+                            f"import aioctl;aioctl.status('{rest_args[0]}'"
+                            f", log={args.l})",
                             sh_silent=False,
                             follow=True,
                         )

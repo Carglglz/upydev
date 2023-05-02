@@ -787,7 +787,13 @@ AIOCTL = dict(
         metavar="command",
         nargs="*",
     ),
-    options={},
+    options={
+        "-l": dict(
+            help="switch off logging output in status",
+            default=True,
+            action="store_false",
+        )
+    },
     alt_ops=[
         "status",
         "add",

@@ -237,6 +237,7 @@ keywords_mode = [
     "play",
     "load",
     "aioctl",
+    "aioservice",
 ]
 
 help_actions = [
@@ -451,6 +452,7 @@ GENERAL_COMMANDS = [
     "mv",
     "load",
     "aioctl",
+    "aioservice",
 ]
 
 # PROTOTYPE
@@ -908,7 +910,7 @@ def handle_action(args, exit=True, device_name=None):
         )
 
 
-KW_NOT_GROUP = ["probe", "scan", "mksg", "mksg", "play"]
+KW_NOT_GROUP = ["probe", "scan", "mksg", "play"]
 
 
 #############################################
