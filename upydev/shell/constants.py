@@ -101,6 +101,7 @@ custom_sh_cmd_kw = [
     "uhelp",
     "modules",
     "shasum",
+    "edit",
     "vim",
     "update_upyutils",
     "mdocs",
@@ -411,6 +412,48 @@ EXIT = dict(
         ),
     },
 )
+
+
+EDIT = dict(
+    help="use $EDITOR to edit files",
+    subcmd=dict(help="indicate a file to edit", default="", metavar="file", nargs="?"),
+    options={
+        "-rm": dict(
+            help="remove local copy after upload",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-e": dict(
+            help="execute script after upload",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-r": dict(
+            help="reload script so it can run again",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-o": dict(
+            help="override local copy if present",
+            required=False,
+            default=False,
+            action="store_true",
+        ),
+        "-d": dict(
+            help=(
+                "use vim diff between device and local files"
+                ", if same file name device file is ~file"
+            ),
+            required=False,
+            default=[],
+            nargs="+",
+        ),
+    },
+)
+
 VIM = dict(
     help="use vim to edit files",
     subcmd=dict(help="indicate a file to edit", default="", metavar="file", nargs="?"),
@@ -853,6 +896,7 @@ SHELL_CMD_DICT_PARSER = {
     "df": DF,
     "mem": MEM,
     "exit": EXIT,
+    "edit": EDIT,
     "vim": VIM,
     "run": RUN,
     "reload": RELOAD,

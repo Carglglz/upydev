@@ -1465,6 +1465,112 @@ class ShellCmds:
             os.remove(_file_to_edit)
             return
 
+        # EDIT
+        if command == "edit":
+            _EDITOR = os.getenv("EDITOR")
+            if not rest_args and not args.d:
+                print(
+                    f"{_EDITOR}: indicate a file to edit or -d fileA fileB to compare"
+                )
+                return
+
+            if not rest_args:
+                file_to_edit = args.d[0]
+            else:
+                file_to_edit = rest_args
+            self.dev.wr_cmd("from upysh import cat", silent=True)
+            files_to_see = f"*{[file_to_edit]}"
+            filedata = self.dev.wr_cmd(
+                _CMDDICT_["VIM"].format(files_to_see),
+                silent=True,
+                rtn_resp=True,
+                multiline=True,
+                long_string=True,
+            )
+            # print(filedata)
+            _file_to_edit = file_to_edit.rsplit("/")[-1]
+            if args.d:
+                args.rm = True
+                if _file_to_edit in os.listdir():
+                    _file_to_edit = f"~{_file_to_edit}"
+                    ov = True
+                    if len(args.d) == 1:
+                        args.d += [file_to_edit.rsplit("/")[-1]]
+            if filedata == f"{_EDITOR}: {file_to_edit}: No such file in directory\n":
+                filedata = ""
+                ov = False
+                if _file_to_edit in os.listdir():
+                    print(filedata)
+                    print("Using local copy...")
+
+            if filedata:
+                if _file_to_edit in os.listdir():
+                    if not args.o:
+                        dev_sha = _shasum_data(filedata.encode("utf-8"))
+                        local_sha = shasum(_file_to_edit, debug=False, rtn=True)
+                        if dev_sha != local_sha[0][1]:
+                            local_file_to_edit = _file_to_edit
+                            _file_to_edit = f"~{_file_to_edit}"
+                            args.d = [_file_to_edit, local_file_to_edit]
+                            args.rm = True
+                            ov = True
+                        else:
+                            ov = False
+                    else:
+                        ov = True
+                else:
+                    ov = True
+            if not filedata and _file_to_edit not in os.listdir():
+                ov = False
+            if ov:
+                with open(_file_to_edit, "w") as fte:
+                    fte.write(filedata)
+
+            if not args.d:
+                shell_cmd_str = shlex.split(f"{_EDITOR} {_file_to_edit}")
+            else:
+                if len(args.d) != 2:
+                    print("indicate two files to compare")
+                    return
+                shell_cmd_str = shlex.split(f"{_EDITOR} -d {_file_to_edit} {args.d[1]}")
+
+            old_action = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            def preexec_function(action=old_action):
+                signal.signal(signal.SIGINT, action)
+
+            try:
+                subprocess.call(shell_cmd_str, preexec_fn=preexec_function)
+                signal.signal(signal.SIGINT, old_action)
+            except Exception as e:
+                print(e)
+
+            # Check if file changes:
+            if _file_to_edit in os.listdir():
+                with open(_file_to_edit, "r") as fte:
+                    filedata2 = fte.read()
+                if filedata != filedata2:
+                    dst_name = file_to_edit
+                    src_name = _file_to_edit
+                    self.dsyncio.file_put(src_name, os.stat(src_name)[6], dst_name)
+            if args.rm:
+                os.remove(_file_to_edit)
+            if args.e:
+                script_name = file_to_edit.replace(".py", "").rsplit("/")[-1]
+                run_cmd = f"import {script_name}"
+                print(f"Running {script_name}...")
+                try:
+                    self.dev.wr_cmd(run_cmd, follow=True)
+                except KeyboardInterrupt:
+                    self.dev.kbi()
+            if args.r:
+                module = script_name
+                reload_cmd = f"import sys;del(sys.modules['{module}']);gc.collect()"
+                print(f"Reloading {file_to_edit}...")
+                self.dev.wr_cmd(reload_cmd)
+                print("Done!")
+            return
+
         # VIM
         if command == "vim":
             if not rest_args and not args.d:
