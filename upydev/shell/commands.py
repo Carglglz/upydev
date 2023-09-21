@@ -6,8 +6,8 @@ from upydev.shell.constants import (
     shell_commands,
     custom_sh_cmd_kw,
     shell_message,
-    CEND,
-    MAGENTA_bold,
+    CEND,  # noqa
+    MAGENTA_bold,  # noqa
 )
 from upydev.shell.common import (
     du,
@@ -19,7 +19,7 @@ from upydev.shell.common import (
     SHELL_FUNCTIONS,
     print_table,
 )
-from upydev.shell.parser import shparser
+from upydev.shell.parser import gen_parser
 from prompt_toolkit.formatted_text import HTML
 from binascii import hexlify
 from upydev.commandlib import _CMDDICT_
@@ -105,7 +105,7 @@ class ShellCmds:
         self.flags = flags
         self.topargs = topargs
         # Setup shell commands parser
-        self.parser = shparser
+        self.parser, self.subparser = gen_parser()
         self._shkw = _SHELL_CMDS
         self.dev_name = self.flags.shell_prompt["s"][3][1]
         self._pipe_flags = [">", ">>", "|"]
@@ -324,7 +324,7 @@ class ShellCmds:
                 elif pflag == "|":
                     with closing(
                         Tee(f"{filetopipe[-1]}", wmode[:-1], channel="stdout")
-                    ) as outstream:
+                    ):
                         self.sh_cmd(cmd_to_pipe)
 
                 if len(filetopipe) > 1:
@@ -377,7 +377,7 @@ class ShellCmds:
                 elif pflag == "|":
                     with closing(
                         Tee(f"{filetopipe[-1]}", wmode[:-1], channel="stdout")
-                    ) as outstream:
+                    ):
                         self.sh_cmd(cmd_to_pipe)
                 if len(filetopipe) > 1:
                     with open(f"{filetopipe[-1]}.{self.dev_name}", wmode) as pipfile:
@@ -1584,7 +1584,7 @@ class ShellCmds:
                 self.dev.wr_cmd("os.mkdir('./lib')")
                 print("Done!")
             print("Uploading files to ./lib ...")
-            fileargs.fre = files
+            fileargs.fre = [file for file in files if file.endswith(".py")]
             if self.dev.dev_class == "SerialDevice":
                 from upydev.serialio import SerialFileIO
 

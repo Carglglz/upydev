@@ -36,11 +36,14 @@ def setup_conn(port, accept_handler):
         iface = network.WLAN(i)
         if iface.active():
             if websslrepl:
-                print("WebSecureREPL daemon started on wss://%s:%d" %
-                      (iface.ifconfig()[0], port))
+                print(
+                    "WebSecureREPL daemon started on wss://%s:%d"
+                    % (iface.ifconfig()[0], port)
+                )
             else:
-                print("WebREPL daemon started on ws://%s:%d" %
-                      (iface.ifconfig()[0], port))
+                print(
+                    "WebREPL daemon started on ws://%s:%d" % (iface.ifconfig()[0], port)
+                )
     return listen_s
 
 
@@ -56,11 +59,19 @@ def accept_conn(listen_sock):
     print("\nWebREPL connection from:", remote_addr)
     client_s = cl
     if websslrepl:
-        if hasattr(uos, 'dupterm_notify'):
+        if hasattr(client_swr, "close"):
+            client_swr.close()
+        if hasattr(uos, "dupterm_notify"):
             cl.setsockopt(socket.SOL_SOCKET, 20, uos.dupterm_notify)
         try:
-            cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert,
-                                 cadata=cadata, cert_reqs=ssl.CERT_REQUIRED)
+            cl = ssl.wrap_socket(
+                cl,
+                server_side=True,
+                key=key,
+                cert=cert,
+                cadata=cadata,
+                cert_reqs=ssl.CERT_REQUIRED,
+            )
         except Exception:
             cl = ssl.wrap_socket(cl, server_side=True, key=key, cert=cert)
         wss_helper.server_handshake(cl, ssl=True)
@@ -71,7 +82,7 @@ def accept_conn(listen_sock):
     cl.setblocking(False)
     # notify REPL on socket incoming data (ESP32/ESP8266-only)
     if not websslrepl:
-        if hasattr(uos, 'dupterm_notify'):
+        if hasattr(uos, "dupterm_notify"):
             cl.setsockopt(socket.SOL_SOCKET, 20, uos.dupterm_notify)
     uos.dupterm(ws)
     client_swr = cl
@@ -93,29 +104,30 @@ def start(port=8266, password=None, ssl=False, auth=False):
             ssl_auth = True
         websslrepl = True
         port = 8833
-        _key = 'SSL_key{}.der'.format(hexlify(unique_id()).decode())
-        _cert = 'SSL_certificate{}.der'.format(hexlify(unique_id()).decode())
+        _key = "SSL_key{}.der".format(hexlify(unique_id()).decode())
+        _cert = "SSL_certificate{}.der".format(hexlify(unique_id()).decode())
         try:
-            with open(_key, 'rb') as keyfile:
+            with open(_key, "rb") as keyfile:
                 key = keyfile.read()
-            with open(_cert, 'rb') as certfile:
+            with open(_cert, "rb") as certfile:
                 cert = certfile.read()
-            cadata = b''
+            cadata = b""
 
-            if 'ROOT_CA_cert.pem' in uos.listdir():
-                with open('ROOT_CA_cert.pem', 'rb') as host:
+            if "ROOT_CA_cert.pem" in uos.listdir():
+                with open("ROOT_CA_cert.pem", "rb") as host:
                     cadata += host.read()
             if not cadata:
                 cadata = cert
         except Exception as e:
             print(e)
-            print('No key or certificate found')
+            print("No key or certificate found")
     else:
         websslrepl = False
     stop()
     if password is None:
         try:
             import webrepl_cfg
+
             _webrepl.password(webrepl_cfg.PASS)
             setup_conn(port, accept_conn)
             print("Started webrepl in normal mode")
@@ -134,7 +146,7 @@ def start_foreground(port=8266):
 
 
 def set_ssl(flag_ssl=True, flag_auth=False):
-    with open('ssl_config.py', 'wb') as sslconfig:
-        sslconfig.write(b'from collections import namedtuple\n\n')
+    with open("ssl_config.py", "wb") as sslconfig:
+        sslconfig.write(b"from collections import namedtuple\n\n")
         sslconfig.write(b'SSL_CONF = namedtuple("SSLCONFIG", ("ssl", "auth"))\n')
-        sslconfig.write(b'SSL = SSL_CONF({}, {})'.format(flag_ssl, flag_auth))
+        sslconfig.write(b"SSL = SSL_CONF({}, {})".format(flag_ssl, flag_auth))

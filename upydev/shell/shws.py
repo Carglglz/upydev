@@ -1,6 +1,7 @@
 from upydev.shell.commands import ShellCmds, _SHELL_CMDS, _UPYDEVPATH
 from upydev.shell.constants import CRED, CEND
-from upydev.shell.parser import subshparser_cmd
+
+# from upydev.shell.parser import subshparser_cmd
 from upydev.shell.common import CatFileIO
 from upydev.shell.shfileio import ShDsyncIO
 from upydev.shell.shfwio import ShfwIO
@@ -239,7 +240,7 @@ class ShellWsCmds(ShellCmds):
                 _desc = f"{subcmd['help']}\n\n{subcmd['desc']}"
             else:
                 _desc = subcmd["help"]
-            _subparser = subshparser_cmd.add_parser(
+            _subparser = self.subparser.add_parser(
                 command, help=subcmd["help"], description=_desc, formatter_class=rawfmt
             )
             for pos_arg in subcmd.keys():

@@ -131,9 +131,17 @@ class OTAServer:
         with open(firmware, "rb") as fwr:
             self.firmware = fwr.read()
         self.sz = len(self.firmware)
-        self._n_blocks = (self.sz // BLOCKLEN) + 1
+        # self._n_blocks = (self.sz // BLOCKLEN) + 1
+        # hf = hashlib.sha256(self.firmware)
+        # hf.update(b"\xff" * ((self._n_blocks * BLOCKLEN) - self.sz))
         hf = hashlib.sha256(self.firmware)
-        hf.update(b"\xff" * ((self._n_blocks * BLOCKLEN) - self.sz))
+        if self.sz % BLOCKLEN != 0:
+            self._n_blocks = (self.sz // BLOCKLEN) + 1
+
+            hf.update(b"\xff" * ((self._n_blocks * BLOCKLEN) - self.sz))
+        else:
+            self._n_blocks = self.sz // BLOCKLEN
+
         self.check_sha = hexlify(hf.digest()).decode()
 
     def find_localip(self):
@@ -157,7 +165,7 @@ class OTAServer:
         if not self._async:
             self.dev.wr_cmd("from ota import OTA")
         else:
-            self.dev.wr_cmd("import aioservice;aota = aioservice.service('as_ota')")
+            self.dev.wr_cmd("import aioservice;aota = aioservice.service('ota')")
         host = self.host
         if self.host_fwd:
             host = self.host_fwd

@@ -125,8 +125,8 @@ helparg = HELP_INFO_ARG
 
 
 usag = """%(prog)s ACTION [options]\n
-This means that if the first argument Action/Mode keyword
-it assumes it is a 'raw' MicroPython command to send to the device \n
+The first argument is a known ACTION command, otherwise
+it assumes it is a MicroPython command and it is sent directly to the device \n
 Requirements: Needs REPL to be accessible.
     > Wireless Devices:
         * WiFi: Needs WebREPL enabled in the device;
@@ -536,7 +536,7 @@ def address_entry_point(entry_point, group_file=""):
             int(dev_address)
             dev_address = devices[entry_point][1]
             dev_br = devices[entry_point][0]
-        except Exception as e:
+        except Exception:
             dev_br = devices[entry_point][1]
             pass
         if "." in dev_address and dev_address.count(".") == 3:
@@ -573,7 +573,7 @@ def address_entry_point(entry_point, group_file=""):
                 dev_uuid = devices[entry_point][0]
                 dev_pass = devices[entry_point][1]
                 return (dev_uuid, dev_pass)
-            except Exception as e:
+            except Exception:
                 print("uuid malformed")
         elif ":" in dev_address:
             dev_uuid = devices[entry_point][0]
@@ -623,7 +623,7 @@ def address_wildcard_entry_point(
                 ]
         elif entry_point == "gg" or group_file != "UPY_G":
             target_devs += devs
-    except Exception as e:
+    except Exception:
         # print(e)
         pass
 
@@ -932,7 +932,7 @@ if args.m == "h" or args.m == "help":
                     this_version, latest
                 )
             )
-    except Exception as e:
+    except Exception:
         pass
     print(parser.version)
     print(parser.description, end="\n\n")
@@ -1238,8 +1238,8 @@ if args.G is not None:
                         os.chdir(dev)
                 try:
                     handle_action(args, exit=False, device_name=_dev_name)
-                except Exception as e:
-                    print(e)
+                except Exception:
+                    print(traceback.format_exc())
                 if args.gf:
                     if args.m == "get" or args.m == "put":
                         os.chdir(current_dir)

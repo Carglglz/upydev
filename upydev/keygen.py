@@ -46,7 +46,7 @@ dict_arg_options = {
         "g",
         "to",
         "fre",
-        "a",
+        "show-all",
     ],
     "rsa": ["t", "zt", "p", "wss", "fre", "f"],
 }
@@ -132,7 +132,7 @@ KG = dict(
         "-f": dict(
             help="cert name to add to verify locations", required=False, nargs="*"
         ),
-        "-a": dict(
+        "--show-all": dict(
             help="show all devs ssl cert status",
             required=False,
             default=False,
@@ -354,7 +354,7 @@ def load_rsa_key(dir="", show_key=False, id="00"):
         if show_key:
             print(buff_key)
         return buff_key
-    except Exception as e:
+    except Exception:
         print(
             "No RSA key found for this device, generate one first with '$ upydev gen_rsakey -tfkey' "
         )
@@ -377,7 +377,7 @@ def load_rsa_pvkey(dir="", show_key=False, id="00"):
         if show_key:
             print(buff_key)
         return buff_key
-    except Exception as e:
+    except Exception:
         print(
             "No RSA key found for this device, generate one first with '$ upydev gen_rsakey -tfkey' "
         )
@@ -411,7 +411,7 @@ def get_cert_data():
             local_ip = ip_soc.getsockname()[0]
             ip_soc.close()
             addrs = local_ip
-        except Exception as e:
+        except Exception:
             addrs = [
                 netifaces.ifaddresses(iface)[netifaces.AF_INET][0]["addr"]
                 for iface in netifaces.interfaces()
@@ -427,7 +427,7 @@ def get_cert_data():
             "HOST_NAME": HOST_NAME,
             "COUNTRY_CODE": COUNTRY_CODE,
         }
-    except Exception as e:
+    except Exception:
         default_temp = {
             "addrs": "xxxx",
             "USER": "xxxx",
@@ -623,7 +623,6 @@ def ssl_ECDSA_key_certgen(args, dir="", store=True, dev_name=None):
             .sign(ca_key, hashes.SHA256(), default_backend())
         )
     else:
-
         cert = (
             x509.CertificateBuilder()
             .subject_name(csr.subject)
@@ -769,7 +768,6 @@ def ssl_ECDSA_key_certgen_host(args, dir="", store=True):
         )
 
     if not args.zt:
-
         cert = (
             x509.CertificateBuilder()
             .subject_name(csr.subject)
@@ -894,7 +892,7 @@ def get_rsa_key(args):
 
     unique_id = hexlify(id_bytes).decode()
     print("ID: {}".format(unique_id))
-    pkey = rsa_keygen(args, dir=UPYDEV_PATH, show_key=args.show_key, id=unique_id)
+    rsa_keygen(args, dir=UPYDEV_PATH, show_key=args.show_key, id=unique_id)
     print("Done!")
 
     if args.tfkey:  # move out for now
@@ -918,9 +916,7 @@ def get_rsa_key_host(args):
     unique_id = hexlify(os.environ["USER"].encode()).decode()[:12]
 
     # print('Host ID: {}'.format(unique_id))
-    pkey = rsa_keygen(
-        args, dir=UPYDEV_PATH, show_key=args.show_key, id=unique_id, host=True
-    )
+    rsa_keygen(args, dir=UPYDEV_PATH, show_key=args.show_key, id=unique_id, host=True)
     print("Done!")
 
     if args.tfkey:  # move out for now
@@ -1005,7 +1001,6 @@ def get_ssl_keycert(args, host=False, CA=False, dev_name=None):
             ssl_dict = ssl_ECDSA_key_certgen(args, dir=UPYDEV_PATH, dev_name=dev_name)
     # HOST (key, cert pair) --> .PEM (cert) to device (CADATA)
     elif host:
-
         # if args.tfkey:
         #     ssl_dict = ssl_ECDSA_key_certgen_host(args, dir=tempfile.gettempdir())
         # else:
@@ -1455,12 +1450,10 @@ def keygen_action(args, unkwargs, **kargs):
                         sys.exit()
         # SSLGEN_KEY
         elif args.mode == "ssl":
-
             # print(rest_args, args.f)
             # sys.exit()
             # Device
             if "dev" in rest_args:
-
                 # export device cert to other host
                 if "export" in rest_args:
                     print("Getting unique id...")
@@ -1516,7 +1509,7 @@ def keygen_action(args, unkwargs, **kargs):
                         abs_cert = os.path.join(UPYDEV_PATH, cert)
                         name = get_ssl_cert_cn(abs_cert)
                         cn = name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0]
-                        if args.a:
+                        if args.show_all:
                             print(f"{cn.value:10} -> ", end="")
                             get_ssl_cert_status(abs_cert)
                         else:
@@ -1568,7 +1561,6 @@ def keygen_action(args, unkwargs, **kargs):
 
             # CA
             elif "CA" in rest_args:
-
                 # status
                 if "status" in rest_args:
                     cert = "ROOT_CA_cert.pem"
