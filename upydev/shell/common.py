@@ -327,7 +327,6 @@ class LS:
     def __call__(self, *args, hidden=False, show=True, rtn=False, bydir=True):
         dir_names_or_pattrn = args
         files_in_dir = []
-        all_files = []
         for dir_name in dir_names_or_pattrn:
             if "*" not in dir_name and "/" not in dir_name:
                 try:
@@ -524,7 +523,6 @@ class DISK_USAGE:
                         if not dir.startswith(".")
                     }
                 for dir in resp.keys():
-
                     if not os.stat(dir)[0] & 0x4000:
                         if absp:
                             print(
@@ -580,7 +578,6 @@ class DISK_USAGE:
                     if not dir.startswith(".")
                 }
             for dir in resp.keys():
-
                 if not os.stat(dir)[0] & 0x4000:
                     print("{:9} {}".format(self.print_filesys_info(resp[dir]), dir))
 
@@ -659,21 +656,48 @@ class CatFileIO:
         self.dev.serial.write(b"\r\x02")  # ctrl-B: enter friendly REPL
         self.dev.serial.read_until(b"\r\n>>> ")
 
+    # adapted from micropython serial transport.
+    def read_until(self, min_num_bytes, ending, timeout=10, data_consumer=None):
+        # if data_consumer is used then data is not accumulated and the ending must be 1 byte long
+        assert data_consumer is None or len(ending) == 1
+
+        data = self.dev.serial.read(min_num_bytes)
+        if data_consumer:
+            data_consumer(data)
+        timeout_count = 0
+        while True:
+            if data.endswith(ending):
+                break
+            elif self.dev.serial.inWaiting() > 0:
+                new_data = self.dev.serial.read(1)
+                if data_consumer:
+                    data_consumer(new_data)
+                    data = new_data
+                else:
+                    data = data + new_data
+                timeout_count = 0
+            else:
+                timeout_count += 1
+                if timeout is not None and timeout_count >= 100 * timeout:
+                    break
+                time.sleep(0.01)
+        return data
+
     def exec_raw_cmd(self, command):
         # check we have a prompt
         if not isinstance(command, bytes):
             command = command.encode("utf-8")
         command += b"\r"
-        data = self.dev.serial.read_until(b">")
+        data = self.read_until(1, b">")
         assert data.endswith(b">"), f"wrong data: {data}"
         for i in range(0, len(command), 256):
             self.dev.serial.write(command[i : min(i + 256, len(command))])
             time.sleep(0.01)
         self.dev.serial.write(b"\x04")
         # check if we could exec command
-        data = self.dev.serial.read_until(b"OK")
+        data = self.read_until(2, b"OK")
         assert b"OK" in data, f"Command failed: {command}: data: {data}"
-        data = self.dev.serial.read_until(b"\x04\x04")
+        data = self.read_until(2, b"\x04\x04")
         assert data == b"\x04\x04", f"Command failed: {command}: data: {data}"
 
     def init_put(self, filename, filesize, cnt=0):
@@ -1078,7 +1102,7 @@ class CatFileIO:
         self.get_pb()
         self.t_start = time.time()
         self._commandline = 0
-        with open(self.filename, "w") as f:
+        with open(self.filename, "w"):
             pass
 
     def get(self, data, std=True, exec_prompt=False):
@@ -1289,9 +1313,7 @@ def check_filetype(file):
 
 
 def get_rprompt(mem_show_rp, shll):
-
     if mem_show_rp["call"]:
-
         RAM = shll.send_custom_sh_cmd(
             "from micropython import mem_info;mem_info()", True
         )
