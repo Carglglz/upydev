@@ -1693,13 +1693,20 @@ class ShellCmds:
             fileargs.fre = [file for file in files if file.endswith(".py")]
             if self.dev.dev_class == "SerialDevice":
                 from upydev.serialio import SerialFileIO
+                from upydev.shell.shfileio import ShDsyncIO
+                from upydev.shell.common import CatFileIO
 
                 if self.dev.dev_platform == "pyboard":
-                    fileargs.s = "/flash/lib"
+                    fileargs.dir = "/flash/lib"
                 else:
-                    fileargs.s = "/lib"
+                    fileargs.dir = "lib"
                 fileio = SerialFileIO(self.dev, devname=self.dev_name)
-                fileio.put_files(fileargs, self.dev_name)
+                fastfileio = CatFileIO()
+                fastfileio.dev = self.dev
+                dsyncio = ShDsyncIO(
+                    self.dev, self.dev_name, fileio, fastfileio, shell=self
+                )
+                dsyncio.fileop("put", fileargs, fileargs.fre)
             elif self.dev.dev_class == "WebSocketDevice":
                 from upydev.wsio import WebSocketFileIO
 

@@ -711,6 +711,8 @@ class CatFileIO:
     def sraw_put_file(self, src, dest, chunk_size=256):
         try:
             self.enter_raw_repl()
+            self.dev.serial.inter_byte_timeout = 1
+            self.dev.serial.timeout = 10
             # time.sleep(0.1)
             # print(f"source: {src}")
             # print(f"dest: {dest}")
@@ -754,6 +756,9 @@ class CatFileIO:
             self.exec_raw_cmd("f.close()")
             self.exit_raw_repl()
             print("\n")
+            self.dev.serial.inter_byte_timeout = None
+            self.dev.serial.timeout = None
+
         except (Exception, KeyboardInterrupt):
             print("flushing serial")
             self.exit_raw_repl()

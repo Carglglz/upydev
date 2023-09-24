@@ -1,4 +1,4 @@
-from upydev.shell.nanoglob import glob as nglob, _get_path_depth
+from upydev.shell.nanoglob import glob as nglob
 from upydevice import DeviceException, DeviceNotFound
 from upydev.shell.common import tree, print_size
 from upydev.shell.constants import CHECK
@@ -40,7 +40,6 @@ def get_git_rootdir():
 
 
 def get_git_files(gitflag):
-
     cm_A_files = []
     cm_M_files = []
     cm_D_files = []
@@ -49,7 +48,6 @@ def get_git_files(gitflag):
     cmd_cms_ahead = shlex.split(f"git rev-list --left-right --count " f"{local_remote}")
     cm_ahead = subprocess.check_output(cmd_cms_ahead).decode().split("\t")[0]
     if int(cm_ahead) > 0:
-
         cmd_cm_files = shlex.split(f"git log -{cm_ahead} --name-status --oneline")
         files_to_cm_sync = subprocess.check_output(cmd_cm_files).decode()
         for cmf in files_to_cm_sync.splitlines():
@@ -230,7 +228,6 @@ class ShDsyncIO:
                     raise KeyboardInterrupt
             except socket.timeout:
                 try:
-
                     raise DeviceNotFound(
                         f"WebSocketDevice @ "
                         f"{self.dev._uriprotocol}://"
@@ -583,7 +580,6 @@ class ShDsyncIO:
             )
             # SEPARATE
             if local_hashlist:
-
                 dir_match = [dir for dir, sz, id in local_hashlist if id == "dir"]
                 file_match = [fh for fh in local_hashlist if fh[-1] != "dir"]
                 if not dir_match:
@@ -706,12 +702,10 @@ class ShDsyncIO:
                         self.dev.wr_cmd("from upysh2 import rmrf", silent=True)
 
                         if self.dev.dev_class == "WebSocketDevice":
-
                             if len(f"rmrf(*{dirs_to_delete})") > 250:
                                 for i in range(0, len(dirs_to_delete), 10):
-
                                     self.dev.wr_cmd(
-                                        f"rmrf(*{dirs_to_make[i:i+10]})", follow=True
+                                        f"rmrf(*{dirs_to_delete[i:i+10]})", follow=True
                                     )
 
                             else:
@@ -816,7 +810,20 @@ class ShDsyncIO:
                         print(f"- {ndir}")
                     if not args.n:
                         self.dev.wr_cmd("from upysh2 import rmrf", silent=True)
-                        self.dev.wr_cmd(f"rmrf(*{files_to_delete})", follow=True)
+
+                        if self.dev.dev_class == "WebSocketDevice":
+                            if len(f"rmrf(*{files_to_delete})") > 250:
+                                for i in range(0, len(files_to_delete), 10):
+                                    self.dev.wr_cmd(
+                                        f"rmrf(*{files_to_delete[i:i+10]})", follow=True
+                                    )
+
+                            else:
+                                self.dev.wr_cmd(
+                                    f"rmrf(*{files_to_delete})", follow=True
+                                )
+                        else:
+                            self.dev.wr_cmd(f"rmrf(*{files_to_delete})", follow=True)
                 else:
                     print(f"dsync: files: OK{CHECK}")
                 #     print('dsync: no old files to delete')
@@ -867,7 +874,6 @@ class ShDsyncIO:
                         except Exception:
                             pass
                 else:
-
                     self.dev.wr_cmd(
                         f"from upysh2 import tree;tree('{top_dir}')", follow=True
                     )
@@ -907,7 +913,6 @@ class ShDsyncIO:
                 )
             # SEPARATE
             if local_hashlist:
-
                 dir_match = [dir for dir, sz, id in local_hashlist if id == "dir"]
                 file_match = [fh for fh in local_hashlist if fh[-1] != "dir"]
 
@@ -1010,7 +1015,6 @@ class ShDsyncIO:
             _modified_files = []
             files_to_delete = []
             if dev_files:
-
                 if local_files:
                     files_to_sync = [
                         (fts[1], fts[0]) for fts in dev_files if fts not in local_files
@@ -1134,7 +1138,6 @@ class ShDsyncIO:
                 for ndir in dirs_to_make:
                     print(f"- {ndir}")
                 if not args.n:
-
                     if self.dev.dev_class == "WebSocketDevice":
                         if len(f"mkdr(*{dirs_to_make})") > 250:
                             for i in range(0, len(dirs_to_make), 10):
@@ -1173,7 +1176,18 @@ class ShDsyncIO:
                         print(f"- {ndir}")
                     if not args.n:
                         self.dev.wr_cmd("from upysh2 import rmrf", silent=True)
-                        self.dev.wr_cmd(f"rmrf(*{dirs_to_delete})", follow=True)
+
+                        if self.dev.dev_class == "WebSocketDevice":
+                            if len(f"rmrf(*{dirs_to_delete})") > 250:
+                                for i in range(0, len(dirs_to_delete), 10):
+                                    self.dev.wr_cmd(
+                                        f"rmrf(*{dirs_to_delete[i:i+10]})", follow=True
+                                    )
+
+                            else:
+                                self.dev.wr_cmd(f"rmrf(*{dirs_to_delete})", follow=True)
+                        else:
+                            self.dev.wr_cmd(f"rmrf(*{dirs_to_delete})", follow=True)
                 else:
                     if len(local_dirs) > 1:
                         print(f"dsync: dirs: OK{CHECK}")
@@ -1256,18 +1270,18 @@ class ShDsyncIO:
                         self.dev.wr_cmd("from upysh2 import rmrf", silent=True)
 
                         if self.dev.dev_class == "WebSocketDevice":
-
-                            if len(f"rmrf(*{dirs_to_delete})") > 250:
-                                for i in range(0, len(dirs_to_delete), 10):
-
+                            if len(f"rmrf(*{files_to_delete})") > 250:
+                                for i in range(0, len(files_to_delete), 10):
                                     self.dev.wr_cmd(
-                                        f"rmrf(*{dirs_to_make[i:i+10]})", follow=True
+                                        f"rmrf(*{files_to_delete[i:i+10]})", follow=True
                                     )
 
                             else:
-                                self.dev.wr_cmd(f"rmrf(*{dirs_to_delete})", follow=True)
+                                self.dev.wr_cmd(
+                                    f"rmrf(*{files_to_delete})", follow=True
+                                )
                         else:
-                            self.dev.wr_cmd(f"rmrf(*{dirs_to_delete})", follow=True)
+                            self.dev.wr_cmd(f"rmrf(*{files_to_delete})", follow=True)
                 else:
                     print(f"dsync: files: OK{CHECK}")
 
@@ -1335,7 +1349,6 @@ class ShDsyncIO:
             _modified_files = []
             files_to_delete = []
             if dev_files:
-
                 if local_files:
                     files_to_sync = [
                         (fts[1], fts[0]) for fts in dev_files if fts not in local_files

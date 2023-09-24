@@ -56,7 +56,7 @@ To get development version:
 
 .. code-block:: console
 
-    $ pip install https://github.com/Carglglz/upydev/tree/develop.zip
+    $ pip install https://github.com/Carglglz/upydev/archive/develop.zip
 
 To get help, use ``h`` or ``help`` command :
 
